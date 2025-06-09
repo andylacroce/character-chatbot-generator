@@ -9,19 +9,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: "Name required" });
   try {
-    // 1. Get a factual, richly detailed visual description for the image prompt
-    const descriptionPrompt = `Imagine you are briefing a world-class portrait artist or a visual AI. Before you begin, imagine you are looking at a set of high-resolution reference photos, film stills, or iconic images of ${name} (if they exist). Use these reference images in your memory or training data as the basis for your description. Describe in extremely vivid, specific detail what ${name} looks like. Write a very long, highly detailed response—at least 1000 words if possible. Do not summarize; elaborate on every feature and detail. Break down the description by:
-- Facial features (forehead, brows, eyes, nose, mouth, jaw, chin, ears, skin texture, facial hair, distinguishing marks)
-- Hair (color, style, length, part, texture)
-- Eyes (color, shape, gaze, expression)
-- Skin tone and complexion
-- Age, ethnicity, and gender presentation
-- Body type, posture, and typical pose
-- Clothing and accessories (be specific, mention brands, styles, or signature items if known)
-- Expression, mood, and emotional tone
-- Any iconic items, props, or settings
-- Lighting, background, and overall style
-If the character is real or famous, explicitly reference specific photos, movie scenes, or public appearances and describe what you see in those images. If fictional, be imaginative and genre-appropriate. Make the description so detailed that an artist could create a highly accurate, recognizable portrait. If you don't know, say so.`;
+    // 1. Get a concise, visually focused description for the image prompt
+    const descriptionPrompt = `Describe in vivid, specific visual detail what ${name} looks like for the purpose of generating an accurate portrait. Focus on facial features, hair, eyes, skin, expression, clothing, and any iconic items. Be concise but richly descriptive. If ${name} is real or famous, base your description on well-known photos, film stills, or reference images. If fictional, be imaginative and genre-appropriate. Do not summarize, but do not exceed 3-5 sentences.`;
     logger.info(`[AVATAR] Generating description for '${name}' with prompt: ${descriptionPrompt}`);
     const descriptionCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -29,59 +18,18 @@ If the character is real or famous, explicitly reference specific photos, movie 
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: descriptionPrompt },
       ],
-      max_tokens: 1800, // Increased to allow for ~1000 words
-      temperature: 0.15,
+      max_tokens: 400, // Shorter, concise
+      temperature: 0.2,
     });
     const description = descriptionCompletion.choices[0]?.message?.content?.trim() || "";
     logger.info(`[AVATAR] Description for '${name}': ${description}`);
-    // DALL-E prompt limit: keep under 1000 chars for safety
-    let conciseDescription = description.replace(/\s+/g, ' ').trim();
-    // Try to prioritize visually distinctive features if truncating
-    const featurePriority = [
-      /facial features/i,
-      /hair/i,
-      /eyes/i,
-      /clothing/i,
-      /expression/i
-    ];
-    let prioritized = '';
-    for (const regex of featurePriority) {
-      const match = conciseDescription.match(new RegExp(`(${regex.source}[^.]+\.)`, 'i'));
-      if (match) prioritized += match[1] + ' ';
-    }
-    if (prioritized.length > 0) {
-      conciseDescription = (prioritized + conciseDescription).slice(0, 700) + '...';
-    } else if (conciseDescription.length > 700) {
-      conciseDescription = conciseDescription.slice(0, 700) + '...';
-    }
-    // --- OPTIMIZED DALL-E PROMPT GENERATION ---
-    // Extract and prioritize visually distinctive features
-    const featureSections = [
-      { key: 'facial features', regex: /facial features[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
-      { key: 'hair', regex: /hair[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
-      { key: 'eyes', regex: /eyes[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
-      { key: 'clothing', regex: /clothing(?: and accessories)?[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
-      { key: 'expression', regex: /expression(?:, mood, and emotional tone)?[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
-    ];
-    let visualSummary = '';
-    for (const section of featureSections) {
-      const match = description.match(section.regex);
-      if (match && match[1]) {
-        visualSummary += `${section.key.charAt(0).toUpperCase() + section.key.slice(1)}: ${match[1].trim()} `;
-      }
-    }
-    // Fallback: if visualSummary is too short, use the first 2-3 sentences of the description
-    if (visualSummary.length < 200) {
-      const firstSentences = description.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ');
-      visualSummary += firstSentences;
-    }
     // Compose the DALL-E prompt
     let imagePrompt =
       `A high-quality, photorealistic portrait of ${name}. ` +
       `(If ${name} is real or famous, use actual reference photos, film stills, or renderings of ${name} to ensure the most accurate likeness possible. ` +
       `Refer to images, likenesses, and visual memory for maximum accuracy. ` +
       `Match the likeness as closely as possible to well-known photos or portraits.) ` +
-      `${visualSummary.trim()} Upper body, facing forward, studio lighting, plain background.`;
+      `${description}`;
     // Truncate to 1000 chars for DALL-E
     if (imagePrompt.length > 1000) imagePrompt = imagePrompt.slice(0, 997) + '...';
     logger.info(`[AVATAR] Image prompt for '${name}': ${imagePrompt}`);
