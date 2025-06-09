@@ -105,7 +105,7 @@ async function generateBotDataWithProgress(name: string, onProgress: (step: stri
     }
   } catch (e) {}
 
-  let avatarUrl = "/gandalf.jpg";
+  let avatarUrl = "/bot-avatar.png";
   onProgress("avatar");
   try {
     const avatarRes = await fetch("/api/generate-avatar", {

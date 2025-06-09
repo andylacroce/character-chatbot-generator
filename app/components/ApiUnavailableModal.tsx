@@ -11,10 +11,10 @@ const ApiUnavailableModal: React.FC<ApiUnavailableModalProps> = ({ show }) => {
     <div className={styles.modalBackdrop} data-testid="modal-backdrop">
       <div className={styles.modalError} role="alert" data-testid="api-error-message">
         <span className={styles.apiErrorTitle}>
-          Gandalf has vanished from the White Council.
+          Bot has vanished from the chat.
         </span>
         <span className={styles.apiErrorDesc}>
-          The Grey Pilgrim is away, perhaps consulting with Elrond or lost in thought atop Orthanc. The chat must wait for his return. Try again soon, for even the smallest hope can bring him back!
+          The bot is temporarily unavailable or reloading. Please try again soon.
         </span>
       </div>
     </div>

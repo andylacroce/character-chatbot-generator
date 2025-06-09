@@ -1,6 +1,6 @@
-# Gandalf Chatbot
+# AI Character Chatbot
 
-A Next.js app featuring a real-time chat interface, AI-powered Gandalf persona, and voice responses via Google Text-to-Speech.
+A Next.js app featuring a real-time chat interface, AI-powered character personas, and voice responses via Google Text-to-Speech.
 
 ## Features
 

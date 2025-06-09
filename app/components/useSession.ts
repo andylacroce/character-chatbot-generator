@@ -17,8 +17,8 @@ export function useSession(): [string, string] {
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, "0");
       sessionDatetime = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-      sessionStorage.setItem("gandalf-session-id", newSessionId);
-      sessionStorage.setItem("gandalf-session-datetime", sessionDatetime);
+      sessionStorage.setItem("bot-session-id", newSessionId);
+      sessionStorage.setItem("bot-session-datetime", sessionDatetime);
     }
     setSessionId(newSessionId);
     setSessionDatetime(sessionDatetime);

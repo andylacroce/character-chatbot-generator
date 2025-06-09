@@ -66,8 +66,7 @@ describe("ChatPage API connectivity", () => {
 
       // Check for updated modal text
       expect(getByTestId("api-error-message")).toBeInTheDocument();
-      expect(getByTestId("api-error-message").textContent).toMatch(/Gandalf has vanished from the White Council/i);
-      expect(getByTestId("api-error-message").textContent).toMatch(/The Grey Pilgrim is away, perhaps consulting with Elrond or lost in thought atop Orthanc/i);
+      expect(getByTestId("api-error-message").textContent).toMatch(/Bot has vanished from the chat/i);
 
       // Chat input should be empty placeholder when API is down
       const input = getByTestId("chat-input") as HTMLInputElement;

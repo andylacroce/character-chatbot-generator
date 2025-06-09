@@ -1,7 +1,7 @@
 /* =============================
    ChatMessage.module.css
    - Styles specific to the ChatMessage component
-   - Handles message bubble appearance for user and Gandalf
+   - Handles message bubble appearance for user and bot
    - Uses CSS variables from globals.css for theme consistency
    ============================= */
 
@@ -22,9 +22,9 @@
   font-size: 2.2rem !important;
 }
 
-/* Gandalf message bubble (left-aligned, themed) */
-.gandalfMessage {
-  background-color: var(--gandalf-message-bg);
+/* Bot message bubble (left-aligned, themed) */
+.botMessage {
+  background-color: var(--bot-message-bg);
   color: var(--card-body-bg);
   font-family: var(--font-primary), serif;
   align-self: flex-start;
@@ -42,11 +42,11 @@
   line-height: 1.1;
 }
 
-/* Gandalf sender name override */
-.gandalfSender {
+/* Bot sender name override */
+.botSender {
   font-family: var(--font-primary);
   font-weight: 800;
-  color: var(--gandalf-sender);
+  color: var(--bot-sender);
   font-size: 1.25rem;
   letter-spacing: 0.01em;
   text-shadow: none;

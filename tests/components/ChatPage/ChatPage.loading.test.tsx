@@ -30,7 +30,7 @@ describe("ChatPage", () => {
                 resolve({
                   data: {
                     reply: "You shall not pass!",
-                    audioFileUrl: "/api/audio?file=gandalf_reply.mp3",
+                    audioFileUrl: "/api/audio?file=bot_reply.mp3",
                   },
                 }),
               2000,
@@ -44,7 +44,7 @@ describe("ChatPage", () => {
       expect(sendButton).toBeInTheDocument();
 
       // Trigger sending message
-      fireEvent.change(input, { target: { value: "Hello, Gandalf!" } });
+      fireEvent.change(input, { target: { value: "Hello, Bot!" } });
       fireEvent.click(sendButton);
 
       // Verify disabled state during loading
@@ -71,7 +71,7 @@ describe("ChatPage", () => {
                 resolve({
                   data: {
                     reply: "You shall not pass!",
-                    audioFileUrl: "/api/audio?file=gandalf_reply.mp3",
+                    audioFileUrl: "/api/audio?file=bot_reply.mp3",
                   },
                 }),
               1000,
@@ -85,7 +85,7 @@ describe("ChatPage", () => {
       expect(sendButton).toBeInTheDocument();
 
       // Send message
-      fireEvent.change(input, { target: { value: "Hello, Gandalf!" } });
+      fireEvent.change(input, { target: { value: "Hello, Bot!" } });
       fireEvent.click(sendButton);
 
       // Advance timer to trigger loading state
@@ -114,7 +114,7 @@ describe("ChatPage", () => {
                 resolve({
                   data: {
                     reply: "You shall not pass!",
-                    audioFileUrl: "/api/audio?file=gandalf_reply.mp3",
+                    audioFileUrl: "/api/audio?file=bot_reply.mp3",
                   },
                 }),
               1000,
@@ -129,7 +129,7 @@ describe("ChatPage", () => {
       expect(sendButton!.textContent).toBe("Send");
 
       // Send message
-      fireEvent.change(input, { target: { value: "Hello, Gandalf!" } });
+      fireEvent.change(input, { target: { value: "Hello, Bot!" } });
       fireEvent.click(sendButton);
 
       // Check button text changed to HOLD

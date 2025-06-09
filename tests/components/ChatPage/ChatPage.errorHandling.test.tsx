@@ -22,7 +22,7 @@ describe("ChatPage", () => {
       const sendButton = getByTestId("chat-send-button");
       expect(sendButton).toBeInTheDocument();
 
-      fireEvent.change(input, { target: { value: "Hello, Gandalf!" } });
+      fireEvent.change(input, { target: { value: "Hello, Bot!" } });
       fireEvent.click(sendButton);
 
       await waitFor(() => {
@@ -40,7 +40,7 @@ describe("ChatPage", () => {
       const sendButton = getByTestId("chat-send-button");
       expect(sendButton).toBeInTheDocument();
 
-      fireEvent.change(input, { target: { value: "Hello, Gandalf!" } });
+      fireEvent.change(input, { target: { value: "Hello, Bot!" } });
       fireEvent.click(sendButton);
 
       await waitFor(() => {

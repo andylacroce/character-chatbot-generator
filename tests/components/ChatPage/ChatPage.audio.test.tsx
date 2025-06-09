@@ -75,13 +75,13 @@ describe("ChatPage Audio Integration", () => {
     jest.mocked(axios.post).mockResolvedValue({
       data: {
         reply: "You shall not pass!",
-        audioFileUrl: "/api/audio?file=gandalf_reply.mp3",
+        audioFileUrl: "/api/audio?file=bot_reply.mp3",
       },
     });
     const { getByTestId } = render(<ChatPage />);
     const input = getByTestId("chat-input");
     const sendButton = getByTestId("chat-send-button");
-    fireEvent.change(input, { target: { value: "Hello, Gandalf!" } });
+    fireEvent.change(input, { target: { value: "Hello, Bot!" } });
     fireEvent.click(sendButton);
     await waitFor(() => {
       expect(audioInstances.length).toBe(1);

@@ -38,7 +38,7 @@ describe("Audio API Handler - OpenAI+TTS Regeneration", () => {
     });
     jest.spyOn(require("fs"), "realpathSync").mockReturnValue(require("path").resolve("/tmp", "regen.mp3"));
     setOpenAIMock({
-      chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: "Gandalf reply" } }] }) } }
+      chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: "Bot reply" } }] }) } }
     });
     jest.spyOn(require("fs"), "writeFileSync").mockImplementation(() => {});
     jest.spyOn(require("../../src/utils/tts"), "synthesizeSpeechToFile").mockResolvedValue(undefined);
@@ -110,7 +110,7 @@ describe("Audio API Handler - OpenAI+TTS Regeneration", () => {
     });
     jest.spyOn(require("fs"), "readFileSync").mockImplementation((...args) => {
       const filePath = args[0];
-      if (filePath === txtPath) return "Some Gandalf reply";
+      if (filePath === txtPath) return "Some Bot reply";
       if (filePath === mp3Path) return Buffer.from("audio content");
       throw new Error("ENOENT");
     });
@@ -263,7 +263,7 @@ jest.mock("openai", () => {
     return (global as any).__OPENAI_MOCK__ || {
       chat: {
         completions: {
-          create: jest.fn().mockResolvedValue({ choices: [{ message: { content: "Gandalf reply" } }] })
+          create: jest.fn().mockResolvedValue({ choices: [{ message: { content: "Bot reply" } }] })
         }
       }
     };
@@ -363,7 +363,7 @@ describe("edge cases and public dir fallback", () => {
 
   it("should serve regenerated audio from /tmp if it appears there after regen", async () => {
     const { req, res } = createTestObjects();
-    req.query = { file: "regentmp.mp3", text: "Some Gandalf reply" };
+    req.query = { file: "regentmp.mp3", text: "Some Bot reply" };
     let regenDone = false;
     // Simulate both .mp3 and .txt files for regentmp
     jest.spyOn(require("fs"), "existsSync").mockImplementation((filePath) => {
@@ -386,7 +386,7 @@ describe("edge cases and public dir fallback", () => {
         return Buffer.from("audio content");
       }
       if (typeof filePath === "string" && filePath.includes("regentmp.txt")) {
-        return "Some Gandalf reply";
+        return "Some Bot reply";
       }
       throw new Error("ENOENT");
     });
@@ -512,7 +512,7 @@ describe("additional edge cases for audio regen", () => {
       throw new Error("ENOENT");
     });
     jest.spyOn(require("fs"), "readFileSync").mockImplementation((filePath) => {
-      if (filePath === txtPath) return "Some Gandalf reply";
+      if (filePath === txtPath) return "Some Bot reply";
       if (filePath === mp3Path) return Buffer.from("audio content");
       throw new Error("ENOENT");
     });

@@ -67,7 +67,7 @@ const mockHandler = async (req: NextApiRequest, res: NextApiResponse) => {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({
-      reply: "Error fetching response from Gandalf.",
+      reply: "Error fetching response from bot.",
       error: errorMessage,
     });
   }
@@ -93,7 +93,7 @@ describe("Chat API Handler", () => {
     // Setup request and response objects
     req = {
       method: "POST",
-      body: { message: "Hello, Gandalf!" },
+      body: { message: "Hello, Bot!" },
       headers: { "x-forwarded-for": "127.0.0.1", "x-internal-api-secret": process.env.INTERNAL_API_SECRET },
       connection: { remoteAddress: "127.0.0.1" } as unknown as Socket,
     } as Partial<NextApiRequest>;
@@ -193,7 +193,7 @@ describe("Chat API Handler", () => {
     // Verify the response status and error message
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
-      reply: "Error fetching response from Gandalf.",
+      reply: "Error fetching response from bot.",
       error: "Simulated error in json method",
     });
 

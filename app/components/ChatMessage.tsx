@@ -44,10 +44,10 @@ const ChatMessage = React.memo(
 
     // Determine CSS classes based on message sender
     const isUser = message.sender === "User";
-    const messageClass = isUser ? styles.userMessage : styles.gandalfMessage;
+    const messageClass = isUser ? styles.userMessage : styles.botMessage;
     const senderClass = isUser
       ? styles.sender
-      : `${styles.sender} ${styles.gandalfSender}`;
+      : `${styles.sender} ${styles.botSender}`;
 
     return (
       <div

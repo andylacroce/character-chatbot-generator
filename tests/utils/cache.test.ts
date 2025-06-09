@@ -4,7 +4,7 @@ import fs from "fs";
 describe("cache utility", () => {
   const key = "testKey";
   const value = "testValue";
-  const CACHE_FILE = "/tmp/gandalf-reply-cache.json";
+  const CACHE_FILE = "/tmp/bot-reply-cache.json";
 
   describe("Vercel (in-memory) mode", () => {
     beforeEach(() => {

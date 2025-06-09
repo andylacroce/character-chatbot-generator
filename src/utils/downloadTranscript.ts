@@ -39,7 +39,7 @@ export async function downloadTranscript(messages: any[]) {
   } catch (err) {
     throw err;
   }
-  const filename = `Gandalf Chat Transcript ${datetime}.txt`;
+  const filename = `Chat Transcript ${datetime}.txt`;
   if (!window.URL || !window.URL.createObjectURL) throw new Error("window.URL.createObjectURL is not available");
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");

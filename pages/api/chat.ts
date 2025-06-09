@@ -66,20 +66,21 @@ function isOpenAIResponse(
 function buildOpenAIMessages(
   history: string[],
   userMessage: string,
+  botName: string
 ): ChatCompletionMessageParam[] {
   const messages: ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content: `You are Gandalf the Grey, wizard of Middle-earth. Speak with wisdom, warmth, and a touch of playful forgetfulness. Never reference the modern world. Use poetic, old-world language, and occasionally tease or offer roundabout advice as Gandalf would. Stay in character at all times. Respond in no more than 50 words. Do not start every response with the same word or phrase. Vary your sentence openings and avoid overusing 'Ah,' or similar interjections.`,
+      content: `You are an AI character. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`,
     },
   ];
   for (const entry of history) {
     if (entry.startsWith("User: ")) {
       messages.push({ role: "user", content: entry.replace(/^User: /, "") });
-    } else if (entry.startsWith("Gandalf: ")) {
+    } else if (entry.startsWith("Bot: ")) {
       messages.push({
         role: "assistant",
-        content: entry.replace(/^Gandalf: /, ""),
+        content: entry.replace(/^Bot: /, ""),
       });
     }
   }
@@ -112,8 +113,8 @@ export default async function handler(
 
   try {
     const userMessage = req.body.message;
-    const personality = req.body.personality || `You are Gandalf the Grey, wizard of Middle-earth. Speak with wisdom, warmth, and a touch of playful forgetfulness. Never reference the modern world. Use poetic, old-world language, and occasionally tease or offer roundabout advice as Gandalf would. Stay in character at all times. Respond in no more than 50 words. Do not start every response with the same word or phrase. Vary your sentence openings and avoid overusing 'Ah,' or similar interjections.`;
-    const botName = req.body.botName || "Gandalf";
+    const personality = req.body.personality || `You are an AI character. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`;
+    const botName = req.body.botName || "Bot";
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required`);
       return res.status(400).json({ error: "Message is required" });
@@ -139,7 +140,7 @@ export default async function handler(
       conversationHistory = conversationHistory.slice(-50);
     }
     // Build messages array with correct types
-    const oldMessages = buildOpenAIMessages(conversationHistory.slice(0, -1), userMessage).slice(1); // skip old system prompt
+    const oldMessages = buildOpenAIMessages(conversationHistory.slice(0, -1), userMessage, botName).slice(1); // skip old system prompt
     const messages: ChatCompletionMessageParam[] = [
       { role: "system", content: personality } as ChatCompletionMessageParam,
       ...oldMessages
@@ -169,21 +170,21 @@ export default async function handler(
       );
       throw new Error("Invalid response from OpenAI");
     }
-    const gandalfReply = result.choices[0]?.message?.content?.trim() ?? "";
-    if (!gandalfReply || gandalfReply.trim() === "") {
+    const botReply = result.choices[0]?.message?.content?.trim() ?? "";
+    if (!botReply || botReply.trim() === "") {
       logger.info(
-        `[Chat API] 500 Internal Server Error: Empty Gandalf response`,
+        `[Chat API] 500 Internal Server Error: Empty bot response`,
       );
-      throw new Error("Generated Gandalf response is empty.");
+      throw new Error("Generated bot response is empty.");
     }
-    conversationHistory.push(`Gandalf: ${gandalfReply}`);
+    conversationHistory.push(`Bot: ${botReply}`);
 
     // Prepare TTS request (voice tuned for character)
-    const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Gandalf"];
+    const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
     logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
     const pitch = typeof voiceConfig.pitch === 'number' ? voiceConfig.pitch : -13;
     const rate = typeof voiceConfig.rate === 'number' ? Math.round(voiceConfig.rate * 100) + '%' : '80%';
-    const ssmlText = `<speak><prosody pitch="${pitch}st" rate="${rate}"> ${gandalfReply} </prosody></speak>`;
+    const ssmlText = `<speak><prosody pitch="${pitch}st" rate="${rate}"> ${botReply} </prosody></speak>`;
     const tmpDir = "/tmp";
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
@@ -202,8 +203,8 @@ export default async function handler(
       });
       // Write a .txt sidecar for audio regeneration
       const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-      fs.writeFileSync(txtFilePath, gandalfReply, "utf8");
-      setReplyCache(audioFileName, gandalfReply);
+      fs.writeFileSync(txtFilePath, botReply, "utf8");
+      setReplyCache(audioFileName, botReply);
     } catch (error) {
       logger.error("Text-to-Speech API error:", error);
       const errorMessage =
@@ -217,22 +218,22 @@ export default async function handler(
       const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
       if (
         !fs.existsSync(txtFilePath) ||
-        fs.readFileSync(txtFilePath, "utf8").trim() !== gandalfReply.trim()
+        fs.readFileSync(txtFilePath, "utf8").trim() !== botReply.trim()
       ) {
-        fs.writeFileSync(txtFilePath, gandalfReply, "utf8");
+        fs.writeFileSync(txtFilePath, botReply, "utf8");
       }
     } catch (err) {
       logger.error("Failed to ensure .txt file for audio reply:", err);
     }
 
     logger.info(
-      `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${gandalfReply.replace(/"/g, '""')}`,
+      `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}`,
     );
     logger.info(`[Chat API] 200 OK: Reply and audioFileUrl sent`);
     // Return audioFileUrl with text param for stateless regeneration
-    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(gandalfReply)}&botName=${encodeURIComponent(botName)}`;
+    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}`;
     res.status(200).json({
-      reply: gandalfReply,
+      reply: botReply,
       audioFileUrl,
     });
   } catch (error) {
@@ -241,7 +242,7 @@ export default async function handler(
       error instanceof Error ? error.message : "Unknown error";
     logger.info(`[Chat API] 500 Internal Server Error`);
     res.status(500).json({
-      reply: "Error fetching response from Gandalf.",
+      reply: "Error fetching response from bot.",
       error: errorMessage,
     });
   }

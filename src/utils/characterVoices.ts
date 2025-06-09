@@ -17,12 +17,12 @@ export const SSML_GENDER = {
 };
 
 export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
-  'Gandalf': {
+  'Default': {
     languageCodes: ['en-GB'],
     name: 'en-GB-Wavenet-D',
     ssmlGender: SSML_GENDER.MALE,
-    pitch: -13,
-    rate: 0.8,
+    pitch: 0,
+    rate: 1.0,
   },
   'Einstein': {
     languageCodes: ['de-DE'],
@@ -340,8 +340,8 @@ export async function getVoiceConfigForCharacter(name: string): Promise<Characte
   try {
     description = await fetchVoiceDescriptionFromOpenAI(normalized);
   } catch (e) {
-    // fallback to Gandalf if OpenAI fails
-    return CHARACTER_VOICE_MAP['Gandalf'];
+    // fallback to Default if OpenAI fails
+    return CHARACTER_VOICE_MAP['Default'];
   }
   const config = findClosestTTSVoice(description);
   dynamicVoiceCache[normalized] = config;

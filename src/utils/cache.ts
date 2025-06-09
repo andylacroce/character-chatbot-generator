@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 
 const isVercel = !!process.env.VERCEL_ENV;
-const CACHE_FILE = "/tmp/gandalf-reply-cache.json";
+const CACHE_FILE = "/tmp/bot-reply-cache.json";
 const memoryCache: Record<string, string> = {};
 
 function loadCacheFromFile(): Record<string, string> {

@@ -18,7 +18,8 @@
   --card-body-bg: #18182a; /* darker blue for cards */
   --chatbox-background: #13131e;
   --user-message-bg: #232346; /* deeper purple/blue for user bubbles */
-  --gandalf-message-bg: #e6e6f0; /* slightly dimmed bot bubbles */
+  --bot-message-bg: #e6e6f0; /* slightly dimmed bot bubbles */
+  --bot-sender: #5a5ad1;
   --button-bg: #4343b8; /* deeper blue */
   --button-hover-bg: #5a5ad1; /* slightly deeper blue */
   --disabled-bg: #18182a; /* darker muted */
@@ -31,7 +32,6 @@
   --input-placeholder: #7a7a99;
   --scrollbar-bg: #18182a;
   --scrollbar-thumb: #4343b8;
-  --gandalf-sender: #5a5ad1;
   --color-primary: #3db3c9; /* deeper cyan accent */
   --button-shadow: #13131e;
   --button-shadow-hover: #18182a;

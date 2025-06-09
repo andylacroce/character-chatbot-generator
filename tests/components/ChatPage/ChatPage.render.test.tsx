@@ -23,8 +23,8 @@ describe("ChatPage", () => {
         getByPlaceholderText("Type in your message here..."),
       ).toBeInTheDocument();
 
-      // Check for Gandalf image
-      expect(getByAltText("Gandalf")).toBeInTheDocument();
+      // Check for Bot image
+      expect(getByAltText("Bot")).toBeInTheDocument();
 
       // Check for main structural elements
       expect(getByTestId("chat-layout")).toBeInTheDocument();

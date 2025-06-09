@@ -18,7 +18,7 @@ describe("ChatPage", () => {
       jest.mocked(axios.post).mockResolvedValue({
         data: {
           reply: "You shall not pass!",
-          audioFileUrl: "/api/audio?file=gandalf_reply.mp3",
+          audioFileUrl: "/api/audio?file=bot_reply.mp3",
         },
       });
       const { getByTestId, getByText } = render(<ChatPage />);
@@ -28,17 +28,17 @@ describe("ChatPage", () => {
       expect(sendButton).toBeInTheDocument();
 
       // Send message
-      fireEvent.change(input, { target: { value: "Hello, Gandalf!" } });
+      fireEvent.change(input, { target: { value: "Hello, Bot!" } });
       fireEvent.click(sendButton);
 
       // Verify API call
       expect(axios.post).toHaveBeenCalledWith("/api/chat", {
-        message: "Hello, Gandalf!",
+        message: "Hello, Bot!",
       });
 
       // Check that both messages appear in the chat
       await waitFor(() => {
-        expect(getByText("Hello, Gandalf!")).toBeInTheDocument();
+        expect(getByText("Hello, Bot!")).toBeInTheDocument();
         expect(getByText("You shall not pass!")).toBeInTheDocument();
       });
     });
@@ -47,7 +47,7 @@ describe("ChatPage", () => {
       jest.mocked(axios.post).mockResolvedValue({
         data: {
           reply: "You shall not pass!",
-          audioFileUrl: "/api/audio?file=gandalf_reply.mp3",
+          audioFileUrl: "/api/audio?file=bot_reply.mp3",
         },
       });
       const { getByTestId } = render(<ChatPage />);
@@ -57,7 +57,7 @@ describe("ChatPage", () => {
       expect(sendButton).toBeInTheDocument();
 
       // Send message and check input is cleared
-      fireEvent.change(input, { target: { value: "Hello, Gandalf!" } });
+      fireEvent.change(input, { target: { value: "Hello, Bot!" } });
       fireEvent.click(sendButton);
 
       await waitFor(() => {
@@ -78,21 +78,21 @@ describe("ChatPage", () => {
       jest.mocked(axios.post).mockResolvedValue({
         data: {
           reply: "You shall not pass!",
-          audioFileUrl: "/api/audio?file=gandalf_reply.mp3",
+          audioFileUrl: "/api/audio?file=bot_reply.mp3",
         },
       });
       const { getByTestId, getByText } = render(<ChatPage />);
 
       const input = getByTestId("chat-input");
-      fireEvent.change(input, { target: { value: "Hello, Gandalf!" } });
+      fireEvent.change(input, { target: { value: "Hello, Bot!" } });
       fireEvent.keyDown(input, { key: "Enter" });
 
       expect(axios.post).toHaveBeenCalledWith("/api/chat", {
-        message: "Hello, Gandalf!",
+        message: "Hello, Bot!",
       });
 
       await waitFor(() => {
-        expect(getByText("Hello, Gandalf!")).toBeInTheDocument();
+        expect(getByText("Hello, Bot!")).toBeInTheDocument();
         expect(getByText("You shall not pass!")).toBeInTheDocument();
       });
     });
