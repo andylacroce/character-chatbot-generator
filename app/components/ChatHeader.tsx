@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import styles from "./styles/ChatHeader.module.css";
 import Image from "next/image";
+import ModalImageViewer from "./ModalImageViewer";
 
 interface ChatHeaderProps {
   onDownloadTranscript: () => void;
@@ -14,6 +15,7 @@ interface ChatHeaderProps {
 }
 
 const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPrompt, onHeaderLinkClick, bot }) => {
+  const [showImageModal, setShowImageModal] = useState(false);
   if (!bot) return null;
   return (
     <div className={styles.chatHeader} data-testid="chat-header" role="banner">
@@ -42,15 +44,22 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPro
           </div>
         </div>
         <div className={styles.headerCenter}>
-          <Image
-            src={bot.avatarUrl}
-            alt={bot.name}
-            priority={true}
-            width={150}
-            height={150}
-            className="rounded-circle"
-            style={{ objectFit: 'cover' }}
-          />
+          <button
+            type="button"
+            aria-label="View character portrait"
+            style={{ background: 'none', border: 'none', padding: 0, margin: 0, cursor: 'pointer' }}
+            onClick={() => setShowImageModal(true)}
+          >
+            <Image
+              src={bot.avatarUrl}
+              alt={bot.name}
+              priority={true}
+              width={150}
+              height={150}
+              className="rounded-circle"
+              style={{ objectFit: 'cover' }}
+            />
+          </button>
           <div className={styles.botNameLabel}>{bot.name}</div>
         </div>
         <div className={styles.headerRight}>
@@ -74,6 +83,12 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPro
           </a>
         </div>
       </div>
+      <ModalImageViewer
+        show={showImageModal}
+        imageUrl={bot.avatarUrl}
+        alt={bot.name}
+        onClose={() => setShowImageModal(false)}
+      />
     </div>
   );
 };
