@@ -188,7 +188,7 @@ const ChatPage = ({ bot }: { bot: Bot }) => {
       />
       {loading && (
         <div data-testid="loading-indicator" className={styles.spinnerContainerFixed}>
-          <Image src="/ring.gif" alt="Loading..." width={40} height={40} unoptimized />
+          <span className={styles.genericSpinner} aria-label="Loading" />
         </div>
       )}
       <ChatInput

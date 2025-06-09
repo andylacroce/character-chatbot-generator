@@ -60,17 +60,17 @@ const progressSteps = [
   {
     key: "personality",
     label: "Creating personality...",
-    description: "Crafting a unique personality for your character."
+    description: "Designing a unique personality for your character."
   },
   {
     key: "avatar",
     label: "Generating portrait...",
-    description: "Painting a portrait worthy of Middle-earth."
+    description: "Creating a visual portrait for your character."
   },
   {
     key: "voice",
     label: "Finding the perfect voice...",
-    description: "Listening for the right voice in the wind."
+    description: "Selecting a voice that matches your character."
   }
 ];
 
@@ -118,9 +118,10 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
 
-  const handleCreate = async () => {
+  const handleCreate = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!input.trim()) {
-      setError("Please enter a famous figure's name.");
+      setError("Please enter a name or character.");
       return;
     }
     setError("");
@@ -131,7 +132,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
       setProgress(null);
       onBotCreated(bot);
     } catch (e) {
-      setError("Failed to generate bot. Try again.");
+      setError("Failed to generate character. Please try again.");
       setProgress(null);
     } finally {
       setLoading(false);
@@ -141,29 +142,46 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const currentStep = progressSteps.find((s) => s.key === progress);
 
   return (
-    <div style={{ margin: "2rem auto", maxWidth: 400, textAlign: "center" }}>
-      <h2>Create Your Chatbot</h2>
-      <input
-        type="text"
-        value={input}
-        onChange={e => setInput(e.target.value)}
-        placeholder="Enter a famous figure (e.g., Einstein)"
-        style={{ padding: 8, width: "80%", fontSize: 18 }}
-        disabled={loading}
-        data-testid="bot-creator-input"
-      />
-      <button onClick={handleCreate} style={{ marginLeft: 8, padding: 8, fontSize: 18 }} disabled={loading} data-testid="bot-creator-button">
-        {loading ? "Creating..." : "Create"}
-      </button>
+    <form
+      onSubmit={handleCreate}
+      className={styles.formContainer}
+      autoComplete="off"
+      style={{ margin: "2.5rem auto 0 auto", maxWidth: 420, textAlign: "center" }}
+    >
+      <h2 className={styles.heading}>Create a Character</h2>
+      <div className={styles.inputGroup}>
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="Enter a name"
+          className={styles.input}
+          disabled={loading}
+          data-testid="bot-creator-input"
+          aria-label="Character name"
+          maxLength={36}
+        />
+        <button
+          type="submit"
+          className={styles.createButton}
+          disabled={loading}
+          data-testid="bot-creator-button"
+        >
+          {loading ? "Creating..." : "Create"}
+        </button>
+      </div>
+      <div className={styles.instructions}>
+        Enter a real or fictional person, character, or invent your own. The app will generate a unique chatbot with a custom personality, portrait, and voice.
+      </div>
       {loading && currentStep && (
         <div className={styles.progressContainer} data-testid="bot-creator-progress">
-          <img src="/ring.gif" alt="Loading..." className={styles.progressSpinner} />
+          <span className={styles.genericSpinner} aria-label="Loading" />
           <div className={styles.progressText}>{currentStep.label}</div>
           <div className={styles.progressDescription}>{currentStep.description}</div>
         </div>
       )}
-      {error && <div style={{ color: "red", marginTop: 8 }}>{error}</div>}
-    </div>
+      {error && <div className={styles.error}>{error}</div>}
+    </form>
   );
 };
 
