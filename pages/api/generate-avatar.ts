@@ -52,8 +52,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(200).json({ avatarDataUrl: dataUrl });
     } catch (err) {
       logger.error("Avatar download failed:", err);
-      // fallback to default avatar (as a static URL)
-      res.status(200).json({ avatarUrl: "/gandalf.jpg" });
+      // fallback to generic avatar (as a static URL)
+      res.status(200).json({ avatarUrl: "/bot-avatar.png" });
     }
   } catch (e) {
     logger.error("Avatar generation failed:", e);
