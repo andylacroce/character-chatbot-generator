@@ -54,14 +54,36 @@ If the character is real or famous, explicitly reference specific photos, movie 
     } else if (conciseDescription.length > 700) {
       conciseDescription = conciseDescription.slice(0, 700) + '...';
     }
-    let imagePrompt;
-    if (conciseDescription && !/don't know|no information|not sure|unknown|I'm not sure|I do not know|I have no information/i.test(conciseDescription)) {
-      imagePrompt = `A high-quality, photorealistic portrait of ${name}. (If ${name} is real or famous, use actual reference photos, film stills, or renderings of ${name} to ensure the most accurate likeness possible. Study these images closely and base the portrait on them. Match the likeness as closely as possible to well-known photos or portraits.) ${conciseDescription} Upper body, facing forward, studio lighting, plain background.`;
-      // Truncate to 1000 chars for DALL-E
-      if (imagePrompt.length > 1000) imagePrompt = imagePrompt.slice(0, 997) + '...';
-    } else {
-      imagePrompt = `A high-quality, photorealistic portrait of ${name}, upper body, facing forward, studio lighting, plain background.`;
+    // --- OPTIMIZED DALL-E PROMPT GENERATION ---
+    // Extract and prioritize visually distinctive features
+    const featureSections = [
+      { key: 'facial features', regex: /facial features[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
+      { key: 'hair', regex: /hair[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
+      { key: 'eyes', regex: /eyes[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
+      { key: 'clothing', regex: /clothing(?: and accessories)?[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
+      { key: 'expression', regex: /expression(?:, mood, and emotional tone)?[:\-\s]*([\s\S]*?)(?=\n\*\*|\n[A-Z]|$)/i },
+    ];
+    let visualSummary = '';
+    for (const section of featureSections) {
+      const match = description.match(section.regex);
+      if (match && match[1]) {
+        visualSummary += `${section.key.charAt(0).toUpperCase() + section.key.slice(1)}: ${match[1].trim()} `;
+      }
     }
+    // Fallback: if visualSummary is too short, use the first 2-3 sentences of the description
+    if (visualSummary.length < 200) {
+      const firstSentences = description.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ');
+      visualSummary += firstSentences;
+    }
+    // Compose the DALL-E prompt
+    let imagePrompt =
+      `A high-quality, photorealistic portrait of ${name}. ` +
+      `(If ${name} is real or famous, use actual reference photos, film stills, or renderings of ${name} to ensure the most accurate likeness possible. ` +
+      `Refer to images, likenesses, and visual memory for maximum accuracy. ` +
+      `Match the likeness as closely as possible to well-known photos or portraits.) ` +
+      `${visualSummary.trim()} Upper body, facing forward, studio lighting, plain background.`;
+    // Truncate to 1000 chars for DALL-E
+    if (imagePrompt.length > 1000) imagePrompt = imagePrompt.slice(0, 997) + '...';
     logger.info(`[AVATAR] Image prompt for '${name}': ${imagePrompt}`);
     const image = await openai.images.generate({
       model: "dall-e-3",

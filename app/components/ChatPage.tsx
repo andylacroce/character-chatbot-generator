@@ -173,13 +173,24 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     }
   }, [inputRef]);
 
+  // Handler to go back to character creation and stop audio
+  const handleBackToCharacterCreation = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    if (typeof onBackToCharacterCreation === 'function') {
+      onBackToCharacterCreation();
+    }
+  }, [audioRef, onBackToCharacterCreation]);
+
   return (
     <div className={styles.chatLayout} data-testid="chat-layout">
       <ChatHeader
         onDownloadTranscript={handleDownloadTranscript}
         onShowPrompt={() => setShowPromptModal(true)}
         onHeaderLinkClick={handleHeaderLinkClick}
-        onBackToCharacterCreation={onBackToCharacterCreation}
+        onBackToCharacterCreation={handleBackToCharacterCreation}
         bot={bot}
       />
       <ChatMessagesList
