@@ -22,20 +22,20 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <html lang="en" className="">
       <head>
-        <title>Gandalf Chatbot</title>
-        <meta name="description" content="Chat with Gandalf the Grey, powered by AI and Google TTS. Enjoy a magical, voice-enabled chat experience!" />
+        <title>Character Chatbot Generator</title>
+        <meta name="description" content="Create and chat with your own AI-powered characters." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/dexter.webp" type="image/webp" />
         {/* Open Graph / Facebook */}
-        <meta property="og:title" content="Gandalf Chatbot" />
-        <meta property="og:description" content="Chat with Gandalf the Grey, powered by AI and Google TTS." />
+        <meta property="og:title" content="Character Chatbot Generator" />
+        <meta property="og:description" content="Create and chat with your own AI-powered characters." />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="/gandalf.jpg" />
+        <meta property="og:image" content="/dexter.webp" />
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Gandalf Chatbot" />
-        <meta name="twitter:description" content="Chat with Gandalf the Grey, powered by AI and Google TTS." />
-        <meta name="twitter:image" content="/gandalf.jpg" />
+        <meta name="twitter:title" content="Character Chatbot Generator" />
+        <meta name="twitter:description" content="Create and chat with your own AI-powered characters." />
+        <meta name="twitter:image" content="/dexter.webp" />
       </head>
       <body>
         {/* Removed .container wrapper to allow sticky positioning to work */}

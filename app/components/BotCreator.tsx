@@ -32,7 +32,7 @@ async function generateBotData(name: string): Promise<Bot> {
   } catch (e) { /* fallback to default */ }
 
   // 2. Generate an avatar image using OpenAI (DALL-E)
-  let avatarUrl = "/gandalf.jpg";
+  let avatarUrl = "/silhouette.svg"; // Updated default avatar
   try {
     const avatarRes = await fetch("/api/generate-avatar", {
       method: "POST",
@@ -180,6 +180,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
       autoComplete="off"
       style={{ margin: "2.5rem auto 0 auto", maxWidth: 420, textAlign: "center" }}
     >
+      <h1 className={styles.mainHeading}>Character Chatbot Generator</h1> {/* Added H1 heading */}
       <h2 className={styles.heading}>Create a Character</h2>
       <div className={styles.inputGroup}>
         <input
