@@ -36,8 +36,18 @@ import BotCreator, { Bot } from "./BotCreator";
  * @returns {JSX.Element} The ChatPage component.
  */
 const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharacterCreation?: () => void }) => {
+  // Use a unique key for each bot's chat history
+  const chatHistoryKey = bot ? `chatbot-history-${bot.name}` : null;
   // State definitions
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window !== 'undefined' && chatHistoryKey) {
+      try {
+        const saved = localStorage.getItem(chatHistoryKey);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [];
+  });
   const [input, setInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
@@ -160,6 +170,15 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleApiError]);
+
+  // Persist chat history to localStorage whenever messages change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && chatHistoryKey) {
+      try {
+        localStorage.setItem(chatHistoryKey, JSON.stringify(messages));
+      } catch (e) {}
+    }
+  }, [messages, chatHistoryKey]);
 
   // Download transcript handler - USE THE UTILITY
   const handleDownloadTranscript = async () => {
