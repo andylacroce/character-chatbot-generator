@@ -87,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       imagePrompt =
         `A high-quality, highly accurate depiction of ${name}. ` + // Changed 'portrait' to 'depiction'
         `If ${name} is primarily known as a cartoon, animated, or illustrated character, the style MUST be a matching art style (e.g., cartoon, 2D animation, 3D animation, comic book art, illustration). ` +
-        `Otherwise, for any character that is not explicitly cartoonish/animated (including real people, famous individuals, or other fictional characters), the portrait MUST be photorealistic, resembling a high-resolution photograph with realistic lighting, textures, and details. If ${name} is a real or famous person, ensure the likeness is as close as possible to well-known photographs or official depictions. ` +
+        `Otherwise, for any character that is not explicitly cartoonish/animated (including real people, famous individuals, or other fictional characters), the portrait MUST be photorealistic, resembling a high-resolution photograph with realistic lighting, textures, and details. If ${name} is a real or famous person, ensure the likeness is as close as possible to well-known photographs or official depictions (do a lot of research!). ` +
         `${description}`;
     }
 
