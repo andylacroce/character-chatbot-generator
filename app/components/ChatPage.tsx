@@ -93,7 +93,7 @@ const ChatPage = ({ bot }: { bot: Bot }) => {
     logMessage(userMessage);
 
     try {
-      const response = await axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name });
+      const response = await axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: bot.voiceConfig });
       const botReply: Message = {
         sender: bot.name, // Use the bot's name
         text: response.data.reply,

@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
+import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
 
 interface Bot {
   name: string;
   personality: string;
   avatarUrl: string;
+  voiceConfig: any; // Use CharacterVoiceConfig if you want to import the type
 }
 
 interface BotCreatorProps {
@@ -43,7 +45,14 @@ async function generateBotData(name: string): Promise<Bot> {
     }
   } catch (e) { /* fallback to default */ }
 
-  return { name, personality, avatarUrl };
+  // 3. Fetch voice config
+  let voiceConfig = null;
+  try {
+    voiceConfig = await api_getVoiceConfigForCharacter(name);
+  } catch (e) {
+    // fallback: leave as null
+  }
+  return { name, personality, avatarUrl, voiceConfig };
 }
 
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {

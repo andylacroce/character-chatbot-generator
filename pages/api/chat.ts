@@ -179,7 +179,7 @@ export default async function handler(
     conversationHistory.push(`Gandalf: ${gandalfReply}`);
 
     // Prepare TTS request (voice tuned for character)
-    const voiceConfig = await getVoiceConfigForCharacter(botName);
+    const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Gandalf"];
     logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
     const pitch = typeof voiceConfig.pitch === 'number' ? voiceConfig.pitch : -13;
     const rate = typeof voiceConfig.rate === 'number' ? Math.round(voiceConfig.rate * 100) + '%' : '80%';
