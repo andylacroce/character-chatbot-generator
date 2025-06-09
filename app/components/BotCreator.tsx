@@ -18,26 +18,29 @@ interface BotCreatorProps {
 // Real AI generation for personality and avatar
 async function generateBotData(name: string): Promise<Bot> {
   // 1. Generate a personality prompt using OpenAI
-  let personality = `You are ${name}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user's input. Never break character or refer to yourself as an AI or chatbot.`;
+  let personality = `You are ${name}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user\'s input. Never break character or refer to yourself as an AI or chatbot.`;
+  let correctedName = name; // Initialize correctedName with the input name
   try {
     const personalityRes = await fetch("/api/generate-personality", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name }), // Send original name for correction
     });
     if (personalityRes.ok) {
       const data = await personalityRes.json();
       if (data.personality) personality = data.personality;
+      if (data.correctedName) correctedName = data.correctedName; // Capture the corrected name
     }
   } catch (e) { /* fallback to default */ }
 
   // 2. Generate an avatar image using OpenAI (DALL-E)
-  let avatarUrl = "/silhouette.svg"; // Updated default avatar
+  // Use the correctedName for avatar generation
+  let avatarUrl = "/silhouette.svg"; 
   try {
     const avatarRes = await fetch("/api/generate-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name: correctedName }), // Send corrected name
     });
     if (avatarRes.ok) {
       const data = await avatarRes.json();
@@ -49,11 +52,13 @@ async function generateBotData(name: string): Promise<Bot> {
   // 3. Fetch voice config
   let voiceConfig = null;
   try {
-    voiceConfig = await api_getVoiceConfigForCharacter(name);
+    // Use correctedName for voice config as well
+    voiceConfig = await api_getVoiceConfigForCharacter(correctedName);
   } catch (e) {
     // fallback: leave as null
   }
-  return { name, personality, avatarUrl, voiceConfig };
+  // Return the bot object with the correctedName
+  return { name: correctedName, personality, avatarUrl, voiceConfig };
 }
 
 const progressSteps = [
@@ -74,25 +79,30 @@ const progressSteps = [
   }
 ];
 
-async function generateBotDataWithProgress(name: string, onProgress: (step: string) => void): Promise<Bot> {
-  let personality = `You are ${name}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user's input. Never break character or refer to yourself as an AI or chatbot.`;
+async function generateBotDataWithProgress(originalInputName: string, onProgress: (step: string) => void): Promise<Bot> {
+  let personality = `You are ${originalInputName}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user\'s input. Never break character or refer to yourself as an AI or chatbot.`;
+  let correctedName = originalInputName; // Initialize with original input
   onProgress("personality");
   try {
     const personalityRes = await fetch("/api/generate-personality", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name: originalInputName }), // Send original name for correction
     });
     if (personalityRes.ok) {
       const data = await personalityRes.json();
       if (data.personality) personality = data.personality;
+      if (data.correctedName) {
+        correctedName = data.correctedName; // Capture the corrected name
+        console.log(`[BotCreator] Original name: '${originalInputName}', Corrected name: '${correctedName}'`);
+      }
       // Log the generated prompt/personality to both browser and server console
       if (typeof window !== 'undefined') {
-        console.log(`[BotCreator] Generated prompt/personality for '${name}':`, personality);
+        console.log(`[BotCreator] Generated prompt/personality for '${correctedName}':`, personality);
       }
       try {
         // Truncate only for logging, not for actual app logic
-        const logPrefix = `[PROMPT] ${name}: `;
+        const logPrefix = `[PROMPT] ${correctedName}: `;
         const maxLogLength = 2000;
         let logText = logPrefix + personality;
         if (logText.length > maxLogLength) {
@@ -120,7 +130,7 @@ async function generateBotDataWithProgress(name: string, onProgress: (step: stri
     const avatarRes = await fetch("/api/generate-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name: correctedName }), // Use corrected name for avatar
     });
     if (avatarRes.ok) {
       const data = await avatarRes.json();
@@ -132,9 +142,9 @@ async function generateBotDataWithProgress(name: string, onProgress: (step: stri
   let voiceConfig = null;
   onProgress("voice");
   try {
-    voiceConfig = await api_getVoiceConfigForCharacter(name);
+    voiceConfig = await api_getVoiceConfigForCharacter(correctedName); // Use corrected name for voice
   } catch (e) {}
-  return { name, personality, avatarUrl, voiceConfig };
+  return { name: correctedName, personality, avatarUrl, voiceConfig }; // Return bot with corrected name
 }
 
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {

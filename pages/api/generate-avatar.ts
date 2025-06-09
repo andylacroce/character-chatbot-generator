@@ -10,6 +10,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!name) return res.status(400).json({ error: "Name required" });
   try {
     // Compose the DALL-E prompt directly with the name and style instructions
+    // The 'name' received here is now potentially corrected by the personality generation step
+    logger.info(`[AVATAR] Received request to generate avatar for: ${name}`);
     let imagePrompt =
       `A single, focused, high-quality, highly accurate depiction of ${name}. ` + // Added "A single, focused" to emphasize one subject
       `If ${name} is primarily known as a cartoon, animated, or illustrated character, the style MUST be a matching art style (e.g., cartoon, 2D animation, 3D animation, comic book art, illustration). ` +
