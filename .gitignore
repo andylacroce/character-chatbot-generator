@@ -52,3 +52,6 @@ tmp/logs/**/*.txt
 
 # OS
 Thumbs.db
+
+# public avatars
+public/avatars/*

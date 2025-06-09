@@ -1,5 +1,6 @@
 import React from "react";
 import ChatMessage from "./ChatMessage";
+import { Bot } from "./BotCreator";
 
 interface ChatMessagesListProps {
   messages: Array<{
@@ -7,10 +8,11 @@ interface ChatMessagesListProps {
     sender: string;
     audioFileUrl?: string;
   }>;
+  bot: Bot;
   className?: string;
 }
 
-const ChatMessagesList: React.FC<ChatMessagesListProps> = ({ messages, className }) => (
+const ChatMessagesList: React.FC<ChatMessagesListProps> = ({ messages, bot, className }) => (
   <div
     className={className}
     data-testid="chat-messages-container"
@@ -20,7 +22,7 @@ const ChatMessagesList: React.FC<ChatMessagesListProps> = ({ messages, className
     aria-relevant="additions text"
   >
     {messages.map((msg, index) => (
-      <ChatMessage key={index} message={msg} />
+      <ChatMessage key={index} message={msg} bot={bot} />
     ))}
   </div>
 );

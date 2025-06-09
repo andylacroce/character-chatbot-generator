@@ -4,8 +4,11 @@
  * @module index
  */
 
+"use client";
+
 import React from "react";
 import dynamic from "next/dynamic";
+import BotCreator, { Bot } from "./components/BotCreator";
 
 /**
  * Dynamically import the ChatPage component with server-side rendering enabled.
@@ -25,7 +28,13 @@ const ChatPage = dynamic(() => import("../app/components/ChatPage"), {
  * @returns {JSX.Element} The rendered ChatPage component
  */
 const Home = () => {
-  return <ChatPage />;
+  // Add state for bot selection at the top level
+  const [bot, setBot] = React.useState<Bot | null>(null);
+  if (!bot) {
+    return <BotCreator onBotCreated={setBot} />;
+  }
+  // Pass bot as prop to ChatPage
+  return <ChatPage bot={bot} />;
 };
 
 export default Home;

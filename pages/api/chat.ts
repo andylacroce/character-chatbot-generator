@@ -8,6 +8,7 @@ import ipinfo from "ipinfo";
 import logger from "../../src/utils/logger";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { setReplyCache } from "../../src/utils/cache";
+import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   throw new Error(
@@ -111,6 +112,8 @@ export default async function handler(
 
   try {
     const userMessage = req.body.message;
+    const personality = req.body.personality || `You are Gandalf the Grey, wizard of Middle-earth. Speak with wisdom, warmth, and a touch of playful forgetfulness. Never reference the modern world. Use poetic, old-world language, and occasionally tease or offer roundabout advice as Gandalf would. Stay in character at all times. Respond in no more than 50 words. Do not start every response with the same word or phrase. Vary your sentence openings and avoid overusing 'Ah,' or similar interjections.`;
+    const botName = req.body.botName || "Gandalf";
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required`);
       return res.status(400).json({ error: "Message is required" });
@@ -135,10 +138,12 @@ export default async function handler(
     if (conversationHistory.length > 50) {
       conversationHistory = conversationHistory.slice(-50);
     }
-    const messages = buildOpenAIMessages(
-      conversationHistory.slice(0, -1),
-      userMessage,
-    );
+    // Build messages array with correct types
+    const oldMessages = buildOpenAIMessages(conversationHistory.slice(0, -1), userMessage).slice(1); // skip old system prompt
+    const messages: ChatCompletionMessageParam[] = [
+      { role: "system", content: personality } as ChatCompletionMessageParam,
+      ...oldMessages
+    ];
 
     // Timeout to avoid hanging
     const timeout = new Promise((resolve) =>
@@ -173,8 +178,11 @@ export default async function handler(
     }
     conversationHistory.push(`Gandalf: ${gandalfReply}`);
 
-    // Prepare TTS request (voice tuned for Gandalf)
-    const ssmlText = `<speak><prosody pitch="-13st" rate="80%"> ${gandalfReply} </prosody></speak>`;
+    // Prepare TTS request (voice tuned for character)
+    const voiceConfig = getVoiceConfigForCharacter(botName);
+    const pitch = typeof voiceConfig.pitch === 'number' ? voiceConfig.pitch : -13;
+    const rate = typeof voiceConfig.rate === 'number' ? Math.round(voiceConfig.rate * 100) + '%' : '80%';
+    const ssmlText = `<speak><prosody pitch="${pitch}st" rate="${rate}"> ${gandalfReply} </prosody></speak>`;
     const tmpDir = "/tmp";
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
@@ -189,6 +197,7 @@ export default async function handler(
         text: ssmlText,
         filePath: audioFilePath,
         ssml: true,
+        voice: voiceConfig,
       });
       // Write a .txt sidecar for audio regeneration
       const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");

@@ -154,3 +154,82 @@
   color: var(--color-text, #f3f0e7);
   font-family: var(--font-primary), serif;
 }
+
+/* --- Prompt Button --- */
+/*
+  Button to trigger the prompt modal.
+  Styled for prominence and accessibility.
+*/
+.promptButton {
+  background: var(--button-bg, #6c47ff);
+  color: var(--button-text, #fff);
+  border: none;
+  border-radius: 8px;
+  padding: 0.38em 1.1em;
+  font-size: 1rem;
+  font-family: var(--font-primary), serif;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.promptButton:hover {
+  background: #4b2fcf;
+}
+
+/* --- Prompt Modal --- */
+/*
+  Modal dialog for prompt input.
+  Styled for modern appearance and usability.
+*/
+.promptModal {
+  background: #fff;
+  color: #222;
+  border-radius: 12px;
+  padding: 2rem 2.5rem 1.5rem 2.5rem;
+  min-width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* --- Close Button --- */
+/*
+  Button to close the prompt modal.
+  Styled for visibility and ease of use.
+*/
+.closeButton {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 1.7rem;
+  color: #888;
+  cursor: pointer;
+  font-weight: bold;
+  transition: color 0.2s;
+}
+
+.closeButton:hover {
+  color: #c00;
+}
+
+/* --- Prompt Content --- */
+/*
+  Content area within the prompt modal.
+  Styled for readability and spacing.
+*/
+.promptContent {
+  margin-top: 1.2rem;
+  font-size: 1.08rem;
+  word-break: break-word;
+}

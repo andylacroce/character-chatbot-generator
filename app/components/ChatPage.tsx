@@ -27,6 +27,7 @@ import ChatHeader from "./ChatHeader";
 import { Message } from "../../src/types/message";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 import { useApiError } from "./useApiError";
+import BotCreator, { Bot } from "./BotCreator";
 
 /**
  * ChatPage component that handles the chat interface and interactions with the Gandalf AI.
@@ -34,7 +35,7 @@ import { useApiError } from "./useApiError";
  *
  * @returns {JSX.Element} The ChatPage component.
  */
-const ChatPage = () => {
+const ChatPage = ({ bot }: { bot: Bot }) => {
   // State definitions
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
@@ -43,16 +44,16 @@ const ChatPage = () => {
   const [apiAvailable, setApiAvailable] = useState<boolean>(true);
   const [sessionId, sessionDatetime] = useSession(); // Use useSession hook
   const { error, setError, handleApiError } = useApiError();
-
-  // Refs
-  const chatBoxRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
   const audioEnabledRef = useRef(audioEnabled);
   useEffect(() => {
     audioEnabledRef.current = audioEnabled;
   }, [audioEnabled]);
 
   const { playAudio, audioRef } = useAudioPlayer(audioEnabledRef);
+
+  const chatBoxRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [showPromptModal, setShowPromptModal] = useState(false);
 
   useChatScrollAndFocus({
     chatBoxRef,
@@ -83,47 +84,32 @@ const ChatPage = () => {
   const sendMessage = useCallback(async () => {
     if (!input.trim() || !apiAvailable || loading) return;
     const userMessage: Message = { sender: "User", text: input };
-    // Use functional update for adding user message to avoid stale state
     setMessages((prevMessages) => [...prevMessages, userMessage]);
-    const currentInput = input; // Capture input before clearing
+    const currentInput = input;
     setInput("");
     setLoading(true);
     setError("");
 
-    logMessage(userMessage); // Log the user's message
+    logMessage(userMessage);
 
     try {
-      // Use captured input for the API call
-      const response = await axios.post("/api/chat", { message: currentInput });
-      const gandalfReply: Message = {
-        sender: "Gandalf",
+      const response = await axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name });
+      const botReply: Message = {
+        sender: bot.name, // Use the bot's name
         text: response.data.reply,
         audioFileUrl: response.data.audioFileUrl,
       };
-
-      // Correctly append Gandalf's reply using functional update
-      setMessages((prevMessages) => [...prevMessages, gandalfReply]);
-      logMessage(gandalfReply); // Log Gandalf's reply
-
-      if (audioEnabledRef.current && gandalfReply.audioFileUrl) {
-        await playAudio(gandalfReply.audioFileUrl);
+      setMessages((prevMessages) => [...prevMessages, botReply]);
+      logMessage(botReply);
+      if (audioEnabledRef.current && botReply.audioFileUrl) {
+        await playAudio(botReply.audioFileUrl);
       }
     } catch (err) {
       handleApiError(err);
     } finally {
       setLoading(false);
     }
-    // Remove `input` from dependencies as we capture it locally
-    // Remove `messages` and `conversationHistory` as we use functional updates
-  }, [
-    input,
-    playAudio,
-    apiAvailable,
-    logMessage,
-    loading,
-    handleApiError,
-    setError // Added to satisfy exhaustive-deps lint rule
-  ]); // input added back to dependencies per lint rule
+  }, [input, playAudio, apiAvailable, logMessage, loading, handleApiError, setError, bot]); // input added back to dependencies per lint rule
 
   // Handle keyboard input (Enter key)
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -191,10 +177,13 @@ const ChatPage = () => {
     <div className={styles.chatLayout} data-testid="chat-layout">
       <ChatHeader
         onDownloadTranscript={handleDownloadTranscript}
+        onShowPrompt={() => setShowPromptModal(true)}
         onHeaderLinkClick={handleHeaderLinkClick}
+        bot={bot}
       />
       <ChatMessagesList
         messages={messages}
+        bot={bot}
         className={styles.chatMessagesScroll}
       />
       {loading && (
@@ -208,13 +197,33 @@ const ChatPage = () => {
         onSend={sendMessage}
         onKeyDown={handleKeyDown}
         loading={loading}
-        apiAvailable={apiAvailable && !(!apiAvailable)} // disables input if API is unavailable
+        apiAvailable={apiAvailable && !(!apiAvailable)}
         inputRef={inputRef}
         audioEnabled={audioEnabled}
         onAudioToggle={handleAudioToggle}
       />
       <ChatStatus error={error} />
       <ApiUnavailableModal show={!apiAvailable} />
+      {/* Prompt Modal */}
+      {showPromptModal && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.promptModal}>
+            <button
+              className={styles.closeButton}
+              onClick={() => setShowPromptModal(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+            <div className={styles.promptContent}>
+              <strong>Prompt:</strong>
+              <div style={{ marginTop: 8 }}>
+                {bot?.personality || 'No prompt available.'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

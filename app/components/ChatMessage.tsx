@@ -5,6 +5,8 @@
 
 import React from "react";
 import styles from "./styles/ChatMessage.module.css";
+import Image from "next/image";
+import { Bot } from "./BotCreator";
 
 /**
  * Interface representing a chat message's structure.
@@ -15,6 +17,7 @@ import styles from "./styles/ChatMessage.module.css";
 export interface Message {
   text: string;
   sender: string;
+  audioFileUrl?: string;
 }
 
 /**
@@ -24,41 +27,58 @@ export interface Message {
  * @function
  * @param {Object} props - The component props
  * @param {Message} props.message - The message object containing text and sender information
+ * @param {Bot} props.bot - The bot object containing name and avatarUrl for assistant messages
  * @returns {JSX.Element|null} The rendered chat message or null if message is invalid
  */
-const ChatMessage = React.memo(({ message }: { message: Message }) => {
-  // Validate message object to prevent rendering errors
-  if (
-    !message ||
-    typeof message.text !== "string" ||
-    typeof message.sender !== "string"
-  ) {
-    console.error("Invalid message object:", message);
-    return null; // Render nothing if the message is invalid
-  }
+const ChatMessage = React.memo(
+  ({ message, bot }: { message: Message; bot: Bot }) => {
+    // Validate message object to prevent rendering errors
+    if (
+      !message ||
+      typeof message.text !== "string" ||
+      typeof message.sender !== "string"
+    ) {
+      console.error("Invalid message object:", message);
+      return null; // Render nothing if the message is invalid
+    }
 
-  // Determine CSS classes based on message sender
-  const isUser = message.sender === "User";
-  const messageClass = isUser ? styles.userMessage : styles.gandalfMessage;
-  const senderClass = isUser ? styles.sender : `${styles.sender} ${styles.gandalfSender}`;
+    // Determine CSS classes based on message sender
+    const isUser = message.sender === "User";
+    const messageClass = isUser ? styles.userMessage : styles.gandalfMessage;
+    const senderClass = isUser
+      ? styles.sender
+      : `${styles.sender} ${styles.gandalfSender}`;
 
-  return (
-    <div
-      className={`${styles.message} ${messageClass} my-2`}
-      role="article"
-      aria-label={isUser ? `Message from you: ${message.text}` : `Message from Gandalf: ${message.text}`}
-    >
-      <div className="rounded p-2 text-sm">
-        <div className={`mb-1 ${senderClass} text-left`} style={{ fontSize: '1.4rem' }}>
-          {isUser ? "Me" : "Gandalf"}
-        </div>
-        <div className="text-left">
-          {message.text}
+    return (
+      <div
+        className={`${styles.message} ${messageClass} my-2`}
+        role="article"
+        aria-label={isUser ? `Message from you: ${message.text}` : `Message from ${bot.name}: ${message.text}`}
+      >
+        <div className="rounded p-2 text-sm" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          {!isUser && (
+            <Image
+              src={bot.avatarUrl}
+              alt={bot.name}
+              width={40}
+              height={40}
+              className="rounded-circle"
+              style={{ objectFit: 'cover', marginRight: 8 }}
+            />
+          )}
+          <div style={{ flex: 1 }}>
+            <div className={`mb-1 ${senderClass} text-left`} style={{ fontSize: '1.4rem' }}>
+              {isUser ? "Me" : bot.name}
+            </div>
+            <div className="text-left">
+              {message.text}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
-});
+    );
+  }
+);
 
 ChatMessage.displayName = "ChatMessage";
 

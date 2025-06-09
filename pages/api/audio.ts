@@ -7,6 +7,7 @@ import OpenAI from "openai";
 import logger from "../../src/utils/logger";
 import { v4 as uuidv4 } from "uuid";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 
 const SYSTEM_PROMPT = `You are Gandalf the Grey, wizard of Middle-earth. Speak with wisdom, warmth, and a touch of playful forgetfulness. Never reference the modern world. Use poetic, old-world language, and occasionally tease or offer roundabout advice as Gandalf would. Stay in character at all times. Respond in no more than 50 words. Do not start every response with the same word or phrase. Vary your sentence openings and avoid overusing 'Ah,' or similar interjections.`;
 
@@ -28,6 +29,7 @@ export default async function handler(
   res: import("next").NextApiResponse,
 ) {
   const { file, text: expectedText } = req.query;
+  const botName = typeof req.query.botName === "string" ? req.query.botName : "Gandalf";
   if (!file || typeof file !== "string") {
     logger.info(`[Audio API] 400 Bad Request: File parameter is required`);
     return res.status(400).json({ error: "File parameter is required" });
@@ -65,6 +67,7 @@ export default async function handler(
           text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`,
           filePath: audioFilePath,
           ssml: true,
+          voice: getVoiceConfigForCharacter(botName),
         });
         fs.writeFileSync(txtFilePath, expectedText, "utf8");
         normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -100,6 +103,7 @@ export default async function handler(
             text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`,
             filePath: audioFilePath,
             ssml: true,
+            voice: getVoiceConfigForCharacter(botName),
           });
           fs.writeFileSync(txtFilePath, expectedText, "utf8");
           normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -129,6 +133,7 @@ export default async function handler(
               text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${originalText} </prosody></speak>`,
               filePath: audioFilePath,
               ssml: true,
+              voice: getVoiceConfigForCharacter(botName),
             });
             triedRegenerate = true;
             normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -171,6 +176,7 @@ export default async function handler(
                   text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${gandalfReply} </prosody></speak>`,
                   filePath: audioFilePath,
                   ssml: true,
+                  voice: getVoiceConfigForCharacter(botName),
                 });
                 normalizedAudioFilePath = checkFileExists(audioFilePath);
                 if (normalizedAudioFilePath) {
