@@ -70,7 +70,7 @@ const ChatMessage = React.memo(
             <div className={`mb-1 ${senderClass} text-left`} style={{ fontSize: '1.4rem' }}>
               {isUser ? "Me" : bot.name}
             </div>
-            <div className="text-left">
+            <div className="text-left" style={{ fontSize: 'var(--chat-message-font-size)' }}>
               {message.text}
             </div>
           </div>
