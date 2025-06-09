@@ -140,8 +140,11 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     }
   }, [audioRef, inputRef]);
 
-  // Health check on mount
+  // Health check on mount (guarded against double-call in dev)
   useEffect(() => {
+    let didRun = false;
+    if (didRun) return;
+    didRun = true;
     axios
       .get("/api/health")
       .then(() => {
@@ -155,6 +158,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         setApiAvailable(false);
         handleApiError(err);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleApiError]);
 
   // Download transcript handler - USE THE UTILITY
