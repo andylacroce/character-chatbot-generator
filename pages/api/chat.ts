@@ -71,7 +71,7 @@ function buildOpenAIMessages(
   const messages: ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content: `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`,
+      content: `You are roleplaying as ${botName}, a unique character. Respond as ${botName} would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user's input. Be concise but not robotic; engage, react, and improvise as the real ${botName} would. Never break character or refer to yourself as an AI or chatbot.`,
     },
   ];
   for (const entry of history) {

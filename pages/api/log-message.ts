@@ -207,7 +207,6 @@ export default async function handler(
     logger.info(`[Log API] ENTRY: ${logEntry.trim()}`);
 
     res.status(200).json({ success: true });
-    logger.info(`[Log API] 200 OK: Log entry written for sessionId=${sessionId}`);
   } catch (error) {
     logger.error("[Log API] Internal Server Error:", error);
     res.status(500).json({ error: "Internal Server Error" });

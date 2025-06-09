@@ -10,7 +10,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!name) return res.status(400).json({ error: "Name required" });
   try {
     // 1. Get a factual, richly detailed visual description for the image prompt
-    const descriptionPrompt = `Describe in vivid, specific detail what ${name} looks like for a portrait artist. Include facial features, hair, eyes, skin tone, age, ethnicity, clothing, expression, and any iconic items or accessories. Add any unique or memorable traits, style, or mood that would make the portrait instantly recognizable as this character. If the character is fictional or fantastical, include imaginative or genre-appropriate elements. Be as descriptive, creative, and accurate as possible. If you don't know, say so.`;
+    const descriptionPrompt = `Imagine you are briefing a world-class portrait artist or a visual AI. Before you begin, imagine you are looking at a set of high-resolution reference photos, film stills, or iconic images of ${name} (if they exist). Use these reference images in your memory or training data as the basis for your description. Describe in extremely vivid, specific detail what ${name} looks like. Write a very long, highly detailed response—at least 1000 words if possible. Do not summarize; elaborate on every feature and detail. Break down the description by:
+- Facial features (forehead, brows, eyes, nose, mouth, jaw, chin, ears, skin texture, facial hair, distinguishing marks)
+- Hair (color, style, length, part, texture)
+- Eyes (color, shape, gaze, expression)
+- Skin tone and complexion
+- Age, ethnicity, and gender presentation
+- Body type, posture, and typical pose
+- Clothing and accessories (be specific, mention brands, styles, or signature items if known)
+- Expression, mood, and emotional tone
+- Any iconic items, props, or settings
+- Lighting, background, and overall style
+If the character is real or famous, explicitly reference specific photos, movie scenes, or public appearances and describe what you see in those images. If fictional, be imaginative and genre-appropriate. Make the description so detailed that an artist could create a highly accurate, recognizable portrait. If you don't know, say so.`;
     logger.info(`[AVATAR] Generating description for '${name}' with prompt: ${descriptionPrompt}`);
     const descriptionCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -18,14 +29,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: descriptionPrompt },
       ],
-      max_tokens: 180,
-      temperature: 0.2,
+      max_tokens: 700,
+      temperature: 0.15,
     });
     const description = descriptionCompletion.choices[0]?.message?.content?.trim() || "";
     logger.info(`[AVATAR] Description for '${name}': ${description}`);
     let imagePrompt;
     if (description && !/don't know|no information|not sure|unknown|I'm not sure|I do not know|I have no information/i.test(description)) {
-      imagePrompt = `A high-quality, photorealistic portrait of ${name}. ${description} Upper body, facing forward, studio lighting, plain background.`;
+      imagePrompt = `A high-quality, photorealistic portrait of ${name}. (If ${name} is real or famous, look at reference photos, film stills, or iconic images and use them as the basis for this portrait.) ${description} Upper body, facing forward, studio lighting, plain background.`;
     } else {
       imagePrompt = `A high-quality, photorealistic portrait of ${name}, upper body, facing forward, studio lighting, plain background.`;
     }

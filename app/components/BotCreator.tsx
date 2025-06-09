@@ -18,7 +18,7 @@ interface BotCreatorProps {
 // Real AI generation for personality and avatar
 async function generateBotData(name: string): Promise<Bot> {
   // 1. Generate a personality prompt using OpenAI
-  let personality = `You are ${name}. Respond as this famous figure would, using their style, knowledge, and quirks.`;
+  let personality = `You are ${name}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user's input. Never break character or refer to yourself as an AI or chatbot.`;
   try {
     const personalityRes = await fetch("/api/generate-personality", {
       method: "POST",
@@ -75,7 +75,7 @@ const progressSteps = [
 ];
 
 async function generateBotDataWithProgress(name: string, onProgress: (step: string) => void): Promise<Bot> {
-  let personality = `You are ${name}. Respond as this famous figure would, using their style, knowledge, and quirks.`;
+  let personality = `You are ${name}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user's input. Never break character or refer to yourself as an AI or chatbot.`;
   onProgress("personality");
   try {
     const personalityRes = await fetch("/api/generate-personality", {
