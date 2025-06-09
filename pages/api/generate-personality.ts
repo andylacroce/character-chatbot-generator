@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: summaryPrompt },
       ],
-      max_tokens: 300,
+      max_tokens: 600, // Increased to avoid truncation
       temperature: 0.2,
     });
     const summary = summaryCompletion.choices[0]?.message?.content?.trim() || "";

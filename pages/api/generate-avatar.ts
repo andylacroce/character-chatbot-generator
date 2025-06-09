@@ -25,10 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     logger.info(`[AVATAR] Description for '${name}': ${description}`);
     // Compose the DALL-E prompt
     let imagePrompt =
-      `A high-quality, photorealistic portrait of ${name}. ` +
-      `(If ${name} is real or famous, use actual reference photos, film stills, or renderings of ${name} to ensure the most accurate likeness possible. ` +
-      `Refer to images, likenesses, and visual memory for maximum accuracy. ` +
-      `Match the likeness as closely as possible to well-known photos or portraits.) ` +
+      `A high-quality, highly accurate portrait of ${name}. ` +
+      `The style should be most appropriate to the character—if ${name} is a cartoon, animated, or illustrated character, use a matching art style (cartoon, animation, illustration, or comic). If ${name} is real or famous, use actual reference photos, film stills, or renderings to ensure the most accurate likeness possible. Refer to images, likenesses, and visual memory for maximum accuracy. Match the likeness as closely as possible to well-known photos, portraits, or canonical depictions. ` +
       `${description}`;
     // Truncate to 1000 chars for DALL-E
     if (imagePrompt.length > 1000) imagePrompt = imagePrompt.slice(0, 997) + '...';

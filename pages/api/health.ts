@@ -75,8 +75,7 @@ export default async function handler(
   }
 
   if (openaiStatus === "ok" && ttsStatus === "ok") {
-    if (process.env.NODE_ENV !== "production")
-      logger.info("[HealthCheck] All services healthy");
+    // Only log once to avoid duplicate health logs
     logger.info(`[HealthCheck] 200 OK: All services healthy`);
     return res.status(200).json({ status: "ok" });
   }

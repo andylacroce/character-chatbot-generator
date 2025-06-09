@@ -91,12 +91,21 @@ async function generateBotDataWithProgress(name: string, onProgress: (step: stri
         console.log(`[BotCreator] Generated prompt/personality for '${name}':`, personality);
       }
       try {
+        // Truncate only for logging, not for actual app logic
+        const logPrefix = `[PROMPT] ${name}: `;
+        const maxLogLength = 2000;
+        let logText = logPrefix + personality;
+        if (logText.length > maxLogLength) {
+          // Truncate personality so the log entry fits the API limit
+          const allowedPersonalityLength = maxLogLength - logPrefix.length;
+          logText = logPrefix + personality.slice(0, allowedPersonalityLength - 3) + '...';
+        }
         await fetch('/api/log-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sender: '[BotCreator]',
-            text: `[PROMPT] ${name}: ${personality}`,
+            text: logText,
             sessionId: 'bot-creation',
             sessionDatetime: new Date().toISOString(),
           })
