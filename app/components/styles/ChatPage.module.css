@@ -7,33 +7,27 @@
 
 /* --- Main Chat Layout --- */
 /*
-  Sets up the main flex column layout for the chat page.
-  Ensures full viewport coverage and scroll safety.
+  Sets up the main grid layout for the chat page.
+  Divided into three rows: header, messages, and input.
 */
 .chatLayout {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  width: 100%;
-  margin: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+  width: 100vw;
+  min-height: 0;
   background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-primary);
-  min-height: 0; /* Ensure flex children can shrink for scrolling */
-  /* REMOVED padding-top: 70px; */
-  /* REMOVED padding-bottom: 70px; */
-  /* box-sizing: border-box; */ /* This is already in globals.css via '*' */
 }
 
 /* --- Chat Messages Scroll Area --- */
 /*
   Scrollable area for chat messages.
-  Uses flex to fill available space and allow vertical scrolling.
+  Fills available space in the grid and allows vertical scrolling.
 */
 .chatMessagesScroll {
-  flex: 1 1 auto;
-  height: 0; /* ADDED: Force height to be determined by flex-grow */
-  min-height: 0; /* CRUCIAL for flexbox scrolling, re-confirmed */
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
