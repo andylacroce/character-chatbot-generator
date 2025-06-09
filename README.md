@@ -41,8 +41,14 @@ All API endpoints are protected by a rate limiter middleware:
      ```ini
      OPENAI_API_KEY=your_openai_api_key_here
      GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
+     VERCEL_BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
      ```
-   - For Vercel, paste the full JSON string for `GOOGLE_APPLICATION_CREDENTIALS_JSON` in the dashboard.
+   - For Vercel, paste the full JSON string for `GOOGLE_APPLICATION_CREDENTIALS_JSON` and your `VERCEL_BLOB_READ_WRITE_TOKEN` in the dashboard.
+
+   - **Vercel Blob Setup:**
+     - This app can log chat transcripts and other data to Vercel Blob storage.
+     - To enable this, you must set the `VERCEL_BLOB_READ_WRITE_TOKEN` environment variable with a valid token from your Vercel project settings.
+     - See the [Vercel Blob documentation](https://vercel.com/docs/storage/vercel-blob/quickstart) for details on generating a token and managing Blob storage.
 
 3. **Run Locally**
 
