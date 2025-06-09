@@ -1,0 +1,66 @@
+import React, { useState, useRef, useEffect, cloneElement } from "react";
+import styles from "./styles/HamburgerMenu.module.css";
+
+interface HamburgerMenuProps {
+  children: React.ReactNode;
+}
+
+const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children }) => {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
+  // Enhance children to close menu on click
+  const enhancedChildren = React.Children.map(children, (child) => {
+    if (!React.isValidElement(child)) return child;
+    // Only enhance buttons
+    if (
+      (child.type === "button" ||
+        (typeof child.type === "string" && child.type === "button")) &&
+      child.props
+    ) {
+      const originalOnClick = (child as React.ReactElement<any>).props.onClick;
+      return React.cloneElement(child as React.ReactElement<any>, {
+        onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+          setOpen(false);
+          if (originalOnClick) originalOnClick(e);
+        },
+      });
+    }
+    return child;
+  });
+
+  return (
+    <div className={styles.menuWrapper} ref={wrapperRef}>
+      <button
+        className={styles.hamburger}
+        aria-label="Open menu"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className={styles.bar}></span>
+        <span className={styles.bar}></span>
+        <span className={styles.bar}></span>
+      </button>
+      {open && (
+        <div className={styles.menuDropdown}>{enhancedChildren}</div>
+      )}
+    </div>
+  );
+};
+
+export default HamburgerMenu;

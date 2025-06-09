@@ -3,6 +3,8 @@ import { DarkModeContext } from "./DarkModeContext";
 import styles from "./styles/ChatHeader.module.css";
 import Image from "next/image";
 import ModalImageViewer from "./ModalImageViewer";
+import HamburgerMenu from "./HamburgerMenu";
+import { FaArrowLeft, FaRegFileAlt, FaRegLightbulb, FaMoon, FaSun } from "react-icons/fa";
 
 interface ChatHeaderProps {
   onDownloadTranscript: () => void;
@@ -24,16 +26,17 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPro
     <div className={styles.chatHeader} data-testid="chat-header" role="banner">
       <div className={styles.chatHeaderContent}>
         <div className={styles.headerLeft}>
-          <div className="mt-2" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <HamburgerMenu>
             {onBackToCharacterCreation && (
               <button
                 className={styles.downloadTranscriptLink}
                 type="button"
                 aria-label="Back to character creation"
                 onClick={onBackToCharacterCreation}
-                style={{ marginBottom: '0.2rem' }}
+                style={{ marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
               >
-                <span role="img" aria-label="Back">⬅️</span> Character Creator
+                <FaArrowLeft size={18} style={{ color: '#bfae7c' }} />
+                <span>Character Creator</span>
               </button>
             )}
             <button
@@ -41,10 +44,9 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPro
               type="button"
               aria-label="Download chat transcript"
               onClick={() => { onDownloadTranscript(); if (onHeaderLinkClick) onHeaderLinkClick(); }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.7em' }}
             >
-              <span className={styles.downloadIcon} aria-hidden="true">
-                &#128190;
-              </span>
+              <FaRegFileAlt size={18} style={{ color: '#bfae7c' }} />
               <span className={styles.downloadLabel}>Transcript</span>
             </button>
             <button
@@ -52,28 +54,25 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPro
               type="button"
               aria-label="Show bot prompt"
               onClick={onShowPrompt}
-              style={{marginTop: '0.3rem'}}>
-              <span role="img" aria-label="Prompt">💡</span> Prompt
+              style={{ marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
+            >
+              <FaRegLightbulb size={18} style={{ color: '#bfae7c' }} />
+              <span>Prompt</span>
             </button>
             <button
-              className={styles.darkModeToggle}
               type="button"
               aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
               onClick={() => setDarkMode(!darkMode)}
-              style={{ marginTop: '0.3rem' }}
+              style={{ marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
             >
               {darkMode ? (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" stroke="currentColor" strokeWidth="2" fill="none"/>
-                </svg>
+                <FaSun size={18} style={{ color: '#bfae7c' }} />
               ) : (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="2" fill="none"/>
-                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="2"/>
-                </svg>
+                <FaMoon size={18} style={{ color: '#bfae7c' }} />
               )}
+              <span style={{ fontSize: '1rem' }}>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
             </button>
-          </div>
+          </HamburgerMenu>
         </div>
         <div className={styles.headerCenter}>
           <button
