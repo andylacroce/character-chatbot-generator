@@ -203,6 +203,9 @@ export default async function handler(
     }
     // --- End Append to Log ---
 
+    // Always log to the main terminal (stdout) as well
+    logger.info(`[Log API] ENTRY: ${logEntry.trim()}`);
+
     res.status(200).json({ success: true });
     logger.info(`[Log API] 200 OK: Log entry written for sessionId=${sessionId}`);
   } catch (error) {

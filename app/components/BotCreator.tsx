@@ -86,6 +86,22 @@ async function generateBotDataWithProgress(name: string, onProgress: (step: stri
     if (personalityRes.ok) {
       const data = await personalityRes.json();
       if (data.personality) personality = data.personality;
+      // Log the generated prompt/personality to both browser and server console
+      if (typeof window !== 'undefined') {
+        console.log(`[BotCreator] Generated prompt/personality for '${name}':`, personality);
+      }
+      try {
+        await fetch('/api/log-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sender: '[BotCreator]',
+            text: `[PROMPT] ${name}: ${personality}`,
+            sessionId: 'bot-creation',
+            sessionDatetime: new Date().toISOString(),
+          })
+        });
+      } catch (e) {}
     }
   } catch (e) {}
 
