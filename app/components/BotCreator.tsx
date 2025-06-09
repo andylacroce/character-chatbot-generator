@@ -188,10 +188,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
       onSubmit={handleCreate}
       className={styles.formContainer}
       autoComplete="off"
-      style={{ margin: "2.5rem auto 0 auto", maxWidth: 420, textAlign: "center" }}
     >
-      <h1 className={styles.mainHeading}>Character Chatbot Generator</h1> {/* Added H1 heading */}
-      <h2 className={styles.heading}>Create a Character</h2>
+      <h1 className={styles.mainHeading}>Character Chatbot Generator</h1>
       <div className={styles.inputGroup}>
         <input
           type="text"
@@ -215,7 +213,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
         </button>
       </div>
       <div className={styles.instructions}>
-        Enter a real or fictional person, character, or invent your own. The app will generate a unique chatbot with a custom personality, portrait, and voice.
+        Imagine anyone. Real, fictional, or someone entirely new. Type a name and watch your character spring to life with a unique personality, voice, and portrait. Who will you bring into the world?
       </div>
       {loading && currentStep && (
         <div className={styles.progressContainer} data-testid="bot-creator-progress">
