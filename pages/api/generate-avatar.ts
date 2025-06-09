@@ -29,7 +29,7 @@ If the character is real or famous, explicitly reference specific photos, movie 
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: descriptionPrompt },
       ],
-      max_tokens: 700,
+      max_tokens: 1800, // Increased to allow for ~1000 words
       temperature: 0.15,
     });
     const description = descriptionCompletion.choices[0]?.message?.content?.trim() || "";

@@ -30,11 +30,12 @@ const ChatPage = dynamic(() => import("../app/components/ChatPage"), {
 const Home = () => {
   // Add state for bot selection at the top level
   const [bot, setBot] = React.useState<Bot | null>(null);
+  const handleBackToCharacterCreation = React.useCallback(() => setBot(null), []);
   if (!bot) {
     return <BotCreator onBotCreated={setBot} />;
   }
   // Pass bot as prop to ChatPage
-  return <ChatPage bot={bot} />;
+  return <ChatPage bot={bot} onBackToCharacterCreation={handleBackToCharacterCreation} />;
 };
 
 export default Home;

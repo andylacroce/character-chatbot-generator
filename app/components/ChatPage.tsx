@@ -35,7 +35,7 @@ import BotCreator, { Bot } from "./BotCreator";
  *
  * @returns {JSX.Element} The ChatPage component.
  */
-const ChatPage = ({ bot }: { bot: Bot }) => {
+const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharacterCreation?: () => void }) => {
   // State definitions
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
@@ -179,6 +179,7 @@ const ChatPage = ({ bot }: { bot: Bot }) => {
         onDownloadTranscript={handleDownloadTranscript}
         onShowPrompt={() => setShowPromptModal(true)}
         onHeaderLinkClick={handleHeaderLinkClick}
+        onBackToCharacterCreation={onBackToCharacterCreation}
         bot={bot}
       />
       <ChatMessagesList

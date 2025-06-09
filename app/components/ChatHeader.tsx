@@ -7,6 +7,7 @@ interface ChatHeaderProps {
   onDownloadTranscript: () => void;
   onShowPrompt: () => void;
   onHeaderLinkClick?: () => void;
+  onBackToCharacterCreation?: () => void;
   bot: {
     name: string;
     personality: string;
@@ -14,7 +15,7 @@ interface ChatHeaderProps {
   };
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPrompt, onHeaderLinkClick, bot }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPrompt, onHeaderLinkClick, onBackToCharacterCreation, bot }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   if (!bot) return null;
   return (
@@ -22,6 +23,17 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPro
       <div className={styles.chatHeaderContent}>
         <div className={styles.headerLeft}>
           <div className="mt-2" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {onBackToCharacterCreation && (
+              <button
+                className={styles.downloadTranscriptLink}
+                type="button"
+                aria-label="Back to character creation"
+                onClick={onBackToCharacterCreation}
+                style={{ marginBottom: '0.2rem' }}
+              >
+                <span role="img" aria-label="Back">⬅️</span> Character Creator
+              </button>
+            )}
             <button
               className={`${styles.downloadTranscriptLink} flex items-center gap-1 ml-0`}
               type="button"
