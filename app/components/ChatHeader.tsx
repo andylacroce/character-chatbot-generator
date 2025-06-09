@@ -51,7 +51,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPro
             className="rounded-circle"
             style={{ objectFit: 'cover' }}
           />
-          <div style={{ fontWeight: 700, fontSize: 22, marginTop: 8 }}>{bot.name}</div>
+          <div className={styles.botNameLabel}>{bot.name}</div>
         </div>
         <div className={styles.headerRight}>
           <a

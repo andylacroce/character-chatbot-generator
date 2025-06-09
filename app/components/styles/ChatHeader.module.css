@@ -50,6 +50,27 @@
   grid-column: 2;
 }
 
+/* Bot name label styling for legibility */
+.botNameLabel {
+  font-family: var(--font-primary), 'Roboto', Arial, sans-serif;
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 8px #000a, 0 1px 0 #222, 0 0 1px #000;
+  margin-top: 10px;
+  margin-bottom: 0.2rem;
+  line-height: 1.1;
+  text-align: center;
+  word-break: break-word;
+}
+@media (max-width: 600px) {
+  .botNameLabel {
+    font-size: 1.3rem;
+    margin-top: 7px;
+  }
+}
+
 .headerRight {
   display: flex;
   flex-direction: row;
