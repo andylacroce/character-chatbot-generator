@@ -10,8 +10,6 @@
   border-radius: 14px;
   border: 2px solid var(--color-primary);
   box-shadow: none;
-  /* Subtle texture effect, colorized using CSS variable for dark mode support */
-  background-image: repeating-linear-gradient(135deg, rgba(var(--color-primary-rgb, 166,124,82),0.04) 0 8px, transparent 8px 16px);
   padding: 2.5rem 2.2rem 2rem 2.2rem;
   margin: 7vh auto 7vh auto;
   display: flex;
