@@ -1,13 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
-import fs from "fs";
-import path from "path";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-
-function sanitizeFilename(name: string) {
-  return name.replace(/[^a-zA-Z0-9_-]/g, "_");
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -36,27 +30,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       model: "dall-e-3",
       prompt: imagePrompt,
       n: 1,
-      size: "1024x1024", // updated to supported size
+      size: "1024x1024",
       response_format: "url",
     });
     const dallEUrl = image.data?.[0]?.url;
     if (!dallEUrl) return res.status(500).json({ error: "No image returned" });
-    const avatarsDir = path.join(process.cwd(), "public", "avatars");
-    if (!fs.existsSync(avatarsDir)) fs.mkdirSync(avatarsDir, { recursive: true });
-    const filename = `${sanitizeFilename(name)}-${Date.now()}.png`;
-    const filePath = path.join(avatarsDir, filename);
-    const localUrl = `/avatars/${filename}`;
     // Use dynamic import for node-fetch v2 in ESM
     const fetch = (await import("node-fetch")).default;
     try {
       const response = await fetch(dallEUrl);
       if (!response.ok) throw new Error("Failed to download avatar image");
       const buffer = await response.buffer();
-      fs.writeFileSync(filePath, buffer);
-      res.status(200).json({ avatarUrl: localUrl });
+      const base64 = buffer.toString("base64");
+      const contentType = response.headers.get("content-type") || "image/png";
+      const dataUrl = `data:${contentType};base64,${base64}`;
+      res.status(200).json({ avatarDataUrl: dataUrl });
     } catch (err) {
       console.error("Avatar download failed:", err);
-      // fallback to default avatar
+      // fallback to default avatar (as a static URL)
       res.status(200).json({ avatarUrl: "/gandalf.jpg" });
     }
   } catch (e) {

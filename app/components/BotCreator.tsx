@@ -38,7 +38,8 @@ async function generateBotData(name: string): Promise<Bot> {
     });
     if (avatarRes.ok) {
       const data = await avatarRes.json();
-      if (data.avatarUrl) avatarUrl = data.avatarUrl;
+      if (data.avatarDataUrl) avatarUrl = data.avatarDataUrl;
+      else if (data.avatarUrl) avatarUrl = data.avatarUrl;
     }
   } catch (e) { /* fallback to default */ }
 

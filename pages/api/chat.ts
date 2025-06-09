@@ -229,9 +229,10 @@ export default async function handler(
     );
     logger.info(`[Chat API] 200 OK: Reply and audioFileUrl sent`);
     // Return audioFileUrl with text param for stateless regeneration
+    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(gandalfReply)}&botName=${encodeURIComponent(botName)}`;
     res.status(200).json({
       reply: gandalfReply,
-      audioFileUrl: `/api/audio?file=${audioFileName}&text=${encodeURIComponent(gandalfReply)}`,
+      audioFileUrl,
     });
   } catch (error) {
     logger.error("API error:", error);
