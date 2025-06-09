@@ -34,9 +34,31 @@ If the character is real or famous, explicitly reference specific photos, movie 
     });
     const description = descriptionCompletion.choices[0]?.message?.content?.trim() || "";
     logger.info(`[AVATAR] Description for '${name}': ${description}`);
+    // DALL-E prompt limit: keep under 1000 chars for safety
+    let conciseDescription = description.replace(/\s+/g, ' ').trim();
+    // Try to prioritize visually distinctive features if truncating
+    const featurePriority = [
+      /facial features/i,
+      /hair/i,
+      /eyes/i,
+      /clothing/i,
+      /expression/i
+    ];
+    let prioritized = '';
+    for (const regex of featurePriority) {
+      const match = conciseDescription.match(new RegExp(`(${regex.source}[^.]+\.)`, 'i'));
+      if (match) prioritized += match[1] + ' ';
+    }
+    if (prioritized.length > 0) {
+      conciseDescription = (prioritized + conciseDescription).slice(0, 700) + '...';
+    } else if (conciseDescription.length > 700) {
+      conciseDescription = conciseDescription.slice(0, 700) + '...';
+    }
     let imagePrompt;
-    if (description && !/don't know|no information|not sure|unknown|I'm not sure|I do not know|I have no information/i.test(description)) {
-      imagePrompt = `A high-quality, photorealistic portrait of ${name}. (If ${name} is real or famous, look at reference photos, film stills, or iconic images and use them as the basis for this portrait.) ${description} Upper body, facing forward, studio lighting, plain background.`;
+    if (conciseDescription && !/don't know|no information|not sure|unknown|I'm not sure|I do not know|I have no information/i.test(conciseDescription)) {
+      imagePrompt = `A high-quality, photorealistic portrait of ${name}. (If ${name} is real or famous, use actual reference photos, film stills, or renderings of ${name} to ensure the most accurate likeness possible. Study these images closely and base the portrait on them. Match the likeness as closely as possible to well-known photos or portraits.) ${conciseDescription} Upper body, facing forward, studio lighting, plain background.`;
+      // Truncate to 1000 chars for DALL-E
+      if (imagePrompt.length > 1000) imagePrompt = imagePrompt.slice(0, 997) + '...';
     } else {
       imagePrompt = `A high-quality, photorealistic portrait of ${name}, upper body, facing forward, studio lighting, plain background.`;
     }
