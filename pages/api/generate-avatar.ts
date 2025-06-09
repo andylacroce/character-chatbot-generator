@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
+import logger from "../../src/utils/logger";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -8,24 +9,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: "Name required" });
   try {
-    // 1. Get a factual, visual description for the image prompt
-    const descriptionPrompt = `Describe what ${name} looks like in a single, vivid sentence for an artist. If you don't know, say so.`;
+    // 1. Get a factual, richly detailed visual description for the image prompt
+    const descriptionPrompt = `Describe in vivid, specific detail what ${name} looks like for a portrait artist. Include facial features, hair, eyes, skin tone, age, ethnicity, clothing, expression, and any iconic items or accessories. Be as descriptive and accurate as possible. If you don't know, say so.`;
+    logger.info(`[AVATAR] Generating description for '${name}' with prompt: ${descriptionPrompt}`);
     const descriptionCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: "You are a helpful assistant." },
         { role: "user", content: descriptionPrompt },
       ],
-      max_tokens: 80,
+      max_tokens: 180,
       temperature: 0.2,
     });
     const description = descriptionCompletion.choices[0]?.message?.content?.trim() || "";
+    logger.info(`[AVATAR] Description for '${name}': ${description}`);
     let imagePrompt;
     if (description && !/don't know|no information|not sure|unknown|I'm not sure|I do not know|I have no information/i.test(description)) {
       imagePrompt = `A high-quality, photorealistic portrait of ${name}. ${description} Upper body, facing forward, studio lighting, plain background.`;
     } else {
       imagePrompt = `A high-quality, photorealistic portrait of ${name}, upper body, facing forward, studio lighting, plain background.`;
     }
+    logger.info(`[AVATAR] Image prompt for '${name}': ${imagePrompt}`);
     const image = await openai.images.generate({
       model: "dall-e-3",
       prompt: imagePrompt,
@@ -46,12 +50,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const dataUrl = `data:${contentType};base64,${base64}`;
       res.status(200).json({ avatarDataUrl: dataUrl });
     } catch (err) {
-      console.error("Avatar download failed:", err);
+      logger.error("Avatar download failed:", err);
       // fallback to default avatar (as a static URL)
       res.status(200).json({ avatarUrl: "/gandalf.jpg" });
     }
   } catch (e) {
-    console.error("Avatar generation failed:", e);
+    logger.error("Avatar generation failed:", e);
     res.status(500).json({ error: "Failed to generate avatar." });
   }
 }

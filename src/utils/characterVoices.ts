@@ -52,23 +52,32 @@ function normalizeCharacterName(name: string): string {
   return name.trim().replace(/ +/g, ' ').replace(/(^| )\w/g, c => c.toUpperCase());
 }
 
-// List of available Google TTS voices (simplified, can be expanded)
+// List of available Google TTS voices (expanded with more variants)
 const GOOGLE_TTS_VOICES = [
-  {
-    languageCodes: ['en-GB'], name: 'en-GB-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'British Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['en-GB'], name: 'en-GB-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'British Male 2', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['en-GB'], name: 'en-GB-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'British Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['en-US'], name: 'en-US-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'American Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['en-US'], name: 'en-US-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female', type: 'Wavenet',
-  },
+  // Wavenet voices
+  { languageCodes: ['en-GB'], name: 'en-GB-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'British Male', type: 'Wavenet' },
+  { languageCodes: ['en-GB'], name: 'en-GB-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'British Male 2', type: 'Wavenet' },
+  { languageCodes: ['en-GB'], name: 'en-GB-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'British Female', type: 'Wavenet' },
+  { languageCodes: ['en-US'], name: 'en-US-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'American Male', type: 'Wavenet' },
+  { languageCodes: ['en-US'], name: 'en-US-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female', type: 'Wavenet' },
+  { languageCodes: ['en-US'], name: 'en-US-Wavenet-C', ssmlGender: SSML_GENDER.MALE, display: 'American Male 2', type: 'Wavenet' },
+  { languageCodes: ['en-US'], name: 'en-US-Wavenet-E', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female 2', type: 'Wavenet' },
+  // Studio voices
+  { languageCodes: ['en-US'], name: 'en-US-Studio-M', ssmlGender: SSML_GENDER.MALE, display: 'American Male (Studio)', type: 'Studio' },
+  { languageCodes: ['en-US'], name: 'en-US-Studio-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female (Studio)', type: 'Studio' },
+  { languageCodes: ['en-GB'], name: 'en-GB-Studio-M', ssmlGender: SSML_GENDER.MALE, display: 'British Male (Studio)', type: 'Studio' },
+  { languageCodes: ['en-GB'], name: 'en-GB-Studio-F', ssmlGender: SSML_GENDER.FEMALE, display: 'British Female (Studio)', type: 'Studio' },
+  // Neural2 voices
+  { languageCodes: ['en-US'], name: 'en-US-Neural2-M', ssmlGender: SSML_GENDER.MALE, display: 'American Male (Neural2)', type: 'Neural2' },
+  { languageCodes: ['en-US'], name: 'en-US-Neural2-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female (Neural2)', type: 'Neural2' },
+  // Chirp/Expressive voices
+  { languageCodes: ['en-US'], name: 'en-US-Chirp-M', ssmlGender: SSML_GENDER.MALE, display: 'American Male (Chirp)', type: 'Chirp' },
+  { languageCodes: ['en-US'], name: 'en-US-Chirp-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female (Chirp)', type: 'Chirp' },
+  // Regional/age/gender variants
+  { languageCodes: ['en-AU'], name: 'en-AU-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'Australian Male', type: 'Wavenet' },
+  { languageCodes: ['en-AU'], name: 'en-AU-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'Australian Female', type: 'Wavenet' },
+  { languageCodes: ['en-IN'], name: 'en-IN-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'Indian Male', type: 'Wavenet' },
+  { languageCodes: ['en-IN'], name: 'en-IN-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'Indian Female', type: 'Wavenet' },
   {
     languageCodes: ['de-DE'], name: 'de-DE-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'German Male', type: 'Wavenet'
   },
@@ -226,28 +235,30 @@ async function fetchVoiceDescriptionFromOpenAI(name: string): Promise<string> {
   // Use OpenAI to describe the character's likely voice
   const OpenAI = (await import('openai')).default;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-  const prompt = `Describe the likely speaking voice of ${name} in terms of accent, gender, and tone. Example: 'British male, deep, slow, wise'.`;
+  const prompt = `Describe in vivid, specific detail the likely speaking voice of ${name}, including accent, gender, tone, pitch, speed, age, and any unique vocal traits or mannerisms. Be as descriptive and accurate as possible. Example: 'British male, deep, slow, wise, gravelly, middle-aged'. If you don't know, say so.`;
   const completion = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
       { role: "system", content: "You are a helpful assistant." },
       { role: "user", content: prompt },
     ],
-    max_tokens: 40,
+    max_tokens: 120,
     temperature: 0.2,
   });
   return completion.choices[0]?.message?.content?.trim() || '';
 }
 
 function findClosestTTSVoice(description: string): CharacterVoiceConfig {
-  // Enhanced matching: parse for accent, language, gender, style, tone, and prefer higher-quality voices
+  // Enhanced matching: parse for accent, language, gender, style, tone, expressive, regional, age, and prefer higher-quality voices
   const desc = description.toLowerCase();
 
-  // Language/accent detection
+  // Language/accent/region detection
   let lang = 'en-GB';
   if (desc.match(/german|deutsch|germany/)) lang = 'de-DE';
   else if (desc.match(/american|us|usa|california|new york|midwest/)) lang = 'en-US';
   else if (desc.match(/british|england|uk|london|scottish/)) lang = 'en-GB';
+  else if (desc.match(/australian|aussie|australia/)) lang = 'en-AU';
+  else if (desc.match(/indian|india/)) lang = 'en-IN';
   else if (desc.match(/french|france|paris/)) lang = 'fr-FR';
   else if (desc.match(/spanish|espanol|spain/)) lang = 'es-ES';
   else if (desc.match(/italian|italy/)) lang = 'it-IT';
@@ -265,7 +276,7 @@ function findClosestTTSVoice(description: string): CharacterVoiceConfig {
   if (desc.match(/female|woman|girl|lady/)) gender = SSML_GENDER.FEMALE;
   if (desc.match(/neutral|child|kid|boy|girl/)) gender = SSML_GENDER.NEUTRAL;
 
-  // Style/tone/age/characteristic detection
+  // Style/tone/age/characteristic/expressive detection
   const styleHints = [
     { key: 'old', match: /old|elderly|aged|wise/, pitch: -4 },
     { key: 'deep', match: /deep|bass|low/, pitch: -6 },
@@ -277,8 +288,11 @@ function findClosestTTSVoice(description: string): CharacterVoiceConfig {
     { key: 'narrator', match: /narrator|storyteller/, type: 'Wavenet' },
     { key: 'casual', match: /casual|friendly|conversational/, type: 'Wavenet' },
     { key: 'studio', match: /studio|premium|realistic/, type: 'Studio' },
-    { key: 'chirp', match: /chirp|hd|ultra|expressive/, type: 'Chirp' },
-    { key: 'neural2', match: /neural2|natural|expressive/, type: 'Neural2' },
+    { key: 'chirp', match: /chirp|hd|ultra|expressive|emotional|dynamic/, type: 'Chirp' },
+    { key: 'neural2', match: /neural2|natural|expressive|neural/, type: 'Neural2' },
+    { key: 'expressive', match: /expressive|emotional|dynamic/, type: 'Chirp' },
+    { key: 'regional', match: /australian|indian|scottish|irish|canadian/, type: 'Wavenet' },
+    { key: 'studio', match: /studio|premium/, type: 'Studio' },
   ];
 
   let pitch = 0;
