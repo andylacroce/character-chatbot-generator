@@ -3,7 +3,7 @@
     "target": "es2020", // Update target to a modern version
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "skipLibCheck": false, // Enable type checking for declaration files
+    "skipLibCheck": true, // Avoid type errors from third-party libraries
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
