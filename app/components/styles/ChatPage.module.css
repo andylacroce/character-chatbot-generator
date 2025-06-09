@@ -20,7 +20,7 @@
   margin: 0;
   background: var(--color-background);
   color: var(--color-text);
-  font-family: var(--font-primary), serif;
+  font-family: var(--font-primary);
   min-height: 0; /* Ensure flex children can shrink for scrolling */
 }
 
@@ -42,7 +42,7 @@
   margin: 0 auto;
   background: var(--color-background);
   color: var(--color-text);
-  font-family: var(--font-primary), serif;
+  font-family: var(--font-primary);
   padding-left: 12px;
   padding-right: 12px;
   position: relative;

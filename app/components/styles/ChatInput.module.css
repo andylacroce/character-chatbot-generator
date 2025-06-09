@@ -33,20 +33,20 @@
   padding: 1rem;
   font-size: 1.25rem;
   outline: none;
-  font-family: var(--font-primary), serif;
+  font-family: var(--font-primary);
   border-radius: 8px;
 }
 
 .chatInput::placeholder {
   color: var(--input-placeholder);
-  font-family: var(--font-primary), serif;
+  font-family: var(--font-primary);
 }
 
 .chatSendButton {
   flex: 0 0 auto;
   background: var(--send-button-bg);
   color: var(--send-button-text);
-  font-family: var(--font-primary), serif;
+  font-family: var(--font-primary);
   box-shadow: 0 2px 8px var(--button-shadow, #1a1022);
   border: 1.5px solid var(--button-bg);
   padding: 1rem 2rem;

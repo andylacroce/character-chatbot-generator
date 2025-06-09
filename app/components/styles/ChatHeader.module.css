@@ -7,13 +7,14 @@
   right: 0;
   z-index: 10;
   background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-primary);
   padding: 10px 0 0 0;
   box-shadow: none;
   border-bottom: none;
   width: 100vw;
   max-width: 100vw;
   margin: 0;
-  font-family: var(--font-primary), serif;
 }
 
 .chatHeaderContent {
@@ -52,7 +53,7 @@
 
 /* Bot name label styling for legibility */
 .botNameLabel {
-  font-family: var(--font-primary), 'Roboto', Arial, sans-serif;
+  font-family: var(--font-primary);
   font-size: 2.1rem;
   font-weight: 800;
   color: #fff;

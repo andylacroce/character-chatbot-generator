@@ -4,7 +4,9 @@
 */
 
 .formContainer {
-  background: var(--card-body-bg, #181a1b);
+  background: var(--card-body-bg);
+  color: var(--color-text);
+  font-family: var(--font-primary);
   border-radius: 14px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.13);
   padding: 2.2rem 2.2rem 1.7rem 2.2rem;

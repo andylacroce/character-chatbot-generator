@@ -8,37 +8,38 @@
    ============================= */
 
 /* --- Google Fonts Import --- */
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;700&family=UnifrakturCook:wght@700&family=Roboto:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=EB+Garamond:wght@400;700&family=UnifrakturCook:wght@700&display=swap');
 
 :root {
-  /* Typography variables */
-  --font-primary: 'Roboto', sans-serif;
-  --font-secondary: 'UnifrakturCook', cursive;
-  /* Gandalf-inspired color palette: black, silver, blue-grey, subtle accent */
-  --color-background: #000; /* true black for backgrounds */
-  --color-text: #e6e7e9; /* silver */
-  --color-sender: #7fa7c7; /* soft mystical blue */
-  --card-body-bg: #181a1b; /* very dark grey for cards */
-  --chatbox-background: #000;
-  --user-message-bg: #23272b; /* deep charcoal */
-  --gandalf-message-bg: #e6e7e9; /* silver */
-  --button-bg: #31363b; /* blue-grey */
-  --button-hover-bg: #4a5a6a; /* lighter blue-grey */
-  --disabled-bg: #23272b; /* muted dark */
-  --disabled-text: #b0b8c9;
-  --send-button-bg: #31363b;
-  --send-button-hover-bg: #4a5a6a;
+  /* Modern, vibrant, and accessible color palette - now slightly darker */
+  --color-background: #13131e; /* darker indigo/navy */
+  --color-text: #e6e6f0; /* slightly dimmed near-white */
+  --color-sender: #3db3c9; /* slightly deeper cyan */
+  --card-body-bg: #18182a; /* darker blue for cards */
+  --chatbox-background: #13131e;
+  --user-message-bg: #232346; /* deeper purple/blue for user bubbles */
+  --gandalf-message-bg: #e6e6f0; /* slightly dimmed bot bubbles */
+  --button-bg: #4343b8; /* deeper blue */
+  --button-hover-bg: #5a5ad1; /* slightly deeper blue */
+  --disabled-bg: #18182a; /* darker muted */
+  --disabled-text: #8a8aa9;
+  --send-button-bg: #4343b8;
+  --send-button-hover-bg: #5a5ad1;
   --send-button-text: #fff;
-  --input-bg: #181a1b;
-  --input-text: #e6e7e9;
-  --input-placeholder: #7fa7c7;
-  --scrollbar-bg: #181a1b;
-  --scrollbar-thumb: #31363b;
-  --gandalf-sender: #7fa7c7;
-  --color-primary: #7fa7c7; /* blue accent */
-  --button-shadow: #000;
-  --button-shadow-hover: #181a1b;
-  --chat-message-font-size: 2.2rem;
+  --input-bg: #18182a;
+  --input-text: #e6e6f0;
+  --input-placeholder: #7a7a99;
+  --scrollbar-bg: #18182a;
+  --scrollbar-thumb: #4343b8;
+  --gandalf-sender: #5a5ad1;
+  --color-primary: #3db3c9; /* deeper cyan accent */
+  --button-shadow: #13131e;
+  --button-shadow-hover: #18182a;
+  --chat-message-font-size: 2.1rem;
+
+  /* Font variables for modern, legible look */
+  --font-primary: 'Inter', 'Roboto', Arial, Helvetica, sans-serif;
+  --font-secondary: 'EB Garamond', 'UnifrakturCook', serif;
 }
 
 /* --- CSS Reset and Base Styles --- */

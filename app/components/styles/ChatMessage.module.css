@@ -33,10 +33,10 @@
 
 /* Sender name styling */
 .sender {
-  font-family: 'Roboto', Arial, Helvetica, sans-serif;
-  font-weight: bold;
+  font-family: var(--font-primary);
+  font-weight: 700;
   color: var(--color-sender);
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   letter-spacing: 0.01em;
   text-shadow: none;
   line-height: 1.1;
@@ -44,12 +44,12 @@
 
 /* Gandalf sender name override */
 .gandalfSender {
-  font-family: 'Roboto', Arial, Helvetica, sans-serif;
+  font-family: var(--font-primary);
   font-weight: 800;
-  color: #2a1a7a;
-  font-size: 1.18rem;
+  color: var(--gandalf-sender);
+  font-size: 1.25rem;
   letter-spacing: 0.01em;
-  text-shadow: 0 1px 4px #fff8, 0 0.5px 0 #fff, 0 0 1px #0001;
+  text-shadow: none;
   line-height: 1.1;
 }
 
