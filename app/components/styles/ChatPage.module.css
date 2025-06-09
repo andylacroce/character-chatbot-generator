@@ -13,10 +13,8 @@
 .chatLayout {
   display: flex;
   flex-direction: column;
-  width: 100vw;
-  height: 100vh;
-  max-width: 100vw;
-  max-height: 100vh;
+  flex: 1 1 auto; /* ADDED */
+  width: 100%; /* ADDED */
   margin: 0;
   background: var(--color-background);
   color: var(--color-text);
@@ -31,7 +29,6 @@
 */
 .chatMessagesScroll {
   flex: 1 1 auto;
-  min-height: 0; /* Required for flexbox scroll */
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
@@ -46,8 +43,6 @@
   padding-left: 12px;
   padding-right: 12px;
   position: relative;
-  min-height: 0; /* allow flexbox to shrink for scrolling */
-  margin-bottom: 70px; /* Reserve space for sticky input */
 }
 
 /* --- Spinner Container --- */

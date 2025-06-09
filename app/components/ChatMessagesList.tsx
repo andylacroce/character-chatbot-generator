@@ -9,22 +9,14 @@ interface ChatMessagesListProps {
     audioFileUrl?: string;
   }>;
   bot: Bot;
-  className?: string;
 }
 
-const ChatMessagesList: React.FC<ChatMessagesListProps> = ({ messages, bot, className }) => (
-  <div
-    className={className}
-    data-testid="chat-messages-container"
-    style={{ paddingTop: 20 }}
-    role="log"
-    aria-live="polite"
-    aria-relevant="additions text"
-  >
+const ChatMessagesList: React.FC<ChatMessagesListProps> = ({ messages, bot }) => (
+  <>
     {messages.map((msg, index) => (
       <ChatMessage key={index} message={msg} bot={bot} />
     ))}
-  </div>
+  </>
 );
 
 export default ChatMessagesList;

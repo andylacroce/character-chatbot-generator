@@ -50,7 +50,16 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
   });
   const [input, setInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
+  // Initialize audioEnabled from localStorage or default to true
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const savedAudioPreference = localStorage.getItem('audioEnabled');
+      if (savedAudioPreference !== null) {
+        return savedAudioPreference === 'true';
+      }
+    }
+    return true; // Default to true if nothing is saved
+  });
   const [apiAvailable, setApiAvailable] = useState<boolean>(true);
   const [sessionId, sessionDatetime] = useSession(); // Use useSession hook
   const { error, setError, handleApiError } = useApiError();
@@ -135,6 +144,10 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
   const handleAudioToggle = useCallback(() => {
     setAudioEnabled((prev) => {
       const newEnabled = !prev;
+      // Save the new preference to localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('audioEnabled', String(newEnabled));
+      }
       if (!newEnabled) {
         // Only pause/reset audio, do not delete files
         if (audioRef.current) {
@@ -149,6 +162,13 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       inputRef.current.focus();
     }
   }, [audioRef, inputRef]);
+
+  // Persist audioEnabled to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('audioEnabled', String(audioEnabled));
+    }
+  }, [audioEnabled]);
 
   // Health check on mount (robust guard against double-call in dev/StrictMode)
   const healthCheckRan = useRef(false);
@@ -207,6 +227,33 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     }
   }, [audioRef, onBackToCharacterCreation]);
 
+  const INITIAL_VISIBLE_COUNT = 30;
+  const LOAD_MORE_COUNT = 20;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+
+  // Handler to load more messages when scrolled to top
+  const handleScroll = useCallback(() => {
+    if (!chatBoxRef.current) return;
+    if (chatBoxRef.current.scrollTop === 0 && visibleCount < messages.length) {
+      setVisibleCount((prev) => Math.min(prev + LOAD_MORE_COUNT, messages.length));
+    }
+  }, [visibleCount, messages.length]);
+
+  // Attach scroll event to chatBoxRef after visibleCount/messages change
+  useEffect(() => {
+    const ref = chatBoxRef.current;
+    if (!ref) return;
+    ref.addEventListener('scroll', handleScroll);
+    return () => {
+      ref.removeEventListener('scroll', handleScroll);
+    };
+  }, [handleScroll, visibleCount, messages.length]);
+
+  // Reset visibleCount when messages change (new message or bot)
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
+  }, [chatHistoryKey]);
+
   return (
     <div className={styles.chatLayout} data-testid="chat-layout">
       <ChatHeader
@@ -216,11 +263,21 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         onBackToCharacterCreation={handleBackToCharacterCreation}
         bot={bot}
       />
-      <ChatMessagesList
-        messages={messages}
-        bot={bot}
+      <div
+        ref={chatBoxRef}
         className={styles.chatMessagesScroll}
-      />
+        data-testid="chat-messages-container"
+        onScroll={handleScroll}
+        style={{ paddingTop: 20 }}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
+      >
+        <ChatMessagesList
+          messages={messages.slice(-visibleCount)}
+          bot={bot}
+        />
+      </div>
       {loading && (
         <div data-testid="loading-indicator" className={styles.spinnerContainerFixed}>
           <span className={styles.genericSpinner} aria-label="Loading" />
