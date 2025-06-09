@@ -140,11 +140,11 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     }
   }, [audioRef, inputRef]);
 
-  // Health check on mount (guarded against double-call in dev)
+  // Health check on mount (robust guard against double-call in dev/StrictMode)
+  const healthCheckRan = useRef(false);
   useEffect(() => {
-    let didRun = false;
-    if (didRun) return;
-    didRun = true;
+    if (healthCheckRan.current) return;
+    healthCheckRan.current = true;
     axios
       .get("/api/health")
       .then(() => {
