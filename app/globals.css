@@ -9,6 +9,7 @@
 
 /* --- Google Fonts Import --- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=EB+Garamond:wght@400;700&family=UnifrakturCook:wght@700&display=swap');
+@import "./darkmode.css";
 
 :root {
   /* Rustic, warm, and natural palette */

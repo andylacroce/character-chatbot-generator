@@ -1,0 +1,25 @@
+.dark {
+  --color-background: #18182a !important;
+  --color-text: #e6e7e9 !important;
+  --color-sender: #bfae7c !important;
+  --card-body-bg: #23243a !important;
+  --chatbox-background: #18182a !important;
+  --user-message-bg: #23243a !important;
+  --bot-message-bg: #23243a !important;
+  --bot-sender: #bfae7c !important;
+  --button-bg: #3a3a5a !important;
+  --button-hover-bg: #23243a !important;
+  --disabled-bg: #23243a !important;
+  --disabled-text: #b0b8c9 !important;
+  --send-button-bg: #3a3a5a !important;
+  --send-button-hover-bg: #23243a !important;
+  --send-button-text: #e6e7e9 !important;
+  --input-bg: #23243a !important;
+  --input-text: #e6e7e9 !important;
+  --input-placeholder: #b0b8c9 !important;
+  --scrollbar-bg: #23243a !important;
+  --scrollbar-thumb: #3a3a5a !important;
+  --color-primary: #bfae7c !important;
+  --button-shadow: transparent !important;
+  --button-shadow-hover: transparent !important;
+}
