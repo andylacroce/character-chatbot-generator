@@ -22,4 +22,6 @@
   --color-primary: #bfae7c !important;
   --button-shadow: transparent !important;
   --button-shadow-hover: transparent !important;
+  --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
+  --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
 }

@@ -16,7 +16,7 @@
 .userMessage {
   background-color: var(--user-message-bg);
   color: var(--color-text);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   align-self: flex-end;
   text-align: right;
   font-size: var(--chat-message-font-size) !important;
@@ -26,14 +26,14 @@
 .botMessage {
   background-color: var(--bot-message-bg);
   color: var(--color-text);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   align-self: flex-start;
   font-size: var(--chat-message-font-size) !important;
 }
 
 /* Sender name styling */
 .sender {
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   font-weight: 700;
   color: var(--color-sender);
   font-size: 1.25rem;
@@ -44,7 +44,7 @@
 
 /* Bot sender name override */
 .botSender {
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   font-weight: 800;
   color: var(--bot-sender);
   font-size: 1.25rem;

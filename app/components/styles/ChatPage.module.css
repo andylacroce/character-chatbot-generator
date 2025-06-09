@@ -166,7 +166,7 @@
   font-weight: bold;
   margin-bottom: 0.5rem;
   color: var(--color-primary, #bfae7c);
-  font-family: var(--font-secondary), var(--font-primary), serif;
+  font-family: var(--font-secondary), var(--font-primary), sans-serif;
 }
 
 /* --- API Error Description --- */
@@ -177,7 +177,7 @@
 .apiErrorDesc {
   font-size: 1.1rem;
   color: var(--color-text, #f3f0e7);
-  font-family: var(--font-primary), serif;
+  font-family: var(--font-primary), sans-serif;
 }
 
 /* --- Prompt Button --- */

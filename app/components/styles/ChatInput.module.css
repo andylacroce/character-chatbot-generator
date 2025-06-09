@@ -29,7 +29,7 @@
 .chatInput {
   background-color: var(--input-bg);
   color: var(--input-text);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   border: none;
   padding: 1rem;
   font-size: 1.25rem;
@@ -42,13 +42,13 @@
 
 .chatInput::placeholder {
   color: var(--input-placeholder);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
 }
 
 .chatSendButton {
   background: var(--send-button-bg);
   color: var(--send-button-text);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   box-shadow: 0 2px 8px var(--button-shadow, #e3e3e3);
   border: none;
   border-radius: 8px;

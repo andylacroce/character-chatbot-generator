@@ -210,8 +210,14 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           className={styles.createButton}
           disabled={loading}
           data-testid="bot-creator-button"
+          aria-label="Create character"
         >
-          Create
+          {/* Submit/Proceed icon: right arrow in a circle */}
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none"/>
+            <path d="M10 14h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M15 11l3 3-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </button>
       </div>
       <div className={styles.instructions}>

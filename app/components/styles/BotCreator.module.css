@@ -6,7 +6,7 @@
 .formContainer {
   background: var(--card-body-bg);
   color: var(--color-text);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   border-radius: 14px;
   border: 2px solid var(--color-primary);
   box-shadow: none;
@@ -37,8 +37,13 @@
     width: auto;
   }
   .createButton {
-    font-size: 0.98rem;
-    padding: 0.75rem 0;
+    font-size: min(4vw, 1.13rem);
+    padding: 0.85rem 0.5rem;
+    min-width: 0;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -87,7 +92,7 @@
   border: 1.5px solid var(--color-primary);
   background: var(--input-bg) !important;
   color: var(--input-text);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   outline: none;
   transition: border 0.18s, box-shadow 0.18s;
   box-shadow: 0 2px 8px rgba(0,0,0,0.07);
@@ -128,7 +133,7 @@
   border: 2px solid var(--color-primary);
   background: var(--button-bg);
   color: var(--send-button-text);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   font-weight: 700;
   box-shadow: none;
   transition: background 0.18s, border-color 0.18s;
@@ -196,7 +201,7 @@
   border: 1px solid var(--color-primary);
   background: var(--input-bg) !important;
   color: var(--input-text);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   outline: none;
   transition: border 0.18s;
 }
@@ -215,7 +220,7 @@
   border: 2px solid #3a86ff;
   background: var(--button-bg);
   color: var(--send-button-text);
-  font-family: var(--font-primary);
+  font-family: var(--font-primary), sans-serif;
   font-weight: 700;
   box-shadow: none;
   transition: background 0.18s, border-color 0.18s;
