@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
 import styles from "./styles/BotCreator.module.css";
 
@@ -117,6 +117,13 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   const handleCreate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -160,6 +167,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           data-testid="bot-creator-input"
           aria-label="Character name"
           maxLength={36}
+          ref={inputRef}
         />
         <button
           type="submit"
@@ -167,7 +175,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           disabled={loading}
           data-testid="bot-creator-button"
         >
-          {loading ? "Creating..." : "Create"}
+          Create
         </button>
       </div>
       <div className={styles.instructions}>
