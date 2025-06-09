@@ -1,5 +1,5 @@
 /**
- * Main chat interface component that manages the conversation with Gandalf.
+ * Main chat interface component that manages the conversation with the Character Chatbot Generator.
  * @module ChatPage
  */
 
@@ -30,7 +30,7 @@ import { useApiError } from "./useApiError";
 import BotCreator, { Bot } from "./BotCreator";
 
 /**
- * ChatPage component that handles the chat interface and interactions with the Gandalf AI.
+ * ChatPage component that handles the chat interface and interactions with the Character Chatbot Generator.
  * This component manages the state of the conversation, handles user input, and plays audio responses.
  *
  * @returns {JSX.Element} The ChatPage component.

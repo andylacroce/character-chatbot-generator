@@ -71,7 +71,7 @@ function buildOpenAIMessages(
   const messages: ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content: `You are an AI character. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`,
+      content: `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`,
     },
   ];
   for (const entry of history) {
@@ -90,10 +90,10 @@ function buildOpenAIMessages(
 
 /**
  * Next.js API route handler for chat requests.
- * Handles user input, calls OpenAI, and returns Gandalf's reply and audio.
+ * Handles user input, calls OpenAI, and returns the character chatbot's reply and audio.
  * - Accepts POST requests with a 'message' in the body.
  * - Calls OpenAI API with chat history and system prompt.
- * - Generates a Gandalf-style reply and synthesizes audio using Google TTS.
+ * - Generates a character-style reply and synthesizes audio using Google TTS.
  * - Returns the reply and a URL to the generated audio file.
  *
  * @param {NextApiRequest} req - The API request object.
@@ -113,8 +113,8 @@ export default async function handler(
 
   try {
     const userMessage = req.body.message;
-    const personality = req.body.personality || `You are an AI character. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`;
-    const botName = req.body.botName || "Bot";
+    const personality = req.body.personality || `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`;
+    const botName = req.body.botName || "Character";
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required`);
       return res.status(400).json({ error: "Message is required" });
@@ -180,11 +180,31 @@ export default async function handler(
     conversationHistory.push(`Bot: ${botReply}`);
 
     // Prepare TTS request (voice tuned for character)
-    const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
+    let voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
     logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
-    const pitch = typeof voiceConfig.pitch === 'number' ? voiceConfig.pitch : -13;
-    const rate = typeof voiceConfig.rate === 'number' ? Math.round(voiceConfig.rate * 100) + '%' : '80%';
-    const ssmlText = `<speak><prosody pitch="${pitch}st" rate="${rate}"> ${botReply} </prosody></speak>`;
+    // Robust Studio voice detection
+    const isStudio = (voiceConfig.type === 'Studio') || (voiceConfig.name && voiceConfig.name.includes('Studio'));
+    let selectedVoice = voiceConfig;
+    if (isStudio) {
+      const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
+      if (!validStudioVoices.includes(voiceConfig.name)) {
+        // fallback to en-US-Studio-M
+        selectedVoice = {
+          languageCodes: ['en-US'],
+          name: 'en-US-Studio-M',
+          ssmlGender: 1,
+          type: 'Studio',
+        };
+      }
+    }
+    const pitch = typeof selectedVoice.pitch === 'number' ? selectedVoice.pitch : -13;
+    const rate = typeof selectedVoice.rate === 'number' ? Math.round(selectedVoice.rate * 100) + '%' : '80%';
+    let ssmlText;
+    if (isStudio) {
+      ssmlText = `<speak>${botReply}</speak>`;
+    } else {
+      ssmlText = `<speak><prosody pitch="${pitch}st" rate="${rate}"> ${botReply} </prosody></speak>`;
+    }
     const tmpDir = "/tmp";
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
@@ -199,7 +219,7 @@ export default async function handler(
         text: ssmlText,
         filePath: audioFilePath,
         ssml: true,
-        voice: voiceConfig,
+        voice: selectedVoice,
       });
       // Write a .txt sidecar for audio regeneration
       const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");

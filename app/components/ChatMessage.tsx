@@ -12,7 +12,7 @@ import { Bot } from "./BotCreator";
  * Interface representing a chat message's structure.
  * @interface Message
  * @property {string} text - The content of the message.
- * @property {string} sender - The sender of the message ('User' or 'Gandalf').
+ * @property {string} sender - The sender of the message ('User' or 'AI').
  */
 export interface Message {
   text: string;

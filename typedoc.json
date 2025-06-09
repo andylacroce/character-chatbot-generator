@@ -1,7 +1,7 @@
 {
   "entryPoints": ["app", "pages", "src"],
   "out": "docs",
-  "name": "AI Character Chatbot Documentation",
+  "name": "Character Chatbot Generator Documentation",
   "includeVersion": true,
   "excludePrivate": true,
   "excludeInternal": true,

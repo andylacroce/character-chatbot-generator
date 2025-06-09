@@ -1,5 +1,5 @@
 /**
- * @fileoverview Jest configuration for testing the Gandalf Chatbot application.
+ * @fileoverview Jest configuration for testing the Character Chatbot Generator application.
  * This file configures Jest to properly handle Next.js, TypeScript, and CSS modules.
  *
  * @see {@link https://jestjs.io/docs/configuration}
@@ -17,7 +17,7 @@ const createJestConfig = nextJest({
 });
 
 /**
- * Custom Jest configuration with specific settings for the Gandalf Chatbot
+ * Custom Jest configuration with specific settings for the Character Chatbot Generator
  * @type {import('jest').Config}
  */
 const customJestConfig = {

@@ -20,7 +20,7 @@ describe("/api/transcript", () => {
         body: {
           messages: [
             { sender: "User", text: "Hello" },
-            { sender: "Gandalf", text: "You shall not pass!" },
+            { sender: "Character", text: "You shall not pass!" },
           ],
           exportedAt: "2025-05-17 12:00:00 PDT",
         },
@@ -28,9 +28,9 @@ describe("/api/transcript", () => {
       });
       await handler(req as unknown as import("next").NextApiRequest, res as unknown as import("next").NextApiResponse);
       expect(res._getStatusCode()).toBe(200);
-      expect(res._getData()).toContain("Gandalf Chatbot Transcript");
+      expect(res._getData()).toContain("Character Chatbot Generator Transcript");
       expect(res._getData()).toContain("Me: Hello");
-      expect(res._getData()).toContain("Gandalf: You shall not pass!");
+      expect(res._getData()).toContain("Character: You shall not pass!");
     },
     10000 // 10 seconds timeout
   );
@@ -94,7 +94,7 @@ describe("/api/transcript", () => {
       body: {
         messages: [
           { sender: "User", text: "Hello <world> & everyone!" },
-          { sender: "Gandalf", text: "It's dangerous to go alone! & <magic>" },
+          { sender: "Character", text: "It's dangerous to go alone! & <magic>" },
           { sender: "Frodo", text: "'Ring' > \"Sword\" & <Shire>" },
         ],
         exportedAt: undefined,
@@ -103,7 +103,7 @@ describe("/api/transcript", () => {
     await handler(req as any, res as any);
     const data = res._getData();
     expect(data).toContain("Me: Hello <world> & everyone!");
-    expect(data).toContain("Gandalf: It's dangerous to go alone! & <magic>");
+    expect(data).toContain("Character: It's dangerous to go alone! & <magic>");
     expect(data).toContain("Frodo: 'Ring' > \"Sword\" & <Shire>");
     expect(res._getStatusCode()).toBe(200);
   });

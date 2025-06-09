@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!name) return res.status(400).json({ error: "Name required" });
   try {
     // 1. Get a factual, richly detailed visual description for the image prompt
-    const descriptionPrompt = `Describe in vivid, specific detail what ${name} looks like for a portrait artist. Include facial features, hair, eyes, skin tone, age, ethnicity, clothing, expression, and any iconic items or accessories. Be as descriptive and accurate as possible. If you don't know, say so.`;
+    const descriptionPrompt = `Describe in vivid, specific detail what ${name} looks like for a portrait artist. Include facial features, hair, eyes, skin tone, age, ethnicity, clothing, expression, and any iconic items or accessories. Add any unique or memorable traits, style, or mood that would make the portrait instantly recognizable as this character. If the character is fictional or fantastical, include imaginative or genre-appropriate elements. Be as descriptive, creative, and accurate as possible. If you don't know, say so.`;
     logger.info(`[AVATAR] Generating description for '${name}' with prompt: ${descriptionPrompt}`);
     const descriptionCompletion = await openai.chat.completions.create({
       model: "gpt-4o",

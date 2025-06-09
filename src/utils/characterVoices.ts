@@ -6,6 +6,7 @@ export interface CharacterVoiceConfig {
   ssmlGender: number; // protos.google.cloud.texttospeech.v1.SsmlVoiceGender
   pitch?: number;
   rate?: number;
+  type?: string; // Add type for robust Studio detection
 }
 
 // Google TTS gender enum for reference
@@ -23,6 +24,7 @@ export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
     ssmlGender: SSML_GENDER.MALE,
     pitch: 0,
     rate: 1.0,
+    type: 'Wavenet', // Add type to all static configs
   },
   'Einstein': {
     languageCodes: ['de-DE'],
@@ -30,6 +32,7 @@ export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
     ssmlGender: SSML_GENDER.MALE,
     pitch: 0,
     rate: 1.0,
+    type: 'Wavenet',
   },
   'Yoda': {
     languageCodes: ['en-US'],
@@ -37,6 +40,7 @@ export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
     ssmlGender: SSML_GENDER.MALE,
     pitch: 5,
     rate: 0.85,
+    type: 'Wavenet',
   },
   'Shakespeare': {
     languageCodes: ['en-GB'],
@@ -44,6 +48,7 @@ export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
     ssmlGender: SSML_GENDER.MALE,
     pitch: 0,
     rate: 1.0,
+    type: 'Wavenet',
   },
   // Add more as needed
 };
@@ -64,15 +69,10 @@ const GOOGLE_TTS_VOICES = [
   { languageCodes: ['en-US'], name: 'en-US-Wavenet-E', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female 2', type: 'Wavenet' },
   // Studio voices
   { languageCodes: ['en-US'], name: 'en-US-Studio-M', ssmlGender: SSML_GENDER.MALE, display: 'American Male (Studio)', type: 'Studio' },
-  { languageCodes: ['en-US'], name: 'en-US-Studio-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female (Studio)', type: 'Studio' },
-  { languageCodes: ['en-GB'], name: 'en-GB-Studio-M', ssmlGender: SSML_GENDER.MALE, display: 'British Male (Studio)', type: 'Studio' },
-  { languageCodes: ['en-GB'], name: 'en-GB-Studio-F', ssmlGender: SSML_GENDER.FEMALE, display: 'British Female (Studio)', type: 'Studio' },
+  { languageCodes: ['en-US'], name: 'en-US-Studio-O', ssmlGender: SSML_GENDER.MALE, display: 'American Male 2 (Studio)', type: 'Studio' },
   // Neural2 voices
   { languageCodes: ['en-US'], name: 'en-US-Neural2-M', ssmlGender: SSML_GENDER.MALE, display: 'American Male (Neural2)', type: 'Neural2' },
   { languageCodes: ['en-US'], name: 'en-US-Neural2-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female (Neural2)', type: 'Neural2' },
-  // Chirp/Expressive voices
-  { languageCodes: ['en-US'], name: 'en-US-Chirp-M', ssmlGender: SSML_GENDER.MALE, display: 'American Male (Chirp)', type: 'Chirp' },
-  { languageCodes: ['en-US'], name: 'en-US-Chirp-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female (Chirp)', type: 'Chirp' },
   // Regional/age/gender variants
   { languageCodes: ['en-AU'], name: 'en-AU-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'Australian Male', type: 'Wavenet' },
   { languageCodes: ['en-AU'], name: 'en-AU-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'Australian Female', type: 'Wavenet' },
@@ -344,10 +344,15 @@ export async function getVoiceConfigForCharacter(name: string): Promise<Characte
   // Normalize name for lookup (capitalize each word, trim)
   const normalized = normalizeCharacterName(name);
   if (CHARACTER_VOICE_MAP[normalized]) {
-    return CHARACTER_VOICE_MAP[normalized];
+    // Ensure type is present by matching to GOOGLE_TTS_VOICES
+    const staticCfg = CHARACTER_VOICE_MAP[normalized];
+    const match = GOOGLE_TTS_VOICES.find(v => v.name === staticCfg.name);
+    return match ? { ...staticCfg, type: match.type } : staticCfg;
   }
   if (dynamicVoiceCache[normalized]) {
-    return dynamicVoiceCache[normalized];
+    const cached = dynamicVoiceCache[normalized];
+    const match = GOOGLE_TTS_VOICES.find(v => v.name === cached.name);
+    return match ? { ...cached, type: match.type } : cached;
   }
   // Dynamically determine voice using OpenAI
   let description = '';
@@ -363,5 +368,7 @@ export async function getVoiceConfigForCharacter(name: string): Promise<Characte
     // eslint-disable-next-line no-console
     console.log(`[TTS] Dynamic voice: requested='${name}', normalized='${normalized}', desc='${description}', using='${config.name}'`);
   }
-  return config;
+  // Ensure type is present
+  const match = GOOGLE_TTS_VOICES.find(v => v.name === config.name);
+  return match ? { ...config, type: match.type } : config;
 }

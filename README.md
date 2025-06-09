@@ -1,6 +1,6 @@
-# AI Character Chatbot
+# Character Chatbot Generator
 
-A Next.js app featuring a real-time chat interface, AI-powered character personas, and voice responses via Google Text-to-Speech.
+A Next.js app featuring a real-time chat interface, character personas, and voice responses via Google Text-to-Speech.
 
 ## Features
 
@@ -31,8 +31,8 @@ All API endpoints are protected by a rate limiter middleware:
 
 1. **Clone & Install**
    ```bash
-   git clone https://github.com/andylacroce/gandalf-chatbot.git
-   cd gandalf-chatbot
+   git clone https://github.com/andylacroce/character-chatbot-generator.git
+   cd character-chatbot-generator
    npm install
    ```
 2. **Environment Variables**

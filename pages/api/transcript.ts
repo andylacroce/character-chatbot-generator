@@ -35,13 +35,13 @@ export default async function handler(
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
   const datetime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-  const filename = `Gandalf Chat Transcript ${datetime}.txt`;
+  const filename = `Character Chat Transcript ${datetime}.txt`;
   const encodedFilename = encodeURIComponent(filename);
 
   logger.info(`[Transcript API] Generated download filename: ${filename}`);
 
   // Add a header with chat details, including local export time
-  const header = `Gandalf Chatbot Transcript\nExported: ${exportedAt || datetime}\nMessages: ${messages.length}\n`;
+  const header = `Character Chatbot Generator Transcript\nExported: ${exportedAt || datetime}\nMessages: ${messages.length}\n`;
   const separator = '\n' + '-'.repeat(40) + '\n';
   const transcriptBody = messages
     .map(

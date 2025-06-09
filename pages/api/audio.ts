@@ -9,7 +9,8 @@ import { v4 as uuidv4 } from "uuid";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 
-const SYSTEM_PROMPT = `You are Gandalf the Grey, wizard of Middle-earth. Speak with wisdom, warmth, and a touch of playful forgetfulness. Never reference the modern world. Use poetic, old-world language, and occasionally tease or offer roundabout advice as Gandalf would. Stay in character at all times. Respond in no more than 50 words. Do not start every response with the same word or phrase. Vary your sentence openings and avoid overusing 'Ah,' or similar interjections.`;
+// SYSTEM_PROMPT: Generalize to a Character Chatbot Generator persona
+const SYSTEM_PROMPT = `You are a helpful character chatbot. Respond concisely, helpfully, and in a friendly tone. Use the style, knowledge, and quirks of the selected character. Stay in character at all times.`;
 
 function getOriginalTextForAudio(sanitizedFile: string): string | null {
   const txtFile = sanitizedFile.replace(/\.mp3$/, ".txt");
@@ -29,7 +30,7 @@ export default async function handler(
   res: import("next").NextApiResponse,
 ) {
   const { file, text: expectedText } = req.query;
-  const botName = typeof req.query.botName === "string" ? req.query.botName : "Gandalf";
+  const botName = typeof req.query.botName === "string" ? req.query.botName : "Character";
   if (!file || typeof file !== "string") {
     logger.info(`[Audio API] 400 Bad Request: File parameter is required`);
     return res.status(400).json({ error: "File parameter is required" });
@@ -65,11 +66,36 @@ export default async function handler(
       try {
         const voiceConfig = await getVoiceConfigForCharacter(botName);
         logger.info(`[TTS] [AUDIO API] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
+        // Determine if Studio voice (robust: check type and name)
+        const isStudio = (voiceConfig as any).type === 'Studio' || (voiceConfig as any).name?.includes('Studio');
+        // Fallback: if type is missing, check name pattern
+        // (Covers cases where type is not set on static/dynamic configs)
+        // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
+        let selectedVoice = voiceConfig;
+        // If Studio, ensure only valid Studio voices are used
+        if (isStudio) {
+          const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
+          if (!validStudioVoices.includes(voiceConfig.name)) {
+            // fallback to en-US-Studio-M
+            selectedVoice = {
+              languageCodes: ['en-US'],
+              name: 'en-US-Studio-M',
+              ssmlGender: 1,
+              type: 'Studio',
+            };
+          }
+        }
+        let ssmlText;
+        if (isStudio) {
+          ssmlText = `<speak>${expectedText}</speak>`;
+        } else {
+          ssmlText = `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`;
+        }
         await synthesizeSpeechToFile({
-          text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`,
+          text: ssmlText,
           filePath: audioFilePath,
           ssml: true,
-          voice: await getVoiceConfigForCharacter(botName),
+          voice: selectedVoice,
         });
         fs.writeFileSync(txtFilePath, expectedText, "utf8");
         normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -101,11 +127,37 @@ export default async function handler(
       ) {
         logger.info(`[Audio API] Detected text mismatch for ${sanitizedFile}, regenerating audio and .txt file.`);
         try {
+          const voiceConfig = await getVoiceConfigForCharacter(botName);
+          // Determine if Studio voice (robust: check type and name)
+          const isStudio = (voiceConfig as any).type === 'Studio' || (voiceConfig as any).name?.includes('Studio');
+          // Fallback: if type is missing, check name pattern
+          // (Covers cases where type is not set on static/dynamic configs)
+          // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
+          let selectedVoice = voiceConfig;
+          // If Studio, ensure only valid Studio voices are used
+          if (isStudio) {
+            const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
+            if (!validStudioVoices.includes(voiceConfig.name)) {
+              // fallback to en-US-Studio-M
+              selectedVoice = {
+                languageCodes: ['en-US'],
+                name: 'en-US-Studio-M',
+                ssmlGender: 1,
+                type: 'Studio',
+              };
+            }
+          }
+          let ssmlText;
+          if (isStudio) {
+            ssmlText = `<speak>${expectedText}</speak>`;
+          } else {
+            ssmlText = `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`;
+          }
           await synthesizeSpeechToFile({
-            text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`,
+            text: ssmlText,
             filePath: audioFilePath,
             ssml: true,
-            voice: await getVoiceConfigForCharacter(botName),
+            voice: selectedVoice,
           });
           fs.writeFileSync(txtFilePath, expectedText, "utf8");
           normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -131,11 +183,23 @@ export default async function handler(
         }
         if (originalText) {
           try {
+            const voiceConfig = await getVoiceConfigForCharacter(botName);
+            // Determine if Studio voice (robust: check type and name)
+            const isStudio = (voiceConfig as any).type === 'Studio' || (voiceConfig as any).name?.includes('Studio');
+            // Fallback: if type is missing, check name pattern
+            // (Covers cases where type is not set on static/dynamic configs)
+            // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
+            let ssmlText;
+            if (isStudio) {
+              ssmlText = `<speak>${originalText}</speak>`;
+            } else {
+              ssmlText = `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${originalText} </prosody></speak>`;
+            }
             await synthesizeSpeechToFile({
-              text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${originalText} </prosody></speak>`,
+              text: ssmlText,
               filePath: audioFilePath,
               ssml: true,
-              voice: await getVoiceConfigForCharacter(botName),
+              voice: voiceConfig,
             });
             triedRegenerate = true;
             normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -168,17 +232,43 @@ export default async function handler(
                   temperature: 0.8,
                   response_format: { type: "text" },
                 });
-                const gandalfReply = result.choices[0]?.message?.content?.trim() ?? "";
-                if (!gandalfReply) throw new Error("OpenAI returned empty message");
+                const aiReply = result.choices[0]?.message?.content?.trim() ?? "";
+                if (!aiReply) throw new Error("OpenAI returned empty message");
                 // Save .txt for future regen
                 const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-                fs.writeFileSync(txtFilePath, gandalfReply, "utf8");
+                fs.writeFileSync(txtFilePath, aiReply, "utf8");
                 // Now TTS
+                const voiceConfig = await getVoiceConfigForCharacter(botName);
+                // Determine if Studio voice (robust: check type and name)
+                const isStudio = (voiceConfig as any).type === 'Studio' || (voiceConfig as any).name?.includes('Studio');
+                // Fallback: if type is missing, check name pattern
+                // (Covers cases where type is not set on static/dynamic configs)
+                // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
+                let selectedVoice = voiceConfig;
+                // If Studio, ensure only valid Studio voices are used
+                if (isStudio) {
+                  const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
+                  if (!validStudioVoices.includes(voiceConfig.name)) {
+                    // fallback to en-US-Studio-M
+                    selectedVoice = {
+                      languageCodes: ['en-US'],
+                      name: 'en-US-Studio-M',
+                      ssmlGender: 1,
+                      type: 'Studio',
+                    };
+                  }
+                }
+                let ssmlText;
+                if (isStudio) {
+                  ssmlText = `<speak>${aiReply}</speak>`;
+                } else {
+                  ssmlText = `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${aiReply} </prosody></speak>`;
+                }
                 await synthesizeSpeechToFile({
-                  text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${gandalfReply} </prosody></speak>`,
+                  text: ssmlText,
                   filePath: audioFilePath,
                   ssml: true,
-                  voice: await getVoiceConfigForCharacter(botName),
+                  voice: selectedVoice,
                 });
                 normalizedAudioFilePath = checkFileExists(audioFilePath);
                 if (normalizedAudioFilePath) {

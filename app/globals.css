@@ -1,6 +1,6 @@
 /* =============================
    GLOBALS.CSS (MANAGED)
-   - Global styles for the Gandalf Chatbot app
+   - Global styles for the Character Chatbot Generator app
    - Uses PurgeCSS in production via PostCSS
    - For component-specific styles, prefer CSS modules in app/components/styles/
    - Add dynamic class names to the PurgeCSS safelist in postcss.config.cjs if needed
