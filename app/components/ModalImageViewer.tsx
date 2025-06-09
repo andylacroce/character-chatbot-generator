@@ -13,8 +13,8 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt
   return (
     <div className={styles.modalBackdrop} data-testid="modal-image-backdrop" onClick={onClose}>
       <div
-        className={styles.promptModal}
-        style={{ maxWidth: 480, width: '90vw', padding: 0, background: '#fff', position: 'relative' }}
+        className={styles.modalError}
+        style={{ maxWidth: 480, width: '90vw', padding: 0, position: 'relative', background: 'var(--color-background, #18141a)', color: 'var(--color-text, #f3f0e7)' }}
         onClick={e => e.stopPropagation()}
       >
         <button
@@ -31,13 +31,14 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt
           style={{
             maxWidth: '90vw',
             maxHeight: '70vh',
-            width: '100%',
+            width: 'calc(100% - 3rem)',
             height: 'auto',
             display: 'block',
             borderRadius: 12,
-            margin: '2.5rem auto 1.5rem auto',
-            background: '#eee',
+            margin: '2.5rem auto 2.5rem auto',
+            background: '#232346',
             objectFit: 'contain',
+            boxSizing: 'border-box',
           }}
         />
       </div>
