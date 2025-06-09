@@ -13,13 +13,16 @@
 .chatLayout {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto; /* ADDED */
-  width: 100%; /* ADDED */
+  flex: 1 1 auto;
+  width: 100%;
   margin: 0;
   background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-primary);
   min-height: 0; /* Ensure flex children can shrink for scrolling */
+  /* REMOVED padding-top: 70px; */
+  /* REMOVED padding-bottom: 70px; */
+  /* box-sizing: border-box; */ /* This is already in globals.css via '*' */
 }
 
 /* --- Chat Messages Scroll Area --- */
@@ -29,6 +32,8 @@
 */
 .chatMessagesScroll {
   flex: 1 1 auto;
+  height: 0; /* ADDED: Force height to be determined by flex-grow */
+  min-height: 0; /* CRUCIAL for flexbox scrolling, re-confirmed */
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
