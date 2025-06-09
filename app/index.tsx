@@ -30,16 +30,17 @@ const ChatPage = dynamic(() => import("../app/components/ChatPage"), {
 const Home = () => {
   // Add state for bot selection at the top level
   const [bot, setBot] = React.useState<Bot | null>(null);
+  const [loadingBot, setLoadingBot] = React.useState(true);
 
   // Restore bot from localStorage on mount
   React.useEffect(() => {
-    if (bot) return; // Don't overwrite if already set
     try {
       const saved = localStorage.getItem("chatbot-bot");
       if (saved) {
         setBot(JSON.parse(saved));
       }
     } catch (e) {}
+    setLoadingBot(false);
   }, []);
 
   // Save bot to localStorage whenever it changes
@@ -52,6 +53,7 @@ const Home = () => {
   }, [bot]);
 
   const handleBackToCharacterCreation = React.useCallback(() => setBot(null), []);
+  if (loadingBot) return null; // Prevent UI flash
   if (!bot) {
     return <BotCreator onBotCreated={setBot} />;
   }
