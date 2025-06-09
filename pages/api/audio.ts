@@ -63,11 +63,13 @@ export default async function handler(
     } else {
       // .txt missing or does not match, regenerate audio and update .txt
       try {
+        const voiceConfig = await getVoiceConfigForCharacter(botName);
+        logger.info(`[TTS] [AUDIO API] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
         await synthesizeSpeechToFile({
           text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`,
           filePath: audioFilePath,
           ssml: true,
-          voice: getVoiceConfigForCharacter(botName),
+          voice: await getVoiceConfigForCharacter(botName),
         });
         fs.writeFileSync(txtFilePath, expectedText, "utf8");
         normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -103,7 +105,7 @@ export default async function handler(
             text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`,
             filePath: audioFilePath,
             ssml: true,
-            voice: getVoiceConfigForCharacter(botName),
+            voice: await getVoiceConfigForCharacter(botName),
           });
           fs.writeFileSync(txtFilePath, expectedText, "utf8");
           normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -133,7 +135,7 @@ export default async function handler(
               text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${originalText} </prosody></speak>`,
               filePath: audioFilePath,
               ssml: true,
-              voice: getVoiceConfigForCharacter(botName),
+              voice: await getVoiceConfigForCharacter(botName),
             });
             triedRegenerate = true;
             normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -176,7 +178,7 @@ export default async function handler(
                   text: `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${gandalfReply} </prosody></speak>`,
                   filePath: audioFilePath,
                   ssml: true,
-                  voice: getVoiceConfigForCharacter(botName),
+                  voice: await getVoiceConfigForCharacter(botName),
                 });
                 normalizedAudioFilePath = checkFileExists(audioFilePath);
                 if (normalizedAudioFilePath) {
