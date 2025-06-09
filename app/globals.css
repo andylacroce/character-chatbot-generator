@@ -11,35 +11,35 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=EB+Garamond:wght@400;700&family=UnifrakturCook:wght@700&display=swap');
 
 :root {
-  /* Modern, vibrant, and accessible color palette - now slightly darker */
-  --color-background: #13131e; /* darker indigo/navy */
-  --color-text: #e6e6f0; /* slightly dimmed near-white */
-  --color-sender: #3db3c9; /* slightly deeper cyan */
-  --card-body-bg: #18182a; /* darker blue for cards */
-  --chatbox-background: #13131e;
-  --user-message-bg: #232346; /* deeper purple/blue for user bubbles */
-  --bot-message-bg: #e6e6f0; /* slightly dimmed bot bubbles */
-  --bot-sender: #5a5ad1;
-  --button-bg: #4343b8; /* deeper blue */
-  --button-hover-bg: #5a5ad1; /* slightly deeper blue */
-  --disabled-bg: #18182a; /* darker muted */
-  --disabled-text: #8a8aa9;
-  --send-button-bg: #4343b8;
-  --send-button-hover-bg: #5a5ad1;
-  --send-button-text: #fff;
-  --input-bg: #18182a;
-  --input-text: #e6e6f0;
-  --input-placeholder: #7a7a99;
-  --scrollbar-bg: #18182a;
-  --scrollbar-thumb: #4343b8;
-  --color-primary: #3db3c9; /* deeper cyan accent */
-  --button-shadow: #13131e;
-  --button-shadow-hover: #18182a;
+  /* Rustic, warm, and natural palette */
+  --color-background: #f6f1e7; /* warm parchment */
+  --color-text: #4b2e05; /* deep brown for strong contrast */
+  --color-sender: #a67c52; /* warm tan for sender */
+  --card-body-bg: #f3e3c3; /* light tan for cards and forms */
+  --chatbox-background: #f6f1e7;
+  --user-message-bg: #e7d3b0; /* pale ochre for user messages */
+  --bot-message-bg: #e9e0d1; /* light sand for bot messages */
+  --bot-sender: #a67c52; /* warm tan for bot sender */
+  --button-bg: #b6895b;
+  --button-hover-bg: #8c6239;
+  --disabled-bg: #e9e0d1; /* sand for disabled */
+  --disabled-text: #a67c52; /* muted tan for disabled text */
+  --send-button-bg: #b6895b;
+  --send-button-hover-bg: #8c6239;
+  --send-button-text: #fffbe7;
+  --input-bg: #f3e3c3;
+  --input-text: #4b2e05;
+  --input-placeholder: #a67c52;
+  --scrollbar-bg: #e9e0d1;
+  --scrollbar-thumb: #b6895b;
+  --color-primary: #b6895b;
+  --button-shadow: transparent;
+  --button-shadow-hover: transparent;
   --chat-message-font-size: 2.1rem;
 
-  /* Font variables for modern, legible look */
-  --font-primary: 'Inter', 'Roboto', Arial, Helvetica, sans-serif;
-  --font-secondary: 'EB Garamond', 'UnifrakturCook', serif;
+  /* Font variables for rustic, legible look */
+  --font-primary: 'EB Garamond', 'Georgia', serif;
+  --font-secondary: 'UnifrakturCook', serif;
 }
 
 /* --- CSS Reset and Base Styles --- */

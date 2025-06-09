@@ -131,11 +131,11 @@
   Styled for readability and accessibility.
 */
 .modalError {
-  background: var(--color-background, #18141a);
-  color: var(--color-text, #f3f0e7);
-  font-family: var(--font-primary), serif;
+  background: var(--card-body-bg);
+  color: var(--color-text);
+  font-family: var(--font-primary);
   border-radius: 16px;
-  box-shadow: 0 8px 32px #0008;
+  box-shadow: 0 4px 24px rgba(33, 150, 243, 0.08);
   padding: 2.5rem 2rem 2rem 2rem;
   min-width: 320px;
   max-width: 480px;
@@ -186,17 +186,16 @@
   Styled for prominence and accessibility.
 */
 .promptButton {
-  background: var(--button-bg, #6c47ff);
-  color: var(--button-text, #fff);
+  background: var(--button-bg);
+  color: var(--send-button-text);
+  font-family: var(--font-primary);
+  box-shadow: 0 2px 8px var(--button-shadow, #e3e3e3);
   border: none;
   border-radius: 8px;
   padding: 0.38em 1.1em;
   font-size: 1rem;
-  font-family: var(--font-primary), serif;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-  cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, box-shadow 0.2s;
   margin-left: 0.5rem;
   display: inline-flex;
   align-items: center;
@@ -204,7 +203,8 @@
 }
 
 .promptButton:hover {
-  background: #4b2fcf;
+  background: var(--button-hover-bg);
+  box-shadow: 0 4px 16px var(--button-shadow-hover, #bdbdbd);
 }
 
 /* --- Prompt Modal --- */
@@ -213,8 +213,9 @@
   Styled for modern appearance and usability.
 */
 .promptModal {
-  background: #fff;
-  color: #222;
+  background: var(--card-body-bg);
+  color: var(--color-text);
+  font-family: var(--font-primary);
   border-radius: 12px;
   padding: 2rem 2.5rem 1.5rem 2.5rem;
   min-width: 320px;

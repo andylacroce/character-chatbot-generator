@@ -56,7 +56,7 @@
   font-family: var(--font-primary);
   font-size: 2.1rem;
   font-weight: 800;
-  color: #fff;
+  color: var(--color-sender);
   letter-spacing: 0.01em;
   text-shadow: 0 2px 8px #000a, 0 1px 0 #222, 0 0 1px #000;
   margin-top: 10px;
@@ -83,15 +83,15 @@
 
 .downloadTranscriptLink {
   font-size: 1rem;
-  font-family: var(--font-primary), serif;
+  font-family: var(--font-primary);
   font-weight: 600;
   padding: 0.38em 0.9em;
   border-radius: 7px;
   background: var(--button-bg);
-  color: var(--button-text);
-  box-shadow: 0 2px 8px var(--button-shadow, #1a1022);
-  border: 1.5px solid var(--button-bg);
-  transition: background 0.2s, font-size 0.2s, padding 0.2s, box-shadow 0.2s;
+  color: var(--send-button-text);
+  box-shadow: 0 2px 8px var(--button-shadow, #e3e3e3);
+  border: none;
+  transition: background 0.2s, box-shadow 0.2s;
   cursor: pointer;
   margin-left: 0;
   display: inline-flex;
@@ -104,8 +104,7 @@
 
 .downloadTranscriptLink:hover {
   background: var(--button-hover-bg);
-  box-shadow: 0 4px 16px var(--button-shadow-hover, #3a2a4d);
-  border-color: var(--button-hover-bg);
+  box-shadow: 0 4px 16px var(--button-shadow-hover, #bdbdbd);
 }
 
 .toggleLabel {
