@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import { CHARACTER_VOICE_MAP } from "../../src/utils/characterVoices";
-import logger from "../../src/utils/logger";
+import logger, { generateRequestId } from "../../src/utils/logger";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -33,6 +33,8 @@ function getRandomStaticCharacter(exclude: string[] = []) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const requestId = req.headers["x-request-id"] || generateRequestId();
+
   // Aggressive anti-caching headers
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
   res.setHeader('Pragma', 'no-cache');
@@ -41,8 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('ETag', Math.random().toString(36).slice(2)); // Random ETag to defeat cache
 
   if (req.method !== "GET") {
-    logger.info(`[RandomCharacter API] 405 Method Not Allowed for ${req.method}`);
-    res.status(405).json({ error: "Method not allowed" });
+    logger.info(`[RandomCharacter API] 405 Method Not Allowed for ${req.method} | requestId=${requestId}`);
+    res.status(405).json({ error: "Method not allowed", requestId });
     return;
   }
 
@@ -54,42 +56,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     exclude = req.query.exclude.flatMap(s => s.split(",").map(x => x.trim()));
   }
 
-  // 50% chance to use OpenAI, 50% static
-  const useOpenAI = Math.random() < 0.5;
-  if (!useOpenAI) {
-    const staticName = getRandomStaticCharacter(exclude);
-    logger.info(`[RandomCharacter API] 200 OK: [STATIC] ${staticName}`);
-    await logRandomCharacter(`[STATIC] ${staticName}`);
-    res.status(200).json({ name: staticName });
-    return;
-  }
-
   try {
     // Exclude Sherlock Holmes and last 5 static names from OpenAI
     const staticList = getStaticCharacterList();
     const lastFew = staticList.slice(-5);
     const exclusions = ["Sherlock Holmes", ...lastFew, ...exclude];
     const exclusionStr = exclusions.map(n => `"${n}"`).join(", ");
-    const prompt = `Suggest the name of a real, well-known character from history, literature, film, TV, comics, or pop culture. Reply ONLY with the character's name, no description or extra text. Do NOT pick any of the following: ${exclusionStr}. Pick a different character each time.`;
+    const prompt = `Suggest the name of a real, well-known character from history, literature, film, TV, comics, or pop culture. Reply ONLY with the character's name, no description or extra text. Do NOT pick any of the following: ${exclusionStr}. Pick a different character each time. Avoid repeating any character you've suggested recently. Be creative and vary the genres, time periods, and backgrounds. Prioritize diversity and randomness.`;
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: "You are a helpful assistant. Always pick a different character each time, and avoid repeating the last few you suggested." },
+        { role: "system", content: "You are a helpful assistant. Always pick a different, random, and diverse character each time. Avoid repeating any character you've suggested recently. Vary genres, time periods, and backgrounds. Prioritize creativity, diversity, and randomness in your choices." },
         { role: "user", content: prompt },
       ],
       max_tokens: 32,
-      temperature: 1.5,
+      temperature: 1.7,
     });
     const name = completion.choices[0]?.message?.content?.trim().replace(/^"|"$/g, "");
-    if (!name) throw new Error("No character name returned");
-    logger.info(`[RandomCharacter API] 200 OK: [OPENAI] ${name}`);
+    // Validate the name: must be 2+ chars, not just numbers, not contain forbidden chars, not look like junk
+    const isValidName = (n: string | undefined) => {
+      if (!n) return false;
+      if (n.length < 2) return false;
+      if (/[^\w\s\-'.]/.test(n)) return false; // no weird symbols
+      if (/\d{3,}/.test(n)) return false; // not just numbers
+      if (/^(?:[aA-zZ]{1,2})$/.test(n)) return false; // not just a single letter or two
+      if (/^(unknown|n[\\/]?a|none|null|character|random|test)$/i.test(n.trim())) return false;
+      return true;
+    };
+    if (!isValidName(name)) throw new Error("Invalid or junk character name returned");
+    logger.info(`[RandomCharacter API] 200 OK: [OPENAI] ${name} | requestId=${requestId}`);
     await logRandomCharacter(`[OPENAI] ${name}`);
-    res.status(200).json({ name });
+    res.status(200).json({ name, requestId });
   } catch (e: any) {
     const fallback = getRandomStaticCharacter(exclude);
-    logger.error(`[RandomCharacter API] OpenAI error: ${e?.message || e}`);
-    logger.info(`[RandomCharacter API] 500 Fallback: [FALLBACK] ${fallback}`);
+    logger.error(`[RandomCharacter API] OpenAI error | requestId=${requestId}: ${e?.message || e}`);
+    logger.info(`[RandomCharacter API] 500 Fallback: [FALLBACK] ${fallback} | requestId=${requestId}`);
     await logRandomCharacter(`[FALLBACK] ${fallback}`);
-    res.status(500).json({ error: e.message || "Failed to get random character", name: fallback });
+    res.status(500).json({ error: e.message || "Failed to get random character", name: fallback, requestId });
   }
 }

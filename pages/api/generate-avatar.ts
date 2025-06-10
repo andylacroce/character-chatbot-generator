@@ -13,7 +13,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Compose the DALL-E prompt using only the name
     let likenessRef = `True to their appearance in reference images of ${name}.`;
     let styleInstruction = `If ${name} is a cartoon, animated, or illustrated character, use a matching art style. Otherwise, use a photorealistic style.`;
-    let imagePrompt = `Portrait of ${name}. ${likenessRef} ${styleInstruction} Expressive, detailed, and true to their personality.`;
+    let singleInstruction = `Only show a single, centered portrait of ${name}. Do not include multiple figures, duplicates, or more than one version of the character in the same image. No split frames, no collage, no group shots.`;
+    let imagePrompt = `Portrait of ${name}. ${likenessRef} ${styleInstruction} ${singleInstruction} Expressive, detailed, and true to their personality.`;
 
     // Truncate to 1000 chars for DALL-E
     if (imagePrompt.length > 1000) imagePrompt = imagePrompt.slice(0, 997) + '...';

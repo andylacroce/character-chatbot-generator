@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
 import fs from "fs";
-import logger from "../../src/utils/logger";
+import logger, { generateRequestId } from "../../src/utils/logger";
 
 /**
  * Next.js API route handler for health checks.
@@ -15,6 +15,8 @@ export default async function handler(
   req: import("next").NextApiRequest,
   res: import("next").NextApiResponse,
 ) {
+  const requestId = req.headers["x-request-id"] || generateRequestId();
+
   let openaiStatus = "ok";
   let openaiError = null;
   try {
@@ -35,9 +37,9 @@ export default async function handler(
     openaiStatus = "error";
     openaiError = err.message || String(err);
     if (process.env.NODE_ENV !== "production") {
-      logger.error("[HealthCheck] OpenAI error:", err);
+      logger.error(`[HealthCheck] OpenAI error | requestId=${requestId}:`, err);
     }
-    logger.info(`[HealthCheck] 500 OpenAI error: ${openaiError}`);
+    logger.info(`[HealthCheck] 500 OpenAI error: ${openaiError} | requestId=${requestId}`);
   }
 
   let ttsStatus = "ok";
@@ -69,27 +71,27 @@ export default async function handler(
     ttsStatus = "error";
     ttsError = err.message || String(err);
     if (process.env.NODE_ENV !== "production") {
-      logger.error("[HealthCheck] Google TTS error:", err);
+      logger.error(`[HealthCheck] Google TTS error | requestId=${requestId}:`, err);
     }
-    logger.info(`[HealthCheck] 500 Google TTS error: ${ttsError}`);
+    logger.info(`[HealthCheck] 500 Google TTS error: ${ttsError} | requestId=${requestId}`);
   }
 
   if (openaiStatus === "ok" && ttsStatus === "ok") {
-    // Only log once to avoid duplicate health logs
-    logger.info(`[HealthCheck] 200 OK: All services healthy`);
-    return res.status(200).json({ status: "ok" });
+    logger.info(`[HealthCheck] 200 OK: All services healthy | requestId=${requestId}`);
+    return res.status(200).json({ status: "ok", requestId });
   }
   if (process.env.NODE_ENV !== "production")
-    logger.error("[HealthCheck] Service error", {
+    logger.error(`[HealthCheck] Service error | requestId=${requestId}`, {
       openaiStatus,
       openaiError,
       ttsStatus,
       ttsError,
     });
-  logger.info(`[HealthCheck] 500 Service error: openaiStatus=${openaiStatus}, ttsStatus=${ttsStatus}`);
+  logger.info(`[HealthCheck] 500 Service error: openaiStatus=${openaiStatus}, ttsStatus=${ttsStatus} | requestId=${requestId}`);
   return res.status(500).json({
     status: "error",
     openai: { status: openaiStatus, error: openaiError },
     tts: { status: ttsStatus, error: ttsError },
+    requestId
   });
 }

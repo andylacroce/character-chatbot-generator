@@ -1,4 +1,5 @@
 import winston from "winston";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Winston logger instance for application-wide logging.
@@ -19,5 +20,13 @@ const logger = winston.createLogger({
   ),
   transports: [new winston.transports.Console()],
 });
+
+/**
+ * Generates a unique request ID for tracing logs across services.
+ * @returns {string}
+ */
+export function generateRequestId() {
+  return uuidv4();
+}
 
 export default logger;

@@ -5,7 +5,7 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import ipinfo from "ipinfo";
-import logger from "../../src/utils/logger";
+import logger, { generateRequestId } from "../../src/utils/logger";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { setReplyCache, getReplyCache } from "../../src/utils/cache";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
@@ -106,19 +106,19 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
+  const requestId = req.headers["x-request-id"] || generateRequestId();
   if (req.method !== "POST") {
-    logger.info(`[Chat API] 405 Method Not Allowed for ${req.method}`);
+    logger.info(`[Chat API] 405 Method Not Allowed for ${req.method} | requestId=${requestId}`);
     res.setHeader("Allow", ["POST"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-
   try {
     const userMessage = req.body.message;
     const personality = req.body.personality || `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`;
     const botName = req.body.botName || "Character";
     if (!userMessage) {
-      logger.info(`[Chat API] 400 Bad Request: Message is required`);
-      return res.status(400).json({ error: "Message is required" });
+      logger.info(`[Chat API] 400 Bad Request: Message is required | requestId=${requestId}`);
+      return res.status(400).json({ error: "Message is required", requestId });
     }
 
     // Get user IP for logging/location
@@ -157,7 +157,7 @@ export default async function handler(
     });
     const cachedReply = getReplyCache(cacheKey);
     if (cachedReply) {
-      logger.info(`[Chat API] Cache hit for key: ${cacheKey}`);
+      logger.info(`[Chat API] Cache hit for key: ${cacheKey} | requestId=${requestId}`);
       // Prepare TTS/audio as usual for the cached reply
       // Robust Studio voice detection
       let voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
@@ -223,6 +223,7 @@ export default async function handler(
         reply: cachedReply,
         audioFileUrl,
         cached: true,
+        requestId
       });
     }
 
@@ -241,20 +242,16 @@ export default async function handler(
       timeout,
     ]);
     if (result && typeof result === "object" && "timeout" in result) {
-      logger.info(`[Chat API] 408 Request Timeout`);
-      return res.status(408).json({ reply: "Request timed out." });
+      logger.info(`[Chat API] 408 Request Timeout | requestId=${requestId}`);
+      return res.status(408).json({ reply: "Request timed out.", requestId });
     }
     if (!isOpenAIResponse(result)) {
-      logger.info(
-        `[Chat API] 500 Internal Server Error: Invalid OpenAI response`,
-      );
+      logger.info(`[Chat API] 500 Internal Server Error: Invalid OpenAI response | requestId=${requestId}`);
       throw new Error("Invalid response from OpenAI");
     }
     const botReply = result.choices[0]?.message?.content?.trim() ?? "";
     if (!botReply || botReply.trim() === "") {
-      logger.info(
-        `[Chat API] 500 Internal Server Error: Empty bot response`,
-      );
+      logger.info(`[Chat API] 500 Internal Server Error: Empty bot response | requestId=${requestId}`);
       throw new Error("Generated bot response is empty.");
     }
     conversationHistory.push(`Bot: ${botReply}`);
@@ -329,23 +326,25 @@ export default async function handler(
     // After getting botReply from OpenAI, add to cache:
     setReplyCache(cacheKey, botReply);
     logger.info(
-      `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}`,
+      `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`,
     );
-    logger.info(`[Chat API] 200 OK: Reply and audioFileUrl sent`);
+    logger.info(`[Chat API] 200 OK: Reply and audioFileUrl sent | requestId=${requestId}`);
     // Return audioFileUrl with text param for stateless regeneration
     const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}`;
     res.status(200).json({
       reply: botReply,
       audioFileUrl,
+      requestId
     });
   } catch (error) {
-    logger.error("API error:", error);
+    logger.error(`API error | requestId=${requestId}:`, error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    logger.info(`[Chat API] 500 Internal Server Error`);
+    logger.info(`[Chat API] 500 Internal Server Error | requestId=${requestId}`);
     res.status(500).json({
       reply: "Error fetching response from bot.",
       error: errorMessage,
+      requestId
     });
   }
 }

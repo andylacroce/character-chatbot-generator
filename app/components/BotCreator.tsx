@@ -200,36 +200,62 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   };
 
   // Enhanced random character button logic using OpenAI
-  async function getRandomCharacterName(): Promise<string> {
+  // Returns { name, source: 'openai' | 'static' | 'fallback' }
+  async function getRandomCharacterName(): Promise<{ name: string; source: string }> {
     try {
       const res = await fetch("/api/random-character");
-      if (!res.ok) throw new Error("Failed to fetch random character");
       const data = await res.json();
-      if (data && typeof data.name === "string" && data.name.trim()) {
-        return data.name.trim();
+      if (res.ok && data && typeof data.name === "string" && data.name.trim()) {
+        // If requestId is present, and no error, it's openai or static
+        if (data.requestId && !data.error) {
+          // Heuristic: if name starts with [STATIC], it's static, else openai
+          if (data.name.startsWith('[STATIC]')) {
+            return { name: data.name.replace(/^\[STATIC\]\s*/, ''), source: 'static' };
+          } else {
+            return { name: data.name, source: 'openai' };
+          }
+        }
+        // If error present, fallback
+        if (data.error) {
+          return { name: data.name, source: 'fallback' };
+        }
+        // Default to openai
+        return { name: data.name, source: 'openai' };
       }
       throw new Error("No character name returned");
     } catch (e) {
       // fallback to static known character
       const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default");
-      return names[Math.floor(Math.random() * names.length)] || "Yoda";
+      return { name: names[Math.floor(Math.random() * names.length)] || "Yoda", source: 'fallback' };
     }
   }
 
-  async function getRandomCharacterNameAvoidRepeat(lastName: string, maxTries = 3): Promise<string> {
+  async function getRandomCharacterNameAvoidRepeat(lastName: string, maxTries = 3): Promise<{ name: string; source: string }> {
     let tries = 0;
     let name = lastName;
+    let source = 'fallback';
     while (tries < maxTries) {
       try {
         // Add cache-busting query param
         const res = await fetch(`/api/random-character?cb=${Date.now()}-${Math.random()}`);
         const data = await res.json();
-        if (data && typeof data.name === "string" && data.name.trim() && data.name.trim() !== lastName) {
-          return data.name.trim();
+        if (res.ok && data && typeof data.name === "string" && data.name.trim() && data.name.trim() !== lastName) {
+          if (data.requestId && !data.error) {
+            if (data.name.startsWith('[STATIC]')) {
+              return { name: data.name.replace(/^\[STATIC\]\s*/, ''), source: 'static' };
+            } else {
+              return { name: data.name, source: 'openai' };
+            }
+          }
+          if (data.error) {
+            return { name: data.name, source: 'fallback' };
+          }
+          return { name: data.name, source: 'openai' };
         }
         // If fallback, still check for repeat
         if (data && typeof data.name === "string" && data.name.trim()) {
           name = data.name.trim();
+          source = data.error ? 'fallback' : 'openai';
         }
       } catch (e) {
         // fallback to static known character
@@ -239,23 +265,28 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
         } else {
           name = "Yoda";
         }
-        if (name !== lastName) return name;
+        source = 'fallback';
+        if (name !== lastName) return { name, source };
       }
       tries++;
     }
     // If all tries fail, return whatever we got (even if repeated)
-    return name;
+    return { name, source };
   }
+
+  const [randomSource, setRandomSource] = useState<string | null>(null);
 
   const handleRandomCharacter = async () => {
     setRandomizing(true);
     setError("");
     try {
-      const randomName = await getRandomCharacterNameAvoidRepeat(lastRandomNameRef.current);
-      setInput(randomName);
-      lastRandomNameRef.current = randomName;
+      const { name, source } = await getRandomCharacterNameAvoidRepeat(lastRandomNameRef.current);
+      setInput(name);
+      setRandomSource(source);
+      lastRandomNameRef.current = name;
     } catch (e) {
       setError("Failed to get random character");
+      setRandomSource(null);
     } finally {
       setRandomizing(false);
     }
