@@ -154,9 +154,11 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
+  const [randomizing, setRandomizing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { darkMode, setDarkMode } = useContext(DarkModeContext);
   const cancelRequested = useRef(false);
+  const lastRandomNameRef = useRef<string>("");
 
   useEffect(() => {
     if (inputRef.current) {
@@ -196,20 +198,70 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
     setProgress(null);
   };
 
-  // Add random character button logic
-  function getRandomKnownCharacterName() {
-    const names = Object.keys(CHARACTER_VOICE_MAP).filter(
-      n => n !== "Default"
-    );
-    return names[Math.floor(Math.random() * names.length)] || "Yoda";
+  // Enhanced random character button logic using OpenAI
+  async function getRandomCharacterName(): Promise<string> {
+    try {
+      const res = await fetch("/api/random-character");
+      if (!res.ok) throw new Error("Failed to fetch random character");
+      const data = await res.json();
+      if (data && typeof data.name === "string" && data.name.trim()) {
+        return data.name.trim();
+      }
+      throw new Error("No character name returned");
+    } catch (e) {
+      // fallback to static known character
+      const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default");
+      return names[Math.floor(Math.random() * names.length)] || "Yoda";
+    }
   }
 
-  const handleRandomCharacter = () => {
-    const randomName = getRandomKnownCharacterName();
-    setInput(randomName);
+  async function getRandomCharacterNameAvoidRepeat(lastName: string, maxTries = 3): Promise<string> {
+    let tries = 0;
+    let name = lastName;
+    while (tries < maxTries) {
+      try {
+        // Add cache-busting query param
+        const res = await fetch(`/api/random-character?cb=${Date.now()}-${Math.random()}`);
+        const data = await res.json();
+        if (data && typeof data.name === "string" && data.name.trim() && data.name.trim() !== lastName) {
+          return data.name.trim();
+        }
+        // If fallback, still check for repeat
+        if (data && typeof data.name === "string" && data.name.trim()) {
+          name = data.name.trim();
+        }
+      } catch (e) {
+        // fallback to static known character
+        const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default" && n !== lastName);
+        if (names.length > 0) {
+          name = names[Math.floor(Math.random() * names.length)];
+        } else {
+          name = "Yoda";
+        }
+        if (name !== lastName) return name;
+      }
+      tries++;
+    }
+    // If all tries fail, return whatever we got (even if repeated)
+    return name;
+  }
+
+  const handleRandomCharacter = async () => {
+    setRandomizing(true);
+    setError("");
+    try {
+      const randomName = await getRandomCharacterNameAvoidRepeat(lastRandomNameRef.current);
+      setInput(randomName);
+      lastRandomNameRef.current = randomName;
+    } catch (e) {
+      setError("Failed to get random character");
+    } finally {
+      setRandomizing(false);
+    }
   };
 
   const currentStep = progressSteps.find((s) => s.key === progress);
+  const isBusy = loading || randomizing;
 
   return (
     <form
@@ -232,11 +284,11 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           ref={inputRef}
         />
       </div>
-      <div className={styles.buttonRow + (loading ? ' ' + styles.hideMobile : '')}>
+      <div className={styles.buttonRow + (isBusy ? ' ' + styles.hideMobile : '')}>
         <button
           type="submit"
           className={styles.createButton}
-          disabled={loading}
+          disabled={isBusy}
           data-testid="bot-creator-button"
           aria-label="Create character"
         >
@@ -249,8 +301,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
         <button
           type="button"
           className={styles.randomButton}
-          disabled={loading}
-          aria-label="Choose a random known character"
+          disabled={isBusy}
+          aria-label="Choose a random real character"
           onClick={handleRandomCharacter}
         >
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style={{display:'block'}}>
@@ -264,7 +316,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           <span style={{display:'none'}}>🎲</span>
         </button>
       </div>
-      {!loading && (
+      {!(loading || randomizing) && (
         <div className={styles.instructionsCentered}>
           <div>
             Create any character you can imagine: real, fictional, or brand new!
@@ -275,6 +327,13 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           <div className={styles.instructionsTip}>
             Tip: Try names from history, pop culture, or invent your own.
           </div>
+        </div>
+      )}
+      {randomizing && (
+        <div className={styles.progressContainer} data-testid="bot-creator-progress">
+          <span className={styles.genericSpinner} aria-label="Loading" />
+          <div className={styles.progressText}>Picking a real character…</div>
+          <div className={styles.progressDescription}>Asking ChatGPT for a famous or iconic character from history, literature, or pop culture.</div>
         </div>
       )}
       {loading && currentStep && (
