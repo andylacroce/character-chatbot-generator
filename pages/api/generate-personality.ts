@@ -12,9 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // 1. Ask for a richly detailed, factual summary of the character for personality
-    const summaryPrompt = `First, please check if the user-provided name \\"${originalName}\\" seems to be a misspelling of a well-known fictional or historical character. If it is, use the corrected name. If the name seems correct or is ambiguous, use the provided name as is.
-IMPORTANT: Start your response with "USING_NAME: [Name You Are Using]" followed by a newline, then proceed with the character description.
-Then, describe in vivid, specific detail who this character (the original or corrected version) is for the purpose of roleplaying them in conversation. Include their background, appearance, personality traits, emotional range, mannerisms, speech style, worldview, and iconic behaviors or beliefs. Explain how they interact with others and react in different situations. Be as descriptive, immersive, and accurate as possible. If you don't know the character, after the "USING_NAME:" line, say so clearly.`;
+    const summaryPrompt = `First, check if the name \\"${originalName}\\" is a misspelling of a well-known fictional or historical character. If so, use the corrected name. Start your response with \\"USING_NAME: [Name You Are Using]\\" then describe, in vivid, specific detail, who this character is for roleplaying: background, appearance, personality traits, emotional range, mannerisms, speech style, worldview, and iconic behaviors. Explain how they interact and react in different situations. Be immersive, natural, and accurate. If you don't know the character, after the USING_NAME line, say so clearly.`;
     logger.info(`[PERSONALITY] Generating summary for '${originalName}' with prompt: ${summaryPrompt}`);
     const summaryCompletion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -53,7 +51,7 @@ Then, describe in vivid, specific detail who this character (the original or cor
       logger.info(`[PERSONALITY] Summary for '${usedName}' was generic or empty. Falling back to system prompt generation.`);
       // Fallback: ask GPT to make up a prompt.
       // We'll use the 'usedName' from the first attempt for consistency in the fallback.
-      const fallbackSystemPrompt = `You are an expert prompt engineer. Write a short, vivid, in-character prompt for ChatGPT to roleplay as ${usedName}. Capture their worldview, emotional range, conversational style, quirks, and mannerisms. Make it immersive and specific, so the chatbot can improvise and react naturally in any situation. Do not include any lead-in like "USING_NAME:".`;
+      const fallbackSystemPrompt = `You are ${usedName}. Respond as this character would: use their worldview, emotional range, quirks, and conversational style. Stay in character, be vivid and natural, and improvise as needed. Do not include any lead-in like \\"USING_NAME:\\".`;
       logger.info(`[PERSONALITY] Generating fallback system prompt for '${usedName}' with prompt: ${fallbackSystemPrompt}`);
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -68,26 +66,8 @@ Then, describe in vivid, specific detail who this character (the original or cor
     }
     logger.info(`[PERSONALITY] Final personality for '${usedName}': ${personality}`);
 
-    // --- Attribute Extraction ---
-    // Try to extract main attributes from the summary text
-    function extractAttribute(regex: RegExp, text: string) {
-      const match = text.match(regex);
-      return match ? match[1].trim() : null;
-    }
-    const race = extractAttribute(/\b(?:race|ethnicity|heritage|background):? ([^.\n]+)/i, summaryText);
-    const gender = extractAttribute(/\b(?:gender|sex):? ([^.\n]+)/i, summaryText) ||
-      (/\bhe\b|\bhim\b|\bhis\b/i.test(summaryText) ? "male" :
-      (/\bshe\b|\bher\b/i.test(summaryText) ? "female" : null));
-    const age = extractAttribute(/\b(?:age|years old):? ([^.\n]+)/i, summaryText);
-    const eyeColor = extractAttribute(/\b(?:eye color|eyes):? ([^.\n]+)/i, summaryText);
-    const hairColor = extractAttribute(/\b(?:hair color|hair):? ([^.\n]+)/i, summaryText);
-    // Extract the 'Appearance' section if present
-    let appearance = null;
-    const appearanceMatch = summaryText.match(/\*\*Appearance:?\*\*[\n\r]+([^*]+)/i);
-    if (appearanceMatch) appearance = appearanceMatch[1].replace(/\n/g, ' ').trim();
-
-    // Remove race and gender extraction and return only personality and correctedName
-    res.status(200).json({ personality, correctedName: usedName, race, gender, age, eyeColor, hairColor, appearance });
+    // Only return personality and correctedName (attributes removed)
+    res.status(200).json({ personality, correctedName: usedName });
   } catch (e) {
     logger.error(`[PERSONALITY] Error generating personality for '${originalName}':`, e);
     // In case of error, return the original name as correctedName to avoid breaking client

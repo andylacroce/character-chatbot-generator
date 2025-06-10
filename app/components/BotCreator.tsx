@@ -31,12 +31,6 @@ async function generateBotData(name: string): Promise<Bot> {
       const data = await personalityRes.json();
       if (data.personality) personality = data.personality;
       if (data.correctedName) correctedName = data.correctedName; // Capture the corrected name
-      var race = data.race;
-      var gender = data.gender;
-      var age = data.age;
-      var eyeColor = data.eyeColor;
-      var hairColor = data.hairColor;
-      var appearance = data.appearance;
     }
   } catch (e) { /* fallback to default */ }
 
@@ -47,7 +41,7 @@ async function generateBotData(name: string): Promise<Bot> {
     const avatarRes = await fetch("/api/generate-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: correctedName, race, gender, age, eyeColor, hairColor, appearance }), // Send all attributes including appearance
+      body: JSON.stringify({ name: correctedName }), // Only send name
     });
     if (avatarRes.ok) {
       const data = await avatarRes.json();
@@ -89,7 +83,6 @@ const progressSteps = [
 async function generateBotDataWithProgress(originalInputName: string, onProgress: (step: string) => void): Promise<Bot> {
   let personality = `You are ${originalInputName}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user\'s input. Never break character or refer to yourself as an AI or chatbot.`;
   let correctedName = originalInputName; // Initialize with original input
-  let race, gender, age, eyeColor, hairColor, appearance;
   onProgress("personality");
   try {
     const personalityRes = await fetch("/api/generate-personality", {
@@ -138,7 +131,7 @@ async function generateBotDataWithProgress(originalInputName: string, onProgress
     const avatarRes = await fetch("/api/generate-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: correctedName, race, gender, age, eyeColor, hairColor, appearance }),
+      body: JSON.stringify({ name: correctedName }), // Only send name
     });
     if (avatarRes.ok) {
       const data = await avatarRes.json();

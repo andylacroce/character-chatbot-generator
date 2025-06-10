@@ -235,7 +235,7 @@ async function fetchVoiceDescriptionFromOpenAI(name: string): Promise<string> {
   // Use OpenAI to describe the character's likely voice
   const OpenAI = (await import('openai')).default;
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-  const prompt = `Describe in vivid, specific detail the likely speaking voice of ${name}, including accent, gender, tone, pitch, speed, age, and any unique vocal traits or mannerisms. Be as descriptive and accurate as possible. Example: 'British male, deep, slow, wise, gravelly, middle-aged'. If you don't know, say so.`;
+  const prompt = `Describe the speaking voice of ${name} in 1-2 sentences, including accent, tone, pitch, speed, age, and any unique vocal traits.`;
   const completion = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [

@@ -6,28 +6,14 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
-  const { name, race, gender, age, eyeColor, hairColor, appearance } = req.body;
+  const { name } = req.body;
   if (!name) return res.status(400).json({ error: "Name required" });
   try {
-    // Log all received attributes for debugging
-    logger.info(`[AVATAR] Attributes received: race=${race}, gender=${gender}, age=${age}, eyeColor=${eyeColor}, hairColor=${hairColor}, appearance=${appearance}`);
-
-    // Compose the DALL-E prompt with all main attributes and appearance before the description
-    let attributeParts = [];
-    if (race) attributeParts.push(`race: ${race}`);
-    if (gender) attributeParts.push(`gender: ${gender}`);
-    if (age) attributeParts.push(`age: ${age}`);
-    if (eyeColor) attributeParts.push(`eye color: ${eyeColor}`);
-    if (hairColor) attributeParts.push(`hair color: ${hairColor}`);
-    let attributeString = attributeParts.length > 0 ? attributeParts.join(", ") + ". " : "";
-    let appearanceString = appearance ? `Appearance: ${appearance}. ` : "";
-    logger.info(`[AVATAR] Received request to generate avatar for: ${name}`);
-    let imagePrompt =
-      `A single, focused, high-quality, highly accurate depiction of ${name}. ` +
-      appearanceString +
-      attributeString +
-      `If ${name} is primarily known as a cartoon, animated, or illustrated character, the style MUST be a matching art style (e.g., cartoon, 2D animation, 3D animation, comic book art, illustration). ` +
-      `Otherwise, for any character that is not explicitly cartoonish/animated (including real people, famous individuals, or other fictional characters), the portrait MUST be photorealistic, resembling a high-resolution photograph with realistic lighting, textures, and details. If ${name} is a real or famous person, ensure the likeness is as close as possible to well-known photographs or official depictions (do a lot of research, using many reference images!). `;
+    logger.info(`[AVATAR] Generating avatar for: ${name}`);
+    // Compose the DALL-E prompt using only the name
+    let likenessRef = `True to their appearance in reference images of ${name}.`;
+    let styleInstruction = `If ${name} is a cartoon, animated, or illustrated character, use a matching art style. Otherwise, use a photorealistic style.`;
+    let imagePrompt = `Portrait of ${name}. ${likenessRef} ${styleInstruction} Expressive, detailed, and true to their personality.`;
 
     // Truncate to 1000 chars for DALL-E
     if (imagePrompt.length > 1000) imagePrompt = imagePrompt.slice(0, 997) + '...';
