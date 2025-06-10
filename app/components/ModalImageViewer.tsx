@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 import styles from "./styles/ChatPage.module.css";
 
 interface ModalImageViewerProps {
@@ -25,9 +26,11 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt
         >
           ×
         </button>
-        <img
+        <Image
           src={imageUrl}
           alt={alt}
+          width={800}
+          height={600}
           style={{
             maxWidth: '90vw',
             maxHeight: '70vh',
