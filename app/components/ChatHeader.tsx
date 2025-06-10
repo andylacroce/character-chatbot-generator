@@ -127,4 +127,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
   );
 });
 
+ChatHeader.displayName = "ChatHeader";
+
 export default ChatHeader;
