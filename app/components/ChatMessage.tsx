@@ -20,6 +20,12 @@ export interface Message {
   audioFileUrl?: string;
 }
 
+interface ChatMessageProps {
+  message: Message;
+  bot: Bot;
+  skeleton?: boolean;
+}
+
 /**
  * ChatMessage component that displays a single message in the chat interface.
  * This component handles the styling and formatting of messages based on the sender.
@@ -28,16 +34,13 @@ export interface Message {
  * @param {Object} props - The component props
  * @param {Message} props.message - The message object containing text and sender information
  * @param {Bot} props.bot - The bot object containing name and avatarUrl for assistant messages
+ * @param {boolean} [props.skeleton=false] - Optional flag to render a skeleton UI for loading state
  * @returns {JSX.Element|null} The rendered chat message or null if message is invalid
  */
 const ChatMessage = React.memo(
-  ({ message, bot }: { message: Message; bot: Bot }) => {
+  ({ message, bot, skeleton }: ChatMessageProps) => {
     // Validate message object to prevent rendering errors
-    if (
-      !message ||
-      typeof message.text !== "string" ||
-      typeof message.sender !== "string"
-    ) {
+    if (!skeleton && (!message || typeof message.text !== "string" || typeof message.sender !== "string")) {
       console.error("Invalid message object:", message);
       return null; // Render nothing if the message is invalid
     }
@@ -48,6 +51,22 @@ const ChatMessage = React.memo(
     const senderClass = isUser
       ? styles.sender
       : `${styles.sender} ${styles.botSender}`;
+
+    if (skeleton) {
+      return (
+        <div className={`${styles.message} ${messageClass} my-2 ${styles.skeletonMessage}`} role="article" aria-label="Loading message">
+          <div className="rounded p-2 text-sm" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            {!isUser && (
+              <div className={styles.skeletonAvatar} />
+            )}
+            <div style={{ flex: 1 }}>
+              <div className={`${senderClass} ${styles.skeletonSender} mb-1 text-left`} style={{ fontSize: '1.4rem' }} />
+              <div className={`${styles.skeletonText} text-left`} style={{ fontSize: 'var(--chat-message-font-size)' }} />
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div

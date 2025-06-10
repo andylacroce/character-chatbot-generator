@@ -27,7 +27,11 @@ import ChatHeader from "./ChatHeader";
 import { Message } from "../../src/types/message";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 import { useApiError } from "./useApiError";
-import BotCreator, { Bot } from "./BotCreator";
+import dynamic from "next/dynamic";
+import { Bot } from "./BotCreator";
+
+// Dynamically import BotCreator for code splitting
+const BotCreator = dynamic(() => import("./BotCreator"), { ssr: false });
 
 // Constants for infinite scroll functionality
 const INITIAL_VISIBLE_COUNT = 20;
@@ -273,10 +277,12 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         style={{ paddingTop: 20 }}
         role="log"
         aria-live="polite"
-        aria-relevant="additions text"      >
+        aria-relevant="additions text"
+      >
         <ChatMessagesList
           messages={messages.slice(-visibleCount)}
           bot={bot}
+          showSkeletons={loading}
         />
       </div>
       {loading && (

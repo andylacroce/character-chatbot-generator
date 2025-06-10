@@ -2,9 +2,12 @@ import React, { useContext, useState } from "react";
 import { DarkModeContext } from "./DarkModeContext";
 import styles from "./styles/ChatHeader.module.css";
 import Image from "next/image";
-import ModalImageViewer from "./ModalImageViewer";
+import dynamic from "next/dynamic";
 import HamburgerMenu from "./HamburgerMenu";
 import { FaArrowLeft, FaRegFileAlt, FaRegLightbulb, FaMoon, FaSun } from "react-icons/fa";
+
+// Dynamically import ModalImageViewer for code splitting
+const ModalImageViewer = dynamic(() => import("./ModalImageViewer"), { ssr: false });
 
 interface ChatHeaderProps {
   onDownloadTranscript: () => void;
@@ -18,7 +21,7 @@ interface ChatHeaderProps {
   };
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPrompt, onHeaderLinkClick, onBackToCharacterCreation, bot }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript, onShowPrompt, onHeaderLinkClick, onBackToCharacterCreation, bot }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const { darkMode, setDarkMode } = useContext(DarkModeContext);
   if (!bot) return null;
@@ -122,6 +125,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ onDownloadTranscript, onShowPro
       />
     </div>
   );
-};
+});
 
 export default ChatHeader;

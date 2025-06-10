@@ -8,7 +8,7 @@
 
 import React from "react";
 import dynamic from "next/dynamic";
-import BotCreator, { Bot } from "./components/BotCreator";
+import { Bot } from "./components/BotCreator";
 
 /**
  * Dynamically import the ChatPage component with server-side rendering enabled.
@@ -19,6 +19,11 @@ import BotCreator, { Bot } from "./components/BotCreator";
 const ChatPage = dynamic(() => import("../app/components/ChatPage"), {
   ssr: true,
 });
+
+/**
+ * Dynamically import BotCreator for code splitting
+ */
+const BotCreator = dynamic(() => import("./components/BotCreator"), { ssr: false });
 
 /**
  * Home component that serves as the main entry point of the application.
