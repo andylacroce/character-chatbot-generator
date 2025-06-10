@@ -38,7 +38,7 @@
     "@types/express": "^5.0.3",
     "@types/jest": "^29.5.14",
     "@types/lru-cache": "^7.10.9",
-    "@types/node": "^22.15.30",
+    "@types/node": "^24.0.0",
     "@types/react": "^19.1.7",
     "@types/react-dom": "^19.1.6",
     "@types/react-window": "^1.8.8",
