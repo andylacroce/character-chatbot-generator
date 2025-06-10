@@ -111,9 +111,8 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
 
   // Helper for retry with exponential backoff
   async function retryWithBackoff(fn: () => Promise<any>, maxRetries = 2, initialDelay = 800) {
-    let attempt = 0;
     let delay = initialDelay;
-    while (attempt <= maxRetries) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await fn();
       } catch (err) {
@@ -121,7 +120,6 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         setRetrying(true);
         await new Promise((res) => setTimeout(res, delay));
         delay *= 2;
-        attempt++;
       }
     }
   }
