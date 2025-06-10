@@ -39,7 +39,7 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt
             display: 'block',
             borderRadius: 12,
             margin: '2.5rem auto 2.5rem auto',
-            background: '#232346',
+            background: 'var(--card-body-bg)',
             objectFit: 'contain',
             boxSizing: 'border-box',
           }}

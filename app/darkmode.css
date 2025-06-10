@@ -1,27 +1,29 @@
 .dark {
-  --color-background: #18182a !important;
-  --color-text: #e6e7e9 !important;
-  --color-sender: #bfae7c !important;
-  --card-body-bg: #23243a !important;
-  --chatbox-background: #18182a !important;
-  --user-message-bg: #23243a !important;
-  --bot-message-bg: #23243a !important;
-  --bot-sender: #bfae7c !important;
-  --button-bg: #3a3a5a !important;
-  --button-hover-bg: #2d3952 !important;
-  --disabled-bg: #23243a !important;
-  --disabled-text: #b0b8c9 !important;
-  --send-button-bg: #3a3a5a !important;
-  --send-button-hover-bg: #23243a !important;
-  --send-button-text: #e6e7e9 !important;
-  --input-bg: #23243a !important;
-  --input-text: #e6e7e9 !important;
-  --input-placeholder: #b0b8c9 !important;
-  --scrollbar-bg: #23243a !important;
-  --scrollbar-thumb: #3a3a5a !important;
-  --color-primary: #bfae7c !important;
-  --button-shadow: transparent !important;
-  --button-shadow-hover: transparent !important;
+  /* Radically modern, deep teal/green + gold palette for dark mode */
+  --color-background: #101c18 !important; /* deep teal-black */
+  --color-text: #e6f0ec !important; /* soft muted teal */
+  --color-sender: #4fd1b3 !important; /* bright teal (primary) */
+  --card-body-bg: #182923 !important; /* dark green card */
+  --chatbox-background: #101c18 !important;
+  --user-message-bg: #1a3a32 !important; /* deep green for user */
+  --bot-message-bg: #2d230b !important; /* deep gold-brown for bot */
+  --bot-sender: #ffd166 !important; /* gold for bot sender */
+  --button-bg: #4fd1b3 !important; /* teal primary */
+  --button-hover-bg: #1e7f6c !important; /* deeper teal for hover */
+  --disabled-bg: #23332a !important; /* dark green */
+  --disabled-text: #7b8794 !important; /* muted blue-gray */
+  --send-button-bg: #ffd166 !important; /* gold accent */
+  --send-button-hover-bg: #b38600 !important; /* deep gold for hover */
+  --send-button-text: #222 !important; /* dark for contrast */
+  --input-bg: #182923 !important; /* dark green */
+  --input-text: #e6f0ec !important;
+  --input-placeholder: #7b8794 !important;
+  --scrollbar-bg: #1a3a32 !important;
+  --scrollbar-thumb: #4fd1b3 !important;
+  --color-primary: #4fd1b3 !important;
+  --color-accent: #4fd1b3; /* teal accent for icons in dark mode */
+  --button-shadow: #1a3a32 !important;
+  --button-shadow-hover: #4fd1b344 !important;
   --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
   --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
 }

@@ -20,8 +20,8 @@ const TestMessages: React.FC<TestMessagesProps> = ({ onGenerateMessages }) => {
   };
 
   return (
-    <div style={{ padding: '10px', background: '#f0f0f0', margin: '10px', borderRadius: '5px' }}>
-      <button onClick={generateTestMessages} style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '5px' }}>
+    <div style={{ padding: '10px', background: 'var(--card-body-bg)', margin: '10px', borderRadius: '5px' }}>
+      <button onClick={generateTestMessages} style={{ padding: '10px 20px', background: 'var(--color-primary)', color: 'var(--send-button-text)', border: 'none', borderRadius: '5px' }}>
         Generate 100 Test Messages
       </button>
     </div>

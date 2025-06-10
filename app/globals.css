@@ -12,31 +12,32 @@
 @import "./darkmode.css";
 
 :root {
-  /* Rustic, warm, and natural palette */
-  --color-background: #f6f1e7; /* warm parchment */
-  --color-text: #4b2e05; /* deep brown for strong contrast */
-  --color-sender: #a67c52; /* warm tan for sender */
-  --card-body-bg: #f3e3c3; /* light tan for cards and forms */
-  --chatbox-background: #f6f1e7;
-  --user-message-bg: #e7d3b0; /* pale ochre for user messages */
-  --bot-message-bg: #e9e0d1; /* light sand for bot messages */
-  --bot-sender: #a67c52; /* warm tan for bot sender */
-  --button-bg: #b6895b;
-  --button-hover-bg: #8c6239;
-  --disabled-bg: #e9e0d1; /* sand for disabled */
-  --disabled-text: #a67c52; /* muted tan for disabled text */
-  --send-button-bg: #b6895b;
-  --send-button-hover-bg: #8c6239;
-  --send-button-text: #fffbe7;
-  --input-bg: #f3e3c3;
-  --input-text: #4b2e05;
-  --input-placeholder: #a67c52;
-  --scrollbar-bg: #e9e0d1;
-  --scrollbar-thumb: #b6895b;
-  --color-primary: #b6895b;
-  --button-shadow: transparent;
-  --button-shadow-hover: transparent;
+  /* Radically modern, muted teal/green + warm gold palette for less white, more color depth */
+  --color-background: #e6f0ec; /* soft muted teal background */
+  --color-text: #1a2b22; /* deep green-black for strong contrast */
+  --color-sender: #1e7f6c; /* rich teal (primary) */
+  --card-body-bg: #f7f5e7; /* warm, creamy off-white for cards */
+  --chatbox-background: #e6f0ec;
+  --user-message-bg: #d0ede2; /* pale green-teal for user */
+  --bot-message-bg: #fff7e0; /* soft gold for bot */
+  --bot-sender: #e6a700; /* gold for bot sender */
+  --button-bg: #1e7f6c; /* teal primary */
+  --button-hover-bg: #14594c; /* deeper teal for hover */
+  --disabled-bg: #c7d2c7; /* muted sage */
+  --disabled-text: #8a9a8a; /* muted green-gray */
+  --send-button-bg: #e6a700; /* gold accent */
+  --send-button-hover-bg: #b38600; /* deep gold for hover */
+  --send-button-text: #fff; /* white for contrast */
+  --input-bg: #f2f7f4; /* very light teal */
+  --input-text: #1a2b22;
+  --input-placeholder: #6b7c6b; /* muted green-gray */
+  --scrollbar-bg: #d0ede2;
+  --scrollbar-thumb: #1e7f6c;
+  --color-primary: #1e7f6c;
+  --button-shadow: #d0ede2;
+  --button-shadow-hover: #1e7f6c44;
   --chat-message-font-size: 1.35rem;
+  --color-accent: #ffd166; /* gold accent for icons */
 
   /* Font variables for modern, clean look */
   --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif';

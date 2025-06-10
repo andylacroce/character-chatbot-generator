@@ -4,7 +4,8 @@ import styles from "./styles/ChatHeader.module.css";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import HamburgerMenu from "./HamburgerMenu";
-import { FaArrowLeft, FaRegFileAlt, FaRegLightbulb, FaMoon, FaSun } from "react-icons/fa";
+import { FaArrowLeft, FaRegFileAlt, FaRegLightbulb } from "react-icons/fa";
+import DarkModeToggle from "./DarkModeToggle";
 
 // Dynamically import ModalImageViewer for code splitting
 const ModalImageViewer = dynamic(() => import("./ModalImageViewer"), { ssr: false });
@@ -40,7 +41,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
                   onClick={onBackToCharacterCreation}
                   style={{ marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
                 >
-                  <FaArrowLeft size={18} style={{ color: '#bfae7c' }} />
+                  <FaArrowLeft size={18} style={{ color: 'var(--color-primary)' }} />
                   <span>Character Creator</span>
                 </button>
               )}
@@ -51,7 +52,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
                 onClick={() => { onDownloadTranscript(); if (onHeaderLinkClick) onHeaderLinkClick(); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '0.7em' }}
               >
-                <FaRegFileAlt size={18} style={{ color: '#bfae7c' }} />
+                <FaRegFileAlt size={18} style={{ color: 'var(--color-primary)' }} />
                 <span className={styles.downloadLabel}>Transcript</span>
               </button>
               <button
@@ -61,50 +62,16 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
                 onClick={onShowPrompt}
                 style={{ marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
               >
-                <FaRegLightbulb size={18} style={{ color: '#bfae7c' }} />
+                <FaRegLightbulb size={18} style={{ color: 'var(--color-primary)' }} />
                 <span>Prompt</span>
               </button>
             </HamburgerMenu>
             <span className={styles.desktopToggle}>
-              <button
-                type="button"
-                className={styles.darkModeToggle}
-                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-                onClick={() => setDarkMode(!darkMode)}
-              >
-                {darkMode ? (
-                  <>
-                    <FaSun size={16} style={{ color: '#bfae7c' }} />
-                    <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Light</span>
-                  </>
-                ) : (
-                  <>
-                    <FaMoon size={16} style={{ color: '#bfae7c' }} />
-                    <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Dark</span>
-                  </>
-                )}
-              </button>
+              <DarkModeToggle className={styles.darkModeToggle} />
             </span>
           </div>
           <span className={styles.mobileToggle}>
-            <button
-              type="button"
-              className={styles.darkModeToggle}
-              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-              onClick={() => setDarkMode(!darkMode)}
-            >
-              {darkMode ? (
-                <>
-                  <FaSun size={16} style={{ color: '#bfae7c' }} />
-                  <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Light</span>
-                </>
-              ) : (
-                <>
-                  <FaMoon size={16} style={{ color: '#bfae7c' }} />
-                  <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Dark</span>
-                </>
-              )}
-            </button>
+            <DarkModeToggle className={styles.darkModeToggle} />
           </span>
         </div>
         <div className={styles.headerCenter}>
