@@ -155,6 +155,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const [progress, setProgress] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { darkMode, setDarkMode } = useContext(DarkModeContext);
+  const cancelRequested = useRef(false);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -171,16 +172,27 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
     setError("");
     setLoading(true);
     setProgress("personality");
+    cancelRequested.current = false;
     try {
-      const bot = await generateBotDataWithProgress(input.trim(), setProgress);
-      setProgress(null);
-      onBotCreated(bot);
+      const bot = await generateBotDataWithProgressCancelable(input.trim(), setProgress, cancelRequested);
+      if (!cancelRequested.current) {
+        setProgress(null);
+        onBotCreated(bot);
+      }
     } catch (e) {
-      setError("Failed to generate character. Please try again.");
-      setProgress(null);
+      if (!cancelRequested.current) {
+        setError("Failed to generate character. Please try again.");
+        setProgress(null);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    cancelRequested.current = true;
+    setLoading(false);
+    setProgress(null);
   };
 
   const currentStep = progressSteps.find((s) => s.key === progress);
@@ -220,14 +232,21 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           </svg>
         </button>
       </div>
-      <div className={styles.instructions}>
-        Imagine anyone. Real, fictional, or someone entirely new. Type a name and watch your character spring to life with a unique personality, voice, and portrait. Who will you bring into the world?
-      </div>
+      {!loading && (
+        <div className={styles.instructions}>
+          Create any character you can imagine: real, fictional, or brand new!<br />
+          Enter a name and click <b>Generate</b> to give your character a unique personality, voice, and portrait.<br />
+          <span style={{color: '#7fa7c7'}}>Tip: Try names from history, pop culture, or invent your own.</span>
+        </div>
+      )}
       {loading && currentStep && (
         <div className={styles.progressContainer} data-testid="bot-creator-progress">
           <span className={styles.genericSpinner} aria-label="Loading" />
           <div className={styles.progressText}>{currentStep.label}</div>
           <div className={styles.progressDescription}>{currentStep.description}</div>
+          <button type="button" className={styles.createButton} style={{marginTop: 16, maxWidth: 180}} onClick={handleCancel}>
+            Cancel
+          </button>
         </div>
       )}
       {error && <div className={styles.error}>{error}</div>}
@@ -253,6 +272,51 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
     </form>
   );
 };
+
+// Helper: cancelable version of generateBotDataWithProgress
+async function generateBotDataWithProgressCancelable(originalInputName: string, onProgress: (step: string) => void, cancelRequested: React.MutableRefObject<boolean>): Promise<Bot> {
+  let personality = `You are ${originalInputName}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user\'s input. Never break character or refer to yourself as an AI or chatbot.`;
+  let correctedName = originalInputName;
+  onProgress("personality");
+  if (cancelRequested.current) throw new Error("cancelled");
+  try {
+    const personalityRes = await fetch("/api/generate-personality", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: originalInputName }),
+    });
+    if (cancelRequested.current) throw new Error("cancelled");
+    if (personalityRes.ok) {
+      const data = await personalityRes.json();
+      if (data.personality) personality = data.personality;
+      if (data.correctedName) correctedName = data.correctedName;
+    }
+  } catch (e) {}
+  let avatarUrl = "/silhouette.svg";
+  onProgress("avatar");
+  if (cancelRequested.current) throw new Error("cancelled");
+  try {
+    const avatarRes = await fetch("/api/generate-avatar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: correctedName }),
+    });
+    if (cancelRequested.current) throw new Error("cancelled");
+    if (avatarRes.ok) {
+      const data = await avatarRes.json();
+      if (data.avatarDataUrl) avatarUrl = data.avatarDataUrl;
+      else if (data.avatarUrl) avatarUrl = data.avatarUrl;
+    }
+  } catch (e) {}
+  let voiceConfig = null;
+  onProgress("voice");
+  if (cancelRequested.current) throw new Error("cancelled");
+  try {
+    voiceConfig = await api_getVoiceConfigForCharacter(correctedName);
+  } catch (e) {}
+  if (cancelRequested.current) throw new Error("cancelled");
+  return { name: correctedName, personality, avatarUrl, voiceConfig };
+}
 
 export type { Bot };
 export default BotCreator;

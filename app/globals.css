@@ -153,6 +153,13 @@ html, body, #__next {
   padding-bottom: 220px !important;
 }
 
+/* --- Dark mode button focus/hover fix --- */
+.dark button:hover, .dark button:focus {
+  background: var(--button-hover-bg, #2d3952) !important;
+  color: var(--send-button-text, #fff) !important;
+  border-color: var(--color-primary, #bfae7c) !important;
+}
+
 @media (max-width: 600px) {
   :root {
     --chat-message-font-size: 1rem;

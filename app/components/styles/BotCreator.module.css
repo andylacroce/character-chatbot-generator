@@ -109,21 +109,6 @@
   opacity: 1;
 }
 
-.dark .input {
-  border: 1.5px solid var(--color-primary) !important;
-  background: #23243a !important;
-  color: var(--input-text) !important;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.45) !important;
-}
-.dark .input:focus {
-  border-color: var(--button-hover-bg) !important;
-  box-shadow: 0 0 0 2px var(--color-primary), 0 2px 12px 0 rgba(0,0,0,0.55) !important;
-}
-.dark .input::placeholder {
-  color: var(--input-placeholder) !important;
-  opacity: 1;
-}
-
 .createButton {
   padding: 0.85rem 0;
   font-size: 1.13rem;
@@ -153,7 +138,8 @@
 }
 .createButton:hover, .createButton:focus {
   background: var(--button-hover-bg);
-  border-color: var(--button-hover-bg);
+  border-color: var(--color-primary);
+  color: var(--send-button-text);
   box-shadow: none;
 }
 
@@ -237,6 +223,18 @@
 }
 .createButton:hover:not(:disabled) {
   background: var(--button-hover-bg, #4a5a6a);
+}
+
+.dark .createButton {
+  background: var(--button-bg, #3a3a5a) !important;
+  border: 2px solid #bfae7c !important;
+  color: #fff !important;
+}
+.dark .createButton:hover:not(:disabled),
+.dark .createButton:focus:not(:disabled) {
+  background: #2d3952 !important;
+  border-color: #bfae7c !important;
+  color: #fff !important;
 }
 
 .buttonSpinner {
