@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import ipinfo from "ipinfo";
 import logger from "../../src/utils/logger";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
-import { setReplyCache } from "../../src/utils/cache";
+import { setReplyCache, getReplyCache } from "../../src/utils/cache";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
@@ -146,6 +146,91 @@ export default async function handler(
       ...oldMessages
     ];
 
+    // --- API response caching logic ---
+    // Create a cache key based on botName, personality, and recent conversation context
+    const cacheKey = JSON.stringify({
+      botName,
+      personality,
+      history: conversationHistory.slice(-10), // last 10 exchanges for context
+      userMessage,
+    });
+    const cachedReply = getReplyCache(cacheKey);
+    if (cachedReply) {
+      logger.info(`[Chat API] Cache hit for key: ${cacheKey}`);
+      // Prepare TTS/audio as usual for the cached reply
+      // Robust Studio voice detection
+      let voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
+      logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
+      const isStudio = (voiceConfig.type === 'Studio') || (voiceConfig.name && voiceConfig.name.includes('Studio'));
+      let selectedVoice = voiceConfig;
+      if (isStudio) {
+        const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
+        if (!validStudioVoices.includes(voiceConfig.name)) {
+          // fallback to en-US-Studio-M
+          selectedVoice = {
+            languageCodes: ['en-US'],
+            name: 'en-US-Studio-M',
+            ssmlGender: 1,
+            type: 'Studio',
+          };
+        }
+      }
+      const pitch = typeof selectedVoice.pitch === 'number' ? selectedVoice.pitch : -13;
+      const rate = typeof selectedVoice.rate === 'number' ? Math.round(selectedVoice.rate * 100) + '%' : '80%';
+      let ssmlText;
+      if (isStudio) {
+        ssmlText = `<speak>${cachedReply}</speak>`;
+      } else {
+        ssmlText = `<speak><prosody pitch="${pitch}st" rate="${rate}"> ${cachedReply} </prosody></speak>`;
+      }
+      const tmpDir = "/tmp";
+      if (!fs.existsSync(tmpDir)) {
+        fs.mkdirSync(tmpDir, { recursive: true });
+      }
+      const audioFileName = `${uuidv4()}.mp3`;
+      const audioFilePath = path.join(tmpDir, audioFileName);
+      if (fs.existsSync(audioFilePath)) {
+        fs.unlinkSync(audioFilePath);
+      }
+      try {
+        await synthesizeSpeechToFile({
+          text: ssmlText,
+          filePath: audioFilePath,
+          ssml: true,
+          voice: selectedVoice,
+        });
+        // Write a .txt sidecar for audio regeneration
+        const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
+        fs.writeFileSync(txtFilePath, cachedReply, "utf8");
+        setReplyCache(audioFileName, cachedReply);
+      } catch (error) {
+        logger.error("Text-to-Speech API error (cache hit):", error);
+        const errorMessage =
+          error instanceof Error ? error.message : JSON.stringify(error);
+        return res
+          .status(500)
+          .json({ error: "Google Cloud TTS failed", details: errorMessage });
+      }
+      // Ensure .txt file is always written and matches reply
+      try {
+        const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
+        if (
+          !fs.existsSync(txtFilePath) ||
+          fs.readFileSync(txtFilePath, "utf8").trim() !== cachedReply.trim()
+        ) {
+          fs.writeFileSync(txtFilePath, cachedReply, "utf8");
+        }
+      } catch (err) {
+        logger.error("Failed to ensure .txt file for audio reply (cache hit):", err);
+      }
+      const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}`;
+      return res.status(200).json({
+        reply: cachedReply,
+        audioFileUrl,
+        cached: true,
+      });
+    }
+
     // Timeout to avoid hanging
     const timeout = new Promise((resolve) =>
       setTimeout(() => resolve({ timeout: true }), 20000),
@@ -245,6 +330,9 @@ export default async function handler(
     } catch (err) {
       logger.error("Failed to ensure .txt file for audio reply:", err);
     }
+
+    // After getting botReply from OpenAI, add to cache:
+    setReplyCache(cacheKey, botReply);
 
     logger.info(
       `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}`,
