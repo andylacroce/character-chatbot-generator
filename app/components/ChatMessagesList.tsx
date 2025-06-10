@@ -13,6 +13,8 @@ interface ChatMessagesListProps {
 
 const ChatMessagesList: React.FC<ChatMessagesListProps> = ({ messages, bot }) => (
   <>
+    {/* Flex spacer to push messages to bottom when there's not enough content to fill container */}
+    <div style={{ flexGrow: 1 }} />
     {messages.map((msg, index) => (
       <ChatMessage key={index} message={msg} bot={bot} />
     ))}

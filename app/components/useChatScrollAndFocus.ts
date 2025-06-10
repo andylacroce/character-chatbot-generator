@@ -22,12 +22,11 @@ export function useChatScrollAndFocus({
     if (chatBoxRef.current) {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
-  }, [chatBoxRef]);
-
-  // Scroll to bottom when messages update
+  }, [chatBoxRef]);  // Scroll to bottom when NEW messages are added (not when loading older messages)
   useEffect(() => {
+    // Always auto-scroll when new messages are added to stay at the bottom of conversation
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages.length, scrollToBottom]); // Use messages.length instead of messages array
 
   // Scroll to bottom on window resize (e.g., mobile keyboard appears)
   useEffect(() => {

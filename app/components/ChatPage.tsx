@@ -29,6 +29,10 @@ import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 import { useApiError } from "./useApiError";
 import BotCreator, { Bot } from "./BotCreator";
 
+// Constants for infinite scroll functionality
+const INITIAL_VISIBLE_COUNT = 20;
+const LOAD_MORE_COUNT = 10;
+
 /**
  * ChatPage component that handles the chat interface and interactions with the Character Chatbot Generator.
  * This component manages the state of the conversation, handles user input, and plays audio responses.
@@ -224,17 +228,16 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     }
     if (typeof onBackToCharacterCreation === 'function') {
       onBackToCharacterCreation();
-    }
-  }, [audioRef, onBackToCharacterCreation]);
-
-  const INITIAL_VISIBLE_COUNT = 30;
-  const LOAD_MORE_COUNT = 20;
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
-
-  // Handler to load more messages when scrolled to top
+    }  }, [audioRef, onBackToCharacterCreation]);
+  
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);  // Handler to load more messages when scrolled to top
   const handleScroll = useCallback(() => {
     if (!chatBoxRef.current) return;
-    if (chatBoxRef.current.scrollTop === 0 && visibleCount < messages.length) {
+    
+    const { scrollTop, scrollHeight, clientHeight } = chatBoxRef.current;
+    
+    // Load more messages when scrolled to top and there are more messages available
+    if (scrollTop === 0 && visibleCount < messages.length) {
       setVisibleCount((prev) => Math.min(prev + LOAD_MORE_COUNT, messages.length));
     }
   }, [visibleCount, messages.length]);
@@ -251,8 +254,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
 
   // Reset visibleCount when messages change (new message or bot)
   useEffect(() => {
-    setVisibleCount(INITIAL_VISIBLE_COUNT);
-  }, [chatHistoryKey]);
+    setVisibleCount(INITIAL_VISIBLE_COUNT);  }, [chatHistoryKey]);
 
   return (
     <div className={styles.chatLayout} data-testid="chat-layout">
@@ -271,8 +273,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         style={{ paddingTop: 20 }}
         role="log"
         aria-live="polite"
-        aria-relevant="additions text"
-      >
+        aria-relevant="additions text"      >
         <ChatMessagesList
           messages={messages.slice(-visibleCount)}
           bot={bot}
@@ -282,16 +283,14 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         <div data-testid="loading-indicator" className={styles.spinnerContainerFixed}>
           <span className={styles.genericSpinner} aria-label="Loading" />
         </div>
-      )}
-      <ChatInput
+      )}      <ChatInput
         input={input}
         setInput={setInput}
         onSend={sendMessage}
         onKeyDown={handleKeyDown}
         loading={loading}
         apiAvailable={apiAvailable && !(!apiAvailable)}
-        inputRef={inputRef}
-        audioEnabled={audioEnabled}
+        inputRef={inputRef}        audioEnabled={audioEnabled}
         onAudioToggle={handleAudioToggle}
       />
       <ChatStatus error={error} />
