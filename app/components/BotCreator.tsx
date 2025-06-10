@@ -20,21 +20,20 @@ interface BotCreatorProps {
 
 // Real AI generation for personality and avatar
 async function generateBotData(name: string): Promise<Bot> {
-  // 1. Generate a personality prompt using OpenAI
   let personality = `You are ${name}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
-  let correctedName = name; // Initialize correctedName with the input name
+  let correctedName = name;
   try {
     const personalityRes = await fetch("/api/generate-personality", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }), // Send original name for correction
+      body: JSON.stringify({ name }),
     });
     if (personalityRes.ok) {
       const data = await personalityRes.json();
       if (data.personality) personality = data.personality;
-      if (data.correctedName) correctedName = data.correctedName; // Capture the corrected name
+      if (data.correctedName) correctedName = data.correctedName;
     }
-  } catch (e) { /* fallback to default */ }
+  } catch (e) {}
 
   // 2. Generate an avatar image using OpenAI (DALL-E)
   // Use the correctedName for avatar generation
@@ -84,46 +83,18 @@ const progressSteps = [
 
 async function generateBotDataWithProgress(originalInputName: string, onProgress: (step: string) => void): Promise<Bot> {
   let personality = `You are ${originalInputName}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
-  let correctedName = originalInputName; // Initialize with original input
+  let correctedName = originalInputName;
   onProgress("personality");
   try {
     const personalityRes = await fetch("/api/generate-personality", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: originalInputName }), // Send original name for correction
+      body: JSON.stringify({ name: originalInputName }),
     });
     if (personalityRes.ok) {
       const data = await personalityRes.json();
       if (data.personality) personality = data.personality;
-      if (data.correctedName) {
-        correctedName = data.correctedName; // Capture the corrected name
-        console.log(`[BotCreator] Original name: '${originalInputName}', Corrected name: '${correctedName}'`);
-      }
-      // Log the generated prompt/personality to both browser and server console
-      if (typeof window !== 'undefined') {
-        console.log(`[BotCreator] Generated prompt/personality for '${correctedName}':`, personality);
-      }
-      try {
-        // Truncate only for logging, not for actual app logic
-        const logPrefix = `[PROMPT] ${correctedName}: `;
-        const maxLogLength = 2000;
-        let logText = logPrefix + personality;
-        if (logText.length > maxLogLength) {
-          // Truncate personality so the log entry fits the API limit
-          const allowedPersonalityLength = maxLogLength - logPrefix.length;
-          logText = logPrefix + personality.slice(0, allowedPersonalityLength - 3) + '...';
-        }
-        await fetch('/api/log-message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sender: '[BotCreator]',
-            text: logText,
-            sessionId: 'bot-creation',
-            sessionDatetime: new Date().toISOString(),
-          })
-        });
-      } catch (e) {}
+      if (data.correctedName) correctedName = data.correctedName;
     }
   } catch (e) {}
 
