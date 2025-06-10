@@ -10,8 +10,8 @@
   border-radius: 14px;
   border: 2px solid var(--color-primary);
   box-shadow: none;
-  padding: 2.5rem 2.2rem 2rem 2.2rem;
-  margin: 7vh auto 7vh auto;
+  padding: 1.7rem 1.2rem 1.2rem 1.2rem;
+  margin: 4vh auto 4vh auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -33,15 +33,8 @@
     margin-right: 3vw;
     max-width: 94vw;
     width: auto;
-  }
-  .createButton {
-    font-size: min(4vw, 1.13rem);
-    padding: 0.85rem 0.5rem;
-    min-width: 0;
-    max-width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding-top: 1.1rem;
+    padding-bottom: 1.1rem;
   }
 }
 
@@ -50,8 +43,8 @@
   font-family: var(--font-primary), sans-serif;
   font-weight: 800;
   color: var(--color-text, #e6e7e9);
-  margin-bottom: 1.5rem;
-  margin-top: 0.2rem;
+  margin-bottom: 0.7rem;
+  margin-top: 0.1rem;
   letter-spacing: -1px;
   position: relative;
   z-index: 1;
@@ -66,16 +59,16 @@
 .inputGroup {
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: center;
   width: 100%;
-  gap: 0.5rem;
-  margin-bottom: 1.3rem;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
   justify-content: center;
 }
 @media (max-width: 600px) {
   .inputGroup {
     flex-direction: column;
-    gap: 0.7rem;
+    gap: 0.4rem;
     width: 100%;
     align-items: center;
     justify-content: center;
@@ -109,129 +102,89 @@
   opacity: 1;
 }
 
-.createButton {
-  padding: 0.85rem 0;
-  font-size: 1.13rem;
-  border-radius: 8px;
+.createButton,
+.randomButton {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  max-width: 48px;
+  max-height: 48px;
+  padding: 0;
+  border-radius: 50%;
   border: 2px solid var(--color-primary);
+  border-style: solid !important;
   background: var(--button-bg);
   color: var(--send-button-text);
   font-family: var(--font-primary), sans-serif;
+  font-size: 1.35rem;
   font-weight: 700;
   box-shadow: none;
-  transition: background 0.18s, border-color 0.18s;
+  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5em;
-  width: 100%;
-  min-width: 0;
   text-align: center;
+  cursor: pointer;
+  margin: 0;
+  outline: none;
 }
-.createButton:active {
-  transform: scale(0.98);
+.createButton:active,
+.randomButton:active {
+  transform: scale(0.97);
 }
-.createButton:disabled {
+.createButton:disabled,
+.randomButton:disabled {
   background: var(--disabled-bg);
   color: var(--disabled-text);
+  border-color: var(--disabled-bg);
   cursor: not-allowed;
 }
-.createButton:hover, .createButton:focus {
+.createButton:hover:not(:disabled),
+.randomButton:hover:not(:disabled),
+.createButton:focus:not(:disabled),
+.randomButton:focus:not(:disabled) {
   background: var(--button-hover-bg);
   border-color: var(--color-primary);
   color: var(--send-button-text);
-  box-shadow: none;
+  box-shadow: 0 4px 16px var(--button-shadow-hover, #bdbdbd);
 }
-
-.instructions {
-  font-size: 1.08rem;
-  color: var(--color-text);
-  text-align: center;
-  margin-bottom: 1.3rem;
-  margin-top: 0.2rem;
-  font-family: var(--font-primary), sans-serif;
-  max-width: 370px;
-  margin-left: auto;
-  margin-right: auto;
-  background: none;
-  border-radius: 0;
-  padding: 0.85rem 0 0.85rem 0;
-  box-shadow: none;
-}
-
-.heading {
-  font-size: 1.6rem;
-  font-family: var(--font-primary), sans-serif;
-  font-weight: 700;
-  margin-bottom: 1.2rem;
-  color: var(--color-text);
-}
-
-.inputGroup {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  width: 100%;
-  gap: 0.5rem;
-  margin-bottom: 1.2rem;
-  justify-content: center;
-}
-
-.input {
-  flex: 1 1 0;
-  padding: 0.7rem 1rem;
-  font-size: 1.08rem;
-  border-radius: 8px;
-  border: 1px solid var(--color-primary);
-  background: var(--input-bg) !important;
-  color: var(--input-text);
-  font-family: var(--font-primary), sans-serif;
-  outline: none;
-  transition: border 0.18s;
-}
-.input:focus {
-  border-color: #3a86ff;
-}
-.input:disabled {
-  background: #e2e8f0; /* light blue-grey for disabled */
-  color: #7b8fa1;
-}
-
-.createButton {
-  padding: 0.7rem 0;
-  font-size: 1.08rem;
-  border-radius: 8px;
-  border: 2px solid #3a86ff;
+.randomButton {
+  margin-left: 0;
+  border-style: solid !important;
   background: var(--button-bg);
   color: var(--send-button-text);
-  font-family: var(--font-primary), sans-serif;
-  font-weight: 700;
-  box-shadow: none;
-  transition: background 0.18s, border-color 0.18s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5em;
-  width: 100%;
-  min-width: 0;
-  text-align: center;
 }
-.createButton:disabled {
-  background: var(--disabled-bg, #23272b);
-  color: var(--disabled-text, #b0b8c9);
-  cursor: not-allowed;
+@media (max-width: 600px) {
+  .inputGroup {
+    flex-direction: column;
+    gap: 0.7rem;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+  }
+  .createButton,
+  .randomButton {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    max-width: 48px;
+    max-height: 48px;
+    margin: 0;
+    padding: 0;
+  }
 }
-.createButton:hover:not(:disabled) {
-  background: var(--button-hover-bg, #4a5a6a);
-}
-
-.dark .createButton {
+.dark .createButton,
+.dark .randomButton {
   background: var(--button-bg, #3a3a5a) !important;
   border: 2px solid #bfae7c !important;
   color: #fff !important;
 }
 .dark .createButton:hover:not(:disabled),
-.dark .createButton:focus:not(:disabled) {
+.dark .randomButton:hover:not(:disabled),
+.dark .createButton:focus:not(:disabled),
+.dark .randomButton:focus:not(:disabled) {
   background: #2d3952 !important;
   border-color: #bfae7c !important;
   color: #fff !important;
@@ -253,8 +206,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin-top: 1.2rem;
-  margin-bottom: 1.2rem;
+  margin-top: 0.7rem;
+  margin-bottom: 0.7rem;
   min-height: 80px;
 }
 
@@ -343,4 +296,36 @@
 .dark .darkModeToggle {
   color: var(--color-primary);
   background: var(--button-bg);
+}
+
+.buttonRow {
+  display: flex;
+  flex-direction: row;
+  gap: 1.1rem;
+  justify-content: center;
+  align-items: center;
+  margin-top: 0.3rem;
+  width: 100%;
+}
+.hideMobile {
+  display: none !important;
+}
+
+.instructionsCentered {
+  text-align: center;
+  margin: 0.7rem 0 0.6rem 0;
+  font-size: 1.08rem;
+  color: var(--color-text);
+  font-family: var(--font-primary), sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+  align-items: center;
+  justify-content: center;
+}
+
+.instructionsTip {
+  color: #7fa7c7;
+  font-size: 0.98rem;
+  margin-top: 0.3em;
 }

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
 import { DarkModeContext } from "./DarkModeContext";
+import { CHARACTER_VOICE_MAP } from "../../src/utils/characterVoices";
 import styles from "./styles/BotCreator.module.css";
 
 interface Bot {
@@ -195,6 +196,19 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
     setProgress(null);
   };
 
+  // Add random character button logic
+  function getRandomKnownCharacterName() {
+    const names = Object.keys(CHARACTER_VOICE_MAP).filter(
+      n => n !== "Default"
+    );
+    return names[Math.floor(Math.random() * names.length)] || "Yoda";
+  }
+
+  const handleRandomCharacter = () => {
+    const randomName = getRandomKnownCharacterName();
+    setInput(randomName);
+  };
+
   const currentStep = progressSteps.find((s) => s.key === progress);
 
   return (
@@ -217,6 +231,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           maxLength={36}
           ref={inputRef}
         />
+      </div>
+      <div className={styles.buttonRow + (loading ? ' ' + styles.hideMobile : '')}>
         <button
           type="submit"
           className={styles.createButton}
@@ -224,19 +240,41 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           data-testid="bot-creator-button"
           aria-label="Create character"
         >
-          {/* Submit/Proceed icon: right arrow in a circle */}
           <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
             <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none"/>
             <path d="M10 14h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             <path d="M15 11l3 3-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
+        <button
+          type="button"
+          className={styles.randomButton}
+          disabled={loading}
+          aria-label="Choose a random known character"
+          onClick={handleRandomCharacter}
+        >
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style={{display:'block'}}>
+            <rect x="5" y="5" width="18" height="18" rx="4" stroke="currentColor" strokeWidth="2" fill="none"/>
+            <circle cx="9.5" cy="9.5" r="2" fill="currentColor"/>
+            <circle cx="18.5" cy="9.5" r="2" fill="currentColor"/>
+            <circle cx="9.5" cy="18.5" r="2" fill="currentColor"/>
+            <circle cx="18.5" cy="18.5" r="2" fill="currentColor"/>
+            <circle cx="14" cy="14" r="2" fill="currentColor"/>
+          </svg>
+          <span style={{display:'none'}}>🎲</span>
+        </button>
       </div>
       {!loading && (
-        <div className={styles.instructions}>
-          Create any character you can imagine: real, fictional, or brand new!<br />
-          Enter a name and click <b>Generate</b> to give your character a unique personality, voice, and portrait.<br />
-          <span style={{color: '#7fa7c7'}}>Tip: Try names from history, pop culture, or invent your own.</span>
+        <div className={styles.instructionsCentered}>
+          <div>
+            Create any character you can imagine: real, fictional, or brand new!
+          </div>
+          <div>
+            Enter a name and click <b>Generate</b> to give your character a unique personality, voice, and portrait.
+          </div>
+          <div className={styles.instructionsTip}>
+            Tip: Try names from history, pop culture, or invent your own.
+          </div>
         </div>
       )}
       {loading && currentStep && (
@@ -244,8 +282,19 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           <span className={styles.genericSpinner} aria-label="Loading" />
           <div className={styles.progressText}>{currentStep.label}</div>
           <div className={styles.progressDescription}>{currentStep.description}</div>
-          <button type="button" className={styles.createButton} style={{marginTop: 16, maxWidth: 180}} onClick={handleCancel}>
-            Cancel
+          <button
+            type="button"
+            className={styles.createButton}
+            style={{ marginTop: 16, maxWidth: 48, minWidth: 48, minHeight: 48, maxHeight: 48, width: 48, height: 48, borderRadius: '50%' }}
+            aria-label="Cancel"
+            onClick={handleCancel}
+          >
+            {/* Modern X/cancel SVG icon */}
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+              <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none"/>
+              <path d="M9.5 9.5l9 9M18.5 9.5l-9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <span style={{display:'none'}}>Cancel</span>
           </button>
         </div>
       )}
