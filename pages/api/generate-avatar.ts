@@ -10,11 +10,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!name) return res.status(400).json({ error: "Name required" });
   try {
     logger.info(`[AVATAR] Generating avatar for: ${name}`);
-    // Compose the DALL-E prompt using only the name
-    let likenessRef = `True to their appearance in reference images of ${name}.`;
+    // Compose the DALL-E prompt using best practices to avoid multiple likenesses
+    let likenessRef = `Accurately depict the real or canonical appearance of ${name} as seen in reference images.`;
     let styleInstruction = `If ${name} is a cartoon, animated, or illustrated character, use a matching art style. Otherwise, use a photorealistic style.`;
-    let singleInstruction = `Only show a single, centered portrait of ${name}. Do not include multiple figures, duplicates, or more than one version of the character in the same image. No split frames, no collage, no group shots.`;
-    let imagePrompt = `Portrait of ${name}. ${likenessRef} ${styleInstruction} ${singleInstruction} Expressive, detailed, and true to their personality.`;
+    let singleInstruction = `Create a single, centered, close-up portrait of only ${name}. Do not include any other figures, duplicates, multiple versions, reflections, shadows of other people, or group shots. No split frames, collage, or background elements that resemble other characters.`;
+    let negativePrompt = `Exclude: multiple people, extra faces, group shots, duplicate figures, reflections, shadows of other people, collage, split frames, or any representation of more than one version of ${name}.`;
+    let imagePrompt = `Ultra-detailed portrait of ${name}. ${likenessRef} ${styleInstruction} ${singleInstruction} Expressive, detailed, and true to their personality. ${negativePrompt}`;
 
     // Truncate to 1000 chars for DALL-E
     if (imagePrompt.length > 1000) imagePrompt = imagePrompt.slice(0, 997) + '...';
