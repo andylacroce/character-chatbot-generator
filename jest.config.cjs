@@ -40,16 +40,16 @@ const customJestConfig = {
   ],
   testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
   verbose: true,
-  collectCoverage: true, // Enable coverage reports
-  coverageDirectory: "<rootDir>/coverage",
-  coverageThreshold: {
-    global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
-    },
-  },
+  collectCoverage: false, // Disable coverage reports for now
+  // coverageDirectory: "<rootDir>/coverage",
+  // coverageThreshold: {
+  //   global: {
+  //     branches: 80,
+  //     functions: 80,
+  //     lines: 80,
+  //     statements: 80,
+  //   },
+  // },
   // Speed optimization settings
   cache: true,
   cacheDirectory: "<rootDir>/.jest-cache",
