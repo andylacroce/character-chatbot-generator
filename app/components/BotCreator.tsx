@@ -21,7 +21,7 @@ interface BotCreatorProps {
 // Real AI generation for personality and avatar
 async function generateBotData(name: string): Promise<Bot> {
   // 1. Generate a personality prompt using OpenAI
-  let personality = `You are ${name}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user\'s input. Never break character or refer to yourself as an AI or chatbot.`;
+  let personality = `You are ${name}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
   let correctedName = name; // Initialize correctedName with the input name
   try {
     const personalityRes = await fetch("/api/generate-personality", {
@@ -83,7 +83,7 @@ const progressSteps = [
 ];
 
 async function generateBotDataWithProgress(originalInputName: string, onProgress: (step: string) => void): Promise<Bot> {
-  let personality = `You are ${originalInputName}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user\'s input. Never break character or refer to yourself as an AI or chatbot.`;
+  let personality = `You are ${originalInputName}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
   let correctedName = originalInputName; // Initialize with original input
   onProgress("personality");
   try {
@@ -399,7 +399,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
 
 // Helper: cancelable version of generateBotDataWithProgress
 async function generateBotDataWithProgressCancelable(originalInputName: string, onProgress: (step: string) => void, cancelRequested: React.MutableRefObject<boolean>): Promise<Bot> {
-  let personality = `You are ${originalInputName}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user\'s input. Never break character or refer to yourself as an AI or chatbot.`;
+  let personality = `You are ${originalInputName}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
   let correctedName = originalInputName;
   onProgress("personality");
   if (cancelRequested.current) throw new Error("cancelled");
