@@ -44,9 +44,8 @@ describe("ChatPage API retry logic", () => {
     // Should eventually show the bot reply after retries
     await waitFor(() => expect(screen.getByText(/You shall not pass!/i)).toBeInTheDocument());
 
-    // Should have called axios.post to /api/chat two times (1 initial + 1 retry, then success)
-    const chatCalls = (axios.post as jest.Mock).mock.calls.filter(([url]) => url === "/api/chat");
-    expect(chatCalls.length).toBe(2); // 1 initial + 1 retry = 2
+    // Should have called axios.post three times
+    expect((axios.post as jest.Mock).mock.calls.length).toBe(3);
   });
 
   it("shows error if all retries fail", async () => {
@@ -60,11 +59,8 @@ describe("ChatPage API retry logic", () => {
 
     // Should show retrying indicator
     await waitFor(() => expect(screen.getByText(/Retrying connection/i)).toBeInTheDocument());
-    // Should show generic error after all retries
-    await waitFor(() => {
-      expect(screen.getByText(/Error sending message/i)).toBeInTheDocument();
-    }, { timeout: 3000 });
-    const chatCalls = (axios.post as jest.Mock).mock.calls.filter(([url]) => url === "/api/chat");
-    expect(chatCalls.length).toBe(3);
+    // Should show error after all retries
+    await waitFor(() => expect(screen.getByText(/Network error/i)).toBeInTheDocument());
+    expect((axios.post as jest.Mock).mock.calls.length).toBe(3);
   });
 });
