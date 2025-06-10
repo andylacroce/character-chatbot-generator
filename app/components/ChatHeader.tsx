@@ -29,53 +29,83 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
     <div className={styles.chatHeader} data-testid="chat-header" role="banner">
       <div className={styles.chatHeaderContent}>
         <div className={styles.headerLeft}>
-          <HamburgerMenu>
-            {onBackToCharacterCreation && (
+          {/* Desktop/tablet: inline, Mobile: stacked */}
+          <div className={styles.menuAndToggleRow}>
+            <HamburgerMenu>
+              {onBackToCharacterCreation && (
+                <button
+                  className={styles.downloadTranscriptLink}
+                  type="button"
+                  aria-label="Back to character creation"
+                  onClick={onBackToCharacterCreation}
+                  style={{ marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
+                >
+                  <FaArrowLeft size={18} style={{ color: '#bfae7c' }} />
+                  <span>Character Creator</span>
+                </button>
+              )}
+              <button
+                className={`${styles.downloadTranscriptLink} flex items-center gap-1 ml-0`}
+                type="button"
+                aria-label="Download chat transcript"
+                onClick={() => { onDownloadTranscript(); if (onHeaderLinkClick) onHeaderLinkClick(); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.7em' }}
+              >
+                <FaRegFileAlt size={18} style={{ color: '#bfae7c' }} />
+                <span className={styles.downloadLabel}>Transcript</span>
+              </button>
               <button
                 className={styles.downloadTranscriptLink}
                 type="button"
-                aria-label="Back to character creation"
-                onClick={onBackToCharacterCreation}
-                style={{ marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
+                aria-label="Show bot prompt"
+                onClick={onShowPrompt}
+                style={{ marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
               >
-                <FaArrowLeft size={18} style={{ color: '#bfae7c' }} />
-                <span>Character Creator</span>
+                <FaRegLightbulb size={18} style={{ color: '#bfae7c' }} />
+                <span>Prompt</span>
               </button>
-            )}
+            </HamburgerMenu>
+            <span className={styles.desktopToggle}>
+              <button
+                type="button"
+                className={styles.darkModeToggle}
+                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                onClick={() => setDarkMode(!darkMode)}
+              >
+                {darkMode ? (
+                  <>
+                    <FaSun size={16} style={{ color: '#bfae7c' }} />
+                    <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Light</span>
+                  </>
+                ) : (
+                  <>
+                    <FaMoon size={16} style={{ color: '#bfae7c' }} />
+                    <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Dark</span>
+                  </>
+                )}
+              </button>
+            </span>
+          </div>
+          <span className={styles.mobileToggle}>
             <button
-              className={`${styles.downloadTranscriptLink} flex items-center gap-1 ml-0`}
               type="button"
-              aria-label="Download chat transcript"
-              onClick={() => { onDownloadTranscript(); if (onHeaderLinkClick) onHeaderLinkClick(); }}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.7em' }}
-            >
-              <FaRegFileAlt size={18} style={{ color: '#bfae7c' }} />
-              <span className={styles.downloadLabel}>Transcript</span>
-            </button>
-            <button
-              className={styles.downloadTranscriptLink}
-              type="button"
-              aria-label="Show bot prompt"
-              onClick={onShowPrompt}
-              style={{ marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
-            >
-              <FaRegLightbulb size={18} style={{ color: '#bfae7c' }} />
-              <span>Prompt</span>
-            </button>
-            <button
-              type="button"
+              className={styles.darkModeToggle}
               aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
               onClick={() => setDarkMode(!darkMode)}
-              style={{ marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
             >
               {darkMode ? (
-                <FaSun size={18} style={{ color: '#bfae7c' }} />
+                <>
+                  <FaSun size={16} style={{ color: '#bfae7c' }} />
+                  <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Light</span>
+                </>
               ) : (
-                <FaMoon size={18} style={{ color: '#bfae7c' }} />
+                <>
+                  <FaMoon size={16} style={{ color: '#bfae7c' }} />
+                  <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Dark</span>
+                </>
               )}
-              <span style={{ fontSize: '1rem' }}>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
             </button>
-          </HamburgerMenu>
+          </span>
         </div>
         <div className={styles.headerCenter}>
           <button

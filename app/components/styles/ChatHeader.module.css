@@ -67,6 +67,12 @@
   grid-column: 2;
 }
 
+.headerCenter > button {
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+
 /* Bot name label styling for legibility */
 .botNameLabel {
   font-family: var(--font-primary);
@@ -135,26 +141,62 @@
 }
 
 .darkModeToggle {
-  background: none;
+  background: var(--button-bg);
   border: none;
   cursor: pointer;
-  padding: 0.4rem;
-  border-radius: 50%;
-  transition: background 0.18s;
-  color: var(--color-primary);
+  padding: 0.22em 0.7em;
+  border-radius: 3px;
+  color: var(--send-button-text);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 0;
-  margin-top: 0.3rem;
+  margin-left: auto;
+  margin-right: 0;
+  font-size: 0.92rem;
+  gap: 0.15em;
+  font-weight: 600;
+  min-height: 28px;
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
 }
 .darkModeToggle:hover, .darkModeToggle:focus {
   background: var(--button-hover-bg);
+  color: var(--send-button-text);
   outline: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
 }
 .dark .darkModeToggle {
   color: var(--color-primary);
-  background: none;
+  background: var(--button-bg);
+}
+
+.menuAndToggleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.desktopToggle {
+  display: inline-flex;
+  margin-left: 0.3em;
+}
+.mobileToggle {
+  display: none;
+}
+@media (max-width: 600px) {
+  .menuAndToggleRow {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .desktopToggle {
+    display: none !important;
+  }
+  .mobileToggle {
+    display: block;
+    margin-top: 0.3em;
+    margin-left: 0.1em;
+  }
 }
 
 @media (max-width: 800px) {
