@@ -6,16 +6,21 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
-  const { name, race, gender } = req.body;
+  const { name, race, gender, age, eyeColor, hairColor } = req.body;
   if (!name) return res.status(400).json({ error: "Name required" });
   try {
-    // Compose the DALL-E prompt directly with the name and style instructions
-    // The 'name' received here is now potentially corrected by the personality generation step
+    // Compose the DALL-E prompt with all main attributes before the description
+    let attributeParts = [];
+    if (race) attributeParts.push(`race: ${race}`);
+    if (gender) attributeParts.push(`gender: ${gender}`);
+    if (age) attributeParts.push(`age: ${age}`);
+    if (eyeColor) attributeParts.push(`eye color: ${eyeColor}`);
+    if (hairColor) attributeParts.push(`hair color: ${hairColor}`);
+    let attributeString = attributeParts.length > 0 ? attributeParts.join(", ") + ". " : "";
     logger.info(`[AVATAR] Received request to generate avatar for: ${name}`);
     let imagePrompt =
-      `A single, focused, high-quality, highly accurate depiction of ${name}. ` + // Added "A single, focused" to emphasize one subject
-      (race ? `The character is of ${race} descent. ` : "") +
-      (gender ? `The character is ${gender}. ` : "") +
+      `A single, focused, high-quality, highly accurate depiction of ${name}. ` +
+      attributeString +
       `If ${name} is primarily known as a cartoon, animated, or illustrated character, the style MUST be a matching art style (e.g., cartoon, 2D animation, 3D animation, comic book art, illustration). ` +
       `Otherwise, for any character that is not explicitly cartoonish/animated (including real people, famous individuals, or other fictional characters), the portrait MUST be photorealistic, resembling a high-resolution photograph with realistic lighting, textures, and details. If ${name} is a real or famous person, ensure the likeness is as close as possible to well-known photographs or official depictions (do a lot of research, using many reference images!). `;
 

@@ -68,23 +68,23 @@ Then, describe in vivid, specific detail who this character (the original or cor
     }
     logger.info(`[PERSONALITY] Final personality for '${usedName}': ${personality}`);
 
-    let race = null;
-    let gender = null;
-    // Simple extraction for race and gender from summaryText
-    // (For best results, you could use a more advanced NLP or a dedicated LLM call)
-    const raceMatch = summaryText.match(/\b(?:race|ethnicity|skin color|heritage|background):? ([^.\n]+)/i);
-    if (raceMatch) race = raceMatch[1].trim();
-    // Try to extract gender from common patterns
-    const genderMatch = summaryText.match(/\b(?:gender|sex):? ([^.\n]+)/i);
-    if (genderMatch) gender = genderMatch[1].trim();
-    // Fallback: look for pronouns
-    if (!gender) {
-      if (/\bhe\b|\bhim\b|\bhis\b/i.test(summaryText)) gender = "male";
-      else if (/\bshe\b|\bher\b/i.test(summaryText)) gender = "female";
+    // --- Attribute Extraction ---
+    // Try to extract main attributes from the summary text
+    function extractAttribute(regex: RegExp, text: string) {
+      const match = text.match(regex);
+      return match ? match[1].trim() : null;
     }
-    logger.info(`[PERSONALITY] Extracted race: '${race}', gender: '${gender}'`);
-    // Return both personality and the name that was actually used (corrected or original)
-    res.status(200).json({ personality, correctedName: usedName, race, gender });
+    const race = extractAttribute(/\b(?:race|ethnicity|heritage|background):? ([^.\n]+)/i, summaryText);
+    const gender = extractAttribute(/\b(?:gender|sex):? ([^.\n]+)/i, summaryText) ||
+      (/\bhe\b|\bhim\b|\bhis\b/i.test(summaryText) ? "male" :
+      (/\bshe\b|\bher\b/i.test(summaryText) ? "female" : null));
+    const age = extractAttribute(/\b(?:age|years old):? ([^.\n]+)/i, summaryText);
+    const eyeColor = extractAttribute(/\b(?:eye color|eyes):? ([^.\n]+)/i, summaryText);
+    const hairColor = extractAttribute(/\b(?:hair color|hair):? ([^.\n]+)/i, summaryText);
+    // Add more attributes as needed
+
+    // Remove race and gender extraction and return only personality and correctedName
+    res.status(200).json({ personality, correctedName: usedName, race, gender, age, eyeColor, hairColor });
   } catch (e) {
     logger.error(`[PERSONALITY] Error generating personality for '${originalName}':`, e);
     // In case of error, return the original name as correctedName to avoid breaking client

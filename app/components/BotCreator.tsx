@@ -33,6 +33,9 @@ async function generateBotData(name: string): Promise<Bot> {
       if (data.correctedName) correctedName = data.correctedName; // Capture the corrected name
       var race = data.race;
       var gender = data.gender;
+      var age = data.age;
+      var eyeColor = data.eyeColor;
+      var hairColor = data.hairColor;
     }
   } catch (e) { /* fallback to default */ }
 
@@ -43,7 +46,7 @@ async function generateBotData(name: string): Promise<Bot> {
     const avatarRes = await fetch("/api/generate-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: correctedName, race, gender }), // Send corrected name, race, and gender
+      body: JSON.stringify({ name: correctedName, race, gender, age, eyeColor, hairColor }), // Send all attributes
     });
     if (avatarRes.ok) {
       const data = await avatarRes.json();
