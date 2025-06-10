@@ -9,6 +9,7 @@ import logger from "../../src/utils/logger";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { setReplyCache, getReplyCache } from "../../src/utils/cache";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
+import crypto from "crypto";
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   throw new Error(
@@ -187,37 +188,31 @@ export default async function handler(
       if (!fs.existsSync(tmpDir)) {
         fs.mkdirSync(tmpDir, { recursive: true });
       }
-      const audioFileName = `${uuidv4()}.mp3`;
+      // --- Audio cache logic ---
+      const audioCacheKey = getAudioCacheKey(cachedReply, selectedVoice);
+      const audioFileName = `${audioCacheKey}.mp3`;
       const audioFilePath = path.join(tmpDir, audioFileName);
-      if (fs.existsSync(audioFilePath)) {
-        fs.unlinkSync(audioFilePath);
-      }
-      try {
-        await synthesizeSpeechToFile({
-          text: ssmlText,
-          filePath: audioFilePath,
-          ssml: true,
-          voice: selectedVoice,
-        });
-        // Write a .txt sidecar for audio regeneration
-        const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-        fs.writeFileSync(txtFilePath, cachedReply, "utf8");
-        setReplyCache(audioFileName, cachedReply);
-      } catch (error) {
-        logger.error("Text-to-Speech API error (cache hit):", error);
-        const errorMessage =
-          error instanceof Error ? error.message : JSON.stringify(error);
-        return res
-          .status(500)
-          .json({ error: "Google Cloud TTS failed", details: errorMessage });
+      if (!fs.existsSync(audioFilePath)) {
+        try {
+          await synthesizeSpeechToFile({
+            text: ssmlText,
+            filePath: audioFilePath,
+            ssml: true,
+            voice: selectedVoice,
+          });
+          const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
+          fs.writeFileSync(txtFilePath, cachedReply, "utf8");
+          setReplyCache(audioFileName, cachedReply);
+        } catch (error) {
+          logger.error("Text-to-Speech API error (cache hit):", error);
+          const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+          return res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+        }
       }
       // Ensure .txt file is always written and matches reply
       try {
         const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-        if (
-          !fs.existsSync(txtFilePath) ||
-          fs.readFileSync(txtFilePath, "utf8").trim() !== cachedReply.trim()
-        ) {
+        if (!fs.existsSync(txtFilePath) || fs.readFileSync(txtFilePath, "utf8").trim() !== cachedReply.trim()) {
           fs.writeFileSync(txtFilePath, cachedReply, "utf8");
         }
       } catch (err) {
@@ -294,46 +289,45 @@ export default async function handler(
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
     }
-    const audioFileName = `${uuidv4()}.mp3`;
-    const audioFilePath = path.join(tmpDir, audioFileName);
-    if (fs.existsSync(audioFilePath)) {
-      fs.unlinkSync(audioFilePath);
+    // --- Utility to hash reply text and voice config for audio caching ---
+    function getAudioCacheKey(text: string, voiceConfig: any) {
+      return crypto.createHash("sha256")
+        .update(text)
+        .update(JSON.stringify(voiceConfig))
+        .digest("hex");
     }
-    try {
-      await synthesizeSpeechToFile({
-        text: ssmlText,
-        filePath: audioFilePath,
-        ssml: true,
-        voice: selectedVoice,
-      });
-      // Write a .txt sidecar for audio regeneration
-      const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-      fs.writeFileSync(txtFilePath, botReply, "utf8");
-      setReplyCache(audioFileName, botReply);
-    } catch (error) {
-      logger.error("Text-to-Speech API error:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : JSON.stringify(error);
-      return res
-        .status(500)
-        .json({ error: "Google Cloud TTS failed", details: errorMessage });
+    // --- Audio cache logic for OpenAI response (cache miss path) ---
+    const audioCacheKey = getAudioCacheKey(botReply, selectedVoice);
+    const audioFileName = `${audioCacheKey}.mp3`;
+    const audioFilePath = path.join(tmpDir, audioFileName);
+    if (!fs.existsSync(audioFilePath)) {
+      try {
+        await synthesizeSpeechToFile({
+          text: ssmlText,
+          filePath: audioFilePath,
+          ssml: true,
+          voice: selectedVoice,
+        });
+        const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
+        fs.writeFileSync(txtFilePath, botReply, "utf8");
+        setReplyCache(audioFileName, botReply);
+      } catch (error) {
+        logger.error("Text-to-Speech API error:", error);
+        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+        return res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+      }
     }
     // --- Ensure .txt file is always written and matches reply ---
     try {
       const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-      if (
-        !fs.existsSync(txtFilePath) ||
-        fs.readFileSync(txtFilePath, "utf8").trim() !== botReply.trim()
-      ) {
+      if (!fs.existsSync(txtFilePath) || fs.readFileSync(txtFilePath, "utf8").trim() !== botReply.trim()) {
         fs.writeFileSync(txtFilePath, botReply, "utf8");
       }
     } catch (err) {
       logger.error("Failed to ensure .txt file for audio reply:", err);
     }
-
     // After getting botReply from OpenAI, add to cache:
     setReplyCache(cacheKey, botReply);
-
     logger.info(
       `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}`,
     );
