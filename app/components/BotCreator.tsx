@@ -36,6 +36,7 @@ async function generateBotData(name: string): Promise<Bot> {
       var age = data.age;
       var eyeColor = data.eyeColor;
       var hairColor = data.hairColor;
+      var appearance = data.appearance;
     }
   } catch (e) { /* fallback to default */ }
 
@@ -46,7 +47,7 @@ async function generateBotData(name: string): Promise<Bot> {
     const avatarRes = await fetch("/api/generate-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: correctedName, race, gender, age, eyeColor, hairColor }), // Send all attributes
+      body: JSON.stringify({ name: correctedName, race, gender, age, eyeColor, hairColor, appearance }), // Send all attributes including appearance
     });
     if (avatarRes.ok) {
       const data = await avatarRes.json();
@@ -88,6 +89,7 @@ const progressSteps = [
 async function generateBotDataWithProgress(originalInputName: string, onProgress: (step: string) => void): Promise<Bot> {
   let personality = `You are ${originalInputName}. Respond as this character would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user\'s input. Never break character or refer to yourself as an AI or chatbot.`;
   let correctedName = originalInputName; // Initialize with original input
+  let race, gender, age, eyeColor, hairColor, appearance;
   onProgress("personality");
   try {
     const personalityRes = await fetch("/api/generate-personality", {
@@ -136,7 +138,7 @@ async function generateBotDataWithProgress(originalInputName: string, onProgress
     const avatarRes = await fetch("/api/generate-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: correctedName }), // Use corrected name for avatar
+      body: JSON.stringify({ name: correctedName, race, gender, age, eyeColor, hairColor, appearance }),
     });
     if (avatarRes.ok) {
       const data = await avatarRes.json();
@@ -148,9 +150,9 @@ async function generateBotDataWithProgress(originalInputName: string, onProgress
   let voiceConfig = null;
   onProgress("voice");
   try {
-    voiceConfig = await api_getVoiceConfigForCharacter(correctedName); // Use corrected name for voice
+    voiceConfig = await api_getVoiceConfigForCharacter(correctedName);
   } catch (e) {}
-  return { name: correctedName, personality, avatarUrl, voiceConfig }; // Return bot with corrected name
+  return { name: correctedName, personality, avatarUrl, voiceConfig };
 }
 
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {

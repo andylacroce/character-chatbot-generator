@@ -81,10 +81,13 @@ Then, describe in vivid, specific detail who this character (the original or cor
     const age = extractAttribute(/\b(?:age|years old):? ([^.\n]+)/i, summaryText);
     const eyeColor = extractAttribute(/\b(?:eye color|eyes):? ([^.\n]+)/i, summaryText);
     const hairColor = extractAttribute(/\b(?:hair color|hair):? ([^.\n]+)/i, summaryText);
-    // Add more attributes as needed
+    // Extract the 'Appearance' section if present
+    let appearance = null;
+    const appearanceMatch = summaryText.match(/\*\*Appearance:?\*\*[\n\r]+([^*]+)/i);
+    if (appearanceMatch) appearance = appearanceMatch[1].replace(/\n/g, ' ').trim();
 
     // Remove race and gender extraction and return only personality and correctedName
-    res.status(200).json({ personality, correctedName: usedName, race, gender, age, eyeColor, hairColor });
+    res.status(200).json({ personality, correctedName: usedName, race, gender, age, eyeColor, hairColor, appearance });
   } catch (e) {
     logger.error(`[PERSONALITY] Error generating personality for '${originalName}':`, e);
     // In case of error, return the original name as correctedName to avoid breaking client
