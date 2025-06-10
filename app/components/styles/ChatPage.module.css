@@ -46,6 +46,54 @@
   /* Grid item that fills available space */
 }
 
+/* --- Custom Scrollbar Styling --- */
+/*
+  Style the scrollbar to match the app's theme.
+  Uses CSS variables for consistency with light/dark modes.
+*/
+.chatMessagesScroll::-webkit-scrollbar {
+  width: 12px;
+}
+
+.chatMessagesScroll::-webkit-scrollbar-track {
+  background: var(--scrollbar-bg);
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+.chatMessagesScroll::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 6px;
+  border: 2px solid var(--scrollbar-bg);
+  transition: background-color 0.2s ease;
+  box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.chatMessagesScroll::-webkit-scrollbar-thumb:hover {
+  background: var(--button-hover-bg);
+}
+
+.chatMessagesScroll::-webkit-scrollbar-thumb:active {
+  background: var(--button-hover-bg);
+}
+
+/* Firefox scrollbar styling */
+.chatMessagesScroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-bg);
+}
+
+/* Responsive scrollbar width for smaller screens */
+@media (max-width: 768px) {
+  .chatMessagesScroll::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .chatMessagesScroll::-webkit-scrollbar-thumb {
+    border: 1px solid var(--scrollbar-bg);
+  }
+}
+
 /* --- Spinner Container --- */
 /*
   Sticky container for loading spinner.
