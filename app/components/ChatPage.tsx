@@ -81,6 +81,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
   const chatBoxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [showPromptModal, setShowPromptModal] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   useChatScrollAndFocus({
     chatBoxRef,
@@ -108,6 +109,23 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     [sessionId, sessionDatetime],
   ); // Add sessionId and sessionDatetime dependencies
 
+  // Helper for retry with exponential backoff
+  async function retryWithBackoff(fn: () => Promise<any>, maxRetries = 2, initialDelay = 800) {
+    let attempt = 0;
+    let delay = initialDelay;
+    while (attempt <= maxRetries) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (attempt === maxRetries) throw err;
+        setRetrying(true);
+        await new Promise((res) => setTimeout(res, delay));
+        delay *= 2;
+        attempt++;
+      }
+    }
+  }
+
   const sendMessage = useCallback(async () => {
     if (!input.trim() || !apiAvailable || loading) return;
     const userMessage: Message = { sender: "User", text: input };
@@ -116,11 +134,16 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     setInput("");
     setLoading(true);
     setError("");
+    setRetrying(false);
 
     logMessage(userMessage);
 
     try {
-      const response = await axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: bot.voiceConfig });
+      const response = await retryWithBackoff(
+        () => axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: bot.voiceConfig }),
+        2, // max 2 retries
+        800 // ms
+      );
       const botReply: Message = {
         sender: bot.name, // Use the bot's name
         text: response.data.reply,
@@ -135,6 +158,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       handleApiError(err);
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   }, [input, playAudio, apiAvailable, logMessage, loading, handleApiError, setError, bot]); // input added back to dependencies per lint rule
 
@@ -299,7 +323,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         inputRef={inputRef}        audioEnabled={audioEnabled}
         onAudioToggle={handleAudioToggle}
       />
-      <ChatStatus error={error} />
+      <ChatStatus error={error} retrying={retrying} />
       <ApiUnavailableModal show={!apiAvailable} />
       {/* Prompt Modal */}
       {showPromptModal && (
