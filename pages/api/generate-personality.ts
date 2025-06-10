@@ -67,8 +67,24 @@ Then, describe in vivid, specific detail who this character (the original or cor
       personality = completion.choices[0]?.message?.content?.trim() || `You are ${usedName}. Respond as this famous figure would, using their style, knowledge, and quirks.`;
     }
     logger.info(`[PERSONALITY] Final personality for '${usedName}': ${personality}`);
+
+    let race = null;
+    let gender = null;
+    // Simple extraction for race and gender from summaryText
+    // (For best results, you could use a more advanced NLP or a dedicated LLM call)
+    const raceMatch = summaryText.match(/\b(?:race|ethnicity|skin color|heritage|background):? ([^.\n]+)/i);
+    if (raceMatch) race = raceMatch[1].trim();
+    // Try to extract gender from common patterns
+    const genderMatch = summaryText.match(/\b(?:gender|sex):? ([^.\n]+)/i);
+    if (genderMatch) gender = genderMatch[1].trim();
+    // Fallback: look for pronouns
+    if (!gender) {
+      if (/\bhe\b|\bhim\b|\bhis\b/i.test(summaryText)) gender = "male";
+      else if (/\bshe\b|\bher\b/i.test(summaryText)) gender = "female";
+    }
+    logger.info(`[PERSONALITY] Extracted race: '${race}', gender: '${gender}'`);
     // Return both personality and the name that was actually used (corrected or original)
-    res.status(200).json({ personality, correctedName: usedName });
+    res.status(200).json({ personality, correctedName: usedName, race, gender });
   } catch (e) {
     logger.error(`[PERSONALITY] Error generating personality for '${originalName}':`, e);
     // In case of error, return the original name as correctedName to avoid breaking client

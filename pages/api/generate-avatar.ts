@@ -6,7 +6,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
-  const { name } = req.body;
+  const { name, race, gender } = req.body;
   if (!name) return res.status(400).json({ error: "Name required" });
   try {
     // Compose the DALL-E prompt directly with the name and style instructions
@@ -14,6 +14,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     logger.info(`[AVATAR] Received request to generate avatar for: ${name}`);
     let imagePrompt =
       `A single, focused, high-quality, highly accurate depiction of ${name}. ` + // Added "A single, focused" to emphasize one subject
+      (race ? `The character is of ${race} descent. ` : "") +
+      (gender ? `The character is ${gender}. ` : "") +
       `If ${name} is primarily known as a cartoon, animated, or illustrated character, the style MUST be a matching art style (e.g., cartoon, 2D animation, 3D animation, comic book art, illustration). ` +
       `Otherwise, for any character that is not explicitly cartoonish/animated (including real people, famous individuals, or other fictional characters), the portrait MUST be photorealistic, resembling a high-resolution photograph with realistic lighting, textures, and details. If ${name} is a real or famous person, ensure the likeness is as close as possible to well-known photographs or official depictions (do a lot of research, using many reference images!). `;
 
