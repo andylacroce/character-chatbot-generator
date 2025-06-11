@@ -58,4 +58,25 @@ describe('ChatHeader', () => {
     fireEvent.click(screen.getByLabelText(/visit andy lacroce's website/i));
     expect(mockOnHeaderLinkClick).toHaveBeenCalledTimes(2);
   });
+
+  it('renders nothing if bot is not provided', () => {
+    const { container } = render(
+      <ChatHeader {...defaultProps} bot={undefined as any} />
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('closes the modal when ModalImageViewer onClose is called', async () => {
+    render(<ChatHeader {...defaultProps} />);
+    // Open the modal
+    fireEvent.click(screen.getByLabelText(/view character portrait/i));
+    // Modal should be open (look for the modal backdrop)
+    const modal = await screen.findByTestId('modal-image-backdrop');
+    expect(modal).toBeInTheDocument();
+    // Find the close button in ModalImageViewer (simulate close)
+    const closeButton = screen.getByRole('button', { name: /close/i });
+    fireEvent.click(closeButton);
+    // Modal should be closed (backdrop should not be in the document)
+    expect(screen.queryByTestId('modal-image-backdrop')).not.toBeInTheDocument();
+  });
 });
