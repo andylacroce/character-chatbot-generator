@@ -47,11 +47,18 @@ tmp/ # Ignore the tmp directory for local transcripts and logs
 tmp/**/* # Explicitly ignore all contents of tmp directory
 # Explicitly ignore txt logs
 tmp/logs/
-tmp/logs/*.txt
-tmp/logs/**/*.txt
 
 # OS
 Thumbs.db
 
 # public avatars
 public/avatars/*
+
+# Add SWC cache (Next.js)
+.swc/
+
+# Add TypeScript build info
+*.tsbuildinfo
+
+# Add ESLint cache
+.eslintcache
