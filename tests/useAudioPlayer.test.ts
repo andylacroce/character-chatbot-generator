@@ -244,4 +244,85 @@ describe('useAudioPlayer', () => {
     // Should not set audioRef.current to null
     expect(ref.current.audioRef.current).not.toBeNull();
   });
+
+  it('should handle audioRef.current with neither pause nor currentTime', async () => {
+    const audioEnabledRef = { current: false };
+    const ref = React.createRef<any>();
+    render(React.createElement(TestComponent, { ref, audioEnabledRef }));
+    // Set audioRef.current to an object with neither pause nor currentTime
+    const dummy = { foo: 'bar' };
+    ref.current.audioRef.current = dummy;
+    let error = null;
+    try {
+      await act(async () => {
+        await ref.current.playAudio('test.mp3');
+      });
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeNull();
+    // Should not change audioRef.current
+    expect(ref.current.audioRef.current).toBe(dummy);
+  });
+
+  it('should catch error when setting currentTime', async () => {
+    const audioEnabledRef = { current: true };
+    const ref = React.createRef<any>();
+    render(React.createElement(TestComponent, { ref, audioEnabledRef }));
+    // Set audioRef.current to object with pause and currentTime setter that throws
+    const dummy = {
+      pause: jest.fn(),
+      get currentTime() { return 0; },
+      set currentTime(_v) { throw new Error('fail'); },
+    };
+    ref.current.audioRef.current = dummy;
+    let error = null;
+    try {
+      await act(async () => {
+        await ref.current.playAudio('test.mp3');
+      });
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeNull();
+  });
+
+  it('should set _paused property if present on previous audioRef.current', async () => {
+    const audioEnabledRef = { current: true };
+    const ref = React.createRef<any>();
+    render(React.createElement(TestComponent, { ref, audioEnabledRef }));
+    // Set audioRef.current to object with pause, currentTime, and _paused
+    const dummy = {
+      pause: jest.fn(),
+      get currentTime() { return 0; },
+      set currentTime(_v) {},
+      _paused: false,
+    };
+    ref.current.audioRef.current = dummy;
+    await act(async () => {
+      await ref.current.playAudio('test.mp3');
+    });
+    expect(dummy._paused).toBe(true);
+  });
+
+  // Add test for uncovered branch: audioRef.current exists, but neither pause nor currentTime are present, and audioEnabledRef.current is false
+  it('should leave audioRef.current unchanged if it has neither pause nor currentTime and audio is disabled', async () => {
+    const audioEnabledRef = { current: false };
+    const ref = React.createRef<any>();
+    render(React.createElement(TestComponent, { ref, audioEnabledRef }));
+    // Set audioRef.current to an object with neither pause nor currentTime
+    const dummy = { foo: 'bar' };
+    ref.current.audioRef.current = dummy;
+    let error = null;
+    try {
+      await act(async () => {
+        await ref.current.playAudio('test.mp3');
+      });
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeNull();
+    // Should not change audioRef.current
+    expect(ref.current.audioRef.current).toBe(dummy);
+  });
 });

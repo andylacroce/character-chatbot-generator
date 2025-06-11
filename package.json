@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest --coverage --coverageReporters=text --coverageReporters=text-summary",
+    "test": "jest",
+    "test:coverage": "jest --coverage --coverageReporters=text --coverageReporters=text-summary",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
