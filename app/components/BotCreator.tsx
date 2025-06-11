@@ -94,17 +94,25 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
     setProgress(null);
   };
 
+  // Track a longer history of recent random names (in-memory, per session)
+  let recentRandomNames: string[] = [];
+  const RECENT_HISTORY_LIMIT = 10;
+
   async function getRandomCharacterNameAvoidRepeat(lastName: string, maxTries = 3): Promise<{ name: string }> {
     let tries = 0;
     let name = lastName;
     while (tries < maxTries) {
       try {
-        // Add cache-busting query param
-        const res = await fetch(`/api/random-character?cb=${Date.now()}-${Math.random()}`);
+        // Pass recent history to API as exclusions
+        const exclude = [...recentRandomNames, lastName].filter(Boolean).join(",");
+        const res = await fetch(`/api/random-character?cb=${Date.now()}-${Math.random()}&exclude=${encodeURIComponent(exclude)}`);
         const data = await res.json();
-        if (res.ok && data && typeof data.name === "string" && data.name.trim() && data.name.trim() !== lastName) {
-          // Remove 'source' property from returned objects
-          return { name: data.name.replace(/^\[STATIC\]\s*/, '') };
+        if (res.ok && data && typeof data.name === "string" && data.name.trim() && !recentRandomNames.includes(data.name.trim())) {
+          name = data.name.replace(/^\[STATIC\]\s*/, '').trim();
+          // Update recent history
+          recentRandomNames.push(name);
+          if (recentRandomNames.length > RECENT_HISTORY_LIMIT) recentRandomNames.shift();
+          return { name };
         }
         // If fallback, still check for repeat
         if (data && typeof data.name === "string" && data.name.trim()) {
@@ -112,13 +120,17 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
         }
       } catch {
         // fallback to static known character
-        const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default" && n !== lastName);
+        const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default" && n !== lastName && !recentRandomNames.includes(n));
         if (names.length > 0) {
           name = names[Math.floor(Math.random() * names.length)];
         } else {
           name = "Yoda";
         }
-        if (name !== lastName) return { name };
+        if (name !== lastName && !recentRandomNames.includes(name)) {
+          recentRandomNames.push(name);
+          if (recentRandomNames.length > RECENT_HISTORY_LIMIT) recentRandomNames.shift();
+          return { name };
+        }
       }
       tries++;
     }

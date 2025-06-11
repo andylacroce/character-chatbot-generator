@@ -68,7 +68,48 @@ export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
     rate: 1.0,
     type: 'Wavenet',
   },
-  // Add more as needed
+  // Expanded static fallback list for more diversity
+  'Cleopatra': {
+    languageCodes: ['en-GB'],
+    name: 'en-GB-Wavenet-F',
+    ssmlGender: SSML_GENDER.FEMALE,
+    pitch: 2,
+    rate: 1.0,
+    type: 'Wavenet',
+  },
+  'Nikola Tesla': {
+    languageCodes: ['en-US'],
+    name: 'en-US-Wavenet-D',
+    ssmlGender: SSML_GENDER.MALE,
+    pitch: 0,
+    rate: 1.0,
+    type: 'Wavenet',
+  },
+  'Harriet Tubman': {
+    languageCodes: ['en-US'],
+    name: 'en-US-Wavenet-F',
+    ssmlGender: SSML_GENDER.FEMALE,
+    pitch: 0,
+    rate: 1.0,
+    type: 'Wavenet',
+  },
+  'Bruce Lee': {
+    languageCodes: ['en-US'],
+    name: 'en-US-Wavenet-D',
+    ssmlGender: SSML_GENDER.MALE,
+    pitch: 2,
+    rate: 1.1,
+    type: 'Wavenet',
+  },
+  'Ada Lovelace': {
+    languageCodes: ['en-GB'],
+    name: 'en-GB-Wavenet-F',
+    ssmlGender: SSML_GENDER.FEMALE,
+    pitch: 1,
+    rate: 1.0,
+    type: 'Wavenet',
+  },
+  // ...add more as needed for diversity...
 };
 
 function normalizeCharacterName(name: string): string {
