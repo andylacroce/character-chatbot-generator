@@ -16,6 +16,7 @@
 // =============================
 
 import React, { useState, useRef, useEffect } from "react";
+import { flushSync } from "react-dom";
 import styles from "./styles/HamburgerMenu.module.css";
 
 interface HamburgerMenuProps {
@@ -42,19 +43,28 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children }) => {
     };
   }, [open]);
 
+  // Keyboard accessibility: open/close with Enter/Space, close with Escape
+  function handleButtonKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
+    if ((e.key === "Enter" || e.key === " ")) {
+      setOpen((v) => !v);
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
+
   // Enhance children to close menu on click
   const enhancedChildren = React.Children.map(children, (child) => {
     if (!React.isValidElement(child)) return child;
-    // Only enhance buttons
-    if (
-      (child.type === "button" ||
-        (typeof child.type === "string" && child.type === "button")) &&
-      child.props
-    ) {
-      const originalOnClick = (child as React.ReactElement<React.ButtonHTMLAttributes<HTMLButtonElement>>).props.onClick;
-      return React.cloneElement(child as React.ReactElement<React.ButtonHTMLAttributes<HTMLButtonElement>>, {
+    // Enhance if native button or a function/class component with onClick prop
+    const isButtonLike =
+      child.type === "button" ||
+      (typeof child.type === "string" && child.type === "button") ||
+      (typeof child.type === "function" && child.props && Object.prototype.hasOwnProperty.call(child.props, "onClick"));
+    if (isButtonLike && child.props) {
+      const originalOnClick = (child as React.ReactElement<{ onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void }>).props.onClick;
+      return React.cloneElement(child as React.ReactElement<{ onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void }>, {
         onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-          setOpen(false);
+          flushSync(() => setOpen(false));
           if (originalOnClick) originalOnClick(e);
         },
       });
@@ -67,7 +77,9 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children }) => {
       <button
         className={styles.hamburger}
         aria-label="Open menu"
+        aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={handleButtonKeyDown}
       >
         <span className={styles.bar}></span>
         <span className={styles.bar}></span>
