@@ -11,7 +11,15 @@ const mockBot: Bot = {
   name: "Gandalf",
   personality: "wise",
   avatarUrl: "/silhouette.svg", // Required by Bot interface
-  voiceConfig: { voice: "en-US-Wavenet-D" },
+  // Provide a valid CharacterVoiceConfig shape
+  voiceConfig: {
+    languageCodes: ["en-US"],
+    name: "en-US-Wavenet-D",
+    ssmlGender: 1,
+    pitch: 0,
+    rate: 1.0,
+    type: "Wavenet"
+  },
 };
 
 describe("ChatPage API retry logic", () => {
