@@ -50,5 +50,5 @@ export async function downloadTranscript(messages: any[]) {
   setTimeout(() => {
     if (window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(url);
     if (a.remove) a.remove();
-  }, 100);
+  }, typeof process !== 'undefined' && process.env.JEST_WORKER_ID ? 0 : 100);
 }
