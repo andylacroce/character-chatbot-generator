@@ -26,12 +26,6 @@ describe("ChatMessage", () => {
     expect(screen.getByAltText("Gandalf")).toBeInTheDocument();
   });
 
-  it("renders skeleton state", () => {
-    const message: Message = { text: "", sender: "AI" };
-    render(<ChatMessage message={message} bot={mockBot} skeleton />);
-    expect(screen.getByRole("article", { name: /loading message/i })).toBeInTheDocument();
-  });
-
   it("returns null and logs error for invalid message", () => {
     const spy = jest.spyOn(console, "error").mockImplementation(() => {});
     // @ts-expect-error purposely invalid

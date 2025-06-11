@@ -93,7 +93,13 @@ describe("ChatPage full feature coverage", () => {
     }
     await waitFor(() => expect(screen.getByText(/msg0/)).toBeInTheDocument());
     const chatBox = screen.getByTestId("chat-messages-container");
-    Object.defineProperty(chatBox, "scrollTop", { get: () => 0 });
+    // Patch scrollTop to be writable for test
+    let scrollTopValue = 0;
+    Object.defineProperty(chatBox, "scrollTop", {
+      get: () => scrollTopValue,
+      set: (v) => { scrollTopValue = v; },
+      configurable: true
+    });
     fireEvent.scroll(chatBox);
     // Should load more messages (visibleCount increases)
     expect(screen.getByText(/msg0/)).toBeInTheDocument();

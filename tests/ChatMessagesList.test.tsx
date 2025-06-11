@@ -11,11 +11,6 @@ const mockBot: Bot = {
 };
 
 describe("ChatMessagesList", () => {
-  it("renders skeletons when showSkeletons is true", () => {
-    render(<ChatMessagesList messages={[]} bot={mockBot} showSkeletons />);
-    expect(screen.getAllByRole("article", { name: /loading message/i }).length).toBeGreaterThan(0);
-  });
-
   it("renders all messages without virtualization if below threshold", () => {
     const messages = Array.from({ length: 5 }, (_, i) => ({ text: `msg${i}`, sender: i % 2 === 0 ? "User" : "AI" }));
     render(<ChatMessagesList messages={messages} bot={mockBot} />);

@@ -304,7 +304,6 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         <ChatMessagesList
           messages={messages.slice(-visibleCount)}
           bot={bot}
-          showSkeletons={loading}
         />
       </div>
       {loading && (
