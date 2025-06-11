@@ -80,7 +80,6 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
 
   const chatBoxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [showPromptModal, setShowPromptModal] = useState(false);
   const [retrying, setRetrying] = useState(false);
 
   useChatScrollAndFocus({
@@ -286,7 +285,6 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     <div className={styles.chatLayout} data-testid="chat-layout">
       <ChatHeader
         onDownloadTranscript={handleDownloadTranscript}
-        onShowPrompt={() => setShowPromptModal(true)}
         onHeaderLinkClick={handleHeaderLinkClick}
         onBackToCharacterCreation={handleBackToCharacterCreation}
         bot={bot}
@@ -323,44 +321,6 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       />
       <ChatStatus error={error} retrying={retrying} />
       <ApiUnavailableModal show={!apiAvailable} />
-      {/* Prompt Modal */}
-      {showPromptModal && (
-        <div className={styles.modalBackdrop}>
-          <div
-            className={styles.promptModal}
-            style={{
-              maxWidth: '98vw',
-              width: '100%',
-              padding: '1.2rem 0.5rem 1.2rem 0.5rem',
-              boxSizing: 'border-box',
-              overflowY: 'auto',
-              ...(typeof window !== 'undefined' && window.innerWidth <= 400
-                ? { padding: '0.7rem 0.1rem 0.7rem 0.1rem', borderRadius: 7, fontSize: '0.95rem' }
-                : {})
-            }}
-          >
-            <button
-              className={styles.closeButton}
-              onClick={() => setShowPromptModal(false)}
-              aria-label="Close"
-              style={{
-                fontSize: window.innerWidth <= 400 ? '1.5rem' : window.innerWidth <= 600 ? '2.1rem' : '1.7rem',
-                top: window.innerWidth <= 400 ? 2 : window.innerWidth <= 600 ? 6 : 10,
-                right: window.innerWidth <= 400 ? 4 : window.innerWidth <= 600 ? 10 : 14,
-                padding: window.innerWidth <= 600 ? '0.1em 0.3em' : undefined
-              }}
-            >
-              ×
-            </button>
-            <div className={styles.promptContent} style={{ fontSize: window.innerWidth <= 600 ? '0.98rem' : undefined, padding: window.innerWidth <= 600 ? '0.2rem 0.1rem' : undefined }}>
-              <strong>Prompt:</strong>
-              <div style={{ marginTop: 8 }}>
-                {bot?.personality || 'No prompt available.'}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

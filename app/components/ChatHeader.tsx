@@ -12,7 +12,6 @@ const ModalImageViewer = dynamic(() => import("./ModalImageViewer"), { ssr: fals
 
 interface ChatHeaderProps {
   onDownloadTranscript: () => void;
-  onShowPrompt: () => void;
   onHeaderLinkClick?: () => void;
   onBackToCharacterCreation?: () => void;
   bot: {
@@ -22,7 +21,7 @@ interface ChatHeaderProps {
   };
 }
 
-const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript, onShowPrompt, onHeaderLinkClick, onBackToCharacterCreation, bot }) => {
+const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript, onHeaderLinkClick, onBackToCharacterCreation, bot }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const { darkMode, setDarkMode } = useContext(DarkModeContext);
   if (!bot) return null;
