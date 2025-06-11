@@ -95,7 +95,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   };
 
   // Track a longer history of recent random names (in-memory, per session)
-  let recentRandomNames: string[] = [];
+  const recentRandomNames: string[] = [];
   const RECENT_HISTORY_LIMIT = 10;
 
   async function getRandomCharacterNameAvoidRepeat(lastName: string, maxTries = 3): Promise<{ name: string }> {
