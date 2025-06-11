@@ -13,7 +13,14 @@ const mockBot: Bot = {
   name: "Gandalf",
   personality: "wise",
   avatarUrl: "/silhouette.svg",
-  voiceConfig: { voice: "en-US-Wavenet-D" },
+  voiceConfig: {
+    languageCodes: ["en-US"],
+    name: "en-US-Wavenet-D",
+    ssmlGender: 1, // SSML_GENDER.MALE
+    pitch: 0,
+    rate: 1.0,
+    type: "Wavenet",
+  },
 };
 
 describe("ChatPage full feature coverage", () => {

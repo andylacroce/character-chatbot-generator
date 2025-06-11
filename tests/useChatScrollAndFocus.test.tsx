@@ -6,7 +6,13 @@ function setup({ messages = [], loading = false } = {}) {
   const chatBoxRef = React.createRef<HTMLDivElement>();
   const inputRef = React.createRef<HTMLInputElement>();
   function TestComponent({ messages, loading }: { messages: any[]; loading: boolean }) {
-    useChatScrollAndFocus({ chatBoxRef, inputRef, messages, loading });
+    // Cast refs to match the expected types in the hook
+    useChatScrollAndFocus({
+      chatBoxRef: chatBoxRef as React.RefObject<HTMLDivElement>,
+      inputRef: inputRef as React.RefObject<HTMLInputElement | null>,
+      messages,
+      loading,
+    });
     return (
       <>
         <div ref={chatBoxRef} data-testid="chatbox" style={{ height: 100, overflow: 'auto' }} />
