@@ -23,7 +23,7 @@
     "@vercel/blob": "^1.1.1",
     "@vercel/speed-insights": "^1.2.0",
     "axios": "^1.9.0",
-    "brace-expansion": "^2.0.0",
+    "brace-expansion": "^4.0.0",
     "critters": "^0.0.23",
     "eslint-config-next": "^15.3.3",
     "filelist": "^1.0.2",
