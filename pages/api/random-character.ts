@@ -29,7 +29,12 @@ async function logRandomCharacter(name: string) {
 }
 
 function getStaticCharacterList() {
-  return Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default");
+  // Combine CHARACTER_VOICE_MAP keys (excluding "Default") with extraStatic for fallback
+  return [...Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default"),
+    "Cleopatra", "Nikola Tesla", "Harriet Tubman", "Bruce Lee", "Ada Lovelace", "Mahatma Gandhi", "Queen Elizabeth I", "Martin Luther King Jr.",
+    "Frida Kahlo", "Leonardo da Vinci", "Marie Curie", "Nelson Mandela", "Joan of Arc", "Socrates", "Jane Austen", "Malala Yousafzai", "David Bowie",
+    "Serena Williams", "Albert Einstein", "Winston Churchill", "Rosa Parks", "Stephen Hawking", "Amelia Earhart", "Simone Biles", "Oscar Wilde"
+  ];
 }
 
 function getRandomStaticCharacter(exclude: string[] = []) {
@@ -70,16 +75,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     exclude = req.query.exclude.flatMap(s => s.split(",").map(x => x.trim())).filter(Boolean);
   }
 
-  // Helper: expand static fallback list with more diverse characters
-  const extraStatic = [
-    "Cleopatra", "Nikola Tesla", "Harriet Tubman", "Bruce Lee", "Ada Lovelace", "Mahatma Gandhi", "Queen Elizabeth I", "Martin Luther King Jr.",
-    "Frida Kahlo", "Leonardo da Vinci", "Marie Curie", "Nelson Mandela", "Joan of Arc", "Socrates", "Jane Austen", "Malala Yousafzai", "David Bowie",
-    "Serena Williams", "Albert Einstein", "Winston Churchill", "Rosa Parks", "Stephen Hawking", "Amelia Earhart", "Simone Biles", "Oscar Wilde"
-  ];
-  function getStaticCharacterList() {
-    return [...Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default"), ...extraStatic];
-  }
-
   try {
     const staticList = getStaticCharacterList();
     // Exclude Sherlock Holmes and last 5 static names from OpenAI
@@ -117,7 +112,7 @@ You are an expert in world history, literature, pop culture, and media. Your tas
       if (/[^A-Za-z0-9\s\-'.]/.test(n)) return false; // no weird symbols or non-latin
       if (/\d{3,}/.test(n)) return false; // not just numbers
       if (/^[A-Za-z]{1,2}$/.test(n)) return false; // not just a single letter or two
-      if (/^(unknown|n[\\/]?a|none|null|character|random|test)$/i.test(n.trim())) return false;
+      if (/(unknown|n[\\/]?a|none|null|character|random|test)/i.test(n.trim())) return false;
       if (exclude.some(e => n.toLowerCase() === e.toLowerCase())) return false;
       // Avoid near-duplicates (case-insensitive, ignore spaces)
       if (exclude.some(e => n.replace(/\s+/g, '').toLowerCase() === e.replace(/\s+/g, '').toLowerCase())) return false;
