@@ -1,3 +1,9 @@
+// =============================
+// pages/api/delete-audio.ts
+// Next.js API route for deleting temporary audio files from the server.
+// Used for cleanup after TTS playback.
+// =============================
+
 import fs from "fs/promises";
 import path from "path";
 import type { NextApiRequest, NextApiResponse } from "next";

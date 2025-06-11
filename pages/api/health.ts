@@ -1,3 +1,9 @@
+// =============================
+// pages/api/health.ts
+// Next.js API route for health checks of OpenAI and Google TTS services.
+// Returns status for monitoring and uptime checks.
+// =============================
+
 import OpenAI from "openai";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
 import fs from "fs";

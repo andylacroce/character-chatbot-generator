@@ -1,3 +1,9 @@
+// =============================
+// tts.ts
+// Google Text-to-Speech (TTS) utility functions for synthesizing audio from text.
+// Handles credential loading, TTS client instantiation, speech synthesis, and audio file cleanup.
+// =============================
+
 /**
  * Google Text-to-Speech (TTS) utility functions.
  *

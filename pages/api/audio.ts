@@ -1,3 +1,9 @@
+// =============================
+// pages/api/audio.ts
+// Next.js API route for generating audio responses for chat messages.
+// Uses Google TTS and character persona logic for synthesis.
+// =============================
+
 import fs from "fs";
 import path from "path";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";

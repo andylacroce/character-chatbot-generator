@@ -1,3 +1,9 @@
+// =============================
+// pages/api/generate-avatar.ts
+// Next.js API route for generating a character avatar image using OpenAI.
+// Accepts POST requests with a character name and returns an image URL or data URL.
+// =============================
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import logger from "../../src/utils/logger";

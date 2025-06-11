@@ -1,6 +1,7 @@
 // =============================
 // ModalImageViewer.tsx
 // Modal component for displaying an enlarged image (e.g., character avatar).
+// Props: show (boolean), imageUrl (string), alt (string), onClose (function).
 // Used in ChatHeader and BotCreator for image previews.
 // =============================
 

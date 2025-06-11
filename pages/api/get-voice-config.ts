@@ -1,3 +1,9 @@
+// =============================
+// pages/api/get-voice-config.ts
+// Next.js API route for retrieving a character's TTS voice configuration.
+// Accepts POST requests with a character name and returns a voice config object.
+// =============================
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 

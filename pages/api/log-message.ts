@@ -1,3 +1,9 @@
+// =============================
+// pages/api/log-message.ts
+// Next.js API route for logging chat messages and events to storage (Vercel Blob or local).
+// Includes XSS-safe HTML escaping for logs.
+// =============================
+
 import { put, head } from "@vercel/blob";
 import fs from "fs";
 import path from "path";

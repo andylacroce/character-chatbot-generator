@@ -1,3 +1,9 @@
+// =============================
+// downloadTranscript.ts
+// Utility for downloading the chat transcript as a text file via the /api/transcript endpoint.
+// Handles browser compatibility, error handling, and file naming.
+// =============================
+
 import type { Message } from "../types/message";
 
 /**

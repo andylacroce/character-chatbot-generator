@@ -1,3 +1,9 @@
+// =============================
+// HamburgerMenu.tsx
+// Accessible hamburger menu component for mobile and desktop navigation.
+// Renders a button and dropdown for menu actions, with keyboard and focus support.
+// =============================
+
 import React, { useState, useRef, useEffect } from "react";
 import styles from "./styles/HamburgerMenu.module.css";
 

@@ -1,3 +1,9 @@
+// =============================
+// pages/api/random-character.ts
+// Next.js API route for generating or selecting a random character name.
+// Uses OpenAI or static list for suggestions, logs results for analytics.
+// =============================
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import { CHARACTER_VOICE_MAP } from "../../src/utils/characterVoices";

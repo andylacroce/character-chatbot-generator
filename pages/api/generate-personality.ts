@@ -1,3 +1,9 @@
+// =============================
+// pages/api/generate-personality.ts
+// Next.js API route for generating a character personality prompt using OpenAI.
+// Accepts POST requests with a character name and returns a personality string.
+// =============================
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
 

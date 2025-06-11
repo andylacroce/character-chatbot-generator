@@ -1,3 +1,9 @@
+// =============================
+// pages/api/transcript.ts
+// Next.js API route for generating and returning a downloadable chat transcript.
+// Accepts POST requests with messages and returns a text file response.
+// =============================
+
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
 
