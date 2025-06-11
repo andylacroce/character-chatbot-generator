@@ -1,4 +1,3 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
 import fs from "fs";
@@ -33,9 +32,9 @@ export default async function handler(
     if (!result || !result.choices || !result.choices[0]?.message?.content) {
       throw new Error("No valid OpenAI response");
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     openaiStatus = "error";
-    openaiError = err.message || String(err);
+    openaiError = err instanceof Error ? err.message : String(err);
     if (process.env.NODE_ENV !== "production") {
       logger.error(`[HealthCheck] OpenAI error | requestId=${requestId}:`, err);
     }
@@ -67,9 +66,9 @@ export default async function handler(
     if (!response || !response.audioContent) {
       throw new Error("No audio content from TTS");
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     ttsStatus = "error";
-    ttsError = err.message || String(err);
+    ttsError = err instanceof Error ? err.message : String(err);
     if (process.env.NODE_ENV !== "production") {
       logger.error(`[HealthCheck] Google TTS error | requestId=${requestId}:`, err);
     }

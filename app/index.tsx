@@ -44,7 +44,9 @@ const Home = () => {
       if (saved) {
         setBot(JSON.parse(saved));
       }
-    } catch (e) {}
+    } catch {
+      // Remove unused variable 'e' as reported by the linter.
+    }
     setLoadingBot(false);
   }, []);
 

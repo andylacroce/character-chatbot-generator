@@ -1,5 +1,4 @@
-import React, { useContext, useState } from "react";
-import { DarkModeContext } from "./DarkModeContext";
+import React, { useState } from "react";
 import styles from "./styles/ChatHeader.module.css";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -23,7 +22,6 @@ interface ChatHeaderProps {
 
 const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript, onHeaderLinkClick, onBackToCharacterCreation, bot }) => {
   const [showImageModal, setShowImageModal] = useState(false);
-  const { darkMode, setDarkMode } = useContext(DarkModeContext);
   if (!bot) return null;
   return (
     <div className={styles.chatHeader} data-testid="chat-header" role="banner">

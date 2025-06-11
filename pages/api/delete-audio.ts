@@ -1,11 +1,8 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs/promises";
 import path from "path";
+import type { NextApiRequest, NextApiResponse } from "next";
 
-export default async function handler(
-  req: import("next").NextApiRequest,
-  res: import("next").NextApiResponse,
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { file } = req.query;
   // Only allow simple filenames, not paths
   if (
@@ -23,8 +20,13 @@ export default async function handler(
     await fs.unlink(filePath);
     console.info(`[Delete-Audio API] 200 OK: File deleted (${file})`);
     return res.status(200).json({ message: "File deleted" });
-  } catch (error: any) {
-    if (error.code === "ENOENT") {
+  } catch (error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "ENOENT"
+    ) {
       console.info(`[Delete-Audio API] 404 Not Found: File not found (${file})`);
       return res.status(404).json({ error: "File not found" });
     }

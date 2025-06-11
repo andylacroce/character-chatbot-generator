@@ -1,5 +1,5 @@
 // API utility to fetch voice config for a character from the backend
-export async function api_getVoiceConfigForCharacter(name: string) {
+export async function api_getVoiceConfigForCharacter(name: string): Promise<import("../../src/utils/characterVoices").CharacterVoiceConfig> {
   const res = await fetch("/api/get-voice-config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

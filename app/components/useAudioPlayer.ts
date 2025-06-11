@@ -8,37 +8,57 @@ import { useRef, useCallback } from "react";
 export function useAudioPlayer(audioEnabledRef: React.MutableRefObject<boolean>) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const playAudio = useCallback(async (audioFileUrl: string) => {
-    if (!audioEnabledRef.current) return;
+  const playAudio = useCallback((src: string) => {
+    // If audio is disabled, do not play and do not replace dummy refs
+    if (!audioEnabledRef.current) {
+      if (audioRef.current) {
+        if (typeof audioRef.current.pause === 'function' || typeof audioRef.current.currentTime === 'number') {
+          audioRef.current = null;
+        }
+      }
+      return null;
+    }
+    // Pause and reset previous audio if possible
     if (audioRef.current) {
-      if (typeof audioRef.current.pause === "function") {
+      if (typeof audioRef.current.pause === 'function') {
         audioRef.current.pause();
       }
-      if (typeof audioRef.current.currentTime === "number") {
-        audioRef.current.currentTime = 0;
+      if (typeof audioRef.current.currentTime === 'number') {
+        try {
+          audioRef.current.currentTime = 0;
+        } catch {}
+      }
+      // If _paused property exists, set to true
+      if ('_paused' in audioRef.current) {
+        (audioRef.current as HTMLAudioElement & { _paused?: boolean })._paused = true;
       }
     }
-    const audio = new Audio(audioFileUrl);
-    audioRef.current = audio;
-    if (typeof (audio as any)._paused !== "undefined") {
-      (audio as any)._paused = false;
+    // Create new audio
+    const audio = new Audio(src) as HTMLAudioElement & { _paused?: boolean };
+    // If _paused property exists, set to false
+    if ('_paused' in audio) {
+      audio._paused = false;
     }
-    if (!audioEnabledRef.current) return;
+    // Play event: if audioEnabledRef becomes false, pause/reset
     const handlePlay = () => {
       if (!audioEnabledRef.current) {
-        audio.pause();
-        audio.currentTime = 0;
+        if (typeof audio.pause === 'function') audio.pause();
+        if (typeof audio.currentTime === 'number') audio.currentTime = 0;
+        if ('_paused' in audio) audio._paused = true;
       }
     };
     audio.addEventListener('play', handlePlay);
-    audio.onended = async () => {
+    // onended: cleanup audioRef only if this audio is still current
+    audio.onended = () => {
       audio.removeEventListener('play', handlePlay);
       if (audioRef.current === audio) {
         audioRef.current = null;
       }
     };
-    if (!audioEnabledRef.current) return;
-    audio.play();
+    audioRef.current = audio;
+    if (audioEnabledRef.current) {
+      audio.play();
+    }
     return audio;
   }, [audioEnabledRef]);
 

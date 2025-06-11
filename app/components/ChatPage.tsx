@@ -13,7 +13,6 @@ import React, {
 } from "react";
 import axios from "axios";
 import "../globals.css";
-import Image from "next/image";
 import ChatMessagesList from "./ChatMessagesList";
 import { downloadTranscript } from "../../src/utils/downloadTranscript"; // Import the utility
 import "@trendmicro/react-toggle-switch/dist/react-toggle-switch.css";
@@ -27,11 +26,7 @@ import ChatHeader from "./ChatHeader";
 import { Message } from "../../src/types/message";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 import { useApiError } from "./useApiError";
-import dynamic from "next/dynamic";
-import { Bot } from "./BotCreator";
-
-// Dynamically import BotCreator for code splitting
-const BotCreator = dynamic(() => import("./BotCreator"), { ssr: false });
+import type { Bot } from "./BotCreator"; // Import the Bot type
 
 // Constants for infinite scroll functionality
 const INITIAL_VISIBLE_COUNT = 20;
@@ -52,7 +47,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       try {
         const saved = localStorage.getItem(chatHistoryKey);
         if (saved) return JSON.parse(saved);
-      } catch (e) {}
+      } catch {}
     }
     return [];
   });
@@ -78,7 +73,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
 
   const { playAudio, audioRef } = useAudioPlayer(audioEnabledRef);
 
-  const chatBoxRef = useRef<HTMLDivElement>(null);
+  const chatBoxRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [retrying, setRetrying] = useState(false);
 
@@ -109,7 +104,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
   ); // Add sessionId and sessionDatetime dependencies
 
   // Helper for retry with exponential backoff
-  async function retryWithBackoff(fn: () => Promise<any>, maxRetries = 2, initialDelay = 800) {
+  async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 2, initialDelay = 800): Promise<T> {
     let delay = initialDelay;
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -121,6 +116,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         delay *= 2;
       }
     }
+    throw new Error("Max retries reached");
   }
 
   const sendMessage = useCallback(async () => {
@@ -225,14 +221,16 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     if (typeof window !== 'undefined' && chatHistoryKey) {
       try {
         localStorage.setItem(chatHistoryKey, JSON.stringify(messages));
-      } catch (e) {}
+      } catch {
+        // ignore
+      }
     }
   }, [messages, chatHistoryKey]);
 
   // Download transcript handler - USE THE UTILITY
   const handleDownloadTranscript = async () => {
     try {
-      await downloadTranscript(messages);
+      await downloadTranscript(messages as Message[]); // Cast to Message[] for compatibility
     } catch (err) {
       console.error("Failed to download transcript:", err);
       alert("Failed to download transcript.");
@@ -259,7 +257,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
   const handleScroll = useCallback(() => {
     if (!chatBoxRef.current) return;
     
-    const { scrollTop, scrollHeight, clientHeight } = chatBoxRef.current;
+    const { scrollTop } = chatBoxRef.current;
     
     // Load more messages when scrolled to top and there are more messages available
     if (scrollTop === 0 && visibleCount < messages.length) {
@@ -319,7 +317,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         inputRef={inputRef}        audioEnabled={audioEnabled}
         onAudioToggle={handleAudioToggle}
       />
-      <ChatStatus error={error} retrying={retrying} />
+      <ChatStatus error={error ?? ""} retrying={retrying} />
       <ApiUnavailableModal show={!apiAvailable} />
     </div>
   );

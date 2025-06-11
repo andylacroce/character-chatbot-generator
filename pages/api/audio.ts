@@ -1,12 +1,11 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import fs from "fs";
 import path from "path";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import { getReplyCache } from "../../src/utils/cache";
 import OpenAI from "openai";
 import logger from "../../src/utils/logger";
-import { v4 as uuidv4 } from "uuid";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
+import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 
 // SYSTEM_PROMPT: Generalize to a Character Chatbot Generator persona
@@ -28,7 +27,7 @@ function getOriginalTextForAudio(sanitizedFile: string): string | null {
 export default async function handler(
   req: import("next").NextApiRequest,
   res: import("next").NextApiResponse,
-) {
+): Promise<void> {
   const { file, text: expectedText } = req.query;
   const botName = typeof req.query.botName === "string" ? req.query.botName : "Character";
   if (!file || typeof file !== "string") {
@@ -46,7 +45,7 @@ export default async function handler(
   let normalizedLocalFilePath = checkFileExists(localFilePath);
   let found = false;
   let triedRegenerate = false;
-  let regenError: any = null;
+  let regenError: unknown = null;
 
   // --- ALWAYS use the text param if present ---
   if (typeof expectedText === "string") {
@@ -67,7 +66,7 @@ export default async function handler(
         const voiceConfig = await getVoiceConfigForCharacter(botName);
         logger.info(`[TTS] [AUDIO API] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
         // Determine if Studio voice (robust: check type and name)
-        const isStudio = (voiceConfig as any).type === 'Studio' || (voiceConfig as any).name?.includes('Studio');
+        const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
         // Fallback: if type is missing, check name pattern
         // (Covers cases where type is not set on static/dynamic configs)
         // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
@@ -129,7 +128,7 @@ export default async function handler(
         try {
           const voiceConfig = await getVoiceConfigForCharacter(botName);
           // Determine if Studio voice (robust: check type and name)
-          const isStudio = (voiceConfig as any).type === 'Studio' || (voiceConfig as any).name?.includes('Studio');
+          const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
           // Fallback: if type is missing, check name pattern
           // (Covers cases where type is not set on static/dynamic configs)
           // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
@@ -185,7 +184,7 @@ export default async function handler(
           try {
             const voiceConfig = await getVoiceConfigForCharacter(botName);
             // Determine if Studio voice (robust: check type and name)
-            const isStudio = (voiceConfig as any).type === 'Studio' || (voiceConfig as any).name?.includes('Studio');
+            const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
             // Fallback: if type is missing, check name pattern
             // (Covers cases where type is not set on static/dynamic configs)
             // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
@@ -240,7 +239,7 @@ export default async function handler(
                 // Now TTS
                 const voiceConfig = await getVoiceConfigForCharacter(botName);
                 // Determine if Studio voice (robust: check type and name)
-                const isStudio = (voiceConfig as any).type === 'Studio' || (voiceConfig as any).name?.includes('Studio');
+                const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
                 // Fallback: if type is missing, check name pattern
                 // (Covers cases where type is not set on static/dynamic configs)
                 // Already included above, but ensure this logic is used everywhere SSML is generated for TTS

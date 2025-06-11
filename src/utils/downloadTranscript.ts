@@ -1,13 +1,17 @@
+import type { Message } from "../types/message";
+
 /**
  * Downloads the chat transcript as a text file by calling the /api/transcript endpoint.
  * @param {Array<object>} messages - The array of chat messages to include in the transcript.
  * @returns {Promise<void>} Resolves when the download is triggered.
  * @throws {Error} If the transcript fetch fails.
  */
-export async function downloadTranscript(messages: any[]) {
+export async function downloadTranscript(messages: Array<Record<string, unknown>> | Message[]) {
   if (!Array.isArray(messages)) {
     throw new Error("Transcript must be an array");
   }
+  // If messages are Message[], convert to Record<string, unknown>[]
+  const safeMessages: Record<string, unknown>[] = messages.map((msg) => ({ ...msg }));
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
   const datetime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
@@ -26,7 +30,7 @@ export async function downloadTranscript(messages: any[]) {
     response = await fetch("/api/transcript", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages, exportedAt: friendlyTime }),
+      body: JSON.stringify({ messages: safeMessages, exportedAt: friendlyTime }),
     });
   } catch (err) {
     // Network error

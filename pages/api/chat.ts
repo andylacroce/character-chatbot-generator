@@ -3,12 +3,10 @@ import OpenAI from "openai";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import fs from "fs";
 import path from "path";
-import { v4 as uuidv4 } from "uuid";
 import ipinfo from "ipinfo";
 import logger, { generateRequestId } from "../../src/utils/logger";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { setReplyCache, getReplyCache } from "../../src/utils/cache";
-import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 import crypto from "crypto";
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
@@ -16,23 +14,6 @@ if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
     "Missing GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable",
   );
 }
-
-let googleAuthCredentials;
-
-/**
- * Retrieves Google Cloud credentials for TTS and other APIs.
- * @returns {object} The parsed credentials object.
- * @throws {Error} If credentials are missing or invalid.
- */
-function getGoogleCredentials() {
-  let creds = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-  if (!creds) throw new Error("Missing GOOGLE_APPLICATION_CREDENTIALS_JSON");
-  if (!creds.trim().startsWith("{")) {
-    creds = fs.readFileSync(creds, "utf8");
-  }
-  return JSON.parse(creds);
-}
-googleAuthCredentials = getGoogleCredentials();
 
 let conversationHistory: string[] = [];
 
@@ -48,13 +29,13 @@ const openai = new OpenAI({ apiKey });
  * @returns {boolean} True if the object is a valid response.
  */
 function isOpenAIResponse(
-  obj: any,
+  obj: unknown,
 ): obj is { choices: { message: { content: string } }[] } {
   return (
-    obj &&
+    obj !== null &&
     typeof obj === "object" &&
     "choices" in obj &&
-    Array.isArray(obj.choices)
+    Array.isArray((obj as { choices: unknown }).choices)
   );
 }
 
@@ -160,7 +141,7 @@ export default async function handler(
       logger.info(`[Chat API] Cache hit for key: ${cacheKey} | requestId=${requestId}`);
       // Prepare TTS/audio as usual for the cached reply
       // Robust Studio voice detection
-      let voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
+      const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
       logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
       const isStudio = (voiceConfig.type === 'Studio') || (voiceConfig.name && voiceConfig.name.includes('Studio'));
       let selectedVoice = voiceConfig;
@@ -257,7 +238,7 @@ export default async function handler(
     conversationHistory.push(`Bot: ${botReply}`);
 
     // Prepare TTS request (voice tuned for character)
-    let voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
+    const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
     logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
     // Robust Studio voice detection
     const isStudio = (voiceConfig.type === 'Studio') || (voiceConfig.name && voiceConfig.name.includes('Studio'));
@@ -287,7 +268,7 @@ export default async function handler(
       fs.mkdirSync(tmpDir, { recursive: true });
     }
     // --- Utility to hash reply text and voice config for audio caching ---
-    function getAudioCacheKey(text: string, voiceConfig: any) {
+    function getAudioCacheKey(text: string, voiceConfig: Record<string, unknown>) {
       return crypto.createHash("sha256")
         .update(text)
         .update(JSON.stringify(voiceConfig))

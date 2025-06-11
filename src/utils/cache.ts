@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 
 const isVercel = !!process.env.VERCEL_ENV;
 const CACHE_FILE = "/tmp/bot-reply-cache.json";

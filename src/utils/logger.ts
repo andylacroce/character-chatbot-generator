@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
  * @type {import('winston').Logger}
  */
 if (typeof globalThis.setImmediate === "undefined") {
-  (globalThis as any).setImmediate = (fn: (...args: any[]) => void, ...args: any[]) => setTimeout(fn, 0, ...args);
+  (globalThis as Record<string, unknown>).setImmediate = (fn: (...args: unknown[]) => void, ...args: unknown[]) => setTimeout(fn, 0, ...args);
 }
 
 const logger = winston.createLogger({
@@ -29,4 +29,10 @@ export function generateRequestId() {
   return uuidv4();
 }
 
-export default logger;
+const loggerInstance = logger as unknown as winston.Logger;
+
+export function log(level: string, message: string, meta?: Record<string, unknown>) {
+  loggerInstance.log(level, message, meta);
+}
+
+export default loggerInstance;

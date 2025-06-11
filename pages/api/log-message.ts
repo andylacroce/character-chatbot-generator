@@ -1,4 +1,3 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import { put, head } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
@@ -134,15 +133,13 @@ export default async function handler(
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] [${safeIp}] ${cleanSender}: ${cleanText}\n`;
 
-    const date = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
     // --- Determine Log Filename ---
     // Sanitize filename to prevent directory traversal
     const safeSessionDatetime = sessionDatetime.replace(/[^a-zA-Z0-9_-]/g, "");
     const safeShortSessionId = sessionId
       .slice(0, 8)
       .replace(/[^a-zA-Z0-9]/g, "");
-    let logFilename: string = `${safeSessionDatetime}_session_${safeShortSessionId}.log`;
+    const logFilename: string = `${safeSessionDatetime}_session_${safeShortSessionId}.log`;
     // --- End Determine Log Filename ---
 
     // --- Append to Log ---
@@ -166,7 +163,8 @@ export default async function handler(
             typeof error === "object" &&
             error !== null &&
             "status" in error &&
-            (error as any).status !== 404
+            typeof (error as { status?: unknown }).status === "number" &&
+            (error as { status: number }).status !== 404
           ) {
             // Ignore non-404 errors
           }

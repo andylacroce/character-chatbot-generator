@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, cloneElement } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import styles from "./styles/HamburgerMenu.module.css";
 
 interface HamburgerMenuProps {
@@ -34,8 +34,8 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children }) => {
         (typeof child.type === "string" && child.type === "button")) &&
       child.props
     ) {
-      const originalOnClick = (child as React.ReactElement<any>).props.onClick;
-      return React.cloneElement(child as React.ReactElement<any>, {
+      const originalOnClick = (child as React.ReactElement<React.ButtonHTMLAttributes<HTMLButtonElement>>).props.onClick;
+      return React.cloneElement(child as React.ReactElement<React.ButtonHTMLAttributes<HTMLButtonElement>>, {
         onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
           setOpen(false);
           if (originalOnClick) originalOnClick(e);

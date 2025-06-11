@@ -9,8 +9,9 @@ import logger from "./logger";
  * @throws {Error} If credentials are missing or invalid.
  */
 function getGoogleAuthCredentials() {
-  if ((getGoogleAuthCredentials as any).override) {
-    return (getGoogleAuthCredentials as any).override();
+  const overrideFn = (getGoogleAuthCredentials as unknown as { override?: (() => unknown) }).override;
+  if (overrideFn) {
+    return overrideFn();
   }
   if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
     throw new Error(
@@ -90,7 +91,7 @@ export async function synthesizeSpeechToFile({
   const client = getTTSClient();
 
   // Retry logic for TTS
-  let lastError: any = null;
+  let lastError: unknown = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const [response] = await client.synthesizeSpeech(request);
@@ -118,7 +119,7 @@ export async function synthesizeSpeechToFile({
         logger.warn('[AUDIO CLEANUP] Error during cleanup:', err);
       }
       return;
-    } catch (err) {
+    } catch (err: unknown) {
       lastError = err;
       if (attempt < 3) {
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -168,12 +169,13 @@ function cleanupTempFiles(files: string[]): void {
 }
 
 // TEST-ONLY: Reset singletons and allow credential override
-export function __resetSingletonsForTest(overrideCredsFn?: (() => any) | null) {
+export function __resetSingletonsForTest(overrideCredsFn?: (() => unknown) | null) {
   ttsClient = null;
+  const target = getGoogleAuthCredentials as unknown as { override?: (() => unknown) };
   if (overrideCredsFn) {
-    (getGoogleAuthCredentials as any).override = overrideCredsFn;
-  } else if ((getGoogleAuthCredentials as any).override) {
-    delete (getGoogleAuthCredentials as any).override;
+    target.override = overrideCredsFn;
+  } else if (target.override) {
+    delete target.override;
   }
 }
 

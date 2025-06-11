@@ -40,21 +40,21 @@ declare module "ipinfo" {
  * @namespace lru-cache
  */
 declare module "lru-cache" {
-  interface LRUCacheOptions<K, V> {
+  interface LRUCacheOptions {
     max?: number;
     ttl?: number;
     allowStale?: boolean;
     updateAgeOnGet?: boolean;
     updateAgeOnHas?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
-  class LRUCache<K, V> {
-    constructor(options?: LRUCacheOptions<K, V>);
-    set(key: K, value: V, options?: { ttl?: number }): boolean;
-    get(key: K): V | undefined;
-    has(key: K): boolean;
-    delete(key: K): boolean;
+  class LRUCache {
+    constructor(options?: LRUCacheOptions);
+    set(key: string, value: unknown, options?: { ttl?: number }): boolean;
+    get(key: string): unknown | undefined;
+    has(key: string): boolean;
+    delete(key: string): boolean;
     clear(): void;
     size: number;
   }

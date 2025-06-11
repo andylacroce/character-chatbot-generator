@@ -23,10 +23,10 @@ import logger from "../utils/logger";
  * @internal
  */
 class InMemoryCache {
-  private cache = new Map();
-  private options: any;
+  private cache = new Map<string, unknown>();
+  private options: Record<string, unknown>;
 
-  constructor(options: any) {
+  constructor(options: Record<string, unknown>) {
     this.options = options;
   }
 
@@ -45,30 +45,14 @@ class InMemoryCache {
    * @param {any} value
    * @returns {boolean}
    */
-  set(key: string, value: any) {
+  set(key: string, value: unknown) {
     this.cache.set(key, value);
     return true;
   }
 }
 
-// Use a safer approach for testing
-let CacheImplementation: any;
-
-// In a testing environment, Jest might not be able to properly load
-// and mock the lru-cache, so we use our simple implementation
-if (process.env.NODE_ENV === "test") {
-  CacheImplementation = InMemoryCache;
-} else {
-  try {
-    // Dynamic import to avoid Jest issues
-    CacheImplementation = require("lru-cache");
-  } catch (e) {
-    logger.warn(
-      "Failed to load lru-cache, falling back to in-memory implementation",
-    );
-    CacheImplementation = InMemoryCache;
-  }
-}
+// Remove unused variable 'LRUCache' and use const for CacheImplementation
+const CacheImplementation = InMemoryCache;
 
 /**
  * Configuration options for the rate limiter.
@@ -142,15 +126,27 @@ const rateLimiter = async (
   }
 
   const currentTime = Date.now();
-  let rateData = rateLimiterCache.get(ip);
+  // When retrieving from cache, assert or check type before use
+  const rateDataRaw = rateLimiterCache.get(ip);
+  let rateData: RateLimitData;
+  if (
+    typeof rateDataRaw === 'object' &&
+    rateDataRaw !== null &&
+    'count' in rateDataRaw &&
+    'resetTime' in rateDataRaw &&
+    typeof (rateDataRaw as RateLimitData).count === 'number' &&
+    typeof (rateDataRaw as RateLimitData).resetTime === 'number'
+  ) {
+    rateData = rateDataRaw as RateLimitData;
+  } else {
+    rateData = { count: 0, resetTime: Date.now() };
+  }
 
   // First request from this IP
-  if (!rateData) {
+  if (rateData.count === 0) {
     // Initialize rate data for new IP
-    rateData = {
-      count: 1,
-      resetTime: currentTime + rateLimitOptions.windowMs,
-    };
+    rateData.count = 1;
+    rateData.resetTime = currentTime + rateLimitOptions.windowMs;
     rateLimiterCache.set(ip, rateData);
     // Set rate limit headers
     res.setHeader("X-RateLimit-Limit", rateLimitOptions.maxRequests);

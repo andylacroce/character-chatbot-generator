@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const config = await getVoiceConfigForCharacter(name);
     res.status(200).json(config);
-  } catch (e) {
+  } catch {
     res.status(500).json({ error: "Failed to get voice config" });
   }
 }

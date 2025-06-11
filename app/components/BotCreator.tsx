@@ -11,56 +11,11 @@ interface Bot {
   name: string;
   personality: string;
   avatarUrl: string;
-  voiceConfig: any; // Use CharacterVoiceConfig if you want to import the type
+  voiceConfig: import("../../src/utils/characterVoices").CharacterVoiceConfig | null;
 }
 
 interface BotCreatorProps {
   onBotCreated: (bot: Bot) => void;
-}
-
-// Real AI generation for personality and avatar
-async function generateBotData(name: string): Promise<Bot> {
-  let personality = `You are ${name}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
-  let correctedName = name;
-  try {
-    const personalityRes = await fetch("/api/generate-personality", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (personalityRes.ok) {
-      const data = await personalityRes.json();
-      if (data.personality) personality = data.personality;
-      if (data.correctedName) correctedName = data.correctedName;
-    }
-  } catch (e) {}
-
-  // 2. Generate an avatar image using OpenAI (DALL-E)
-  // Use the correctedName for avatar generation
-  let avatarUrl = "/silhouette.svg"; 
-  try {
-    const avatarRes = await fetch("/api/generate-avatar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: correctedName }), // Only send name
-    });
-    if (avatarRes.ok) {
-      const data = await avatarRes.json();
-      if (data.avatarDataUrl) avatarUrl = data.avatarDataUrl;
-      else if (data.avatarUrl) avatarUrl = data.avatarUrl;
-    }
-  } catch (e) { /* fallback to default */ }
-
-  // 3. Fetch voice config
-  let voiceConfig = null;
-  try {
-    // Use correctedName for voice config as well
-    voiceConfig = await api_getVoiceConfigForCharacter(correctedName);
-  } catch (e) {
-    // fallback: leave as null
-  }
-  // Return the bot object with the correctedName
-  return { name: correctedName, personality, avatarUrl, voiceConfig };
 }
 
 const progressSteps = [
@@ -81,46 +36,6 @@ const progressSteps = [
   }
 ];
 
-async function generateBotDataWithProgress(originalInputName: string, onProgress: (step: string) => void): Promise<Bot> {
-  let personality = `You are ${originalInputName}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
-  let correctedName = originalInputName;
-  onProgress("personality");
-  try {
-    const personalityRes = await fetch("/api/generate-personality", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: originalInputName }),
-    });
-    if (personalityRes.ok) {
-      const data = await personalityRes.json();
-      if (data.personality) personality = data.personality;
-      if (data.correctedName) correctedName = data.correctedName;
-    }
-  } catch (e) {}
-
-  let avatarUrl = "/silhouette.svg";
-  onProgress("avatar");
-  try {
-    const avatarRes = await fetch("/api/generate-avatar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: correctedName }), // Only send name
-    });
-    if (avatarRes.ok) {
-      const data = await avatarRes.json();
-      if (data.avatarDataUrl) avatarUrl = data.avatarDataUrl;
-      else if (data.avatarUrl) avatarUrl = data.avatarUrl;
-    }
-  } catch (e) {}
-
-  let voiceConfig = null;
-  onProgress("voice");
-  try {
-    voiceConfig = await api_getVoiceConfigForCharacter(correctedName);
-  } catch (e) {}
-  return { name: correctedName, personality, avatarUrl, voiceConfig };
-}
-
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
@@ -128,7 +43,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const [progress, setProgress] = useState<string | null>(null);
   const [randomizing, setRandomizing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { darkMode, setDarkMode } = useContext(DarkModeContext);
+  const { darkMode } = useContext(DarkModeContext);
   const cancelRequested = useRef(false);
   const lastRandomNameRef = useRef<string>("");
 
@@ -154,7 +69,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
         setProgress(null);
         onBotCreated(bot);
       }
-    } catch (e) {
+    } catch {
       if (!cancelRequested.current) {
         setError("Failed to generate character. Please try again.");
         setProgress(null);
@@ -170,65 +85,23 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
     setProgress(null);
   };
 
-  // Enhanced random character button logic using OpenAI
-  // Returns { name, source: 'openai' | 'static' | 'fallback' }
-  async function getRandomCharacterName(): Promise<{ name: string; source: string }> {
-    try {
-      const res = await fetch("/api/random-character");
-      const data = await res.json();
-      if (res.ok && data && typeof data.name === "string" && data.name.trim()) {
-        // If requestId is present, and no error, it's openai or static
-        if (data.requestId && !data.error) {
-          // Heuristic: if name starts with [STATIC], it's static, else openai
-          if (data.name.startsWith('[STATIC]')) {
-            return { name: data.name.replace(/^\[STATIC\]\s*/, ''), source: 'static' };
-          } else {
-            return { name: data.name, source: 'openai' };
-          }
-        }
-        // If error present, fallback
-        if (data.error) {
-          return { name: data.name, source: 'fallback' };
-        }
-        // Default to openai
-        return { name: data.name, source: 'openai' };
-      }
-      throw new Error("No character name returned");
-    } catch (e) {
-      // fallback to static known character
-      const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default");
-      return { name: names[Math.floor(Math.random() * names.length)] || "Yoda", source: 'fallback' };
-    }
-  }
-
-  async function getRandomCharacterNameAvoidRepeat(lastName: string, maxTries = 3): Promise<{ name: string; source: string }> {
+  async function getRandomCharacterNameAvoidRepeat(lastName: string, maxTries = 3): Promise<{ name: string }> {
     let tries = 0;
     let name = lastName;
-    let source = 'fallback';
     while (tries < maxTries) {
       try {
         // Add cache-busting query param
         const res = await fetch(`/api/random-character?cb=${Date.now()}-${Math.random()}`);
         const data = await res.json();
         if (res.ok && data && typeof data.name === "string" && data.name.trim() && data.name.trim() !== lastName) {
-          if (data.requestId && !data.error) {
-            if (data.name.startsWith('[STATIC]')) {
-              return { name: data.name.replace(/^\[STATIC\]\s*/, ''), source: 'static' };
-            } else {
-              return { name: data.name, source: 'openai' };
-            }
-          }
-          if (data.error) {
-            return { name: data.name, source: 'fallback' };
-          }
-          return { name: data.name, source: 'openai' };
+          // Remove 'source' property from returned objects
+          return { name: data.name.replace(/^\[STATIC\]\s*/, '') };
         }
         // If fallback, still check for repeat
         if (data && typeof data.name === "string" && data.name.trim()) {
           name = data.name.trim();
-          source = data.error ? 'fallback' : 'openai';
         }
-      } catch (e) {
+      } catch {
         // fallback to static known character
         const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default" && n !== lastName);
         if (names.length > 0) {
@@ -236,28 +109,23 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
         } else {
           name = "Yoda";
         }
-        source = 'fallback';
-        if (name !== lastName) return { name, source };
+        if (name !== lastName) return { name };
       }
       tries++;
     }
     // If all tries fail, return whatever we got (even if repeated)
-    return { name, source };
+    return { name };
   }
-
-  const [randomSource, setRandomSource] = useState<string | null>(null);
 
   const handleRandomCharacter = async () => {
     setRandomizing(true);
     setError("");
     try {
-      const { name, source } = await getRandomCharacterNameAvoidRepeat(lastRandomNameRef.current);
+      const { name } = await getRandomCharacterNameAvoidRepeat(lastRandomNameRef.current);
       setInput(name);
-      setRandomSource(source);
       lastRandomNameRef.current = name;
-    } catch (e) {
+    } catch {
       setError("Failed to get random character");
-      setRandomSource(null);
     } finally {
       setRandomizing(false);
     }
@@ -369,7 +237,11 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
 };
 
 // Helper: cancelable version of generateBotDataWithProgress
-async function generateBotDataWithProgressCancelable(originalInputName: string, onProgress: (step: string) => void, cancelRequested: React.MutableRefObject<boolean>): Promise<Bot> {
+async function generateBotDataWithProgressCancelable(
+  originalInputName: string,
+  onProgress: (step: string) => void,
+  cancelRequested: React.MutableRefObject<boolean>
+): Promise<Bot> {
   let personality = `You are ${originalInputName}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
   let correctedName = originalInputName;
   onProgress("personality");
@@ -386,7 +258,7 @@ async function generateBotDataWithProgressCancelable(originalInputName: string, 
       if (data.personality) personality = data.personality;
       if (data.correctedName) correctedName = data.correctedName;
     }
-  } catch (e) {}
+  } catch {}
   let avatarUrl = "/silhouette.svg";
   onProgress("avatar");
   if (cancelRequested.current) throw new Error("cancelled");
@@ -402,13 +274,13 @@ async function generateBotDataWithProgressCancelable(originalInputName: string, 
       if (data.avatarDataUrl) avatarUrl = data.avatarDataUrl;
       else if (data.avatarUrl) avatarUrl = data.avatarUrl;
     }
-  } catch (e) {}
+  } catch {}
   let voiceConfig = null;
   onProgress("voice");
   if (cancelRequested.current) throw new Error("cancelled");
   try {
     voiceConfig = await api_getVoiceConfigForCharacter(correctedName);
-  } catch (e) {}
+  } catch {}
   if (cancelRequested.current) throw new Error("cancelled");
   return { name: correctedName, personality, avatarUrl, voiceConfig };
 }

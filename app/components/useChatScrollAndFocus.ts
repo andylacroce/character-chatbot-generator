@@ -10,11 +10,11 @@ export function useChatScrollAndFocus({
   chatBoxRef,
   inputRef,
   messages,
-  loading
+  loading,
 }: {
-  chatBoxRef: React.RefObject<HTMLDivElement | null>;
+  chatBoxRef: React.RefObject<HTMLDivElement>;
   inputRef: React.RefObject<HTMLInputElement | null>;
-  messages: any[];
+  messages: unknown[];
   loading: boolean;
 }) {
   // Scroll to bottom utility

@@ -17,7 +17,7 @@ async function logRandomCharacter(name: string) {
         sessionDatetime: new Date().toISOString(),
       })
     });
-  } catch (e) {
+  } catch {
     // Ignore logging errors
   }
 }
@@ -87,11 +87,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     logger.info(`[RandomCharacter API] 200 OK: [OPENAI] ${name} | requestId=${requestId}`);
     await logRandomCharacter(`[OPENAI] ${name}`);
     res.status(200).json({ name, requestId });
-  } catch (e: any) {
+  } catch {
     const fallback = getRandomStaticCharacter(exclude);
-    logger.error(`[RandomCharacter API] OpenAI error | requestId=${requestId}: ${e?.message || e}`);
+    logger.error(`[RandomCharacter API] OpenAI error | requestId=${requestId}`);
     logger.info(`[RandomCharacter API] 500 Fallback: [FALLBACK] ${fallback} | requestId=${requestId}`);
     await logRandomCharacter(`[FALLBACK] ${fallback}`);
-    res.status(500).json({ error: e.message || "Failed to get random character", name: fallback, requestId });
+    res.status(500).json({ error: "Failed to get random character", name: fallback, requestId });
   }
 }

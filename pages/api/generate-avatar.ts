@@ -11,10 +11,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     logger.info(`[AVATAR] Generating avatar for: ${name}`);
     // Compose the DALL-E prompt using best practices to avoid multiple likenesses
-    let likenessRef = `Accurately depict the real or canonical appearance of ${name} as seen in reference images.`;
-    let styleInstruction = `If ${name} is a cartoon, animated, or illustrated character, use a matching art style. Otherwise, use a photorealistic style.`;
-    let singleInstruction = `Create a single, centered, close-up portrait of only ${name}. Do not include any other figures, duplicates, multiple versions, reflections, shadows of other people, or group shots. No split frames, collage, or background elements that resemble other characters.`;
-    let negativePrompt = `Exclude: multiple people, extra faces, group shots, duplicate figures, reflections, shadows of other people, collage, split frames, or any representation of more than one version of ${name}.`;
+    const likenessRef = `Accurately depict the real or canonical appearance of ${name} as seen in reference images.`;
+    const styleInstruction = `If ${name} is a cartoon, animated, or illustrated character, use a matching art style. Otherwise, use a photorealistic style.`;
+    const singleInstruction = `Create a single, centered, close-up portrait of only ${name}. Do not include any other figures, duplicates, multiple versions, reflections, shadows of other people, or group shots. No split frames, collage, or background elements that resemble other characters.`;
+    const negativePrompt = `Exclude: multiple people, extra faces, group shots, duplicate figures, reflections, shadows of other people, collage, split frames, or any representation of more than one version of ${name}.`;
     let imagePrompt = `Ultra-detailed portrait of ${name}. ${likenessRef} ${styleInstruction} ${singleInstruction} Expressive, detailed, and true to their personality. ${negativePrompt}`;
 
     // Truncate to 1000 chars for DALL-E

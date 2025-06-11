@@ -358,7 +358,7 @@ export async function getVoiceConfigForCharacter(name: string): Promise<Characte
   let description = '';
   try {
     description = await fetchVoiceDescriptionFromOpenAI(normalized);
-  } catch (e) {
+  } catch {
     // fallback to Default if OpenAI fails
     return CHARACTER_VOICE_MAP['Default'];
   }
