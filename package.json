@@ -29,7 +29,7 @@
     "filelist": "^1.0.2",
     "jake": "^10.8.5",
     "lru-cache": "^11.1.0",
-    "minimatch": "^4.2.3",
+    "minimatch": "^10.0.1",
     "next": "^15.3.3",
     "node-fetch": "^3.3.2",
     "openai": "^5.2.0",
