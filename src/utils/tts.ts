@@ -1,3 +1,11 @@
+/**
+ * Google Text-to-Speech (TTS) utility functions.
+ *
+ * Handles credential loading, TTS client instantiation, speech synthesis, and audio file cleanup.
+ *
+ * @module tts
+ */
+
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
 import fs from "fs";
 import path from "path";
@@ -48,6 +56,7 @@ function getTTSClient() {
 /**
  * Synthesizes speech from text and writes the result to a file.
  * Retries up to 3 times on failure. Cleans up old audio files in the same directory.
+ *
  * @param {object} params - The parameters for synthesis.
  * @param {string} params.text - The text or SSML to synthesize.
  * @param {string} params.filePath - The output file path for the audio.
@@ -168,7 +177,10 @@ function cleanupTempFiles(files: string[]): void {
   }
 }
 
-// TEST-ONLY: Reset singletons and allow credential override
+/**
+ * TEST-ONLY: Reset singletons and allow credential override for testing.
+ * @param {(() => unknown) | null} [overrideCredsFn] - Optional override function for credentials.
+ */
 export function __resetSingletonsForTest(overrideCredsFn?: (() => unknown) | null) {
   ttsClient = null;
   const target = getGoogleAuthCredentials as unknown as { override?: (() => unknown) };

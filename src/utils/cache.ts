@@ -1,3 +1,9 @@
+// =============================
+// cache.ts
+// Simple in-memory cache utilities for API and TTS response caching.
+// Used for rate limiting, reply caching, and audio file caching.
+// =============================
+
 import fs from "fs";
 
 const isVercel = !!process.env.VERCEL_ENV;

@@ -1,3 +1,10 @@
+/* =============================
+   ChatInput.module.css
+   - Styles for the ChatInput component (input area, send button, audio toggle)
+   - Uses CSS variables from globals.css for theme consistency
+   - Designed for accessibility and responsive layout
+   ============================= */
+
 /* ChatInput.module.css - Dedicated styles for chat input area and send button */
 
 .chatInputArea {

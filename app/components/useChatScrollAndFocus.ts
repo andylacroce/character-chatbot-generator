@@ -1,3 +1,9 @@
+// =============================
+// useChatScrollAndFocus.ts
+// Custom React hook for managing scroll and input focus in the chat UI.
+// Ensures new messages are visible and input is focused appropriately.
+// =============================
+
 import { useEffect, useCallback } from "react";
 
 /**

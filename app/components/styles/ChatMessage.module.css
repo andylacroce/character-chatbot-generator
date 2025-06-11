@@ -3,6 +3,7 @@
    - Styles specific to the ChatMessage component
    - Handles message bubble appearance for user and bot
    - Uses CSS variables from globals.css for theme consistency
+   - Adjusts for accessibility and responsive design
    ============================= */
 
 /* Message bubble base style */

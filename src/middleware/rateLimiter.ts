@@ -1,16 +1,7 @@
 /**
  * Rate limiting middleware to prevent API abuse.
- * Implements IP-based request limiting using LRU cache.
  *
- * Features:
- * - Limits each IP to 100 requests per 15 minutes (configurable)
- * - Tracks request counts and window reset per IP
- * - Responds with 429 and logs when limit is exceeded
- * - Sets the following headers on all responses:
- *     - X-RateLimit-Limit: Maximum requests allowed per window
- *     - X-RateLimit-Remaining: Requests remaining in the current window
- *     - X-RateLimit-Reset: Unix timestamp (seconds) when the window resets
- *     - Retry-After: (on 429) Seconds until the next allowed request
+ * Implements IP-based request limiting using LRU cache. Sets rate limit headers and logs events.
  *
  * @module rateLimiter
  */
@@ -32,8 +23,8 @@ class InMemoryCache {
 
   /**
    * Get a value from the cache.
-   * @param {string} key
-   * @returns {any}
+   * @param {string} key - Cache key.
+   * @returns {any} Cached value or undefined.
    */
   get(key: string) {
     return this.cache.get(key);
@@ -41,9 +32,9 @@ class InMemoryCache {
 
   /**
    * Set a value in the cache.
-   * @param {string} key
-   * @param {any} value
-   * @returns {boolean}
+   * @param {string} key - Cache key.
+   * @param {any} value - Value to store.
+   * @returns {boolean} True if set.
    */
   set(key: string, value: unknown) {
     this.cache.set(key, value);

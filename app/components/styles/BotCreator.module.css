@@ -1,3 +1,10 @@
+/* =============================
+   BotCreator.module.css
+   - Styles for the BotCreator form, progress UI, and instructions
+   - Uses CSS variables from globals.css for theme consistency
+   - Designed for accessibility and responsive layout
+   ============================= */
+
 /*
   BotCreator.module.css
   Styles for the BotCreator loading/progress UI and form

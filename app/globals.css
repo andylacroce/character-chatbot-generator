@@ -7,6 +7,13 @@
    - See README for CSS documentation practices
    ============================= */
 
+/*
+  GLOBAL CSS VARIABLES
+  --------------------
+  All color, font, and layout variables for consistent theming.
+  Update these to change the app's look and feel globally.
+*/
+
 /* --- Google Fonts Import --- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 @import "./darkmode.css";
@@ -44,8 +51,9 @@
   --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif';
 }
 
-/* --- CSS Reset and Base Styles --- */
 /*
+  CSS RESET AND BASE STYLES
+  -------------------------
   Reset and normalize browser styles for consistency.
   Set up base font, background, and layout for the app.
 */

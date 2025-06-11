@@ -1,3 +1,9 @@
+// =============================
+// useSession.ts
+// Custom React hook for managing user session state (if applicable).
+// Used for session persistence and user context in the app.
+// =============================
+
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 

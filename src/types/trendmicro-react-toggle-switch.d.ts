@@ -1,3 +1,9 @@
+// =============================
+// trendmicro-react-toggle-switch.d.ts
+// TypeScript type declarations for the @trendmicro/react-toggle-switch library.
+// Used for type safety when using the toggle switch component.
+// =============================
+
 /**
  * @fileoverview Type definitions for the @trendmicro/react-toggle-switch component.
  * @module trendmicro-react-toggle-switch

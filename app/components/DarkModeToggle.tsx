@@ -1,3 +1,9 @@
+// =============================
+// DarkModeToggle.tsx
+// Button component for toggling dark mode on and off.
+// Consumes DarkModeContext and updates theme.
+// =============================
+
 import React, { useContext } from "react";
 import { DarkModeContext } from "./DarkModeContext";
 import styles from "./styles/ChatHeader.module.css";

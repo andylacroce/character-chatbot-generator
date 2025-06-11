@@ -1,3 +1,9 @@
+// =============================
+// useApiError.ts
+// Custom React hook for managing API error state and messages.
+// Used in ChatPage and other components for error handling.
+// =============================
+
 import { useState, useCallback } from "react";
 
 /**

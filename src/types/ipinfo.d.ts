@@ -1,3 +1,9 @@
+// =============================
+// ipinfo.d.ts
+// TypeScript type declarations for the ipinfo library responses.
+// Used for type safety in API geolocation logic.
+// =============================
+
 /**
  * @fileoverview Type definitions for ipinfo and lru-cache modules.
  * @module types

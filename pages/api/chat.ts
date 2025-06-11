@@ -1,3 +1,12 @@
+/**
+ * API route for chat requests.
+ *
+ * Handles user input, calls OpenAI for characterful replies, and synthesizes audio using Google TTS.
+ * Implements caching, logging, and rate limiting. Returns both text and audio URLs.
+ *
+ * @module api/chat
+ */
+
 import { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
@@ -43,6 +52,7 @@ function isOpenAIResponse(
  * Builds the OpenAI chat message array from conversation history and user input.
  * @param {string[]} history - The conversation history (excluding the latest user message).
  * @param {string} userMessage - The latest user message.
+ * @param {string} botName - The bot's name.
  * @returns {ChatCompletionMessageParam[]} The formatted message array for OpenAI API.
  */
 function buildOpenAIMessages(

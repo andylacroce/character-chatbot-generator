@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * Character Chatbot Generator - Character creation form component.
+ *
+ * Allows users to create a new chatbot persona by entering a name or choosing a random character.
+ * Handles personality, avatar, and voice generation with progress feedback.
+ *
+ * @module BotCreator
+ */
+
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
 import { DarkModeContext } from "./DarkModeContext";
@@ -237,6 +246,13 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
 };
 
 // Helper: cancelable version of generateBotDataWithProgress
+/**
+ * Generates bot data (personality, avatar, voice) with progress callbacks and cancellation support.
+ * @param {string} originalInputName - The character name input by the user.
+ * @param {(step: string) => void} onProgress - Callback for progress step updates.
+ * @param {React.MutableRefObject<boolean>} cancelRequested - Ref to signal cancellation.
+ * @returns {Promise<Bot>} The generated bot object.
+ */
 async function generateBotDataWithProgressCancelable(
   originalInputName: string,
   onProgress: (step: string) => void,

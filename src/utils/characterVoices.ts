@@ -1,5 +1,20 @@
-// Mapping from character/bot name to Google TTS voice settings
-// Extend this as needed for more characters
+/**
+ * Mapping from character/bot name to Google TTS voice settings.
+ *
+ * Provides static voice configurations for well-known characters and a default.
+ *
+ * @module characterVoices
+ */
+
+/**
+ * Interface for Google TTS voice configuration for a character.
+ * @property {string[]} languageCodes - Supported language codes.
+ * @property {string} name - Google TTS voice name.
+ * @property {number} ssmlGender - SSML gender enum value.
+ * @property {number} [pitch] - Optional pitch adjustment.
+ * @property {number} [rate] - Optional speaking rate.
+ * @property {string} [type] - Voice type (e.g., 'Wavenet', 'Studio').
+ */
 export interface CharacterVoiceConfig {
   languageCodes: string[];
   name: string;
@@ -9,7 +24,10 @@ export interface CharacterVoiceConfig {
   type?: string; // Add type for robust Studio detection
 }
 
-// Google TTS gender enum for reference
+/**
+ * Google TTS gender enum for reference.
+ * @enum {number}
+ */
 export const SSML_GENDER = {
   NEUTRAL: 0,
   MALE: 1,
@@ -57,6 +75,18 @@ function normalizeCharacterName(name: string): string {
   return name.trim().replace(/ +/g, ' ').replace(/(^| )\w/g, c => c.toUpperCase());
 }
 
+/**
+ * =============================
+ * GOOGLE_TTS_VOICES
+ * -----------------------------
+ * List of available Google TTS voices, including Wavenet, Studio, Neural2, and Standard types.
+ * Each entry includes language, name, gender, display label, and type for matching.
+ *
+ * - Use this list to match dynamic or static character voice requests.
+ * - If adding new voices, ensure the 'type' and 'display' fields are descriptive.
+ * - For dynamic matching, see findClosestTTSVoice().
+ * =============================
+ */
 // List of available Google TTS voices (expanded with more variants)
 const GOOGLE_TTS_VOICES = [
   // Wavenet voices
@@ -228,9 +258,42 @@ const GOOGLE_TTS_VOICES = [
   // ...add more as needed...
 ];
 
-// In-memory cache for dynamic voice selection (per process)
+/**
+ * =============================
+ * DYNAMIC VOICE MATCHING LOGIC
+ * -----------------------------
+ * - fetchVoiceDescriptionFromOpenAI: Uses OpenAI to generate a natural language description of a character's likely voice.
+ * - findClosestTTSVoice: Heuristically matches a description to the best available TTS voice, considering language, gender, style, and quality.
+ * - getVoiceConfigForCharacter: Main entry point; returns static config if available, otherwise uses dynamic detection and caches the result.
+ *
+ * All dynamic results are cached in-memory for the process lifetime.
+ * =============================
+ */
+
+/**
+ * @typedef {Object} GOOGLE_TTS_VOICE_ENTRY
+ * @property {string[]} languageCodes - Supported language codes.
+ * @property {string} name - Google TTS voice name.
+ * @property {number} ssmlGender - SSML gender enum value.
+ * @property {string} display - Human-readable label for UI.
+ * @property {string} type - Voice type (e.g., 'Wavenet', 'Studio', 'Neural2', 'Standard').
+ */
+
+/**
+ * In-memory cache for dynamic voice selection (per process).
+ * Keyed by normalized character name.
+ */
 const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
 
+/**
+ * Fetches a description of the character's likely voice from OpenAI.
+ * Uses GPT-4o to generate a short, detailed description for TTS matching.
+ *
+ * Example output: "A deep, gravelly British male voice, mid-60s, slow and wise."
+ *
+ * @param {string} name - The name of the character.
+ * @returns {Promise<string>} - A promise that resolves to the voice description.
+ */
 async function fetchVoiceDescriptionFromOpenAI(name: string): Promise<string> {
   // Use OpenAI to describe the character's likely voice
   const OpenAI = (await import('openai')).default;
@@ -248,6 +311,13 @@ async function fetchVoiceDescriptionFromOpenAI(name: string): Promise<string> {
   return completion.choices[0]?.message?.content?.trim() || '';
 }
 
+/**
+ * Finds the closest matching TTS voice configuration based on a description.
+ * Uses heuristics for language, gender, style, and quality.
+ *
+ * @param {string} description - The voice description.
+ * @returns {CharacterVoiceConfig} - The closest matching voice configuration.
+ */
 function findClosestTTSVoice(description: string): CharacterVoiceConfig {
   // Enhanced matching: parse for accent, language, gender, style, tone, expressive, regional, age, and prefer higher-quality voices
   const desc = description.toLowerCase();
@@ -340,6 +410,13 @@ function findClosestTTSVoice(description: string): CharacterVoiceConfig {
   };
 }
 
+/**
+ * Gets the voice configuration for a character, either from static map or dynamic detection.
+ * Returns a config with all required fields for Google TTS.
+ *
+ * @param {string} name - The name of the character.
+ * @returns {Promise<CharacterVoiceConfig>} - A promise that resolves to the voice configuration.
+ */
 export async function getVoiceConfigForCharacter(name: string): Promise<CharacterVoiceConfig> {
   // Normalize name for lookup (capitalize each word, trim)
   const normalized = normalizeCharacterName(name);

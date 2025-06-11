@@ -1,3 +1,9 @@
+// =============================
+// ModalImageViewer.tsx
+// Modal component for displaying an enlarged image (e.g., character avatar).
+// Used in ChatHeader and BotCreator for image previews.
+// =============================
+
 import React from "react";
 import Image from "next/image";
 import styles from "./styles/ChatPage.module.css";

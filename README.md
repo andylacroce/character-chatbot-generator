@@ -15,6 +15,13 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 - Logging to Vercel Blob or local file system
 - **All internal API endpoints are public by default**
 
+## How it Works
+
+1. **Character Creation**: Users create a chatbot persona by entering a name or choosing a random character. The app generates a personality, avatar, and voice configuration.
+2. **Chat**: Users chat in real time. The app sends messages to OpenAI's API, receives characterful replies, and synthesizes voice responses using Google TTS.
+3. **Transcript & Logging**: Users can download chat transcripts. All chats can be logged to Vercel Blob or the local file system.
+4. **API Rate Limiting**: All API endpoints are protected by a rate limiter to prevent abuse.
+
 ## API Rate Limiting
 
 All API endpoints are protected by a rate limiter middleware:
@@ -86,6 +93,13 @@ All API endpoints are protected by a rate limiter middleware:
 - JSDoc is used to describe function parameters, return values, and usage. See source files in `src/utils/` and `pages/api/` for examples.
 - TypeScript types are used throughout for safety and editor support.
 - Follow best practices for code comments and documentation. See [JSDoc guide](https://jsdoc.app/) for more info.
+
+## Contributing
+
+Contributions are welcome! Please:
+- Open an issue for bugs or feature requests
+- Submit pull requests with clear descriptions and relevant tests
+- Follow the existing code style and documentation practices
 
 ## License
 

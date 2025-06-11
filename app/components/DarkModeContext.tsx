@@ -1,3 +1,9 @@
+// =============================
+// DarkModeContext.tsx
+// React context for managing and providing dark mode state across the app.
+// Used by DarkModeToggle and layout components.
+// =============================
+
 "use client";
 
 import React from "react";

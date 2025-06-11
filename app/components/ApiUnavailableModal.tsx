@@ -1,3 +1,9 @@
+// =============================
+// ApiUnavailableModal.tsx
+// Modal component to display when the API is unavailable or rate-limited.
+// Used for user feedback and error handling in ChatPage.
+// =============================
+
 import React from "react";
 import styles from "../components/styles/ChatPage.module.css";
 

@@ -1,3 +1,9 @@
+// =============================
+// TestMessages.tsx
+// Utility component for rendering test or sample chat messages.
+// Used in development and testing scenarios.
+// =============================
+
 "use client";
 
 import React from 'react';

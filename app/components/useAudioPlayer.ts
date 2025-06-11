@@ -1,3 +1,9 @@
+// =============================
+// useAudioPlayer.ts
+// Custom React hook for managing audio playback (TTS responses, etc.).
+// Handles play, pause, and audio element state for chat audio.
+// =============================
+
 import { useRef, useCallback } from "react";
 
 /**

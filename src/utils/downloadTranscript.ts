@@ -2,9 +2,12 @@ import type { Message } from "../types/message";
 
 /**
  * Downloads the chat transcript as a text file by calling the /api/transcript endpoint.
+ *
+ * Validates input, posts messages to the API, and triggers a browser download of the transcript.
+ *
  * @param {Array<object>} messages - The array of chat messages to include in the transcript.
  * @returns {Promise<void>} Resolves when the download is triggered.
- * @throws {Error} If the transcript fetch fails.
+ * @throws {Error} If the transcript fetch fails or browser APIs are unavailable.
  */
 export async function downloadTranscript(messages: Array<Record<string, unknown>> | Message[]) {
   if (!Array.isArray(messages)) {

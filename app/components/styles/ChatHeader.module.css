@@ -1,3 +1,10 @@
+/* =============================
+   ChatHeader.module.css
+   - Styles for the ChatHeader component (sticky header, grid layout, responsive)
+   - Use CSS variables from globals.css for theme consistency
+   - Adjust grid and flex for mobile/desktop as needed
+   ============================= */
+
 /* ChatHeader.module.css - Dedicated header styles for grid-based, responsive layout */
 
 .chatHeader {

@@ -1,5 +1,9 @@
 /**
  * Main chat interface component that manages the conversation with the Character Chatbot Generator.
+ *
+ * Handles chat state, message sending, transcript download, and audio playback.
+ * Integrates with OpenAI and Google TTS via API routes.
+ *
  * @module ChatPage
  */
 
