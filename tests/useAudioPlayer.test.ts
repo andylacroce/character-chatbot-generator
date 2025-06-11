@@ -50,15 +50,25 @@ afterEach(() => {
 
 describe('useAudioPlayer', () => {
   // Helper test component to expose the hook
-  const TestComponent = forwardRef(({ audioEnabledRef }: any, ref) => {
-    const { playAudio, audioRef } = useAudioPlayer(audioEnabledRef);
-    useImperativeHandle(ref, () => ({ playAudio, audioRef }), [playAudio, audioRef]);
-    return null;
-  });
+  interface TestComponentHandles {
+    playAudio: (src: string) => HTMLAudioElement | null;
+    audioRef: React.MutableRefObject<HTMLAudioElement | null>;
+  }
+  interface TestComponentProps {
+    audioEnabledRef: React.MutableRefObject<boolean>;
+  }
+  const TestComponent = forwardRef<TestComponentHandles, TestComponentProps>(
+    ({ audioEnabledRef }, ref) => {
+      const { playAudio, audioRef } = useAudioPlayer(audioEnabledRef);
+      useImperativeHandle(ref, () => ({ playAudio, audioRef }), [playAudio, audioRef]);
+      return null;
+    }
+  );
+  TestComponent.displayName = 'TestComponent';
 
   it('should not play audio if audioEnabledRef is false', async () => {
     const audioEnabledRef = { current: false };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     await act(async () => {
       await ref.current.playAudio('test.mp3');
@@ -69,9 +79,9 @@ describe('useAudioPlayer', () => {
 
   it('should play audio if audioEnabledRef is true', async () => {
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
-    let audioInstance: any = null;
+    let audioInstance: HTMLAudioElement | null = null;
     await act(async () => {
       audioInstance = await ref.current.playAudio('test.mp3');
     });
@@ -85,46 +95,53 @@ describe('useAudioPlayer', () => {
 
   it('should pause and reset previous audio before playing new', async () => {
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
-    let firstAudio: any = null;
-    let secondAudio: any = null;
+    let firstAudio: HTMLAudioElement | null = null;
     await act(async () => {
-      firstAudio = await ref.current.playAudio('first.mp3');
+      if (ref.current) {
+        firstAudio = await ref.current.playAudio('first.mp3');
+      }
     });
-    // Attach spies to the first audio instance
-    const pauseSpy = jest.spyOn(firstAudio, 'pause');
-    const setCurrentTime = jest.spyOn(firstAudio, 'currentTime', 'set');
     await act(async () => {
-      secondAudio = await ref.current.playAudio('second.mp3');
+      if (ref.current) {
+        await ref.current.playAudio('second.mp3');
+      }
     });
     // Assert reset was called on the first audio instance
-    expect(typeof firstAudio.pause).toBe('function');
-    expect(firstAudio.currentTime).toBe(0);
+    expect(firstAudio).not.toBeNull();
+    if (firstAudio) {
+      expect(typeof (firstAudio as HTMLAudioElement).pause).toBe('function');
+      expect((firstAudio as HTMLAudioElement).currentTime).toBe(0);
+    }
   });
 
   it('should clean up audioRef on audio end', async () => {
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     await act(async () => {
-      const audio = await ref.current.playAudio('test.mp3');
-      if (audio && audio.onended) audio.onended(new Event('ended'));
+      let audio: HTMLAudioElement | null = null;
+      if (ref.current) {
+        audio = await ref.current.playAudio('test.mp3');
+        if (audio && audio.onended) audio.onended(new Event('ended'));
+      }
     });
     expect(ref.current.audioRef.current).toBeNull();
   });
 
   it('should handle audioRef.current without pause/currentTime', async () => {
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     // Manually set audioRef.current to an object missing pause/currentTime
-    const dummy = {};
+    const dummy = {} as HTMLAudioElement;
+    if (!ref.current) throw new Error('ref.current is null');
     ref.current.audioRef.current = dummy;
-    let error = null;
+    let error: unknown = null;
     try {
       await act(async () => {
-        await ref.current.playAudio('test.mp3');
+        await ref.current!.playAudio('test.mp3');
       });
     } catch (e) {
       error = e;
@@ -137,14 +154,15 @@ describe('useAudioPlayer', () => {
 
   it('should not change audioRef.current if audioEnabledRef is false and missing pause/currentTime', async () => {
     const audioEnabledRef = { current: false };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
-    const dummy = {};
+    const dummy = {} as HTMLAudioElement;
+    if (!ref.current) throw new Error('ref.current is null');
     ref.current.audioRef.current = dummy;
-    let error = null;
+    let error: unknown = null;
     try {
       await act(async () => {
-        await ref.current.playAudio('test.mp3');
+        await ref.current!.playAudio('test.mp3');
       });
     } catch (e) {
       error = e;
@@ -169,7 +187,7 @@ describe('useAudioPlayer', () => {
       constructor(src: string) { this.src = src; }
     } as any;
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     await act(async () => {
       await ref.current.playAudio('test.mp3');
@@ -179,7 +197,7 @@ describe('useAudioPlayer', () => {
 
   it('should not play if audioEnabledRef becomes false after instantiation', async () => {
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     // Patch Audio to check play is not called if ref is false
     let playCalled = false;
@@ -199,10 +217,9 @@ describe('useAudioPlayer', () => {
 
   it('should pause and reset if audioEnabledRef is false in play event', async () => {
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     let paused = false;
-    let reset = false;
     (global as any).Audio = class {
       public onended: (() => void) | null = null;
       public paused = false;
@@ -220,10 +237,10 @@ describe('useAudioPlayer', () => {
       const audio = await ref.current.playAudio('test.mp3');
       audioEnabledRef.current = false;
       // Simulate play event
-      if (audio && audio.addEventListener.mock) {
-        audio.addEventListener.mock.calls[0][1]();
-      } else if (audio && audio._playHandler) {
-        audio._playHandler();
+      if (audio && (audio.addEventListener as jest.Mock).mock) {
+        (audio.addEventListener as jest.Mock).mock.calls[0][1]();
+      } else if (audio && (audio as unknown as { _playHandler?: () => void })._playHandler) {
+        (audio as unknown as { _playHandler: () => void })._playHandler();
       }
     });
     expect(paused).toBe(true);
@@ -231,15 +248,17 @@ describe('useAudioPlayer', () => {
 
   it('should not clean up audioRef if onended is called for a different audio', async () => {
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
-    let audioInstance: any = null;
+    let audioInstance: HTMLAudioElement | null = null;
     await act(async () => {
-      audioInstance = await ref.current.playAudio('test.mp3');
+      audioInstance = await ref.current!.playAudio('test.mp3');
     });
     // Set audioRef.current to a different object
-    ref.current.audioRef.current = {};
+    if (!ref.current) throw new Error('ref.current is null');
+    ref.current.audioRef.current = {} as HTMLAudioElement;
     // Call onended on the original instance
+    // @ts-expect-error: onended is a mock property on our test Audio
     if (audioInstance && audioInstance.onended) audioInstance.onended();
     // Should not set audioRef.current to null
     expect(ref.current.audioRef.current).not.toBeNull();
@@ -247,15 +266,16 @@ describe('useAudioPlayer', () => {
 
   it('should handle audioRef.current with neither pause nor currentTime', async () => {
     const audioEnabledRef = { current: false };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     // Set audioRef.current to an object with neither pause nor currentTime
-    const dummy = { foo: 'bar' };
+    const dummy = { foo: 'bar' } as unknown as HTMLAudioElement;
+    if (!ref.current) throw new Error('ref.current is null');
     ref.current.audioRef.current = dummy;
-    let error = null;
+    let error: unknown = null;
     try {
       await act(async () => {
-        await ref.current.playAudio('test.mp3');
+        await ref.current!.playAudio('test.mp3');
       });
     } catch (e) {
       error = e;
@@ -267,19 +287,20 @@ describe('useAudioPlayer', () => {
 
   it('should catch error when setting currentTime', async () => {
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     // Set audioRef.current to object with pause and currentTime setter that throws
     const dummy = {
       pause: jest.fn(),
       get currentTime() { return 0; },
       set currentTime(_v) { throw new Error('fail'); },
-    };
+    } as unknown as HTMLAudioElement;
+    if (!ref.current) throw new Error('ref.current is null');
     ref.current.audioRef.current = dummy;
-    let error = null;
+    let error: unknown = null;
     try {
       await act(async () => {
-        await ref.current.playAudio('test.mp3');
+        await ref.current!.playAudio('test.mp3');
       });
     } catch (e) {
       error = e;
@@ -289,7 +310,7 @@ describe('useAudioPlayer', () => {
 
   it('should set _paused property if present on previous audioRef.current', async () => {
     const audioEnabledRef = { current: true };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     // Set audioRef.current to object with pause, currentTime, and _paused
     const dummy = {
@@ -297,26 +318,28 @@ describe('useAudioPlayer', () => {
       get currentTime() { return 0; },
       set currentTime(_v) {},
       _paused: false,
-    };
+    } as unknown as HTMLAudioElement & { _paused: boolean };
+    if (!ref.current) throw new Error('ref.current is null');
     ref.current.audioRef.current = dummy;
     await act(async () => {
-      await ref.current.playAudio('test.mp3');
+      await ref.current!.playAudio('test.mp3');
     });
-    expect(dummy._paused).toBe(true);
+    expect((dummy as { _paused: boolean })._paused).toBe(true);
   });
 
   // Add test for uncovered branch: audioRef.current exists, but neither pause nor currentTime are present, and audioEnabledRef.current is false
   it('should leave audioRef.current unchanged if it has neither pause nor currentTime and audio is disabled', async () => {
     const audioEnabledRef = { current: false };
-    const ref = React.createRef<any>();
+    const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     // Set audioRef.current to an object with neither pause nor currentTime
-    const dummy = { foo: 'bar' };
+    const dummy = { foo: 'bar' } as unknown as HTMLAudioElement;
+    if (!ref.current) throw new Error('ref.current is null');
     ref.current.audioRef.current = dummy;
-    let error = null;
+    let error: unknown = null;
     try {
       await act(async () => {
-        await ref.current.playAudio('test.mp3');
+        await ref.current!.playAudio('test.mp3');
       });
     } catch (e) {
       error = e;
