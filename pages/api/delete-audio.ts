@@ -8,6 +8,14 @@ import fs from "fs/promises";
 import path from "path";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+/**
+ * Next.js API route handler for deleting temporary audio files from the server.
+ * Used for cleanup after TTS playback.
+ *
+ * @param {NextApiRequest} req - The API request object.
+ * @param {NextApiResponse} res - The API response object.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { file } = req.query;
   // Only allow simple filenames, not paths

@@ -7,6 +7,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 
+/**
+ * Next.js API route handler for retrieving a character's TTS voice configuration.
+ * Accepts POST requests with a character name and returns a voice config object.
+ *
+ * @param {NextApiRequest} req - The API request object.
+ * @param {NextApiResponse} res - The API response object.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
   const { name } = req.body;

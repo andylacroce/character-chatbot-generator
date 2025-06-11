@@ -1,3 +1,13 @@
+/**
+ * ChatMessagesList component
+ *
+ * Renders a list of chat messages, using react-window for virtualization if the list is long.
+ * Displays skeletons while loading, and always anchors the most recent messages at the bottom.
+ *
+ * @param {ChatMessagesListProps} props - The component props
+ * @returns {JSX.Element} The rendered list of chat messages
+ */
+
 import React, { useRef, useEffect, useState } from "react";
 import ChatMessage from "./ChatMessage";
 import { Bot } from "./BotCreator";

@@ -63,9 +63,9 @@ function isValidPublicIp(ip: string): boolean {
 }
 
 /**
- * Next.js API route handler for logging chat messages.
- * Accepts POST requests with sender, text, sessionId, and sessionDatetime.
- * Logs messages to Vercel Blob or local file system.
+ * Next.js API route handler for logging chat messages and events to storage (Vercel Blob or local).
+ * Includes XSS-safe HTML escaping for logs.
+ *
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.

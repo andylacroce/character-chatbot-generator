@@ -38,6 +38,14 @@ function getRandomStaticCharacter(exclude: string[] = []) {
   return all[Math.floor(Math.random() * all.length)];
 }
 
+/**
+ * Next.js API route handler for generating or selecting a random character name.
+ * Uses OpenAI or static list for suggestions, logs results for analytics.
+ *
+ * @param {NextApiRequest} req - The API request object.
+ * @param {NextApiResponse} res - The API response object.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const requestId = req.headers["x-request-id"] || generateRequestId();
 

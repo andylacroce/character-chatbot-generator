@@ -10,6 +10,14 @@ import logger from "../../src/utils/logger";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
+/**
+ * Next.js API route handler for generating a character avatar image using OpenAI.
+ * Accepts POST requests with a character name and returns an image URL or data URL.
+ *
+ * @param {NextApiRequest} req - The API request object.
+ * @param {NextApiResponse} res - The API response object.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
   const { name } = req.body;

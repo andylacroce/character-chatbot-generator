@@ -7,6 +7,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
 
+/**
+ * Next.js API route handler for generating a character personality prompt using OpenAI.
+ * Accepts POST requests with a character name and returns a personality string.
+ *
+ * @param {NextApiRequest} req - The API request object.
+ * @param {NextApiResponse} res - The API response object.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
   const { name: originalName } = req.body;

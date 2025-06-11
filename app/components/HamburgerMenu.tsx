@@ -1,3 +1,14 @@
+/**
+ * HamburgerMenu component
+ *
+ * Accessible hamburger menu for mobile/desktop navigation.
+ * Renders a button and dropdown for menu actions, with keyboard and focus support.
+ * Enhances child buttons to close the menu on click.
+ *
+ * @param {HamburgerMenuProps} props - The component props
+ * @returns {JSX.Element} The rendered hamburger menu
+ */
+
 // =============================
 // HamburgerMenu.tsx
 // Accessible hamburger menu component for mobile and desktop navigation.
