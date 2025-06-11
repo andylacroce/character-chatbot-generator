@@ -21,10 +21,9 @@ const createJestConfig = nextJest({
  * @type {import('jest').Config}
  */
 const customJestConfig = {
-  preset: "ts-jest",
   testEnvironment: "jest-environment-jsdom",
   transform: {
-    "^.+\\.(js|jsx|ts|tsx)$": "ts-jest",
+    "^.+\\.(js|jsx|ts|tsx)$": "babel-jest",
   },
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
