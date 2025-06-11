@@ -4,7 +4,7 @@ import styles from "./styles/ChatHeader.module.css";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import HamburgerMenu from "./HamburgerMenu";
-import { FaArrowLeft, FaRegFileAlt, FaRegLightbulb } from "react-icons/fa";
+import { FaArrowLeft, FaRegFileAlt } from "react-icons/fa";
 import DarkModeToggle from "./DarkModeToggle";
 
 // Dynamically import ModalImageViewer for code splitting
@@ -54,16 +54,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
               >
                 <FaRegFileAlt size={18} style={{ color: 'var(--color-primary)' }} />
                 <span className={styles.downloadLabel}>Transcript</span>
-              </button>
-              <button
-                className={styles.downloadTranscriptLink}
-                type="button"
-                aria-label="Show bot prompt"
-                onClick={onShowPrompt}
-                style={{ marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
-              >
-                <FaRegLightbulb size={18} style={{ color: 'var(--color-primary)' }} />
-                <span>Prompt</span>
               </button>
             </HamburgerMenu>
             <span className={styles.desktopToggle}>
