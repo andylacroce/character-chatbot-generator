@@ -107,6 +107,7 @@
   justify-content: flex-end;
   min-width: 0;
   grid-column: 3;
+  gap: 1.2rem; /* Increased gap for desktop */
 }
 
 .downloadTranscriptLink {
@@ -262,23 +263,23 @@
     align-items: center;
     gap: 0.5rem;
     margin: 0;
-    flex-wrap: nowrap;
-    overflow-x: hidden;
+    flex-wrap: wrap; /* allow icons to wrap if needed */
+    overflow-x: visible; /* allow icons to be fully visible */
   }
   .headerRight a {
     display: flex;
     align-items: center;
     justify-content: center;
-    max-width: 50px;
+    max-width: 44px;
     min-width: 0;
     margin: 0 0.2rem;
   }
   .headerRight a img {
     width: 36px !important;
-    height: 36px !important;
-    max-width: 100%;
-    height: auto;
-    display: block;
+    height: auto !important;
+    aspect-ratio: 1/1;
+    display: block !important;
+    object-fit: contain;
   }
   .downloadTranscriptLink {
     font-size: 0.7rem;
