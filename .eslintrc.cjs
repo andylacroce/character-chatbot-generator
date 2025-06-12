@@ -14,14 +14,21 @@ module.exports = {
     ecmaFeatures: {
       jsx: true,
     },
-    project: ["./tsconfig.json"],
+    // project: ["./tsconfig.json"], // Uncomment if you use rules requiring type information
   },
   settings: {
     react: {
       version: "detect",
     },
   },
-  ignorePatterns: ["node_modules/", "dist/", ".next/", "coverage/", "tmp/"],
+  ignorePatterns: [
+    "node_modules/",
+    "dist/",
+    ".next/",
+    "coverage/",
+    "tmp/",
+    "jest.setup.js", // Exclude Jest setup file from linting
+  ],
   rules: {
     // Add or override rules here as needed
     "react/react-in-jsx-scope": "off", // Next.js doesn't require React in scope

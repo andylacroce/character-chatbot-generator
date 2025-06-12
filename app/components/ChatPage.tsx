@@ -42,12 +42,11 @@ const LOAD_MORE_COUNT = 10;
  *
  * @returns {JSX.Element} The ChatPage component.
  */
-const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharacterCreation?: () => void }) => {
+function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharacterCreation?: () => void }) {
   // Use a unique key for each bot's chat history
-  const chatHistoryKey = bot ? `chatbot-history-${bot.name}` : null;
-  // State definitions
+  const chatHistoryKey = `chatbot-history-${bot.name}`;
   const [messages, setMessages] = useState<Message[]>(() => {
-    if (typeof window !== 'undefined' && chatHistoryKey) {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && chatHistoryKey) {
       try {
         const saved = localStorage.getItem(chatHistoryKey);
         if (saved) return JSON.parse(saved);
@@ -59,7 +58,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
   const [loading, setLoading] = useState<boolean>(false);
   // Initialize audioEnabled from localStorage or default to true
   const [audioEnabled, setAudioEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       const savedAudioPreference = localStorage.getItem('audioEnabled');
       if (savedAudioPreference !== null) {
         return savedAudioPreference === 'true';
@@ -194,7 +193,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
 
   // Persist audioEnabled to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       localStorage.setItem('audioEnabled', String(audioEnabled));
     }
   }, [audioEnabled]);
@@ -222,7 +221,7 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
 
   // Persist chat history to localStorage whenever messages change
   useEffect(() => {
-    if (typeof window !== 'undefined' && chatHistoryKey) {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && chatHistoryKey) {
       try {
         localStorage.setItem(chatHistoryKey, JSON.stringify(messages));
       } catch {
@@ -324,6 +323,6 @@ const ChatPage = ({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       <ApiUnavailableModal show={!apiAvailable} />
     </div>
   );
-};
+}
 
 export default ChatPage;

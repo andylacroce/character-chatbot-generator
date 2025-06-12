@@ -59,16 +59,16 @@ afterEach(() => {
 });
 
 // Clean up undici's global dispatcher to close open TCP handles after all tests
-try {
-  const { globalDispatcher } = require("undici");
-  afterAll(() => {
-    if (
-      globalDispatcher &&
-      typeof globalDispatcher.destroy === "function"
-    ) {
-      globalDispatcher.destroy();
-    }
-  });
-} catch (e) {
-  // undici not used, ignore
-}
+// try {
+//   const { globalDispatcher } = require("undici");
+//   afterAll(() => {
+//     if (
+//       globalDispatcher &&
+//       typeof globalDispatcher.destroy === "function"
+//     ) {
+//       globalDispatcher.destroy();
+//     }
+//   });
+// } catch (e) {
+//   // undici not used, ignore
+// }
