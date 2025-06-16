@@ -15,7 +15,7 @@
   "dependencies": {
     "@google-cloud/text-to-speech": "^6.1.0",
     "@trendmicro/react-toggle-switch": "^0.5.7",
-    "@typescript-eslint/type-utils": "^6.15.0",
+    "@typescript-eslint/type-utils": "^8.34.0",
     "@typescript-eslint/typescript-estree": "^6.15.0",
     "@typescript-eslint/utils": "^6.15.0",
     "@vercel/analytics": "^1.4.1",
