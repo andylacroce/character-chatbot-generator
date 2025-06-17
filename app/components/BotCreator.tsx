@@ -30,18 +30,15 @@ interface BotCreatorProps {
 const progressSteps = [
   {
     key: "personality",
-    label: "Creating personality...",
-    description: "Designing a unique personality for your character."
+    label: "Creating personality"
   },
   {
     key: "avatar",
-    label: "Generating portrait...",
-    description: "Creating a visual portrait for your character."
+    label: "Generating portrait"
   },
   {
     key: "voice",
-    label: "Finding the perfect voice...",
-    description: "Selecting a voice that matches your character."
+    label: "Selecting voice"
   }
 ];
 
@@ -51,6 +48,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [randomizing, setRandomizing] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { darkMode } = useContext(DarkModeContext);
   const cancelRequested = useRef(false);
@@ -71,17 +69,25 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
     setError("");
     setLoading(true);
     setProgress("personality");
+    setLoadingMessage(null);
     cancelRequested.current = false;
     try {
-      const bot = await generateBotDataWithProgressCancelable(input.trim(), setProgress, cancelRequested);
+      const bot = await generateBotDataWithProgressCancelable(
+        input.trim(),
+        setProgress,
+        setLoadingMessage,
+        cancelRequested
+      );
       if (!cancelRequested.current) {
         setProgress(null);
+        setLoadingMessage(null);
         onBotCreated(bot);
       }
     } catch {
       if (!cancelRequested.current) {
         setError("Failed to generate character. Please try again.");
         setProgress(null);
+        setLoadingMessage(null);
       }
     } finally {
       setLoading(false);
@@ -156,104 +162,107 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const isBusy = loading || randomizing;
 
   return (
-    <form
-      onSubmit={handleCreate}
-      className={styles.formContainer}
-      autoComplete="off"
-    >
-      <h1 className={styles.mainHeading}>Character Chatbot Generator</h1>
-      <div className={styles.inputGroup}>
-        <input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          placeholder="Enter a name"
-          className={styles.input + (darkMode ? ' dark' : '')}
-          disabled={loading}
-          data-testid="bot-creator-input"
-          aria-label="Character name"
-          maxLength={36}
-          ref={inputRef}
-        />
-      </div>
-      <div className={styles.buttonRow + (isBusy ? ' ' + styles.hideMobile : '')}>
-        <button
-          type="submit"
-          className={styles.createButton}
-          disabled={isBusy}
-          data-testid="bot-creator-button"
-          aria-label="Create character"
-        >
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-            <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none"/>
-            <path d="M10 14h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            <path d="M15 11l3 3-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-        <button
-          type="button"
-          className={styles.randomButton}
-          disabled={isBusy}
-          aria-label="Choose a random real character"
-          onClick={handleRandomCharacter}
-        >
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style={{display:'block'}}>
-            <rect x="5" y="5" width="18" height="18" rx="4" stroke="currentColor" strokeWidth="2" fill="none"/>
-            <circle cx="9.5" cy="9.5" r="2" fill="currentColor"/>
-            <circle cx="18.5" cy="9.5" r="2" fill="currentColor"/>
-            <circle cx="9.5" cy="18.5" r="2" fill="currentColor"/>
-            <circle cx="18.5" cy="18.5" r="2" fill="currentColor"/>
-            <circle cx="14" cy="14" r="2" fill="currentColor"/>
-          </svg>
-          <span style={{display:'none'}}>🎲</span>
-        </button>
-      </div>
-      {!(loading || randomizing) && (
-        <div className={styles.instructionsCentered}>
-          <div>
-            Choose a character name to create your own chatbot. You can invent a new personality or use someone famous.
-          </div>
-          <div>
-            Press the <b>arrow</b> button to generate your character, or try the <b>dice</b> button for a random suggestion.
-          </div>
-          <div className={styles.instructionsTip}>
-            Explore different names from books, movies, history, or your imagination.
-          </div>
+    <>
+      <form
+        onSubmit={handleCreate}
+        className={styles.formContainer}
+        autoComplete="off"
+      >
+        <h1 className={styles.mainHeading}>Character Chatbot Generator</h1>
+        <div className={styles.inputGroup}>
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder="Enter a name"
+            className={styles.input + (darkMode ? ' dark' : '')}
+            disabled={loading}
+            data-testid="bot-creator-input"
+            aria-label="Character name"
+            maxLength={36}
+            ref={inputRef}
+          />
         </div>
-      )}
-      {randomizing && (
-        <div className={styles.progressContainer} data-testid="bot-creator-progress">
-          <span className={styles.genericSpinner} aria-label="Loading" />
-          <div className={styles.progressText}>Picking a real character…</div>
-          <div className={styles.progressDescription}>Asking ChatGPT for a famous or iconic character from history, literature, or pop culture.</div>
-        </div>
-      )}
-      {loading && currentStep && (
-        <div className={styles.progressContainer} data-testid="bot-creator-progress">
-          <span className={styles.genericSpinner} aria-label="Loading" />
-          <div className={styles.progressText}>{currentStep.label}</div>
-          <div className={styles.progressDescription}>{currentStep.description}</div>
+        <div className={styles.buttonRow + (isBusy ? ' ' + styles.hideMobile : '')}>
+          <button
+            type="submit"
+            className={styles.createButton}
+            disabled={isBusy}
+            data-testid="bot-creator-button"
+            aria-label="Create character"
+          >
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+              <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none" />
+              <path d="M10 14h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M15 11l3 3-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
           <button
             type="button"
-            className={styles.createButton}
-            style={{ marginTop: 16, maxWidth: 48, minWidth: 48, minHeight: 48, maxHeight: 48, width: 48, height: 48, borderRadius: '50%' }}
-            aria-label="Cancel"
-            onClick={handleCancel}
+            className={styles.randomButton}
+            disabled={isBusy}
+            aria-label="Choose a random real character"
+            onClick={handleRandomCharacter}
           >
-            {/* Modern X/cancel SVG icon */}
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-              <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none"/>
-              <path d="M9.5 9.5l9 9M18.5 9.5l-9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style={{ display: 'block' }}>
+              <rect x="5" y="5" width="18" height="18" rx="4" stroke="currentColor" strokeWidth="2" fill="none" />
+              <circle cx="9.5" cy="9.5" r="2" fill="currentColor" />
+              <circle cx="18.5" cy="9.5" r="2" fill="currentColor" />
+              <circle cx="9.5" cy="18.5" r="2" fill="currentColor" />
+              <circle cx="18.5" cy="18.5" r="2" fill="currentColor" />
+              <circle cx="14" cy="14" r="2" fill="currentColor" />
             </svg>
-            <span style={{display:'none'}}>Cancel</span>
+            <span style={{ display: 'none' }}>🎲</span>
           </button>
         </div>
-      )}
-      {error && <div className={styles.error}>{error}</div>}
-      <div className={styles.toggleRow}>
-        <DarkModeToggle className={styles.darkModeToggle} />
+        {!(loading || randomizing) && (
+          <div className={styles.instructionsCentered}>
+            <div>
+              Choose a character name to create your own chatbot. You can invent a new personality or use someone famous.
+            </div>
+            <div>
+              Press the <b>arrow</b> button to generate your character, or try the <b>dice</b> button for a random suggestion.
+            </div>
+            <div className={styles.instructionsTip}>
+              Explore different names from books, movies, history, or your imagination.
+            </div>
+          </div>
+        )}
+        {randomizing && (
+          <div className={styles.progressContainer} data-testid="bot-creator-progress">
+            <span className={styles.genericSpinner} aria-label="Loading" />
+            <div className={styles.progressText}>Picking a random character</div>
+          </div>
+        )}
+        {loading && currentStep && (
+          <div className={styles.progressContainer} data-testid="bot-creator-progress">
+            <span className={styles.genericSpinner} aria-label="Loading" />
+            <div className={styles.progressText}>{loadingMessage || currentStep.label}</div>
+            <button
+              type="button"
+              className={styles.createButton}
+              style={{ marginTop: 16, maxWidth: 48, minWidth: 48, minHeight: 48, maxHeight: 48, width: 48, height: 48, borderRadius: '50%' }}
+              aria-label="Cancel"
+              onClick={handleCancel}
+            >
+              {/* Modern X/cancel SVG icon */}
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none" />
+                <path d="M9.5 9.5l9 9M18.5 9.5l-9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+              <span style={{ display: 'none' }}>Cancel</span>
+            </button>
+          </div>
+        )}
+        {error && <div className={styles.error}>{error}</div>}
+        <div className={styles.toggleRow}>
+          <DarkModeToggle className={styles.darkModeToggle} />
+        </div>
+      </form>
+      <div className={styles.disclaimer}>
+        Disclaimer: This chatbot is for entertainment purposes only. No information provided should be considered professional, legal, medical, or financial advice. Content may be generated by artificial intelligence (OpenAI) and may contain inaccuracies or limitations. Use at your own risk. The creators disclaim all liability for actions taken based on chatbot interactions.
       </div>
-    </form>
+    </>
   );
 };
 
@@ -268,13 +277,16 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
 async function generateBotDataWithProgressCancelable(
   originalInputName: string,
   onProgress: (step: string) => void,
+  setLoadingMessage: (msg: string | null) => void,
   cancelRequested: React.MutableRefObject<boolean>
 ): Promise<Bot> {
   let personality = `You are ${originalInputName}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
   let correctedName = originalInputName;
   onProgress("personality");
+  setLoadingMessage("Creating personality");
   if (cancelRequested.current) throw new Error("cancelled");
   try {
+    setLoadingMessage("Creating personality");
     const personalityRes = await fetch("/api/generate-personality", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -286,11 +298,14 @@ async function generateBotDataWithProgressCancelable(
       if (data.personality) personality = data.personality;
       if (data.correctedName) correctedName = data.correctedName;
     }
-  } catch {}
-  let avatarUrl = "/silhouette.svg";
+  } catch { }
   onProgress("avatar");
+  setLoadingMessage("Generating portrait");
+  let avatarUrl = "/silhouette.svg";
   if (cancelRequested.current) throw new Error("cancelled");
+  let usedSilhouette = false;
   try {
+    setLoadingMessage("Generating portrait");
     const avatarRes = await fetch("/api/generate-avatar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -299,16 +314,32 @@ async function generateBotDataWithProgressCancelable(
     if (cancelRequested.current) throw new Error("cancelled");
     if (avatarRes.ok) {
       const data = await avatarRes.json();
-      if (data.avatarDataUrl) avatarUrl = data.avatarDataUrl;
-      else if (data.avatarUrl) avatarUrl = data.avatarUrl;
+      if (data.avatarDataUrl) {
+        avatarUrl = data.avatarDataUrl;
+      } else if (data.avatarUrl) {
+        avatarUrl = data.avatarUrl;
+        if (data.avatarUrl === "/silhouette.svg") {
+          setLoadingMessage("Using default image");
+          usedSilhouette = true;
+        }
+      }
+    } else {
+      setLoadingMessage("Using default image");
+      usedSilhouette = true;
     }
-  } catch {}
-  let voiceConfig = null;
+  } catch {
+    setLoadingMessage("Using default image");
+    usedSilhouette = true;
+  }
   onProgress("voice");
+  setLoadingMessage("Selecting voice");
+  let voiceConfig = null;
   if (cancelRequested.current) throw new Error("cancelled");
   try {
     voiceConfig = await api_getVoiceConfigForCharacter(correctedName);
-  } catch {}
+  } catch {
+    setLoadingMessage("Using default voice");
+  }
   if (cancelRequested.current) throw new Error("cancelled");
   return { name: correctedName, personality, avatarUrl, voiceConfig };
 }
