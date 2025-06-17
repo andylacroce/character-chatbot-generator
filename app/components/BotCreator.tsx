@@ -303,7 +303,6 @@ async function generateBotDataWithProgressCancelable(
   setLoadingMessage("Generating portrait");
   let avatarUrl = "/silhouette.svg";
   if (cancelRequested.current) throw new Error("cancelled");
-  let usedSilhouette = false;
   try {
     setLoadingMessage("Generating portrait");
     const avatarRes = await fetch("/api/generate-avatar", {
@@ -320,16 +319,13 @@ async function generateBotDataWithProgressCancelable(
         avatarUrl = data.avatarUrl;
         if (data.avatarUrl === "/silhouette.svg") {
           setLoadingMessage("Using default image");
-          usedSilhouette = true;
         }
       }
     } else {
       setLoadingMessage("Using default image");
-      usedSilhouette = true;
     }
   } catch {
     setLoadingMessage("Using default image");
-    usedSilhouette = true;
   }
   onProgress("voice");
   setLoadingMessage("Selecting voice");

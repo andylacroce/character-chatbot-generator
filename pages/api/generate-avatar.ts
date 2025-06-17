@@ -25,7 +25,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
     logger.info(`[AVATAR] Generating avatar for: ${name}`);
     // Use OpenAI GPT to get a detailed, attribute-rich description
-    let description = null;
     let race = null;
     let gender = null;
     let other = null;
@@ -82,19 +81,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let prompt = base;
     // Add likenessRef (subject description) first, up to 350 chars
     const likenessMax = 350;
-    let likeness = likenessRef.slice(0, likenessMax);
+    const likeness = likenessRef.slice(0, likenessMax);
     prompt += likeness + ' ';
     // Add styleInstruction, up to 120 chars
     const styleMax = 120;
-    let style = styleInstruction.slice(0, styleMax);
+    const style = styleInstruction.slice(0, styleMax);
     prompt += style + ' ';
     // Add singleInstruction, up to 200 chars
     const singleMax = 200;
-    let single = singleInstruction.slice(0, singleMax);
+    const single = singleInstruction.slice(0, singleMax);
     prompt += single + ' ';
     // Add negativePrompt, up to 250 chars
     const negativeMax = 250;
-    let negative = negativePrompt.slice(0, negativeMax);
+    const negative = negativePrompt.slice(0, negativeMax);
     prompt += negative;
     // If still too long, trim from the end (modifiers/negatives first)
     if (prompt.length > maxPromptLength) {
@@ -129,15 +128,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (err) {
       // Moderation/safety error handling
       const errObj = (typeof err === 'object' && err !== null) ? err : {};
-      const errCode = (errObj && 'code' in errObj) ? (errObj as any).code : undefined;
-      const errType = (errObj && 'type' in errObj) ? (errObj as any).type : undefined;
-      const errMsg = (errObj && 'message' in errObj) ? (errObj as any).message : String(err);
+      const errCode = (errObj && 'code' in errObj) ? (errObj as unknown as { code?: string }).code : undefined;
+      const errType = (errObj && 'type' in errObj) ? (errObj as unknown as { type?: string }).type : undefined;
+      const errMsg = (errObj && 'message' in errObj) ? (errObj as unknown as { message?: string }).message : String(err);
       if (errCode === 'moderation_blocked' || errType === 'image_generation_user_error' || (errMsg && errMsg.includes('safety system'))) {
         logger.warn("OpenAI image generation blocked by moderation/safety system on gpt-image-1, trying dall-e-3");
         moderationBlocked = true;
-      } else if (err && typeof err === 'object' && err !== null && 'message' in err && String((err as any).message).includes('must be verified to use the model')) {
-        const code = (err && typeof err === 'object' && 'status' in err) ? (err as any).status : ((err && typeof err === 'object' && 'code' in err) ? (err as any).code : 'unknown');
-        const msg = (err as any).message || String(err);
+      } else if (
+        err &&
+        typeof err === 'object' &&
+        err !== null &&
+        'message' in err &&
+        typeof (err as { message?: unknown }).message === 'string' &&
+        ((err as { message: string }).message).includes('must be verified to use the model')
+      ) {
+        const code =
+          err &&
+            typeof err === 'object' &&
+            'status' in err
+            ? (err as { status?: string }).status
+            : err &&
+              typeof err === 'object' &&
+              'code' in err
+              ? (err as { code?: string }).code
+              : 'unknown';
+        const msg = (err as { message?: string }).message || String(err);
         logger.warn(`gpt-image-1 unavailable: organization not verified (HTTP ${code}): ${msg}`);
       } else {
         logger.warn("gpt-image-1 unavailable, falling back to dall-e-3 (using model: dall-e-3)", err);
