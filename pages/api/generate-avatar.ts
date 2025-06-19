@@ -48,7 +48,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (content) {
         logger.info(`[AVATAR] GPT response: ${content}`);
         try {
-          const parsed = JSON.parse(content);
+          // Strip code fences and markdown if present
+          const cleaned = content.replace(/^```[a-zA-Z]*\n?|```$/g, '').trim();
+          const parsed = JSON.parse(cleaned);
           race = parsed.race || null;
           gender = parsed.gender || null;
           other = parsed.other || null;
