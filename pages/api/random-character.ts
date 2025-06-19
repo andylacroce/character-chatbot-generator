@@ -6,7 +6,6 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
-import { CHARACTER_VOICE_MAP } from "../../src/utils/characterVoices";
 import logger, { generateRequestId } from "../../src/utils/logger";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -28,24 +27,9 @@ async function logRandomCharacter(name: string) {
   }
 }
 
-function getStaticCharacterList() {
-  // Combine CHARACTER_VOICE_MAP keys (excluding "Default") with extraStatic for fallback
-  return [...Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default"),
-    "Cleopatra", "Nikola Tesla", "Harriet Tubman", "Bruce Lee", "Ada Lovelace", "Mahatma Gandhi", "Queen Elizabeth I", "Martin Luther King Jr.",
-    "Frida Kahlo", "Leonardo da Vinci", "Marie Curie", "Nelson Mandela", "Joan of Arc", "Socrates", "Jane Austen", "Malala Yousafzai", "David Bowie",
-    "Serena Williams", "Albert Einstein", "Winston Churchill", "Rosa Parks", "Stephen Hawking", "Amelia Earhart", "Simone Biles", "Oscar Wilde"
-  ];
-}
-
-function getRandomStaticCharacter(exclude: string[] = []) {
-  const all = getStaticCharacterList().filter(n => !exclude.includes(n));
-  if (all.length === 0) return "Yoda";
-  return all[Math.floor(Math.random() * all.length)];
-}
-
 /**
  * Next.js API route handler for generating or selecting a random character name.
- * Uses OpenAI or static list for suggestions, logs results for analytics.
+ * Uses OpenAI for suggestions, falls back to 'gandalf' if OpenAI fails.
  *
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
@@ -76,11 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const staticList = getStaticCharacterList();
-    // Exclude Sherlock Holmes and last 5 static names from OpenAI
-    const lastFew = staticList.slice(-5);
-    const exclusions = ["Sherlock Holmes", ...lastFew, ...exclude];
-    const exclusionStr = exclusions.map(n => `"${n}"`).join(", ");
+    const exclusionStr = exclude.map(n => `"${n}"`).join(", ");
     const prompt = `### INSTRUCTIONS
 You are an expert in world history, literature, pop culture, and media. Your task is to suggest the name of a real, well-known character from history, literature, film, TV, comics, or pop culture. Follow these rules:
 - Reply ONLY with the character's name. Do not include any description, explanation, or extra text.
@@ -90,7 +70,6 @@ You are an expert in world history, literature, pop culture, and media. Your tas
 - Prioritize diversity: vary gender, culture, time period, and genre.
 - Avoid repeats, near-duplicates, or generic names.
 - Think carefully and take your time to select a truly unique and interesting character.
-- Examples of good answers: "Cleopatra", "Sherlock Holmes", "Frida Kahlo", "Bruce Lee", "Marie Curie", "David Bowie", "Joan of Arc", "Simone Biles", "Oscar Wilde".
 - Output format: Only the character's name, nothing else.
 ### END INSTRUCTIONS`;
     const completion = await openai.chat.completions.create({
@@ -104,7 +83,6 @@ You are an expert in world history, literature, pop culture, and media. Your tas
     });
     const name = completion.choices[0]?.message?.content?.trim().replace(/^"|"$/g, "");
     // Validate the name: must be 2+ chars, not just numbers, not contain forbidden chars, not look like junk
-    // Enhanced validation: filter out junk, forbidden, or near-duplicate names
     const isValidName = (n: string | undefined) => {
       if (!n) return false;
       if (n.length < 2) return false;
@@ -123,7 +101,8 @@ You are an expert in world history, literature, pop culture, and media. Your tas
     await logRandomCharacter(`[OPENAI] ${name}`);
     res.status(200).json({ name, requestId });
   } catch {
-    const fallback = getRandomStaticCharacter(exclude);
+    // Always fallback to 'gandalf' if OpenAI fails
+    const fallback = 'gandalf';
     logger.error(`[RandomCharacter API] OpenAI error | requestId=${requestId}`);
     logger.info(`[RandomCharacter API] 500 Fallback: [FALLBACK] ${fallback} | requestId=${requestId}`);
     await logRandomCharacter(`[FALLBACK] ${fallback}`);

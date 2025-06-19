@@ -125,14 +125,15 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           name = data.name.trim();
         }
       } catch {
-        // fallback to static known character
-        const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default" && n !== lastName && !recentRandomNames.includes(n));
-        if (names.length > 0) {
-          name = names[Math.floor(Math.random() * names.length)];
+        // Always fallback to 'gandalf' if not last or recent
+        if (lastName.toLowerCase() !== 'gandalf' && !recentRandomNames.map(n => n.toLowerCase()).includes('gandalf')) {
+          name = 'gandalf';
         } else {
-          name = "Yoda";
+          // fallback to any other name not in recent or last, or 'gandalf' if all else fails
+          const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default" && n.toLowerCase() !== lastName.toLowerCase() && !recentRandomNames.map(x => x.toLowerCase()).includes(n.toLowerCase()) && n.toLowerCase() !== 'gandalf');
+          name = names.length > 0 ? names[Math.floor(Math.random() * names.length)] : 'gandalf';
         }
-        if (name !== lastName && !recentRandomNames.includes(name)) {
+        if (name.toLowerCase() !== lastName.toLowerCase() && !recentRandomNames.map(n => n.toLowerCase()).includes(name.toLowerCase())) {
           recentRandomNames.push(name);
           if (recentRandomNames.length > RECENT_HISTORY_LIMIT) recentRandomNames.shift();
           return { name };
