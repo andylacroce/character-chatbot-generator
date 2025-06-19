@@ -125,14 +125,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
           name = data.name.trim();
         }
       } catch {
-        // fallback to static known character
-        const names = Object.keys(CHARACTER_VOICE_MAP).filter(n => n !== "Default" && n !== lastName && !recentRandomNames.includes(n));
-        if (names.length > 0) {
-          name = names[Math.floor(Math.random() * names.length)];
-        } else {
-          name = "Yoda";
-        }
-        if (name !== lastName && !recentRandomNames.includes(name)) {
+        // Always fallback to 'Gandalf' if API fails
+        name = 'Gandalf';
+        if (name.toLowerCase() !== lastName.toLowerCase() && !recentRandomNames.map(n => n.toLowerCase()).includes(name.toLowerCase())) {
           recentRandomNames.push(name);
           if (recentRandomNames.length > RECENT_HISTORY_LIMIT) recentRandomNames.shift();
           return { name };
