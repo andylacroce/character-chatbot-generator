@@ -127,7 +127,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const imageModels = getOpenAIModel("image");
     logger.info(`[AVATAR] Image generation models selected: primary='${imageModels.primary}', fallback='${imageModels.fallback}'`);
     try {
-      logger.info(`[AVATAR] Attempting image generation with primary model: '${imageModels.primary}'`);
+      logger.info(`[AVATAR] Attempting image generation with primary model: '${imageModels.primary}'`, { prompt });
       try {
         image = await openai.images.generate({
           model: imageModels.primary,
@@ -137,8 +137,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           response_format: "url"
         });
         dallEUrl = image.data?.[0]?.url;
-        logger.info(`[AVATAR] Image generated successfully with model: '${imageModels.primary}'`);
+        logger.info(`[AVATAR] Image generated successfully with model: '${imageModels.primary}'`, { response: image });
       } catch (err) {
+        logger.error(`[AVATAR] Error from OpenAI image generation (primary model: '${imageModels.primary}')`, { error: err });
         // Moderation/safety error handling
         const errObj = (typeof err === 'object' && err !== null) ? err : {};
         const errCode = (errObj && 'code' in errObj) ? (errObj as unknown as { code?: string }).code : undefined;
@@ -172,8 +173,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
       if ((!dallEUrl && moderationBlocked) || (!dallEUrl && !image)) {
-        // Try fallback model if primary was blocked or failed
-        logger.info(`[AVATAR] Attempting image generation with fallback model: '${imageModels.fallback}'`);
+        logger.info(`[AVATAR] Attempting image generation with fallback model: '${imageModels.fallback}'`, { prompt });
         try {
           image = await openai.images.generate({
             model: imageModels.fallback,
@@ -183,8 +183,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             response_format: "url"
           });
           dallEUrl = image.data?.[0]?.url;
-          logger.info(`[AVATAR] Image generated successfully with fallback model: '${imageModels.fallback}'`);
+          logger.info(`[AVATAR] Image generated successfully with fallback model: '${imageModels.fallback}'`, { response: image });
         } catch (err) {
+          logger.error(`[AVATAR] Error from OpenAI image generation (fallback model: '${imageModels.fallback}')`, { error: err });
           logger.warn(`[AVATAR] Fallback image model '${imageModels.fallback}' also failed or was blocked, falling back to silhouette`, err);
           return res.status(200).json({ avatarUrl: "/silhouette.svg" });
         }
