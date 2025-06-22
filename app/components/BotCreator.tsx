@@ -12,7 +12,6 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
 import { DarkModeContext } from "./DarkModeContext";
-import { CHARACTER_VOICE_MAP } from "../../src/utils/characterVoices";
 import styles from "./styles/BotCreator.module.css";
 import DarkModeToggle from "./DarkModeToggle";
 

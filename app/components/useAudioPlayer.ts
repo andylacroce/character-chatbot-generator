@@ -13,18 +13,28 @@ import { useRef, useCallback } from "react";
  */
 export function useAudioPlayer(audioEnabledRef: React.MutableRefObject<boolean>) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
-  const playAudio = useCallback((src: string) => {
-    // If audio is disabled, do not play and do not replace dummy refs
+  const playAudio = useCallback(async (src: string) => {
     if (!audioEnabledRef.current) {
+      // Stop any previous Web Audio playback
+      if (sourceRef.current) {
+        try { sourceRef.current.stop(); } catch { }
+        try { sourceRef.current.disconnect(); } catch { }
+        sourceRef.current = null;
+      }
       if (audioRef.current) {
-        if (typeof audioRef.current.pause === 'function' || typeof audioRef.current.currentTime === 'number') {
-          audioRef.current = null;
-        }
+        audioRef.current = null;
       }
       return null;
     }
-    // Pause and reset previous audio if possible
+    // Stop previous Web Audio playback
+    if (sourceRef.current) {
+      try { sourceRef.current.stop(); } catch { }
+      try { sourceRef.current.disconnect(); } catch { }
+      sourceRef.current = null;
+    }
     if (audioRef.current) {
       if (typeof audioRef.current.pause === 'function') {
         audioRef.current.pause();
@@ -32,41 +42,74 @@ export function useAudioPlayer(audioEnabledRef: React.MutableRefObject<boolean>)
       if (typeof audioRef.current.currentTime === 'number') {
         try {
           audioRef.current.currentTime = 0;
-        } catch {}
+        } catch { }
       }
-      // If _paused property exists, set to true
       if ('_paused' in audioRef.current) {
         (audioRef.current as HTMLAudioElement & { _paused?: boolean })._paused = true;
       }
     }
-    // Create new audio
-    const audio = new Audio(src) as HTMLAudioElement & { _paused?: boolean };
-    // If _paused property exists, set to false
-    if ('_paused' in audio) {
-      audio._paused = false;
+    // Use Web Audio API to prepend silence
+    if (!audioContextRef.current) {
+      const AnyWindow = window as typeof window & { webkitAudioContext?: typeof AudioContext };
+      audioContextRef.current = new (window.AudioContext || AnyWindow.webkitAudioContext!)();
     }
-    // Play event: if audioEnabledRef becomes false, pause/reset
-    const handlePlay = () => {
-      if (!audioEnabledRef.current) {
-        if (typeof audio.pause === 'function') audio.pause();
-        if (typeof audio.currentTime === 'number') audio.currentTime = 0;
-        if ('_paused' in audio) audio._paused = true;
+    const audioContext = audioContextRef.current;
+    // Fetch audio data
+    const response = await fetch(src);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+    // Create a new buffer with silence prepended
+    const silenceDuration = 2.0; // 2000ms silence (increased from 120ms)
+    const numChannels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const silenceLength = Math.floor(silenceDuration * sampleRate);
+    const newBuffer = audioContext.createBuffer(
+      numChannels,
+      silenceLength + audioBuffer.length,
+      sampleRate
+    );
+    // Fill silence
+    for (let ch = 0; ch < numChannels; ch++) {
+      const channel = newBuffer.getChannelData(ch);
+      for (let i = 0; i < silenceLength; i++) {
+        channel[i] = 0;
       }
-    };
-    audio.addEventListener('play', handlePlay);
-    // onended: cleanup audioRef only if this audio is still current
-    audio.onended = () => {
-      audio.removeEventListener('play', handlePlay);
-      if (audioRef.current === audio) {
+      // Copy original audio
+      channel.set(audioBuffer.getChannelData(ch), silenceLength);
+    }
+    // Play the new buffer
+    const source = audioContext.createBufferSource();
+    source.buffer = newBuffer;
+    source.connect(audioContext.destination);
+    sourceRef.current = source;
+    source.start(0);
+    // For compatibility with the rest of the app, create a dummy HTMLAudioElement
+    const dummyAudio = new window.Audio();
+    audioRef.current = dummyAudio;
+    // Clean up after playback
+    source.onended = () => {
+      if (audioRef.current === dummyAudio) {
         audioRef.current = null;
       }
+      if (sourceRef.current === source) {
+        sourceRef.current = null;
+      }
     };
-    audioRef.current = audio;
-    if (audioEnabledRef.current) {
-      audio.play();
-    }
-    return audio;
+    return dummyAudio;
   }, [audioEnabledRef]);
 
-  return { playAudio, audioRef };
+  // Expose a stop function for toggling audio off or unmount
+  const stopAudio = useCallback(() => {
+    if (sourceRef.current) {
+      try { sourceRef.current.stop(); } catch { }
+      try { sourceRef.current.disconnect(); } catch { }
+      sourceRef.current = null;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause?.();
+      audioRef.current.currentTime = 0;
+    }
+  }, []);
+
+  return { playAudio, audioRef, stopAudio };
 }
