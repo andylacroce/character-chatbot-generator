@@ -17,6 +17,7 @@ import logger, { generateRequestId } from "../../src/utils/logger";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { setReplyCache, getReplyCache } from "../../src/utils/cache";
 import crypto from "crypto";
+import { getOpenAIModel } from "../../src/utils/openaiModelSelector";
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   throw new Error(
@@ -224,7 +225,7 @@ export default async function handler(
     );
     const result = await Promise.race([
       openai.chat.completions.create({
-        model: "gpt-4o",
+        model: getOpenAIModel("text"),
         messages,
         max_tokens: 200,
         temperature: 0.8,

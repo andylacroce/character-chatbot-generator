@@ -309,9 +309,7 @@ async function generateBotDataWithProgressCancelable(
     if (cancelRequested.current) throw new Error("cancelled");
     if (avatarRes.ok) {
       const data = await avatarRes.json();
-      if (data.avatarDataUrl) {
-        avatarUrl = data.avatarDataUrl;
-      } else if (data.avatarUrl) {
+      if (data.avatarUrl) {
         avatarUrl = data.avatarUrl;
         if (data.avatarUrl === "/silhouette.svg") {
           setLoadingMessage("Using default image");

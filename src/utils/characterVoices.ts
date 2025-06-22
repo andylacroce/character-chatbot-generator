@@ -338,10 +338,11 @@ const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
 async function fetchVoiceDescriptionFromOpenAI(name: string): Promise<string> {
   // Use OpenAI to describe the character's likely voice
   const OpenAI = (await import('openai')).default;
+  const { getOpenAIModel } = await import('./openaiModelSelector');
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   const prompt = `Describe the speaking voice of ${name} in 1-2 sentences, including accent, tone, pitch, speed, age, and any unique vocal traits.`;
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: getOpenAIModel("text"),
     messages: [
       { role: "system", content: "You are a helpful assistant." },
       { role: "user", content: prompt },

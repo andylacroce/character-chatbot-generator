@@ -6,6 +6,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
+import { getOpenAIModel } from "../../src/utils/openaiModelSelector";
 
 /**
  * Next.js API route handler for generating a character avatar image using OpenAI.
@@ -30,8 +31,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let gender = null;
     let other = null;
     try {
+      const textModel = getOpenAIModel("text");
+      logger.info(`[AVATAR] Using GPT model: ${textModel}`);
       const gptResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: textModel,
         messages: [
           {
             role: "system",
@@ -121,103 +124,83 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let image, dallEUrl;
     let moderationBlocked = false;
+    const imageModels = getOpenAIModel("image");
+    logger.info(`[AVATAR] Image generation models selected: primary='${imageModels.primary}', fallback='${imageModels.fallback}'`);
     try {
-      image = await openai.images.generate({
-        model: "gpt-image-1",
-        prompt: prompt,
-        n: 1,
-        size: "1024x1024"
-      });
-      dallEUrl = image.data?.[0]?.url;
-    } catch (err) {
-      // Moderation/safety error handling
-      const errObj = (typeof err === 'object' && err !== null) ? err : {};
-      const errCode = (errObj && 'code' in errObj) ? (errObj as unknown as { code?: string }).code : undefined;
-      const errType = (errObj && 'type' in errObj) ? (errObj as unknown as { type?: string }).type : undefined;
-      const errMsg = (errObj && 'message' in errObj) ? (errObj as unknown as { message?: string }).message : String(err);
-      if (errCode === 'moderation_blocked' || errType === 'image_generation_user_error' || (errMsg && errMsg.includes('safety system'))) {
-        logger.warn("OpenAI image generation blocked by moderation/safety system on gpt-image-1, trying dall-e-3");
-        moderationBlocked = true;
-      } else if (
-        err &&
-        typeof err === 'object' &&
-        err !== null &&
-        'message' in err &&
-        typeof (err as { message?: unknown }).message === 'string' &&
-        ((err as { message: string }).message).includes('must be verified to use the model')
-      ) {
-        const code =
-          err &&
-            typeof err === 'object' &&
-            'status' in err
-            ? (err as { status?: string }).status
-            : err &&
-              typeof err === 'object' &&
-              'code' in err
-              ? (err as { code?: string }).code
-              : 'unknown';
-        const msg = (err as { message?: string }).message || String(err);
-        logger.warn(`gpt-image-1 unavailable: organization not verified (HTTP ${code}): ${msg}`);
-      } else {
-        logger.warn("gpt-image-1 unavailable, falling back to dall-e-3 (using model: dall-e-3)", err);
-      }
-    }
-    if ((!dallEUrl && moderationBlocked) || (!dallEUrl && !image)) {
-      // Try dall-e-3 if gpt-image-1 was blocked or failed
+      logger.info(`[AVATAR] Attempting image generation with primary model: '${imageModels.primary}'`);
       try {
         image = await openai.images.generate({
-          model: "dall-e-3",
+          model: imageModels.primary,
           prompt: prompt,
           n: 1,
           size: "1024x1024",
           response_format: "url"
         });
         dallEUrl = image.data?.[0]?.url;
+        logger.info(`[AVATAR] Image generated successfully with model: '${imageModels.primary}'`);
       } catch (err) {
-        // If dall-e-3 also fails or is blocked, fallback to silhouette
-        logger.warn("dall-e-3 also failed or was blocked, falling back to silhouette", err);
-        return res.status(200).json({ avatarUrl: "/silhouette.svg" });
+        // Moderation/safety error handling
+        const errObj = (typeof err === 'object' && err !== null) ? err : {};
+        const errCode = (errObj && 'code' in errObj) ? (errObj as unknown as { code?: string }).code : undefined;
+        const errType = (errObj && 'type' in errObj) ? (errObj as unknown as { type?: string }).type : undefined;
+        const errMsg = (errObj && 'message' in errObj) ? (errObj as unknown as { message?: string }).message : String(err);
+        if (errCode === 'moderation_blocked' || errType === 'image_generation_user_error' || (errMsg && errMsg.includes('safety system'))) {
+          logger.warn(`[AVATAR] OpenAI image generation blocked by moderation/safety system on model '${imageModels.primary}', will try fallback model '${imageModels.fallback}'`);
+          moderationBlocked = true;
+        } else if (
+          err &&
+          typeof err === 'object' &&
+          err !== null &&
+          'message' in err &&
+          typeof (err as { message?: unknown }).message === 'string' &&
+          ((err as { message: string }).message).includes('must be verified to use the model')
+        ) {
+          const code =
+            err &&
+              typeof err === 'object' &&
+              'status' in err
+              ? (err as { status?: string }).status
+              : err &&
+                typeof err === 'object' &&
+                'code' in err
+                ? (err as { code?: string }).code
+                : 'unknown';
+          const msg = (err as { message?: string }).message || String(err);
+          logger.warn(`[AVATAR] Model '${imageModels.primary}' unavailable: organization not verified (HTTP ${code}): ${msg}`);
+        } else {
+          logger.warn(`[AVATAR] Model '${imageModels.primary}' unavailable, falling back to '${imageModels.fallback}'`, err);
+        }
       }
-    }
-    if (!dallEUrl) {
-      let imageMeta = undefined;
-      let b64json = undefined;
-      if (image && image.data && Array.isArray(image.data) && image.data[0]) {
-        const d = image.data[0];
-        imageMeta = {
-          url: d.url,
-          b64_json_preview: d.b64_json ? (d.b64_json.substring(0, 32) + '...') : undefined,
-          b64_json_length: d.b64_json ? d.b64_json.length : undefined
-        };
-        b64json = d.b64_json;
+      if ((!dallEUrl && moderationBlocked) || (!dallEUrl && !image)) {
+        // Try fallback model if primary was blocked or failed
+        logger.info(`[AVATAR] Attempting image generation with fallback model: '${imageModels.fallback}'`);
+        try {
+          image = await openai.images.generate({
+            model: imageModels.fallback,
+            prompt: prompt,
+            n: 1,
+            size: "1024x1024",
+            response_format: "url"
+          });
+          dallEUrl = image.data?.[0]?.url;
+          logger.info(`[AVATAR] Image generated successfully with fallback model: '${imageModels.fallback}'`);
+        } catch (err) {
+          logger.warn(`[AVATAR] Fallback image model '${imageModels.fallback}' also failed or was blocked, falling back to silhouette`, err);
+          return res.status(200).json({ avatarUrl: "/silhouette.svg" });
+        }
       }
-      if (b64json) {
-        const dataUrl = `data:image/png;base64,${b64json}`;
-        logger.info("Returning avatar as data URL from b64_json");
-        return res.status(200).json({ avatarDataUrl: dataUrl, gender: genderOut });
+      if (!dallEUrl) {
+        logger.error("No image URL returned from OpenAI, falling back to silhouette");
+        return res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
       }
-      logger.error("No image returned, falling back to silhouette", { imageMeta });
-      return res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
-    }
-    // Use dynamic import for node-fetch v2 in ESM
-    const fetch = (await import("node-fetch")).default;
-    try {
-      const response = await fetch(dallEUrl);
-      if (!response.ok) throw new Error("Failed to download avatar image");
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const base64 = buffer.toString("base64");
-      const contentType = response.headers.get("content-type") || "image/png";
-      const dataUrl = `data:${contentType};base64,${base64}`;
-      res.status(200).json({ avatarDataUrl: dataUrl, gender: genderOut });
-    } catch (err) {
-      logger.error("Avatar download failed:", err);
-      // fallback to generic avatar (as a static URL)
-      res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
+      // Only return the image URL to the client
+      return res.status(200).json({ avatarUrl: dallEUrl, gender: genderOut });
+    } catch (e) {
+      logger.error("[AVATAR] Unhandled error in generate-avatar:", e);
+      return res.status(200).json({ avatarUrl: "/silhouette.svg" });
     }
   } catch (e) {
-    logger.error("Avatar generation failed:", e);
-    // fallback to generic avatar (as a static URL)
-    res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
+    logger.error("[AVATAR] Unhandled error in generate-avatar:", e);
+    return res.status(200).json({ avatarUrl: "/silhouette.svg" });
   }
 }

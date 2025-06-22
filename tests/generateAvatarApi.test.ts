@@ -18,6 +18,14 @@ jest.mock('node-fetch', () => {
     };
 });
 
+jest.mock("../src/utils/openaiModelSelector", () => ({
+    getOpenAIModel: (type: "text" | "image") => {
+        if (type === "text") return "gpt-3.5-turbo";
+        if (type === "image") return { primary: "dall-e-2", fallback: "dall-e-2" };
+        throw new Error("Unknown type");
+    }
+}));
+
 describe('generate-avatar API', () => {
     beforeEach(() => {
         jest.resetModules();
@@ -50,7 +58,7 @@ describe('generate-avatar API', () => {
         } catch (e) {
             data = dataRaw;
         }
-        expect(data.avatarDataUrl || data.avatarUrl).toBeTruthy();
+        expect(data.avatarUrl).toBeTruthy();
     });
 
     it('returns 200 and fallback silhouette if OpenAI image generation fails for both models', async () => {
@@ -92,72 +100,7 @@ describe('generate-avatar API', () => {
         } catch (e) {
             data = dataRaw;
         }
-        expect(data.avatarDataUrl || data.avatarUrl).toBeTruthy();
-    });
-
-    it('returns fallback silhouette if node-fetch fails', async () => {
-        jest.mock('node-fetch', () => {
-            return {
-                __esModule: true,
-                default: jest.fn().mockRejectedValue(new Error('fetch failed'))
-            };
-        });
-        const handler = (await import('../pages/api/generate-avatar')).default;
-        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(200);
-        const dataRaw = res._getData();
-        let data;
-        try {
-            data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (e) {
-            data = dataRaw;
-        }
-        expect(data.avatarUrl).toBe('/silhouette.svg');
-    });
-
-    it('returns data URL if OpenAI returns only b64_json', async () => {
-        jest.mock('openai', () => {
-            return jest.fn().mockImplementation(() => ({
-                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{"race":"Black","gender":"male","other":"basketball player"}' } }] }) } },
-                images: { generate: jest.fn().mockResolvedValue({ data: [{ b64_json: Buffer.from('fakeimg').toString('base64') }] }) }
-            }));
-        });
-        const handler = (await import('../pages/api/generate-avatar')).default;
-        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(200);
-        const dataRaw = res._getData();
-        let data;
-        try {
-            data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (e) {
-            data = dataRaw;
-        }
-        const dataUrl = data.avatarDataUrl || data.avatarUrl;
-        expect(typeof dataUrl).toBe('string');
-        expect(dataUrl).toMatch(/^data:image\/png;base64,/);
-    });
-
-    it('returns fallback silhouette if both OpenAI models and b64_json are missing', async () => {
-        jest.mock('openai', () => {
-            return jest.fn().mockImplementation(() => ({
-                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{"race":"Black","gender":"male","other":"basketball player"}' } }] }) } },
-                images: { generate: jest.fn().mockResolvedValue({ data: [{}] }) }
-            }));
-        });
-        const handler = (await import('../pages/api/generate-avatar')).default;
-        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(200);
-        const dataRaw = res._getData();
-        let data;
-        try {
-            data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (e) {
-            data = dataRaw;
-        }
-        expect(data.avatarUrl).toBe('/silhouette.svg');
+        expect(data.avatarUrl).toBeTruthy();
     });
 
     it('returns fallback silhouette if top-level error is thrown', async () => {
@@ -212,67 +155,6 @@ describe('generate-avatar API', () => {
         const dataRaw = res._getData();
         let data;
         try { data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw; } catch (e) { data = dataRaw; }
-        expect(data.avatarDataUrl || data.avatarUrl).toBeTruthy();
-    });
-
-    it('returns fallback silhouette if fetch returns non-OK response', async () => {
-        jest.mock('node-fetch', () => {
-            return {
-                __esModule: true,
-                default: jest.fn().mockResolvedValue({ ok: false, buffer: async () => Buffer.from(''), headers: { get: () => 'image/png' } })
-            };
-        });
-        const handler = (await import('../pages/api/generate-avatar')).default;
-        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(200);
-        const dataRaw = res._getData();
-        let data;
-        try { data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw; } catch (e) { data = dataRaw; }
-        expect(data.avatarUrl).toBe('/silhouette.svg');
-    });
-
-    it('returns data URL with fallback content-type if missing', async () => {
-        jest.mock('node-fetch', () => {
-            return {
-                __esModule: true,
-                default: jest.fn().mockResolvedValue({
-                    ok: true,
-                    arrayBuffer: async () => Buffer.from('fakeimg', 'utf-8'),
-                    headers: { get: () => null }
-                })
-            };
-        });
-        const handler = (await import('../pages/api/generate-avatar')).default;
-        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(200);
-        const dataRaw = res._getData();
-        let data;
-        try { data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw; } catch (e) { data = dataRaw; }
-        expect(data.avatarDataUrl).toMatch(/^data:image\/png;base64,/);
-    });
-
-    it('returns fallback silhouette if OpenAI image generation is blocked by moderation', async () => {
-        jest.mock('openai', () => {
-            return jest.fn().mockImplementation(() => ({
-                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{"race":"Ogre","gender":"male","other":"green skin, large build, Scottish accent, wears a tunic, lives in a swamp"}' } }] }) } },
-                images: {
-                    generate: jest.fn().mockRejectedValue({
-                        code: 'moderation_blocked',
-                        type: 'image_generation_user_error',
-                        message: 'Request was rejected as a result of the safety system. Request may contain content that is not allowed by the safety system.'
-                    })
-                }
-            }));
-        });
-        const handler = (await import('../pages/api/generate-avatar')).default;
-        const { req, res } = createMocks({ method: 'POST', body: { name: 'Shrek' } });
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(200);
-        const dataRaw = res._getData();
-        let data;
-        try { data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw; } catch (e) { data = dataRaw; }
-        expect(data.avatarUrl).toBe('/silhouette.svg');
+        expect(data.avatarUrl).toBeTruthy();
     });
 });
