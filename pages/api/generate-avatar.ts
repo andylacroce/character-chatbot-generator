@@ -124,11 +124,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     logger.info(`[AVATAR] Final Image prompt for DALL-E: ${prompt}`);
 
     const imageModels = getOpenAIModel("image");
-    logger.info(`[AVATAR] NODE_ENV: ${process.env.NODE_ENV}`);
+    logger.info(`[AVATAR] NODE_ENV: ${process.env.NODE_ENV} | VERCEL_ENV: ${process.env.VERCEL_ENV}`);
     logger.info(`[AVATAR] Image generation models selected: primary='${imageModels.primary}', fallback='${imageModels.fallback}'`);
+    // Log the selected text and image models for traceability
+    logger.info(`[AVATAR] Model selection: text='${getOpenAIModel("text")}', image primary='${imageModels.primary}', image fallback='${imageModels.fallback}', NODE_ENV='${process.env.NODE_ENV}', VERCEL_ENV='${process.env.VERCEL_ENV}'`);
     // Helper to get image from OpenAI, handling both URL and base64 (data URL) responses
     async function getOpenAIImage(model: string) {
-      // gpt-image-1 only supports base64 (b64_json), not URL
+      // gpt-image-1 only supports base64 (b64_json), not URL, but does NOT accept response_format param at all
       const isGptImage1 = model === "gpt-image-1";
       const params: OpenAIImageGenerateParams = {
         model,
@@ -136,11 +138,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         n: 1,
         size: "1024x1024"
       };
-      if (!isGptImage1) {
+      // Only add response_format if the model supports it
+      if (model === "dall-e-2" || model === "dall-e-3") {
         params.response_format = "url";
-      } else {
-        params.response_format = "b64_json";
       }
+      // Do NOT set response_format for gpt-image-1 (omit the property entirely)
       logger.info(`[AVATAR] Calling OpenAI image generation`, { model, params });
       const image = await openai.images.generate(params);
       logger.info(`[AVATAR] OpenAI image API response`, { model, response: image });
