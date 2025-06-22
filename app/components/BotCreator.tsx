@@ -20,6 +20,7 @@ interface Bot {
   personality: string;
   avatarUrl: string;
   voiceConfig: import("../../src/utils/characterVoices").CharacterVoiceConfig | null;
+  gender?: string | null;
 }
 
 interface BotCreatorProps {
@@ -296,6 +297,7 @@ async function generateBotDataWithProgressCancelable(
   onProgress("avatar");
   setLoadingMessage("Generating portrait");
   let avatarUrl = "/silhouette.svg";
+  let gender: string | null = null;
   if (cancelRequested.current) throw new Error("cancelled");
   try {
     setLoadingMessage("Generating portrait");
@@ -315,6 +317,7 @@ async function generateBotDataWithProgressCancelable(
           setLoadingMessage("Using default image");
         }
       }
+      gender = data.gender || null;
     } else {
       setLoadingMessage("Using default image");
     }
@@ -326,12 +329,12 @@ async function generateBotDataWithProgressCancelable(
   let voiceConfig = null;
   if (cancelRequested.current) throw new Error("cancelled");
   try {
-    voiceConfig = await api_getVoiceConfigForCharacter(correctedName);
+    voiceConfig = await api_getVoiceConfigForCharacter(correctedName, gender);
   } catch {
     setLoadingMessage("Using default voice");
   }
   if (cancelRequested.current) throw new Error("cancelled");
-  return { name: correctedName, personality, avatarUrl, voiceConfig };
+  return { name: correctedName, personality, avatarUrl, voiceConfig, gender };
 }
 
 export type { Bot };

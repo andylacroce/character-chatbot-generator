@@ -19,6 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") return res.status(405).end();
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: "Name required" });
+  let genderOut: string | null = null;
   try {
     // Move OpenAI client instantiation inside the handler for better error coverage
     const OpenAI = (await import("openai")).default;
@@ -55,6 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           gender = parsed.gender || null;
           other = parsed.other || null;
           logger.info(`[AVATAR] Parsed description:`, { race, gender, other });
+          genderOut = gender;
         } catch (jsonErr) {
           logger.warn("Failed to parse GPT JSON:", jsonErr, content);
         }
@@ -192,10 +194,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (b64json) {
         const dataUrl = `data:image/png;base64,${b64json}`;
         logger.info("Returning avatar as data URL from b64_json");
-        return res.status(200).json({ avatarDataUrl: dataUrl });
+        return res.status(200).json({ avatarDataUrl: dataUrl, gender: genderOut });
       }
       logger.error("No image returned, falling back to silhouette", { imageMeta });
-      return res.status(200).json({ avatarUrl: "/silhouette.svg" });
+      return res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
     }
     // Use dynamic import for node-fetch v2 in ESM
     const fetch = (await import("node-fetch")).default;
@@ -207,15 +209,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const base64 = buffer.toString("base64");
       const contentType = response.headers.get("content-type") || "image/png";
       const dataUrl = `data:${contentType};base64,${base64}`;
-      res.status(200).json({ avatarDataUrl: dataUrl });
+      res.status(200).json({ avatarDataUrl: dataUrl, gender: genderOut });
     } catch (err) {
       logger.error("Avatar download failed:", err);
       // fallback to generic avatar (as a static URL)
-      res.status(200).json({ avatarUrl: "/silhouette.svg" });
+      res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
     }
   } catch (e) {
     logger.error("Avatar generation failed:", e);
     // fallback to generic avatar (as a static URL)
-    res.status(200).json({ avatarUrl: "/silhouette.svg" });
+    res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
   }
 }

@@ -359,7 +359,7 @@ async function fetchVoiceDescriptionFromOpenAI(name: string): Promise<string> {
  * @param {string} description - The voice description.
  * @returns {CharacterVoiceConfig} - The closest matching voice configuration.
  */
-function findClosestTTSVoice(description: string): CharacterVoiceConfig {
+function findClosestTTSVoice(description: string, genderOverride?: number): CharacterVoiceConfig {
   // Enhanced matching: parse for accent, language, gender, style, tone, expressive, regional, age, and prefer higher-quality voices
   const desc = description.toLowerCase();
 
@@ -386,6 +386,10 @@ function findClosestTTSVoice(description: string): CharacterVoiceConfig {
   let gender = SSML_GENDER.MALE;
   if (desc.match(/female|woman|girl|lady/)) gender = SSML_GENDER.FEMALE;
   if (desc.match(/neutral|child|kid|boy|girl/)) gender = SSML_GENDER.NEUTRAL;
+  // If genderOverride is provided, use it
+  if (typeof genderOverride === 'number') {
+    gender = genderOverride;
+  }
 
   // Style/tone/age/characteristic/expressive detection
   const styleHints = [
@@ -423,42 +427,76 @@ function findClosestTTSVoice(description: string): CharacterVoiceConfig {
 
   // Try to find the best match by type, language, and gender
   let match = undefined;
-  for (const type of typePreference) {
-    match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender && v.type === type);
-    if (match) break;
-  }
-  if (!match) {
+  if (typeof genderOverride === 'number') {
+    // Strict gender match: only pick voices with the override gender
     for (const type of typePreference) {
-      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.type === type);
+      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender && v.type === type);
       if (match) break;
     }
-  }
-  if (!match) {
-    match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender);
-  }
-  if (!match) {
-    match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang);
-  }
-  if (!match) {
-    match = GOOGLE_TTS_VOICES[0];
+    if (!match) {
+      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender);
+    }
+    // If still no match, try neutral
+    if (!match && gender !== SSML_GENDER.NEUTRAL) {
+      for (const type of typePreference) {
+        match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === SSML_GENDER.NEUTRAL && v.type === type);
+        if (match) break;
+      }
+      if (!match) {
+        match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === SSML_GENDER.NEUTRAL);
+      }
+    }
+    // If still no match, fallback to any voice for the language
+    if (!match) {
+      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang);
+    }
+    // If still no match, fallback to first available
+    if (!match) {
+      match = GOOGLE_TTS_VOICES[0];
+    }
+    // Always set ssmlGender to match the actual voice
+    gender = match.ssmlGender;
+  } else {
+    // No gender override: use best match by type, language, and gender
+    for (const type of typePreference) {
+      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender && v.type === type);
+      if (match) break;
+    }
+    if (!match) {
+      for (const type of typePreference) {
+        match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.type === type && v.ssmlGender === gender);
+        if (match) break;
+      }
+    }
+    if (!match) {
+      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender);
+    }
+    if (!match) {
+      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang);
+    }
+    if (!match) {
+      match = GOOGLE_TTS_VOICES[0];
+    }
+    gender = match.ssmlGender;
   }
   return {
     languageCodes: match.languageCodes,
     name: match.name,
-    ssmlGender: match.ssmlGender,
+    ssmlGender: gender,
     pitch,
     rate: 1.0,
   };
 }
 
 /**
- * Gets the voice configuration for a character, either from static map or dynamic detection.
- * Returns a config with all required fields for Google TTS.
- *
- * @param {string} name - The name of the character.
- * @returns {Promise<CharacterVoiceConfig>} - A promise that resolves to the voice configuration.
- */
-export async function getVoiceConfigForCharacter(name: string): Promise<CharacterVoiceConfig> {
+* Gets the voice configuration for a character, either from static map or dynamic detection.
+* Returns a config with all required fields for Google TTS.
+*
+* @param {string} name - The name of the character.
+* @param {string | null} [genderOverride] - Optional gender override ("male" | "female" | "neutral").
+* @returns {Promise<CharacterVoiceConfig>} - A promise that resolves to the voice configuration.
+*/
+export async function getVoiceConfigForCharacter(name: string, genderOverride?: string | null): Promise<CharacterVoiceConfig> {
   // Normalize name for lookup (capitalize each word, trim)
   const normalized = normalizeCharacterName(name);
   if (CHARACTER_VOICE_MAP[normalized]) {
@@ -480,7 +518,15 @@ export async function getVoiceConfigForCharacter(name: string): Promise<Characte
     // fallback to Default if OpenAI fails
     return CHARACTER_VOICE_MAP['Default'];
   }
-  const config = findClosestTTSVoice(description);
+  let config: CharacterVoiceConfig;
+  // If genderOverride is provided, convert to SSML_GENDER
+  let genderNum: number | undefined = undefined;
+  if (genderOverride) {
+    if (genderOverride === 'female') genderNum = SSML_GENDER.FEMALE;
+    else if (genderOverride === 'male') genderNum = SSML_GENDER.MALE;
+    else if (genderOverride === 'neutral') genderNum = SSML_GENDER.NEUTRAL;
+  }
+  config = findClosestTTSVoice(description, genderNum);
   dynamicVoiceCache[normalized] = config;
   if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
     // eslint-disable-next-line no-console
