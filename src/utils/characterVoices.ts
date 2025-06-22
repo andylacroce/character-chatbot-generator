@@ -518,7 +518,6 @@ export async function getVoiceConfigForCharacter(name: string, genderOverride?: 
     // fallback to Default if OpenAI fails
     return CHARACTER_VOICE_MAP['Default'];
   }
-  let config: CharacterVoiceConfig;
   // If genderOverride is provided, convert to SSML_GENDER
   let genderNum: number | undefined = undefined;
   if (genderOverride) {
@@ -526,7 +525,7 @@ export async function getVoiceConfigForCharacter(name: string, genderOverride?: 
     else if (genderOverride === 'male') genderNum = SSML_GENDER.MALE;
     else if (genderOverride === 'neutral') genderNum = SSML_GENDER.NEUTRAL;
   }
-  config = findClosestTTSVoice(description, genderNum);
+  const config: CharacterVoiceConfig = findClosestTTSVoice(description, genderNum);
   dynamicVoiceCache[normalized] = config;
   if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
     // eslint-disable-next-line no-console
