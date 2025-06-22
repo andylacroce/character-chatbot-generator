@@ -16,16 +16,12 @@ export function useAudioPlayer(
   audioRefParam?: React.MutableRefObject<HTMLAudioElement | null>,
   sourceRefParam?: React.MutableRefObject<AudioBufferSourceNode | null>
 ) {
-  // Ensure React Hooks are called unconditionally
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
-
-  if (audioRefParam) {
-    audioRef.current = audioRefParam.current;
-  }
-  if (sourceRefParam) {
-    sourceRef.current = sourceRefParam.current;
-  }
+  // Always create internal refs
+  const internalAudioRef = useRef<HTMLAudioElement | null>(null);
+  const internalSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  // Use external refs when provided, else fallback to internal refs
+  const audioRef = audioRefParam ?? internalAudioRef;
+  const sourceRef = sourceRefParam ?? internalSourceRef;
 
   const audioContextRef = useRef<AudioContext | null>(null);
 
