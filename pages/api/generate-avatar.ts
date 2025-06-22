@@ -7,6 +7,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
 import { getOpenAIModel } from "../../src/utils/openaiModelSelector";
+import type { OpenAIImageGenerateParams } from "../../src/types/openai-image";
 
 /**
  * Next.js API route handler for generating a character avatar image using OpenAI.
@@ -122,22 +123,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     prompt = prompt.trim();
     logger.info(`[AVATAR] Final Image prompt for DALL-E: ${prompt}`);
 
-    let image, dallEUrl;
-    let moderationBlocked = false;
     const imageModels = getOpenAIModel("image");
     logger.info(`[AVATAR] Image generation models selected: primary='${imageModels.primary}', fallback='${imageModels.fallback}'`);
+    // Helper to get image from OpenAI, handling both URL and base64 (data URL) responses
+    async function getOpenAIImage(model: string) {
+      // gpt-image-1 only supports base64 (b64_json), not URL
+      const isGptImage1 = model === "gpt-image-1";
+      const params: OpenAIImageGenerateParams = {
+        model,
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024"
+      };
+      if (!isGptImage1) {
+        params.response_format = "url";
+      } else {
+        params.response_format = "b64_json";
+      }
+      const image = await openai.images.generate(params);
+      if (isGptImage1) {
+        const b64 = image.data?.[0]?.b64_json;
+        if (!b64) return null;
+        // Return as data URL
+        return `data:image/png;base64,${b64}`;
+      } else {
+        return image.data?.[0]?.url || null;
+      }
+    }
+    let avatarUrl = null;
+    let moderationBlocked = false;
     try {
       logger.info(`[AVATAR] Attempting image generation with primary model: '${imageModels.primary}'`, { prompt });
       try {
-        image = await openai.images.generate({
-          model: imageModels.primary,
-          prompt: prompt,
-          n: 1,
-          size: "1024x1024",
-          response_format: "url"
-        });
-        dallEUrl = image.data?.[0]?.url;
-        logger.info(`[AVATAR] Image generated successfully with model: '${imageModels.primary}'`, { response: image });
+        avatarUrl = await getOpenAIImage(imageModels.primary);
+        logger.info(`[AVATAR] Image generated successfully with model: '${imageModels.primary}'`, { avatarUrl });
       } catch (err) {
         logger.error(`[AVATAR] Error from OpenAI image generation (primary model: '${imageModels.primary}')`, { error: err });
         // Moderation/safety error handling
@@ -172,30 +191,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           logger.warn(`[AVATAR] Model '${imageModels.primary}' unavailable, falling back to '${imageModels.fallback}'`, err);
         }
       }
-      if ((!dallEUrl && moderationBlocked) || (!dallEUrl && !image)) {
+      if ((!avatarUrl && moderationBlocked) || (!avatarUrl)) {
         logger.info(`[AVATAR] Attempting image generation with fallback model: '${imageModels.fallback}'`, { prompt });
         try {
-          image = await openai.images.generate({
-            model: imageModels.fallback,
-            prompt: prompt,
-            n: 1,
-            size: "1024x1024",
-            response_format: "url"
-          });
-          dallEUrl = image.data?.[0]?.url;
-          logger.info(`[AVATAR] Image generated successfully with fallback model: '${imageModels.fallback}'`, { response: image });
+          avatarUrl = await getOpenAIImage(imageModels.fallback);
+          logger.info(`[AVATAR] Image generated successfully with fallback model: '${imageModels.fallback}'`, { avatarUrl });
         } catch (err) {
           logger.error(`[AVATAR] Error from OpenAI image generation (fallback model: '${imageModels.fallback}')`, { error: err });
           logger.warn(`[AVATAR] Fallback image model '${imageModels.fallback}' also failed or was blocked, falling back to silhouette`, err);
           return res.status(200).json({ avatarUrl: "/silhouette.svg" });
         }
       }
-      if (!dallEUrl) {
-        logger.error("No image URL returned from OpenAI, falling back to silhouette");
+      if (!avatarUrl) {
+        logger.error("No image returned from OpenAI, falling back to silhouette");
         return res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
       }
-      // Only return the image URL to the client
-      return res.status(200).json({ avatarUrl: dallEUrl, gender: genderOut });
+      // Only return the image URL or data URL to the client
+      return res.status(200).json({ avatarUrl, gender: genderOut });
     } catch (e) {
       logger.error("[AVATAR] Unhandled error in generate-avatar:", e);
       return res.status(200).json({ avatarUrl: "/silhouette.svg" });
