@@ -79,4 +79,14 @@ describe('ChatHeader', () => {
     // Modal should be closed (backdrop should not be in the document)
     expect(screen.queryByTestId('modal-image-backdrop')).not.toBeInTheDocument();
   });
+
+  it('calls only onDownloadTranscript if onHeaderLinkClick is not provided', () => {
+    const props = { ...defaultProps, onHeaderLinkClick: undefined };
+    render(<ChatHeader {...props} />);
+    fireEvent.click(screen.getByLabelText(/open menu/i));
+    fireEvent.click(screen.getByLabelText(/download chat transcript/i));
+    expect(mockOnDownloadTranscript).toHaveBeenCalled();
+    // Should not throw and should not call onHeaderLinkClick
+    expect(mockOnHeaderLinkClick).not.toHaveBeenCalled();
+  });
 });

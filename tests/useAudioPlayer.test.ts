@@ -126,6 +126,29 @@ describe('useAudioPlayer', () => {
   );
   TestComponent.displayName = 'TestComponent';
 
+  // Helper test component to expose the hook and its internal refs for cleanup tests
+  interface TestComponentHandlesWithInternals extends TestComponentHandles {
+    _sourceRef: React.MutableRefObject<any>;
+    _audioRef: React.MutableRefObject<any>;
+    stopAudio: () => void;
+  }
+  const TestComponentWithInternals = forwardRef<TestComponentHandlesWithInternals, TestComponentProps>(({ audioEnabledRef }, ref) => {
+    // Use refs outside the hook, then pass them in for testability
+    const audioRef = React.useRef<any>(null);
+    const sourceRef = React.useRef<any>(null);
+    // Patch the hook to accept external refs for testing
+    const { playAudio, stopAudio } = useAudioPlayer(audioEnabledRef, audioRef, sourceRef);
+    useImperativeHandle(ref, () => ({
+      playAudio,
+      audioRef,
+      stopAudio,
+      _sourceRef: sourceRef,
+      _audioRef: audioRef,
+    }), [playAudio, stopAudio]);
+    return null;
+  });
+  TestComponentWithInternals.displayName = 'TestComponentWithInternals';
+
   it('should not play audio if audioEnabledRef is false', async () => {
     const audioEnabledRef = { current: false };
     const ref = React.createRef<TestComponentHandles>();
@@ -375,5 +398,55 @@ describe('useAudioPlayer', () => {
     expect(error).toBeNull();
     // The hook now always sets audioRef.current to null if audio is disabled
     expect(ref.current!.audioRef.current).toBeNull();
+  });
+
+  it('should clean up both sourceRef and audioRef when audio is disabled in playAudio', async () => {
+    const audioEnabledRef = { current: false };
+    const ref = React.createRef<TestComponentHandlesWithInternals>();
+    render(React.createElement(TestComponentWithInternals, { ref, audioEnabledRef }));
+    // Set up dummy sourceRef and audioRef
+    const dummySource = {
+      stop: jest.fn(),
+      disconnect: jest.fn(),
+    };
+    const dummyAudio = {} as HTMLAudioElement;
+    // Set the internal refs directly
+    ref.current!._sourceRef.current = dummySource;
+    ref.current!._audioRef.current = dummyAudio;
+    // Actually call playAudio
+    await act(async () => {
+      await ref.current!.playAudio('test.mp3');
+    });
+    // Both should be cleaned up
+    expect(dummySource.stop).toHaveBeenCalled();
+    expect(dummySource.disconnect).toHaveBeenCalled();
+    expect(ref.current!._audioRef.current).toBeNull();
+  });
+
+  it('should clean up both sourceRef and audioRef when stopAudio is called', async () => {
+    const audioEnabledRef = { current: true };
+    const ref = React.createRef<TestComponentHandlesWithInternals>();
+    render(React.createElement(TestComponentWithInternals, { ref, audioEnabledRef }));
+    // Set up dummy sourceRef and audioRef
+    const dummySource = {
+      stop: jest.fn(),
+      disconnect: jest.fn(),
+    };
+    const dummyAudio = {
+      pause: jest.fn(),
+      currentTime: 0,
+    };
+    // Set the internal refs directly
+    ref.current!._sourceRef.current = dummySource;
+    ref.current!._audioRef.current = dummyAudio;
+    // Call stopAudio
+    act(() => {
+      ref.current!.stopAudio();
+    });
+    // Both should be cleaned up
+    expect(dummySource.stop).toHaveBeenCalled();
+    expect(dummySource.disconnect).toHaveBeenCalled();
+    expect(dummyAudio.pause).toHaveBeenCalled();
+    expect(dummyAudio.currentTime).toBe(0);
   });
 });

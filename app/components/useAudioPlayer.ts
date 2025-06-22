@@ -11,10 +11,14 @@ import { useRef, useCallback } from "react";
  * Ensures only one audio plays at a time and respects an audioEnabled ref.
  * Returns playAudio(audioFileUrl: string) and audioRef.
  */
-export function useAudioPlayer(audioEnabledRef: React.MutableRefObject<boolean>) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+export function useAudioPlayer(
+  audioEnabledRef: React.MutableRefObject<boolean>,
+  audioRefParam?: React.MutableRefObject<HTMLAudioElement | null>,
+  sourceRefParam?: React.MutableRefObject<AudioBufferSourceNode | null>
+) {
+  const audioRef = audioRefParam || useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const sourceRef = sourceRefParam || useRef<AudioBufferSourceNode | null>(null);
 
   const playAudio = useCallback(async (src: string) => {
     if (!audioEnabledRef.current) {
