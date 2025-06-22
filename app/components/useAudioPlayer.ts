@@ -16,10 +16,20 @@ export function useAudioPlayer(
   audioRefParam?: React.MutableRefObject<HTMLAudioElement | null>,
   sourceRefParam?: React.MutableRefObject<AudioBufferSourceNode | null>
 ) {
-  const audioRef = audioRefParam || useRef<HTMLAudioElement | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceRef = sourceRefParam || useRef<AudioBufferSourceNode | null>(null);
+  // Ensure React Hooks are called unconditionally
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
 
+  if (audioRefParam) {
+    audioRef.current = audioRefParam.current;
+  }
+  if (sourceRefParam) {
+    sourceRef.current = sourceRefParam.current;
+  }
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Update useCallback dependencies
   const playAudio = useCallback(async (src: string) => {
     if (!audioEnabledRef.current) {
       // Stop any previous Web Audio playback
@@ -100,7 +110,7 @@ export function useAudioPlayer(
       }
     };
     return dummyAudio;
-  }, [audioEnabledRef]);
+  }, [audioEnabledRef, audioRef, sourceRef]);
 
   // Expose a stop function for toggling audio off or unmount
   const stopAudio = useCallback(() => {
@@ -113,7 +123,7 @@ export function useAudioPlayer(
       audioRef.current.pause?.();
       audioRef.current.currentTime = 0;
     }
-  }, []);
+  }, [audioRef, sourceRef]);
 
   return { playAudio, audioRef, stopAudio };
 }
