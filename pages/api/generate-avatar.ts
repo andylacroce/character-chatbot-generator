@@ -124,6 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     logger.info(`[AVATAR] Final Image prompt for DALL-E: ${prompt}`);
 
     const imageModels = getOpenAIModel("image");
+    logger.info(`[AVATAR] NODE_ENV: ${process.env.NODE_ENV}`);
     logger.info(`[AVATAR] Image generation models selected: primary='${imageModels.primary}', fallback='${imageModels.fallback}'`);
     // Helper to get image from OpenAI, handling both URL and base64 (data URL) responses
     async function getOpenAIImage(model: string) {
@@ -140,7 +141,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } else {
         params.response_format = "b64_json";
       }
+      logger.info(`[AVATAR] Calling OpenAI image generation`, { model, params });
       const image = await openai.images.generate(params);
+      logger.info(`[AVATAR] OpenAI image API response`, { model, response: image });
       if (isGptImage1) {
         const b64 = image.data?.[0]?.b64_json;
         if (!b64) return null;
