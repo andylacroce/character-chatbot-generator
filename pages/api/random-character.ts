@@ -6,7 +6,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
-import logger from "../../src/utils/logger";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
@@ -44,7 +44,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('ETag', Math.random().toString(36).slice(2)); // Random ETag to defeat cache
 
   if (req.method !== "GET") {
-    logger.info(`[RandomCharacter API] 405 Method Not Allowed for ${req.method}`);
+    logEvent("warn", "random_character_method_not_allowed", "RandomCharacter API method not allowed", sanitizeLogMeta({
+      method: req.method
+    }));
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
@@ -99,23 +101,32 @@ You are an expert in world history, literature, pop culture, and media. Your tas
         return true;
       };
       if (!isValidName(name)) {
-        logger.warn(`[OPENAI fallback reason] Invalid or junk character name returned: '${name}'`);
+        logEvent("warn", "random_character_openai_fallback", "OpenAI fallback reason", sanitizeLogMeta({
+          name
+        }));
         throw new Error("Invalid or junk character name returned");
       }
-      logger.info(`[OPENAI] ${name}`);
+      logEvent("info", "random_character_openai_selected", "OpenAI random character selected", sanitizeLogMeta({
+        name
+      }));
       await logRandomCharacter(`[OPENAI] ${name}`);
       res.status(200).json({ name });
       return;
     } catch (err) {
       lastError = err;
       tries++;
-      logger.warn(`[OPENAI retry ${tries}] Error or invalid name: ${err instanceof Error ? err.message : String(err)}`);
+      logEvent("warn", "random_character_openai_retry", "OpenAI retry", sanitizeLogMeta({
+        tries,
+        error: err instanceof Error ? err.message : String(err)
+      }));
       // Wait a bit before retrying
       if (tries < 3) await new Promise(res => setTimeout(res, 400 * tries));
     }
   }
   // Fallback after 3 failed attempts
-  logger.warn(`[FALLBACK] Gandalf - Reason: ${lastError instanceof Error ? lastError.message : String(lastError)}`);
+  logEvent("warn", "random_character_fallback", "RandomCharacter fallback", sanitizeLogMeta({
+    error: lastError instanceof Error ? lastError.message : String(lastError)
+  }));
   const fallback = 'Gandalf';
   await logRandomCharacter(`[FALLBACK] ${fallback}`);
   res.status(200).json({ name: fallback, fallback: true, error: "Failed to get random character after 3 attempts, using fallback." });

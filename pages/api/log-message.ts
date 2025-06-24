@@ -7,7 +7,7 @@
 import { put, head } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
-import logger, { generateRequestId } from "../../src/utils/logger";
+import logger, { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
 /**
  * Escapes HTML special characters to prevent XSS in logs.
@@ -77,7 +77,10 @@ export default async function handler(
   const requestId = req.headers["x-request-id"] || generateRequestId();
 
   if (req.method !== "POST") {
-    logger.info(`[Log API] 405 Method Not Allowed for ${req.method} | requestId=${requestId}`);
+    logEvent("warn", "log_api_method_not_allowed", "Method not allowed", sanitizeLogMeta({
+      method: req.method,
+      requestId
+    }));
     res.setHeader("Allow", ["POST"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
@@ -89,7 +92,9 @@ export default async function handler(
       !sessionId ||
       !sessionDatetime
     ) {
-      logger.info(`[Log API] 400 Bad Request: Missing required fields | requestId=${requestId}`);
+      logEvent("warn", "log_api_missing_fields", "Missing required fields", sanitizeLogMeta({
+        requestId
+      }));
       return res
         .status(400)
         .json({
@@ -100,19 +105,31 @@ export default async function handler(
 
     // Validate input types and lengths BEFORE sanitizing
     if (typeof sender !== "string" || sender.length > 100) {
-      logger.info(`[Log API] 400 Bad Request: Invalid sender | requestId=${requestId}`);
+      logEvent("warn", "log_api_invalid_sender", "Invalid sender", sanitizeLogMeta({
+        sender,
+        requestId
+      }));
       return res.status(400).json({ error: "Invalid sender", requestId });
     }
     if (typeof text !== "string" || text.length > 2000) {
-      logger.info(`[Log API] 400 Bad Request: Invalid text | requestId=${requestId}`);
+      logEvent("warn", "log_api_invalid_text", "Invalid text", sanitizeLogMeta({
+        textLength: typeof text === "string" ? text.length : undefined,
+        requestId
+      }));
       return res.status(400).json({ error: "Invalid text", requestId });
     }
     if (typeof sessionId !== "string" || sessionId.length > 100) {
-      logger.info(`[Log API] 400 Bad Request: Invalid sessionId | requestId=${requestId}`);
+      logEvent("warn", "log_api_invalid_sessionId", "Invalid sessionId", sanitizeLogMeta({
+        sessionId,
+        requestId
+      }));
       return res.status(400).json({ error: "Invalid sessionId", requestId });
     }
     if (typeof sessionDatetime !== "string" || sessionDatetime.length > 30) {
-      logger.info(`[Log API] 400 Bad Request: Invalid sessionDatetime | requestId=${requestId}`);
+      logEvent("warn", "log_api_invalid_sessionDatetime", "Invalid sessionDatetime", sanitizeLogMeta({
+        sessionDatetime,
+        requestId
+      }));
       return res.status(400).json({ error: "Invalid sessionDatetime", requestId });
     }
 
@@ -210,12 +227,26 @@ export default async function handler(
     // --- End Append to Log ---
 
     // Always log to the main terminal (stdout) as well
-    logger.info(`[Log API] ENTRY: ${logEntry.trim()} | requestId=${requestId}`);
+    logEvent("info", "log_api_entry", "Log entry", sanitizeLogMeta({
+      requestId,
+      timestamp,
+      ip: safeIp,
+      sender: cleanSender,
+      sessionId,
+      sessionDatetime,
+      text: cleanText
+    }));
     res.status(200).json({ success: true, requestId });
   } catch (error) {
-    logger.error(`[Log API] Internal Server Error | requestId=${requestId}:`, error);
+    logger.error("Internal Server Error", {
+      event: "log_api_internal_error",
+      requestId,
+      error: error instanceof Error ? error.message : String(error)
+    });
     res.status(500).json({ error: "Internal Server Error", requestId });
-    logger.info(`[Log API] 500 Internal Server Error | requestId=${requestId}`);
+    logEvent("warn", "log_api_internal_error_info", "Internal Server Error", sanitizeLogMeta({
+      requestId
+    }));
   }
 }
 

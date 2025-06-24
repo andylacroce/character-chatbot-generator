@@ -9,7 +9,7 @@ import path from "path";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import { getReplyCache } from "../../src/utils/cache";
 import OpenAI from "openai";
-import logger from "../../src/utils/logger";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
@@ -37,7 +37,10 @@ export default async function handler(
   const { file, text: expectedText } = req.query;
   const botName = typeof req.query.botName === "string" ? req.query.botName : "Character";
   if (!file || typeof file !== "string") {
-    logger.info(`[Audio API] 400 Bad Request: File parameter is required`);
+    logEvent("info", "audio_bad_request", "Audio API bad request: file parameter is required", sanitizeLogMeta({
+      file,
+      query: req.query
+    }));
     return res.status(400).json({ error: "File parameter is required" });
   }
   // Only allow filename, not path
@@ -70,7 +73,10 @@ export default async function handler(
       // .txt missing or does not match, regenerate audio and update .txt
       try {
         const voiceConfig = await getVoiceConfigForCharacter(botName);
-        logger.info(`[TTS] [AUDIO API] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
+        logEvent("info", "audio_voice_selected", "TTS voice config selected", sanitizeLogMeta({
+          botName,
+          voiceConfig
+        }));
         // Determine if Studio voice (robust: check type and name)
         const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
         // Fallback: if type is missing, check name pattern
@@ -107,7 +113,10 @@ export default async function handler(
         found = !!normalizedAudioFilePath;
         triedRegenerate = true;
       } catch (err) {
-        logger.error(`[AUDIO] Failed to synthesize audio from text param for ${sanitizedFile}:`, err);
+        logEvent("error", "audio_synthesis_failed", "Audio synthesis failed from text param", sanitizeLogMeta({
+          file: sanitizedFile,
+          error: err instanceof Error ? err.message : String(err)
+        }));
         regenError = err;
       }
     }
@@ -130,7 +139,11 @@ export default async function handler(
         typeof txtContent === "string" &&
         (txtContent as string).trim() !== (expectedText as string).trim()
       ) {
-        logger.info(`[Audio API] Detected text mismatch for ${sanitizedFile}, regenerating audio and .txt file.`);
+        logEvent("warn", "audio_text_mismatch_regen", "Audio text mismatch detected, regenerating", sanitizeLogMeta({
+          file: sanitizedFile,
+          expectedText,
+          txtContent
+        }));
         try {
           const voiceConfig = await getVoiceConfigForCharacter(botName);
           // Determine if Studio voice (robust: check type and name)
@@ -170,7 +183,10 @@ export default async function handler(
           txtContent = expectedText;
           triedRegenerate = true;
         } catch (err) {
-          logger.error(`[AUDIO] Failed to regenerate audio for text mismatch for ${sanitizedFile}:`, err);
+          logEvent("error", "audio_regen_failed_text_mismatch", "Audio regeneration failed for text mismatch", sanitizeLogMeta({
+            file: sanitizedFile,
+            error: err instanceof Error ? err.message : String(err)
+          }));
           regenError = err;
         }
       }
@@ -210,7 +226,10 @@ export default async function handler(
             normalizedAudioFilePath = checkFileExists(audioFilePath);
             found = !!normalizedAudioFilePath;
           } catch (err) {
-            logger.error(`[AUDIO] Failed to regenerate audio from cached text for ${sanitizedFile}:`, err);
+            logEvent("error", "audio_regen_failed_cached_text", "Audio regeneration failed from cached text", sanitizeLogMeta({
+              file: sanitizedFile,
+              error: err instanceof Error ? err.message : String(err)
+            }));
             regenError = err;
           }
         }
@@ -218,12 +237,17 @@ export default async function handler(
         if (!found) {
           const apiKey = process.env.OPENAI_API_KEY;
           if (!apiKey) {
-            logger.error("[AUDIO] Missing OPENAI_API_KEY for regen");
+            logEvent("error", "audio_regen_missing_api_key", "Missing OPENAI_API_KEY for audio regen", sanitizeLogMeta({
+              file: sanitizedFile
+            }));
           } else {
             const openai = new OpenAI({ apiKey });
             for (let attempt = 1; attempt <= 3; attempt++) {
               try {
-                logger.info(`[AUDIO] Attempting OpenAI+TTS regen for ${sanitizedFile}, attempt ${attempt}`);
+                logEvent("info", "audio_regen_openai_attempt", "Attempting OpenAI+TTS audio regen", sanitizeLogMeta({
+                  file: sanitizedFile,
+                  attempt
+                }));
                 // Use the filename (without .mp3) as the user message if possible
                 const userMessage = sanitizedFile.replace(/\.mp3$/, "");
                 const messages: ChatCompletionMessageParam[] = [
@@ -277,12 +301,19 @@ export default async function handler(
                 });
                 normalizedAudioFilePath = checkFileExists(audioFilePath);
                 if (normalizedAudioFilePath) {
-                  logger.info(`[AUDIO] Successfully regenerated audio for ${sanitizedFile} on attempt ${attempt}`);
+                  logEvent("info", "audio_regen_openai_success", "Audio successfully regenerated via OpenAI+TTS", sanitizeLogMeta({
+                    file: sanitizedFile,
+                    attempt
+                  }));
                   found = true;
                   break;
                 }
               } catch (err) {
-                logger.error(`[AUDIO] OpenAI+TTS regen failed for ${sanitizedFile} on attempt ${attempt}:`, err);
+                logEvent("error", "audio_regen_openai_failed", "OpenAI+TTS audio regen failed", sanitizeLogMeta({
+                  file: sanitizedFile,
+                  attempt,
+                  error: err instanceof Error ? err.message : String(err)
+                }));
                 regenError = err;
               }
             }
@@ -309,24 +340,38 @@ export default async function handler(
     normalizedLocalFilePath &&
     !normalizedLocalFilePath.startsWith(allowedPublic)
   ) {
-    logger.info(`[Audio API] 403 Forbidden: Access forbidden for file ${sanitizedFile}`);
+    logEvent("warn", "audio_forbidden", "Audio API forbidden: access forbidden for file", sanitizeLogMeta({
+      file: sanitizedFile
+    }));
     return res.status(403).json({ error: "Access forbidden" });
   }
   const filePath = normalizedAudioFilePath || normalizedLocalFilePath;
   if (!filePath || !fs.existsSync(filePath)) {
-    logger.info(`[Audio API] 404 Not Found: File not found after all regen attempts for ${sanitizedFile}`);
-    logger.error(`[AUDIO] File not found after all regen attempts: ${sanitizedFile}`, { regenError });
+    logEvent("warn", "audio_not_found", "Audio API not found: file not found after all regen attempts", sanitizeLogMeta({
+      file: sanitizedFile
+    }));
+    logEvent("error", "audio_not_found_error", "Audio file not found after all regen attempts", sanitizeLogMeta({
+      file: sanitizedFile,
+      error: regenError
+    }));
     return res.status(404).json({ error: "File not found after all regeneration attempts" });
   }
   let audioContent;
   try {
     audioContent = fs.readFileSync(filePath);
   } catch (err) {
-    logger.info(`[Audio API] 500 Internal Server Error: Error reading file ${filePath}`);
-    logger.error(`[AUDIO] Error reading file ${filePath}:`, err);
+    logEvent("info", "audio_internal_error_reading_file", "Audio API internal error: error reading file", sanitizeLogMeta({
+      file: filePath
+    }));
+    logEvent("error", "audio_read_error", "Audio file read error", sanitizeLogMeta({
+      file: filePath,
+      error: err instanceof Error ? err.message : String(err)
+    }));
     return res.status(500).json({ error: "Error reading file" });
   }
-  logger.info(`[Audio API] 200 OK: Audio file sent for ${sanitizedFile}`);
+  logEvent("info", "audio_sent", "Audio API success: audio file sent", sanitizeLogMeta({
+    file: sanitizedFile
+  }));
   res.setHeader("Content-Type", "audio/mpeg");
   res.send(audioContent);
 }

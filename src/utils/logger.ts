@@ -44,4 +44,44 @@ export function log(level: string, message: string, meta?: Record<string, unknow
   loggerInstance.log(level, message, meta);
 }
 
+/**
+ * Helper for structured event logging. Always includes the event field.
+ * @param {"info"|"warn"|"error"} level - Log level
+ * @param {string} event - Event name (required)
+ * @param {string} message - Log message
+ * @param {Record<string, unknown>} [meta] - Additional metadata
+ */
+export function logEvent(level: "info" | "warn" | "error", event: string, message: string, meta?: Record<string, unknown>) {
+  loggerInstance.log(level, message, { event, ...(meta || {}) });
+}
+
+/**
+ * Truncates a string to a max length, adding ellipsis if needed.
+ */
+export function truncate(str: string, max = 100): string {
+  if (typeof str !== 'string') return str;
+  return str.length > max ? str.slice(0, max) + '…' : str;
+}
+
+/**
+ * Sanitizes log metadata for readability: truncates long fields, removes large objects.
+ * Use this before passing metadata to logEvent.
+ */
+export function sanitizeLogMeta(meta: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(meta)) {
+    if (typeof value === 'string' && value.length > 120) {
+      result[key] = truncate(value, 120);
+    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      // For objects, only keep shallow keys or a summary
+      result[key] = '[Object]';
+    } else if (Array.isArray(value) && value.length > 5) {
+      result[key] = `[Array(${value.length})]`;
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 export default loggerInstance;

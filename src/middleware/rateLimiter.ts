@@ -7,7 +7,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from "next";
-import logger from "../utils/logger";
+import { logEvent, sanitizeLogMeta } from "../utils/logger";
 
 /**
  * Simple in-memory cache implementation for use in tests and as fallback.
@@ -110,7 +110,10 @@ const rateLimiter = async (
 
   // Handle missing IP address
   if (!ip) {
-    logger.info(`[RateLimiter] 429 Too Many Requests for IP: unknown`, { ip: null });
+    logEvent("info", "rate_limit_ip_missing", "Rate limiter: missing client IP", sanitizeLogMeta({
+      ip: null,
+      path: req.url
+    }));
     return res
       .status(429)
       .json({ error: "Unable to determine client IP address." });
@@ -163,8 +166,11 @@ const rateLimiter = async (
   if (rateData.count >= rateLimitOptions.maxRequests) {
     rateLimiterCache.set(ip, rateData); // Ensure the cache is updated before responding
     const retryAfter = Math.ceil((rateData.resetTime - currentTime) / 1000);
-    // Log the rate limit event
-    logger.info(`[RateLimiter] 429 Too Many Requests for IP: ${ip}`, { ip });
+    logEvent("warn", "rate_limit_exceeded", "Rate limit exceeded", sanitizeLogMeta({
+      ip,
+      retryAfter,
+      path: req.url
+    }));
     // Set headers
     res.setHeader("Retry-After", retryAfter);
     res.setHeader("X-RateLimit-Limit", rateLimitOptions.maxRequests);

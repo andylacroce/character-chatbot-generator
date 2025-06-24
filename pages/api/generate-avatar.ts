@@ -5,7 +5,7 @@
 // =============================
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import logger from "../../src/utils/logger";
+import logger, { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getOpenAIModel } from "../../src/utils/openaiModelSelector";
 import type { OpenAIImageGenerateParams } from "../../src/types/openai-image";
 
@@ -26,14 +26,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Move OpenAI client instantiation inside the handler for better error coverage
     const OpenAI = (await import("openai")).default;
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-    logger.info(`[AVATAR] Generating avatar for: ${name}`);
+    logEvent("info", "avatar_generate_start", "Avatar generation started", sanitizeLogMeta({ name }));
     // Use OpenAI GPT to get a detailed, attribute-rich description
     let race = null;
     let gender = null;
     let other = null;
     try {
       const textModel = getOpenAIModel("text");
-      logger.info(`[AVATAR] Using GPT model: ${textModel}`);
+      logEvent("info", "avatar_gpt_model", "GPT model selected for avatar", sanitizeLogMeta({ model: textModel }));
       const gptResponse = await openai.chat.completions.create({
         model: textModel,
         messages: [
@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
       const content = gptResponse.choices?.[0]?.message?.content?.trim() || null;
       if (content) {
-        logger.info(`[AVATAR] GPT response: ${content}`);
+        logEvent("info", "avatar_gpt_response", "GPT response for avatar", sanitizeLogMeta({ content }));
         try {
           // Strip code fences and markdown if present
           const cleaned = content.replace(/^```[a-zA-Z]*\n?|```$/g, '').trim();
@@ -59,13 +59,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           race = parsed.race || null;
           gender = parsed.gender || null;
           other = parsed.other || null;
-          logger.info(`[AVATAR] Parsed description:`, { race, gender, other });
+          logEvent("info", "avatar_gpt_parsed", "Avatar description parsed", sanitizeLogMeta({ race, gender, other }));
           genderOut = gender;
         } catch (jsonErr) {
           logger.warn("Failed to parse GPT JSON:", jsonErr, content);
         }
       } else {
-        logger.info(`[AVATAR] GPT response: <empty>`);
+        logEvent("info", "avatar_gpt_response_empty", "GPT response for avatar is empty");
       }
     } catch (descErr) {
       logger.warn("Failed to get description from OpenAI:", descErr);
@@ -121,13 +121,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
     prompt = prompt.trim();
-    logger.info(`[AVATAR] Final Image prompt for DALL-E: ${prompt}`);
+    logEvent("info", "avatar_dalle_prompt", "Avatar prompt for DALL-E", sanitizeLogMeta({ prompt }));
 
     const imageModels = getOpenAIModel("image");
-    logger.info(`[AVATAR] NODE_ENV: ${process.env.NODE_ENV} | VERCEL_ENV: ${process.env.VERCEL_ENV}`);
-    logger.info(`[AVATAR] Image generation models selected: primary='${imageModels.primary}', fallback='${imageModels.fallback}'`);
-    // Log the selected text and image models for traceability
-    logger.info(`[AVATAR] Model selection: text='${getOpenAIModel("text")}', image primary='${imageModels.primary}', image fallback='${imageModels.fallback}', NODE_ENV='${process.env.NODE_ENV}', VERCEL_ENV='${process.env.VERCEL_ENV}'`);
+    logEvent("info", "avatar_image_models", "Avatar image models selected", sanitizeLogMeta({
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV,
+      primary: imageModels.primary,
+      fallback: imageModels.fallback
+    }));
+    logEvent("info", "avatar_model_selection", "Avatar model selection", sanitizeLogMeta({
+      text: getOpenAIModel("text"),
+      imagePrimary: imageModels.primary,
+      imageFallback: imageModels.fallback,
+      nodeEnv: process.env.NODE_ENV,
+      vercelEnv: process.env.VERCEL_ENV
+    }));
     // Helper to get image from OpenAI, handling both URL and base64 (data URL) responses
     async function getOpenAIImage(model: string) {
       // gpt-image-1 only supports base64 (b64_json), not URL, but does NOT accept response_format param at all
@@ -143,9 +152,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         params.response_format = "url";
       }
       // Do NOT set response_format for gpt-image-1 (omit the property entirely)
-      logger.info(`[AVATAR] Calling OpenAI image generation`, { model, params });
+      logEvent("info", "avatar_openai_image_call", "Calling OpenAI image generation", { model, params });
       const image = await openai.images.generate(params);
-      logger.info(`[AVATAR] OpenAI image API response`, { model, response: image });
+      logEvent("info", "avatar_openai_image_response", "OpenAI image API response", { model, response: image });
       if (isGptImage1) {
         const b64 = image.data?.[0]?.b64_json;
         if (!b64) return null;
@@ -155,22 +164,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return image.data?.[0]?.url || null;
       }
     }
+    // Only log the prompt/model at the start of image generation
+    logEvent("info", "avatar_image_primary_attempt", "Attempting image generation with primary model", sanitizeLogMeta({ model: imageModels.primary, prompt }));
     let avatarUrl = null;
     let moderationBlocked = false;
     try {
-      logger.info(`[AVATAR] Attempting image generation with primary model: '${imageModels.primary}'`, { prompt });
       try {
         avatarUrl = await getOpenAIImage(imageModels.primary);
-        logger.info(`[AVATAR] Image generated successfully with model: '${imageModels.primary}'`, { avatarUrl });
+        logEvent("info", "avatar_image_primary_success", "Image generated successfully with primary model", sanitizeLogMeta({ model: imageModels.primary, avatarUrl }));
       } catch (err) {
-        logger.error(`[AVATAR] Error from OpenAI image generation (primary model: '${imageModels.primary}')`, { error: err });
+        logEvent("error", "avatar_image_primary_error", "OpenAI image generation error (primary)", sanitizeLogMeta({ model: imageModels.primary, error: err instanceof Error ? err.message : String(err) }));
         // Moderation/safety error handling
         const errObj = (typeof err === 'object' && err !== null) ? err : {};
         const errCode = (errObj && 'code' in errObj) ? (errObj as unknown as { code?: string }).code : undefined;
         const errType = (errObj && 'type' in errObj) ? (errObj as unknown as { type?: string }).type : undefined;
         const errMsg = (errObj && 'message' in errObj) ? (errObj as unknown as { message?: string }).message : String(err);
         if (errCode === 'moderation_blocked' || errType === 'image_generation_user_error' || (errMsg && errMsg.includes('safety system'))) {
-          logger.warn(`[AVATAR] OpenAI image generation blocked by moderation/safety system on model '${imageModels.primary}', will try fallback model '${imageModels.fallback}'`);
+          logEvent("warn", "avatar_image_moderation_blocked", "OpenAI image generation blocked by moderation/safety system", sanitizeLogMeta({ model: imageModels.primary }));
           moderationBlocked = true;
         } else if (
           err &&
@@ -191,34 +201,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 ? (err as { code?: string }).code
                 : 'unknown';
           const msg = (err as { message?: string }).message || String(err);
-          logger.warn(`[AVATAR] Model '${imageModels.primary}' unavailable: organization not verified (HTTP ${code}): ${msg}`);
+          logEvent("warn", "avatar_image_model_unverified", "Model unavailable: organization not verified", sanitizeLogMeta({ model: imageModels.primary, code, msg }));
         } else {
-          logger.warn(`[AVATAR] Model '${imageModels.primary}' unavailable, falling back to '${imageModels.fallback}'`, err);
+          logEvent("warn", "avatar_image_primary_fallback", "Primary model unavailable, falling back", sanitizeLogMeta({ model: imageModels.primary, error: err instanceof Error ? err.message : String(err) }));
         }
       }
       if ((!avatarUrl && moderationBlocked) || (!avatarUrl)) {
-        logger.info(`[AVATAR] Attempting image generation with fallback model: '${imageModels.fallback}'`, { prompt });
+        logEvent("info", "avatar_image_fallback_attempt", "Attempting image generation with fallback model", sanitizeLogMeta({ model: imageModels.fallback, prompt }));
         try {
           avatarUrl = await getOpenAIImage(imageModels.fallback);
-          logger.info(`[AVATAR] Image generated successfully with fallback model: '${imageModels.fallback}'`, { avatarUrl });
+          logEvent("info", "avatar_image_fallback_success", "Image generated successfully with fallback model", sanitizeLogMeta({ model: imageModels.fallback, avatarUrl }));
         } catch (err) {
-          logger.error(`[AVATAR] Error from OpenAI image generation (fallback model: '${imageModels.fallback}')`, { error: err });
-          logger.warn(`[AVATAR] Fallback image model '${imageModels.fallback}' also failed or was blocked, falling back to silhouette`, err);
+          logEvent("error", "avatar_image_fallback_error", "OpenAI image generation error (fallback)", sanitizeLogMeta({ model: imageModels.fallback, error: err instanceof Error ? err.message : String(err) }));
+          logEvent("warn", "avatar_image_fallback_failed", "Fallback image model also failed, using silhouette", sanitizeLogMeta({ model: imageModels.fallback, error: err instanceof Error ? err.message : String(err) }));
           return res.status(200).json({ avatarUrl: "/silhouette.svg" });
         }
       }
       if (!avatarUrl) {
-        logger.error("No image returned from OpenAI, falling back to silhouette");
+        logEvent("error", "avatar_image_none", "No image returned from OpenAI, using silhouette", sanitizeLogMeta({ model: imageModels.primary }));
         return res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
       }
       // Only return the image URL or data URL to the client
       return res.status(200).json({ avatarUrl, gender: genderOut });
     } catch (e) {
-      logger.error("[AVATAR] Unhandled error in generate-avatar:", e);
+      logEvent("error", "avatar_unhandled_error", "Unhandled error in generate-avatar", sanitizeLogMeta({ error: e instanceof Error ? e.message : String(e) }));
       return res.status(200).json({ avatarUrl: "/silhouette.svg" });
     }
   } catch (e) {
-    logger.error("[AVATAR] Unhandled error in generate-avatar:", e);
+    logEvent("error", "avatar_unhandled_error", "Unhandled error in generate-avatar", sanitizeLogMeta({ error: e instanceof Error ? e.message : String(e) }));
     return res.status(200).json({ avatarUrl: "/silhouette.svg" });
   }
 }

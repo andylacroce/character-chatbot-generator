@@ -39,7 +39,7 @@ const ChatMessage = React.memo(
   ({ message, bot }: ChatMessageProps) => {
     // Validate message object to prevent rendering errors
     if (!message || typeof message.text !== "string" || typeof message.sender !== "string") {
-      console.error("Invalid message object:", message);
+      console.error("Invalid message object", message);
       return null; // Render nothing if the message is invalid
     }
 

@@ -16,7 +16,11 @@ interface ChatStatusProps {
 }
 
 const ChatStatus: React.FC<ChatStatusProps> = ({ error, retrying }) => {
-  console.log("ChatStatus render: retrying=", retrying, "error=", error);
+  console.debug("ChatStatus render", {
+    event: "chat_status_render",
+    retrying,
+    error
+  });
   return (
     <div
       className="chat-status-area"
