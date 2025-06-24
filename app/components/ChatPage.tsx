@@ -335,13 +335,22 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
 
   // Play bot audio after message is rendered (prevents clipping)
   useEffect(() => {
+    let cancelled = false;
     if (!audioEnabledRef.current) return;
     if (messages.length === 0) return;
     const lastMsg = messages[messages.length - 1];
-    if (lastMsg.sender === bot.name && lastMsg.audioFileUrl) {
-      playAudio(lastMsg.audioFileUrl);
+    if (lastMsg.sender === bot.name && typeof lastMsg.audioFileUrl === 'string') {
+      (async () => {
+        if (!cancelled) {
+          await playAudio(lastMsg.audioFileUrl!);
+        }
+      })();
     }
-  }, [messages, bot.name, playAudio]);
+    return () => {
+      cancelled = true;
+      stopAudio();
+    };
+  }, [messages, bot.name, playAudio, stopAudio]);
 
   // Cleanup audio on unmount (stops playback if user leaves page)
   useEffect(() => {
