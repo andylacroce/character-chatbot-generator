@@ -1,3 +1,5 @@
+import logger, { sanitizeLogMeta } from "./logger";
+
 /**
  * Mapping from character/bot name to Google TTS voice settings.
  *
@@ -529,8 +531,13 @@ export async function getVoiceConfigForCharacter(name: string, genderOverride?: 
   const config: CharacterVoiceConfig = findClosestTTSVoice(description, genderNum);
   dynamicVoiceCache[normalized] = config;
   if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line no-console
-    console.log(`[TTS] Dynamic voice: requested='${name}', normalized='${normalized}', desc='${description}', using='${config.name}'`);
+    logger.info("TTS dynamic voice selected", sanitizeLogMeta({
+      event: "tts_dynamic_voice",
+      requested: name,
+      normalized,
+      description,
+      using: config.name
+    }));
   }
   // Ensure type is present
   const match = GOOGLE_TTS_VOICES.find(v => v.name === config.name);

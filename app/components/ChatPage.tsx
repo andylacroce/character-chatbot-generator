@@ -93,7 +93,14 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
           sessionDatetime: sessionDatetime, // Send the session datetime
         });
       } catch (error) {
-        console.warn("Failed to log message:", error); // Log warning, don't block user
+        // Only log to console on client
+        console.warn("Failed to log message", {
+          event: "client_log_message_failed",
+          error: error instanceof Error ? error.message : String(error),
+          message,
+          sessionId,
+          sessionDatetime
+        });
       }
     },
     [sessionId, sessionDatetime],
@@ -279,7 +286,10 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     try {
       await downloadTranscript(messages as Message[]); // Cast to Message[] for compatibility
     } catch (err) {
-      console.error("Failed to download transcript:", err);
+      console.error("Failed to download transcript", {
+        event: "download_transcript_failed",
+        error: err instanceof Error ? err.message : String(err)
+      });
       alert("Failed to download transcript.");
     }
   };
@@ -304,15 +314,21 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     if (!chatBoxRef.current) return;
 
     const { scrollTop } = chatBoxRef.current;
-    console.log('ScrollTop:', scrollTop);
-    console.log('VisibleCount before update:', visibleCount);
-    console.log('Messages length:', messages.length); // Log the total number of messages
+    console.debug("Scroll event", {
+      event: "chat_scroll",
+      scrollTop,
+      visibleCount,
+      messagesLength: messages.length
+    });
 
     // Load more messages when scrolled to top and there are more messages available
     if (scrollTop === 0 && visibleCount < messages.length) {
       setVisibleCount((prev) => {
         const newCount = Math.min(prev + LOAD_MORE_COUNT, messages.length);
-        console.log('VisibleCount updated to:', newCount);
+        console.debug("VisibleCount updated", {
+          event: "chat_visible_count_updated",
+          newCount
+        });
         return newCount;
       });
     }
@@ -362,7 +378,10 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
 
   // Add debugging logs to trace retrying state
   useEffect(() => {
-    console.log("Retrying state updated:", retrying);
+    console.debug("Retrying state updated", {
+      event: "chat_retrying_state",
+      retrying
+    });
   }, [retrying]);
 
   return (

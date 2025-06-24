@@ -7,7 +7,7 @@
 import OpenAI from "openai";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
 import fs from "fs";
-import logger, { generateRequestId } from "../../src/utils/logger";
+import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
 /**
  * Next.js API route handler for health checks.
@@ -42,9 +42,15 @@ export default async function handler(
     openaiStatus = "error";
     openaiError = err instanceof Error ? err.message : String(err);
     if (process.env.NODE_ENV !== "production") {
-      logger.error(`[HealthCheck] OpenAI error | requestId=${requestId}:`, err);
+      logEvent("error", "health_openai_error", "OpenAI health check error", sanitizeLogMeta({
+        requestId,
+        error: err instanceof Error ? err.message : String(err)
+      }));
     }
-    logger.info(`[HealthCheck] 500 OpenAI error: ${openaiError} | requestId=${requestId}`);
+    logEvent("info", "health_openai_failed", "OpenAI health check failed", sanitizeLogMeta({
+      requestId,
+      error: openaiError
+    }));
   }
 
   let ttsStatus = "ok";
@@ -76,23 +82,36 @@ export default async function handler(
     ttsStatus = "error";
     ttsError = err instanceof Error ? err.message : String(err);
     if (process.env.NODE_ENV !== "production") {
-      logger.error(`[HealthCheck] Google TTS error | requestId=${requestId}:`, err);
+      logEvent("error", "health_tts_error", "Google TTS health check error", sanitizeLogMeta({
+        requestId,
+        error: err instanceof Error ? err.message : String(err)
+      }));
     }
-    logger.info(`[HealthCheck] 500 Google TTS error: ${ttsError} | requestId=${requestId}`);
+    logEvent("info", "health_tts_failed", "Google TTS health check failed", sanitizeLogMeta({
+      requestId,
+      error: ttsError
+    }));
   }
 
   if (openaiStatus === "ok" && ttsStatus === "ok") {
-    logger.info(`[HealthCheck] 200 OK: All services healthy | requestId=${requestId}`);
+    logEvent("info", "health_ok", "All services healthy", sanitizeLogMeta({
+      requestId
+    }));
     return res.status(200).json({ status: "ok", requestId });
   }
   if (process.env.NODE_ENV !== "production")
-    logger.error(`[HealthCheck] Service error | requestId=${requestId}`, {
+    logEvent("error", "health_service_error", "Service error", sanitizeLogMeta({
+      requestId,
       openaiStatus,
       openaiError,
       ttsStatus,
-      ttsError,
-    });
-  logger.info(`[HealthCheck] 500 Service error: openaiStatus=${openaiStatus}, ttsStatus=${ttsStatus} | requestId=${requestId}`);
+      ttsError
+    }));
+  logEvent("info", "health_service_error_info", "Service error", sanitizeLogMeta({
+    requestId,
+    openaiStatus,
+    ttsStatus
+  }));
   return res.status(500).json({
     status: "error",
     openai: { status: openaiStatus, error: openaiError },
