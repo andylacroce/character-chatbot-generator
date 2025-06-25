@@ -5,7 +5,7 @@
 // =============================
 
 /**
- * @fileoverview Type definitions for ipinfo and lru-cache modules.
+ * @fileoverview Type definitions for ipinfo module.
  * @module types
  */
 
@@ -38,33 +38,4 @@ declare module "ipinfo" {
   function ipinfo(ip: string): Promise<LocationData>;
 
   export = ipinfo;
-}
-
-/**
- * Declaration for the lru-cache module used for rate limiting.
- * This is a simple Least Recently Used (LRU) Cache implementation.
- * @namespace lru-cache
- */
-declare module "lru-cache" {
-  interface LRUCacheOptions {
-    max?: number;
-    ttl?: number;
-    allowStale?: boolean;
-    updateAgeOnGet?: boolean;
-    updateAgeOnHas?: boolean;
-    [key: string]: unknown;
-  }
-
-  class LRUCache {
-    constructor(options?: LRUCacheOptions);
-    set(key: string, value: unknown, options?: { ttl?: number }): boolean;
-    get(key: string): unknown | undefined;
-    has(key: string): boolean;
-    delete(key: string): boolean;
-    clear(): void;
-    size: number;
-  }
-
-  // Allow both default and named export patterns to support different import styles
-  export = LRUCache;
 }

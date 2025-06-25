@@ -8,7 +8,6 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 - Chat powered by OpenAI's ChatGPT
 - Built with Next.js & React
 - TypeScript throughout
-- **Robust rate limiting for API protection**
 - Comprehensive Jest test suite
 - Responsive, accessible design
 - Downloadable chat transcripts
@@ -20,19 +19,6 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 1. **Character Creation**: Users create a chatbot persona by entering a name or choosing a random character. The app generates a personality, avatar, and voice configuration.
 2. **Chat**: Users chat in real time. The app sends messages to OpenAI's API, receives characterful replies, and synthesizes voice responses using Google TTS.
 3. **Transcript & Logging**: Users can download chat transcripts. All chats can be logged to Vercel Blob or the local file system.
-4. **API Rate Limiting**: All API endpoints are protected by a rate limiter to prevent abuse.
-
-## API Rate Limiting
-
-All API endpoints are protected by a rate limiter middleware:
-
-- **Limits each IP to 100 requests per 15 minutes** (configurable)
-- Responds with HTTP 429 and logs the event if the limit is exceeded
-- Sets the following headers on all responses:
-  - `X-RateLimit-Limit`: Maximum requests allowed per window
-  - `X-RateLimit-Remaining`: Requests remaining in the current window
-  - `X-RateLimit-Reset`: Unix timestamp (seconds) when the window resets
-  - `Retry-After`: (on 429) Seconds until the next allowed request
 
 ## Setup
 
@@ -68,7 +54,7 @@ All API endpoints are protected by a rate limiter middleware:
    npm test
    ```
    - API endpoint tests automatically mock required environment variables.
-   - All internal API endpoints are tested for public access and rate limiting.
+   - All internal API endpoints are tested for public access.
 
 ## Project Structure
 

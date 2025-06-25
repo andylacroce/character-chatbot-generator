@@ -1,7 +1,7 @@
 // =============================
 // cache.ts
 // Simple in-memory cache utilities for API and TTS response caching.
-// Used for rate limiting, reply caching, and audio file caching.
+// Used for reply caching and audio file caching.
 // =============================
 
 import fs from "fs";
@@ -25,7 +25,7 @@ function loadCacheFromFile(): Record<string, string> {
 function saveCacheToFile(cache: Record<string, string>) {
   try {
     fs.writeFileSync(CACHE_FILE, JSON.stringify(cache), "utf8");
-  } catch {}
+  } catch { }
 }
 
 /**
