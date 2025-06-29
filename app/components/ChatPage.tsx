@@ -30,6 +30,7 @@ import ChatHeader from "./ChatHeader";
 import { Message } from "../../src/types/message";
 import { useApiError } from "./useApiError";
 import type { Bot } from "./BotCreator"; // Import the Bot type
+import { useChatScrollAndFocus } from "./useChatScrollAndFocus"; // Import the custom hook
 
 // Constants for infinite scroll functionality
 const INITIAL_VISIBLE_COUNT = 20;
@@ -73,6 +74,9 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
   const [retrying, setRetrying] = useState(false);
   const chatBoxRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Ensure chat auto-scrolls to bottom on new messages
+  useChatScrollAndFocus({ chatBoxRef, inputRef, messages, loading });
 
   useEffect(() => {
     audioEnabledRef.current = audioEnabled;
