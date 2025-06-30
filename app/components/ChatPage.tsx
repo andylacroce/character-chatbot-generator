@@ -354,16 +354,37 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     setVisibleCount(INITIAL_VISIBLE_COUNT);
   }, [chatHistoryKey]);
 
+  // Utility to get a unique hash for a message (text + audioFileUrl)
+  function getMessageHash(msg: Message) {
+    return `${msg.sender}__${msg.text}__${msg.audioFileUrl ?? ''}`;
+  }
+
   // Play bot audio after message is rendered (prevents clipping)
+  const lastPlayedAudioHashRef = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     if (!audioEnabledRef.current) return;
     if (messages.length === 0) return;
     const lastMsg = messages[messages.length - 1];
-    if (lastMsg.sender === bot.name && typeof lastMsg.audioFileUrl === 'string') {
+    const lastMsgHash = getMessageHash(lastMsg);
+    // Persist last played hash in sessionStorage to survive refreshes
+    if (typeof window !== 'undefined') {
+      if (lastPlayedAudioHashRef.current === null) {
+        lastPlayedAudioHashRef.current = sessionStorage.getItem(`lastPlayedAudioHash-${bot.name}`);
+      }
+    }
+    if (
+      lastMsg.sender === bot.name &&
+      typeof lastMsg.audioFileUrl === 'string' &&
+      lastMsgHash !== lastPlayedAudioHashRef.current
+    ) {
       (async () => {
         if (!cancelled) {
           await playAudio(lastMsg.audioFileUrl!);
+          lastPlayedAudioHashRef.current = lastMsgHash;
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(`lastPlayedAudioHash-${bot.name}`, lastMsgHash);
+          }
         }
       })();
     }
