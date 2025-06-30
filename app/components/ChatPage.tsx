@@ -31,6 +31,7 @@ import { Message } from "../../src/types/message";
 import { useApiError } from "./useApiError";
 import type { Bot } from "./BotCreator"; // Import the Bot type
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus"; // Import the custom hook
+import { useNextRouterEventsForAudioCleanup } from "./_useNextRouterEventsForAudioCleanup";
 
 // Constants for infinite scroll functionality
 const INITIAL_VISIBLE_COUNT = 20;
