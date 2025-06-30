@@ -43,13 +43,27 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
      - To enable this, you must set the `VERCEL_BLOB_READ_WRITE_TOKEN` environment variable with a valid token from your Vercel project settings.
      - See the [Vercel Blob documentation](https://vercel.com/docs/storage/vercel-blob/quickstart) for details on generating a token and managing Blob storage.
 
-3. **Run Locally**
+3. **Update Middleware for Custom Domains or Ports**
+
+   - The file `middleware.ts` restricts API access to specific origins for security.
+   - If you run the app locally on a different port, domain, or deploy to a different Vercel project, you must update the `allowedOrigins` array in `middleware.ts` to include your new URL(s).
+   - Example:
+     ```ts
+     const allowedOrigins = [
+         'http://localhost:3000',
+         'http://127.0.0.1:3000',
+         'https://your-custom-domain.com', // Add your domain here
+     ];
+     ```
+   - Without this update, API requests from your environment will be blocked with a 403 Forbidden error.
+
+4. **Run Locally**
 
    ```bash
    npm run dev
    ```
 
-4. **Run Tests**
+5. **Run Tests**
    ```bash
    npm test
    ```
