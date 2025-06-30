@@ -6,7 +6,9 @@
 
 import fs from "fs";
 
-const isVercel = !!process.env.VERCEL_ENV;
+function isVercelEnv() {
+  return !!process.env.VERCEL_ENV;
+}
 const CACHE_FILE = "/tmp/bot-reply-cache.json";
 const memoryCache: Record<string, string> = {};
 
@@ -34,7 +36,7 @@ function saveCacheToFile(cache: Record<string, string>) {
  * @param {string} value - The value to cache.
  */
 export function setReplyCache(key: string, value: string) {
-  if (isVercel) {
+  if (isVercelEnv()) {
     memoryCache[key] = value;
   } else {
     const cache = loadCacheFromFile();
@@ -49,7 +51,7 @@ export function setReplyCache(key: string, value: string) {
  * @returns {string|null} The cached value or null if not found.
  */
 export function getReplyCache(key: string): string | null {
-  if (isVercel) {
+  if (isVercelEnv()) {
     return memoryCache[key] || null;
   } else {
     const cache = loadCacheFromFile();
@@ -62,7 +64,7 @@ export function getReplyCache(key: string): string | null {
  * @param {string} key - The cache key.
  */
 export function deleteReplyCache(key: string) {
-  if (isVercel) {
+  if (isVercelEnv()) {
     delete memoryCache[key];
   } else {
     const cache = loadCacheFromFile();
