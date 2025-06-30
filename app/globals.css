@@ -19,34 +19,61 @@
 @import "./darkmode.css";
 
 :root {
-  /* Radically modern, muted teal/green + warm gold palette for less white, more color depth */
-  --color-background: #e6f0ec; /* soft muted teal background */
-  --color-text: #1a2b22; /* deep green-black for strong contrast */
-  --color-sender: #1e7f6c; /* rich teal (primary) */
-  --card-body-bg: #f7f5e7; /* warm, creamy off-white for cards */
-  --chatbox-background: #e6f0ec;
-  --user-message-bg: #d0ede2; /* pale green-teal for user */
-  --bot-message-bg: #fff7e0; /* soft gold for bot */
-  --bot-sender: #e6a700; /* gold for bot sender */
-  --button-bg: #1e7f6c; /* teal primary */
-  --button-hover-bg: #14594c; /* deeper teal for hover */
-  --disabled-bg: #c7d2c7; /* muted sage */
-  --disabled-text: #8a9a8a; /* muted green-gray */
-  --send-button-bg: #e6a700; /* gold accent */
-  --send-button-hover-bg: #b38600; /* deep gold for hover */
-  --send-button-text: #fff; /* white for contrast */
-  --input-bg: #f2f7f4; /* very light teal */
-  --input-text: #1a2b22;
-  --input-placeholder: #6b7c6b; /* muted green-gray */
-  --scrollbar-bg: #d0ede2;
-  --scrollbar-thumb: #1e7f6c;
-  --color-primary: #1e7f6c;
-  --button-shadow: #d0ede2;
-  --button-shadow-hover: #1e7f6c44;
-  --chat-message-font-size: 1.35rem;
-  --color-accent: #ffd166; /* gold accent for icons */
-
-  /* Font variables for modern, clean look */
+  /* Material Design 3 inspired light palette with foresty earth tones */
+  --color-background: #f3f7f3;
+  /* misty forest light */
+  --color-surface: #e8f0ea;
+  /* pale moss surface */
+  --color-surface-variant: #d2e3d2;
+  /* muted green stone */
+  --color-outline: #8fa98f;
+  /* soft sage outline */
+  --color-text: #223127;
+  /* deep forest green */
+  --color-text-secondary: #5b6d5b;
+  /* muted pine */
+  --color-primary: #3a6b4b;
+  /* forest green */
+  --color-on-primary: #f3f7f3;
+  /* misty light on primary */
+  --color-primary-container: #b7d3b0;
+  /* light moss container */
+  --color-on-primary-container: #223127;
+  /* deep green on container */
+  --color-secondary: #6b8e6e;
+  /* muted fern */
+  --color-on-secondary: #f3f7f3;
+  --color-secondary-container: #dbe9db;
+  --color-on-secondary-container: #223127;
+  --color-accent: #a3c47c;
+  /* soft leaf accent */
+  --color-error: #b94a48;
+  --color-on-error: #f3f7f3;
+  --color-success: #4b8d6d;
+  --color-on-success: #f3f7f3;
+  --color-warning: #e1a95f;
+  --color-on-warning: #223127;
+  --color-sender: var(--color-primary);
+  --card-body-bg: var(--color-surface-variant);
+  --chatbox-background: var(--color-surface);
+  --user-message-bg: var(--color-primary-container);
+  --bot-message-bg: var(--color-secondary-container);
+  --bot-sender: var(--color-secondary);
+  --button-bg: var(--color-primary);
+  --button-hover-bg: #29543a;
+  --disabled-bg: #d2e3d2;
+  --disabled-text: #8fa98f;
+  --send-button-bg: var(--color-accent);
+  --send-button-hover-bg: #7ea05a;
+  --send-button-text: #223127;
+  --input-bg: var(--color-surface-variant);
+  --input-text: var(--color-text);
+  --input-placeholder: #8fa98f;
+  --scrollbar-bg: #d2e3d2;
+  --scrollbar-thumb: #3a6b4b;
+  --button-shadow: #d2e3d2;
+  --button-shadow-hover: #3a6b4b44;
+  --chat-message-font-size: 1.2rem;
   --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif';
   --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif';
 }
@@ -62,6 +89,7 @@
   margin: 0;
   padding: 0;
 }
+
 html,
 body {
   height: 100%;
@@ -69,26 +97,35 @@ body {
   display: flex;
   flex-direction: column;
 }
+
 body {
   font-family: var(--font-primary), sans-serif;
   font-size: 1.125rem;
   background-color: var(--color-background) !important;
   color: var(--color-text);
-  display: flex; /* Kept for clarity, though inherited */
-  flex-direction: column; /* Kept for clarity */
-  flex: 1 1 auto; /* Body is a flex child of html and should grow */
+  display: flex;
+  /* Kept for clarity, though inherited */
+  flex-direction: column;
+  /* Kept for clarity */
+  flex: 1 1 auto;
+  /* Body is a flex child of html and should grow */
   width: 100%;
 }
+
 #__next {
   flex: 1 1 auto;
-  min-height: 0; /* Important for nested flex scroll */
+  min-height: 0;
+  /* Important for nested flex scroll */
   display: flex;
   flex-direction: column;
-  width: 100%; /* Ensure #__next also takes full width */
+  width: 100%;
+  /* Ensure #__next also takes full width */
 }
 
 /* --- Fix viewport overflow for mobile and desktop --- */
-html, body, #__next {
+html,
+body,
+#__next {
   max-width: 100vw;
   overflow-x: hidden;
 }
@@ -98,43 +135,140 @@ html, body, #__next {
   Utility classes for border radius, padding, font size, and margin.
   Use these for quick layout tweaks in components.
 */
-.rounded { border-radius: 10px; }
-.p-2 { padding: 10px; }
-.text-sm { font-size: 0.98rem; }
-.mb-1 { margin-bottom: 5px; }
-.my-2 { margin-top: 10px; margin-bottom: 10px; }
+.rounded {
+  border-radius: 10px;
+}
+
+.p-2 {
+  padding: 10px;
+}
+
+.text-sm {
+  font-size: 0.98rem;
+}
+
+.mb-1 {
+  margin-bottom: 5px;
+}
+
+.my-2 {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
 
 /* --- Extended Utility and Shared Styles --- */
 /*
   Use these utility classes for layout, spacing, and alignment to promote reuse.
   Prefer utility classes over repeating similar rules in component modules.
 */
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.flex-row { flex-direction: row; }
-.items-center { align-items: center; }
-.items-start { align-items: flex-start; }
-.items-end { align-items: flex-end; }
-.justify-center { justify-content: center; }
-.justify-between { justify-content: space-between; }
-.justify-end { justify-content: flex-end; }
-.gap-1 { gap: 0.25rem; }
-.gap-2 { gap: 0.5rem; }
-.gap-4 { gap: 1rem; }
-.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-.px-4 { padding-left: 1rem; padding-right: 1rem; }
-.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-.mt-2 { margin-top: 0.5rem; }
-.mt-4 { margin-top: 1rem; }
-.mb-2 { margin-bottom: 0.5rem; }
-.mb-4 { margin-bottom: 1rem; }
-.mx-auto { margin-left: auto; margin-right: auto; }
-.text-center { text-align: center; }
-.text-right { text-align: right; }
-.text-left { text-align: left; }
-.w-full { width: 100%; }
-.max-w-800 { max-width: 800px; }
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.items-end {
+  align-items: flex-end;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.px-2 {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.max-w-800 {
+  max-width: 800px;
+}
 
 /*
   Usage:
@@ -147,11 +281,11 @@ html, body, #__next {
   Customization for @trendmicro/react-toggle-switch and other third-party components.
   Use class selectors to override library styles as needed.
 */
-[class*="toggle-switch---switch"][class*="checked"]
-  [class*="toggle-switch---toggle"] {
+[class*="toggle-switch---switch"][class*="checked"] [class*="toggle-switch---toggle"] {
   background-color: #2e7d32 !important;
   border-color: #1b5e20 !important;
 }
+
 [class*="toggle-switch---switch"] [class*="toggle-switch---toggle"] {
   background-color: var(--send-button-text) !important;
   border-color: var(--disabled-bg) !important;
@@ -163,7 +297,8 @@ html, body, #__next {
 }
 
 /* --- Dark mode button focus/hover fix --- */
-.dark button:hover, .dark button:focus {
+.dark button:hover,
+.dark button:focus {
   background: var(--button-hover-bg, #2d3952) !important;
   color: var(--send-button-text, #fff) !important;
   border-color: var(--color-primary, #bfae7c) !important;

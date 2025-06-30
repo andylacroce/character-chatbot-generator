@@ -1,29 +1,58 @@
 .dark {
-  /* Radically modern, deep teal/green + gold palette for dark mode */
-  --color-background: #101c18 !important; /* deep teal-black */
-  --color-text: #e6f0ec !important; /* soft muted teal */
-  --color-sender: #4fd1b3 !important; /* bright teal (primary) */
-  --card-body-bg: #182923 !important; /* dark green card */
-  --chatbox-background: #101c18 !important;
-  --user-message-bg: #1a3a32 !important; /* deep green for user */
-  --bot-message-bg: #2d230b !important; /* deep gold-brown for bot */
-  --bot-sender: #ffd166 !important; /* gold for bot sender */
-  --button-bg: #4fd1b3 !important; /* teal primary */
-  --button-hover-bg: #1e7f6c !important; /* deeper teal for hover */
-  --disabled-bg: #23332a !important; /* dark green */
-  --disabled-text: #7b8794 !important; /* muted blue-gray */
-  --send-button-bg: #ffd166 !important; /* gold accent */
-  --send-button-hover-bg: #b38600 !important; /* deep gold for hover */
-  --send-button-text: #222 !important; /* dark for contrast */
-  --input-bg: #182923 !important; /* dark green */
-  --input-text: #e6f0ec !important;
-  --input-placeholder: #7b8794 !important;
-  --scrollbar-bg: #1a3a32 !important;
-  --scrollbar-thumb: #4fd1b3 !important;
-  --color-primary: #4fd1b3 !important;
-  --color-accent: #4fd1b3; /* teal accent for icons in dark mode */
-  --button-shadow: #1a3a32 !important;
-  --button-shadow-hover: #4fd1b344 !important;
+  /* Material Design 3 inspired dark palette with foresty earth tones */
+  --color-background: #1a2420 !important;
+  /* deep forest night */
+  --color-surface: #223127 !important;
+  /* dark pine surface */
+  --color-surface-variant: #2c3a2e !important;
+  /* muted forest stone */
+  --color-outline: #5b6d5b !important;
+  /* muted pine outline */
+  --color-text: #e8f0ea !important;
+  /* pale moss text */
+  --color-text-secondary: #8fa98f !important;
+  /* soft sage */
+  --color-primary: #6b8e6e !important;
+  /* muted fern */
+  --color-on-primary: #1a2420 !important;
+  /* deep forest on primary */
+  --color-primary-container: #3a6b4b !important;
+  /* forest green container */
+  --color-on-primary-container: #e8f0ea !important;
+  /* pale moss on container */
+  --color-secondary: #a3c47c !important;
+  /* soft leaf accent */
+  --color-on-secondary: #223127 !important;
+  --color-secondary-container: #4b8d6d !important;
+  --color-on-secondary-container: #e8f0ea !important;
+  --color-accent: #b7d3b0 !important;
+  /* light moss accent */
+  --color-error: #b94a48 !important;
+  --color-on-error: #e8f0ea !important;
+  --color-success: #7ea05a !important;
+  --color-on-success: #1a2420 !important;
+  --color-warning: #e1a95f !important;
+  --color-on-warning: #1a2420 !important;
+  --color-sender: var(--color-primary) !important;
+  --card-body-bg: var(--color-surface-variant) !important;
+  --chatbox-background: var(--color-surface) !important;
+  --user-message-bg: var(--color-primary-container) !important;
+  --bot-message-bg: var(--color-secondary-container) !important;
+  --bot-sender: var(--color-secondary) !important;
+  --button-bg: var(--color-primary) !important;
+  --button-hover-bg: #29543a !important;
+  --disabled-bg: #2c3a2e !important;
+  --disabled-text: #5b6d5b !important;
+  --send-button-bg: var(--color-accent) !important;
+  --send-button-hover-bg: #4b8d6d !important;
+  --send-button-text: #1a2420 !important;
+  --input-bg: var(--color-surface-variant) !important;
+  --input-text: var(--color-text) !important;
+  --input-placeholder: #8fa98f !important;
+  --scrollbar-bg: #2c3a2e !important;
+  --scrollbar-thumb: #6b8e6e !important;
+  --button-shadow: #2c3a2e !important;
+  --button-shadow-hover: #6b8e6e44 !important;
   --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
   --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
 }
