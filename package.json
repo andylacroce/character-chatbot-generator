@@ -13,7 +13,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@google-cloud/text-to-speech": "^6.1.0",
+    "@google-cloud/text-to-speech": "^6.2.0",
     "@trendmicro/react-toggle-switch": "^0.5.7",
     "@typescript-eslint/type-utils": "^8.36.0",
     "@typescript-eslint/typescript-estree": "^8.35.1",
