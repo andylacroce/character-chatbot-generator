@@ -332,6 +332,10 @@ async function generateBotDataWithProgressCancelable(
     setLoadingMessage("Using default voice");
   }
   if (cancelRequested.current) throw new Error("cancelled");
+  // Defensive: If voiceConfig is null, throw error to prevent inconsistent chat experience
+  if (!voiceConfig) {
+    throw new Error("Failed to generate a consistent voice for this character. Please try again.");
+  }
   return { name: correctedName, personality, avatarUrl, voiceConfig, gender };
 }
 

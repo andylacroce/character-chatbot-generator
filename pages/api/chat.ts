@@ -250,7 +250,9 @@ export default async function handler(
 
     // Prepare TTS request (voice tuned for character)
     const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
-    logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
+    // Add a hash to the voiceConfig for logging/debugging
+    const voiceConfigHash = crypto.createHash("sha256").update(JSON.stringify(voiceConfig)).digest("hex");
+    logger.info(`[TTS] Using voice for botName='${botName}', voiceConfigHash=${voiceConfigHash}: ${JSON.stringify(voiceConfig)}`);
     // Robust Studio voice detection
     const isStudio = (voiceConfig.type === 'Studio') || (voiceConfig.name && voiceConfig.name.includes('Studio'));
     let selectedVoice = voiceConfig;

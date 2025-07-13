@@ -121,6 +121,9 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       introSentRef.current = true;
       const getIntro = async () => {
         try {
+          if (!bot.voiceConfig) {
+            throw new Error("Voice configuration missing for this character. Please recreate the bot.");
+          }
           const response = await axios.post("/api/chat", {
             message: "Introduce yourself in 2 sentences or less.",
             personality: bot.personality,
@@ -136,12 +139,12 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
           logMessage(introMsg);
           // Do NOT play audio here; let the effect below handle it after render
         } catch {
-          // Optionally handle error (e.g., fallback to static intro)
+          setError("Failed to generate intro or voice config. Please recreate the bot.");
         }
       };
       getIntro();
     }
-  }, [messages.length, apiAvailable, bot, logMessage, playAudio]);
+  }, [messages.length, apiAvailable, bot, logMessage, playAudio, setError]);
 
   const sendMessage = useCallback(async () => {
     // Helper for retry with exponential backoff
@@ -197,6 +200,9 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     logMessage(userMessage);
 
     try {
+      if (!bot.voiceConfig) {
+        throw new Error("Voice configuration missing for this character. Please recreate the bot.");
+      }
       const response = await retryWithBackoff(
         () => axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: bot.voiceConfig }),
         2, // max 2 retries
@@ -210,8 +216,8 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       setMessages((prevMessages) => [...prevMessages, botReply]);
       logMessage(botReply);
       // REMOVE: audio playback here; handled by useEffect after render
-    } catch (err) {
-      handleApiError(err);
+    } catch {
+      handleApiError(new Error("Failed to send message or generate reply."));
     } finally {
       setLoading(false);
       // setRetrying(false); // Remove this, handled in retryWithBackoff
@@ -290,11 +296,8 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
   const handleDownloadTranscript = async () => {
     try {
       await downloadTranscript(messages as Message[]); // Cast to Message[] for compatibility
-    } catch (err) {
-      console.error("Failed to download transcript", {
-        event: "download_transcript_failed",
-        error: err instanceof Error ? err.message : String(err)
-      });
+    } catch {
+      console.error("Failed to download transcript");
       alert("Failed to download transcript.");
     }
   };
