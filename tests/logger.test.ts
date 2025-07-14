@@ -49,14 +49,14 @@ describe('logger utility', () => {
             expect(result.obj).toBe('[Object]');
         });
         it('summarizes long arrays', () => {
-            const meta = { arr: [1,2,3,4,5,6,7] };
+            const meta = { arr: [1, 2, 3, 4, 5, 6, 7] };
             const result = sanitizeLogMeta(meta);
             expect(result.arr).toBe('[Array(7)]');
         });
         it('keeps short arrays and primitives unchanged', () => {
-            const meta = { arr: [1,2], num: 5, str: 'ok' };
+            const meta = { arr: [1, 2], num: 5, str: 'ok' };
             const result = sanitizeLogMeta(meta);
-            expect(result.arr).toEqual([1,2]);
+            expect(result.arr).toEqual([1, 2]);
             expect(result.num).toBe(5);
             expect(result.str).toBe('ok');
         });
