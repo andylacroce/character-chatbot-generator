@@ -190,7 +190,7 @@ describe("ChatPage branch coverage edge cases", () => {
     it.skip("covers setVisibleCount debug branch (flaky: React/test env timing)", async () => {
         // TODO: This test is flaky due to React/test environment timing issues, not logic errors.
         // It passes locally but may fail in CI. See coverage report for branch coverage.
-        const debugSpy = jest.spyOn(console, "debug").mockImplementation(() => {});
+        const debugSpy = jest.spyOn(console, "debug").mockImplementation(() => { });
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
         for (let i = 0; i < 25; i++) {
