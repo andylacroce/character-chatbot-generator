@@ -71,6 +71,8 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
   const [apiAvailable, setApiAvailable] = useState<boolean>(true);
   const [sessionId, sessionDatetime] = useSession(); // Use useSession hook
   const { error, setError, handleApiError } = useApiError();
+  // Explicit intro error state for testability
+  const [introError, setIntroError] = useState<string | null>(null);
   const audioEnabledRef = useRef(audioEnabled);
   const [retrying, setRetrying] = useState(false);
   const chatBoxRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
@@ -122,7 +124,14 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       const getIntro = async () => {
         try {
           if (!bot.voiceConfig) {
-            throw new Error("Voice configuration missing for this character. Please recreate the bot.");
+            const msg = "Voice configuration missing for this character. Please recreate the bot.";
+            setIntroError(msg);
+            setError(msg); // for legacy error prop
+            if (typeof window !== 'undefined') {
+              // Log intro error for diagnostics
+              console.error("Intro error:", msg, { bot });
+            }
+            return;
           }
           const response = await axios.post("/api/chat", {
             message: "Introduce yourself in 2 sentences or less.",
@@ -137,9 +146,14 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
           };
           setMessages([introMsg]);
           logMessage(introMsg);
-          // Do NOT play audio here; let the effect below handle it after render
-        } catch {
-          setError("Failed to generate intro or voice config. Please recreate the bot.");
+          setIntroError(null);
+        } catch (e) {
+          const msg = "Failed to generate intro or voice config. Please recreate the bot.";
+          setIntroError(msg);
+          setError(msg);
+          if (typeof window !== 'undefined') {
+            console.error("Intro error:", msg, { bot, error: e });
+          }
         }
       };
       getIntro();
@@ -201,7 +215,13 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
 
     try {
       if (!bot.voiceConfig) {
-        throw new Error("Voice configuration missing for this character. Please recreate the bot.");
+        const msg = "Voice configuration missing for this character. Please recreate the bot.";
+        setError(msg);
+        if (typeof window !== 'undefined') {
+          console.error("SendMessage error:", msg, { bot });
+        }
+        setLoading(false);
+        return;
       }
       const response = await retryWithBackoff(
         () => axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: bot.voiceConfig }),
@@ -215,12 +235,15 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       };
       setMessages((prevMessages) => [...prevMessages, botReply]);
       logMessage(botReply);
-      // REMOVE: audio playback here; handled by useEffect after render
-    } catch {
-      handleApiError(new Error("Failed to send message or generate reply."));
+    } catch (e) {
+      const msg = "Failed to send message or generate reply.";
+      setError(msg);
+      handleApiError(new Error(msg));
+      if (typeof window !== 'undefined') {
+        console.error("SendMessage error:", msg, { bot, error: e });
+      }
     } finally {
       setLoading(false);
-      // setRetrying(false); // Remove this, handled in retryWithBackoff
     }
   }, [input, apiAvailable, logMessage, loading, handleApiError, setError, bot]);
 
@@ -450,7 +473,8 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         inputRef={inputRef} audioEnabled={audioEnabled}
         onAudioToggle={handleAudioToggle}
       />
-      <ChatStatus error={error ?? ""} retrying={retrying} />
+      {/* Prefer introError if present, else error */}
+      <ChatStatus error={introError ?? error ?? ""} retrying={retrying} />
       <ApiUnavailableModal show={!apiAvailable} />
     </div>
   );
