@@ -27,7 +27,7 @@
     "eslint-config-next": "^15.3.5",
     "lru-cache": "^11.1.0",
     "minimatch": "^10.0.3",
-    "next": "^15.3.5",
+    "next": "^15.4.2",
     "node-fetch": "^3.3.2",
     "openai": "^5.10.1",
     "react": "^19.1.0",
