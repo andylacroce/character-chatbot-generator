@@ -9,11 +9,11 @@
  * @module BotCreator
  */
 
-import React, { useState, useRef, useEffect, useContext } from "react";
-import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
+import React, { useRef, useEffect, useContext } from "react";
 import { DarkModeContext } from "./DarkModeContext";
 import styles from "./styles/BotCreator.module.css";
 import DarkModeToggle from "./DarkModeToggle";
+import { useBotCreation } from "./useBotCreation";
 
 interface Bot {
   name: string;
@@ -42,116 +42,21 @@ const progressSteps = [
   }
 ];
 
+
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
-  const [input, setInput] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState<string | null>(null);
-  const [randomizing, setRandomizing] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { darkMode } = useContext(DarkModeContext);
-  const cancelRequested = useRef(false);
-  const lastRandomNameRef = useRef<string>("");
+  const {
+    input, setInput, error, loading, progress,
+    randomizing, loadingMessage,
+    handleCreate, handleCancel, handleRandomCharacter
+  } = useBotCreation(onBotCreated);
 
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
   }, []);
-
-  const handleCreate = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!input.trim()) {
-      setError("Please enter a name or character.");
-      return;
-    }
-    setError("");
-    setLoading(true);
-    setProgress("personality");
-    setLoadingMessage(null);
-    cancelRequested.current = false;
-    try {
-      const bot = await generateBotDataWithProgressCancelable(
-        input.trim(),
-        setProgress,
-        setLoadingMessage,
-        cancelRequested
-      );
-      if (!cancelRequested.current) {
-        setProgress(null);
-        setLoadingMessage(null);
-        onBotCreated(bot);
-      }
-    } catch {
-      if (!cancelRequested.current) {
-        setError("Failed to generate character. Please try again.");
-        setProgress(null);
-        setLoadingMessage(null);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    cancelRequested.current = true;
-    setLoading(false);
-    setProgress(null);
-  };
-
-  // Track a longer history of recent random names (in-memory, per session)
-  const recentRandomNames: string[] = [];
-  const RECENT_HISTORY_LIMIT = 10;
-
-  async function getRandomCharacterNameAvoidRepeat(lastName: string, maxTries = 3): Promise<{ name: string }> {
-    let tries = 0;
-    let name = lastName;
-    while (tries < maxTries) {
-      try {
-        // Pass recent history to API as exclusions
-        const exclude = [...recentRandomNames, lastName].filter(Boolean).join(",");
-        const res = await fetch(`/api/random-character?cb=${Date.now()}-${Math.random()}&exclude=${encodeURIComponent(exclude)}`);
-        const data = await res.json();
-        if (res.ok && data && typeof data.name === "string" && data.name.trim() && !recentRandomNames.includes(data.name.trim())) {
-          name = data.name.replace(/^\[STATIC\]\s*/, '').trim();
-          // Update recent history
-          recentRandomNames.push(name);
-          if (recentRandomNames.length > RECENT_HISTORY_LIMIT) recentRandomNames.shift();
-          return { name };
-        }
-        // If fallback, still check for repeat
-        if (data && typeof data.name === "string" && data.name.trim()) {
-          name = data.name.trim();
-        }
-      } catch {
-        // Always fallback to 'Gandalf' if API fails
-        name = 'Gandalf';
-        if (name.toLowerCase() !== lastName.toLowerCase() && !recentRandomNames.map(n => n.toLowerCase()).includes(name.toLowerCase())) {
-          recentRandomNames.push(name);
-          if (recentRandomNames.length > RECENT_HISTORY_LIMIT) recentRandomNames.shift();
-          return { name };
-        }
-      }
-      tries++;
-    }
-    // If all tries fail, return whatever we got (even if repeated)
-    return { name };
-  }
-
-  const handleRandomCharacter = async () => {
-    setRandomizing(true);
-    setError("");
-    try {
-      const { name } = await getRandomCharacterNameAvoidRepeat(lastRandomNameRef.current);
-      setInput(name);
-      lastRandomNameRef.current = name;
-    } catch {
-      setError("Failed to get random character");
-    } finally {
-      setRandomizing(false);
-    }
-  };
 
   const currentStep = progressSteps.find((s) => s.key === progress);
   const isBusy = loading || randomizing;
@@ -238,7 +143,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
               className={styles.createButton}
               style={{ marginTop: 16, maxWidth: 48, minWidth: 48, minHeight: 48, maxHeight: 48, width: 48, height: 48, borderRadius: '50%' }}
               aria-label="Cancel"
-              onClick={handleCancel}
+            onClick={handleCancel}
             >
               {/* Modern X/cancel SVG icon */}
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -261,83 +166,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   );
 };
 
-// Helper: cancelable version of generateBotDataWithProgress
-/**
- * Generates bot data (personality, avatar, voice) with progress callbacks and cancellation support.
- * @param {string} originalInputName - The character name input by the user.
- * @param {(step: string) => void} onProgress - Callback for progress step updates.
- * @param {React.MutableRefObject<boolean>} cancelRequested - Ref to signal cancellation.
- * @returns {Promise<Bot>} The generated bot object.
- */
-async function generateBotDataWithProgressCancelable(
-  originalInputName: string,
-  onProgress: (step: string) => void,
-  setLoadingMessage: (msg: string | null) => void,
-  cancelRequested: React.MutableRefObject<boolean>
-): Promise<Bot> {
-  let personality = `You are ${originalInputName}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
-  let correctedName = originalInputName;
-  onProgress("personality");
-  setLoadingMessage("Creating personality");
-  if (cancelRequested.current) throw new Error("cancelled");
-  try {
-    setLoadingMessage("Creating personality");
-    const personalityRes = await fetch("/api/generate-personality", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: originalInputName }),
-    });
-    if (cancelRequested.current) throw new Error("cancelled");
-    if (personalityRes.ok) {
-      const data = await personalityRes.json();
-      if (data.personality) personality = data.personality;
-      if (data.correctedName) correctedName = data.correctedName;
-    }
-  } catch { }
-  onProgress("avatar");
-  setLoadingMessage("Generating portrait");
-  let avatarUrl = "/silhouette.svg";
-  let gender: string | null = null;
-  if (cancelRequested.current) throw new Error("cancelled");
-  try {
-    setLoadingMessage("Generating portrait");
-    const avatarRes = await fetch("/api/generate-avatar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: correctedName }),
-    });
-    if (cancelRequested.current) throw new Error("cancelled");
-    if (avatarRes.ok) {
-      const data = await avatarRes.json();
-      if (data.avatarUrl) {
-        avatarUrl = data.avatarUrl;
-        if (data.avatarUrl === "/silhouette.svg") {
-          setLoadingMessage("Using default image");
-        }
-      }
-      gender = data.gender || null;
-    } else {
-      setLoadingMessage("Using default image");
-    }
-  } catch {
-    setLoadingMessage("Using default image");
-  }
-  onProgress("voice");
-  setLoadingMessage("Selecting voice");
-  let voiceConfig = null;
-  if (cancelRequested.current) throw new Error("cancelled");
-  try {
-    voiceConfig = await api_getVoiceConfigForCharacter(correctedName, gender);
-  } catch {
-    setLoadingMessage("Using default voice");
-  }
-  if (cancelRequested.current) throw new Error("cancelled");
-  // Defensive: If voiceConfig is null, throw error to prevent inconsistent chat experience
-  if (!voiceConfig) {
-    throw new Error("Failed to generate a consistent voice for this character. Please try again.");
-  }
-  return { name: correctedName, personality, avatarUrl, voiceConfig, gender };
-}
 
 export type { Bot };
 export default BotCreator;
