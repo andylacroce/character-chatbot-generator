@@ -143,7 +143,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
               className={styles.createButton}
               style={{ marginTop: 16, maxWidth: 48, minWidth: 48, minHeight: 48, maxHeight: 48, width: 48, height: 48, borderRadius: '50%' }}
               aria-label="Cancel"
-            onClick={handleCancel}
+              onClick={handleCancel}
             >
               {/* Modern X/cancel SVG icon */}
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
