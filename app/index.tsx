@@ -9,6 +9,7 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import { Bot } from "./components/BotCreator";
+import { getValidBotFromStorage } from "../src/utils/getValidBotFromStorage";
 
 /**
  * Dynamically import the ChatPage component with server-side rendering enabled.
@@ -33,29 +34,22 @@ const BotCreator = dynamic(() => import("./components/BotCreator"), { ssr: false
  * @returns {JSX.Element} The rendered ChatPage component
  */
 const Home = () => {
+
   // Add state for bot selection at the top level
   const [bot, setBot] = React.useState<Bot | null>(null);
   const [loadingBot, setLoadingBot] = React.useState(true);
 
-  // Restore bot from localStorage on mount
+  // Restore bot from localStorage on mount, using utility
   React.useEffect(() => {
-    try {
-      const saved = localStorage.getItem("chatbot-bot");
-      if (saved) {
-        setBot(JSON.parse(saved));
-      }
-    } catch {
-      // Remove unused variable 'e' as reported by the linter.
-    }
+    setBot(getValidBotFromStorage());
     setLoadingBot(false);
   }, []);
 
-  // Save bot to localStorage whenever it changes
+  // Save bot to localStorage whenever it changes, with timestamp
   React.useEffect(() => {
     if (bot) {
       localStorage.setItem("chatbot-bot", JSON.stringify(bot));
-    } else {
-      localStorage.removeItem("chatbot-bot");
+      localStorage.setItem("chatbot-bot-timestamp", Date.now().toString());
     }
   }, [bot]);
 
