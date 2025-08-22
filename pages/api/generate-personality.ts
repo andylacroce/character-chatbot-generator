@@ -16,12 +16,19 @@ import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") {
+    res.status(405).end();
+    return;
+  }
   const { name: originalName } = req.body;
-  if (!originalName) return res.status(400).json({ error: "Name required" });
+  if (!originalName) {
+    res.status(400).json({ error: "Name required" });
+    return;
+  }
   logEvent("info", "personality_prompt_generated", "Personality prompt generated", sanitizeLogMeta({
     name: originalName
   }));
   const concisePrompt = `You are ${originalName}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
-  return res.status(200).json({ personality: concisePrompt, correctedName: originalName });
+  res.status(200).json({ personality: concisePrompt, correctedName: originalName });
+  return;
 }

@@ -18,9 +18,15 @@ import type { OpenAIImageGenerateParams } from "../../src/types/openai-image";
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") {
+    res.status(405).end();
+    return;
+  }
   const { name } = req.body;
-  if (!name) return res.status(400).json({ error: "Name required" });
+  if (!name) {
+    res.status(400).json({ error: "Name required" });
+    return;
+  }
   let genderOut: string | null = null;
   try {
     // Move OpenAI client instantiation inside the handler for better error coverage
@@ -214,21 +220,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } catch (err) {
           logEvent("error", "avatar_image_fallback_error", "OpenAI image generation error (fallback)", sanitizeLogMeta({ model: imageModels.fallback, error: err instanceof Error ? err.message : String(err) }));
           logEvent("warn", "avatar_image_fallback_failed", "Fallback image model also failed, using silhouette", sanitizeLogMeta({ model: imageModels.fallback, error: err instanceof Error ? err.message : String(err) }));
-          return res.status(200).json({ avatarUrl: "/silhouette.svg" });
+          res.status(200).json({ avatarUrl: "/silhouette.svg" });
+          return;
         }
       }
       if (!avatarUrl) {
         logEvent("error", "avatar_image_none", "No image returned from OpenAI, using silhouette", sanitizeLogMeta({ model: imageModels.primary }));
-        return res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
+        res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
+        return;
       }
       // Only return the image URL or data URL to the client
-      return res.status(200).json({ avatarUrl, gender: genderOut });
+      res.status(200).json({ avatarUrl, gender: genderOut });
+      return;
     } catch (e) {
       logEvent("error", "avatar_unhandled_error", "Unhandled error in generate-avatar", sanitizeLogMeta({ error: e instanceof Error ? e.message : String(e) }));
-      return res.status(200).json({ avatarUrl: "/silhouette.svg" });
+      res.status(200).json({ avatarUrl: "/silhouette.svg" });
+      return;
     }
   } catch (e) {
     logEvent("error", "avatar_unhandled_error", "Unhandled error in generate-avatar", sanitizeLogMeta({ error: e instanceof Error ? e.message : String(e) }));
-    return res.status(200).json({ avatarUrl: "/silhouette.svg" });
+    res.status(200).json({ avatarUrl: "/silhouette.svg" });
+    return;
   }
 }

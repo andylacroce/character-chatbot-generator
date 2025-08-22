@@ -102,7 +102,8 @@ export default async function handler(
   if (req.method !== "POST") {
     logger.info(`[Chat API] 405 Method Not Allowed for ${req.method} | requestId=${requestId}`);
     res.setHeader("Allow", ["POST"]);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return;
   }
   try {
     const userMessage = req.body.message;
@@ -110,7 +111,8 @@ export default async function handler(
     const botName = req.body.botName || "Character";
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required | requestId=${requestId}`);
-      return res.status(400).json({ error: "Message is required", requestId });
+      res.status(400).json({ error: "Message is required", requestId });
+      return;
     }
 
     // Get user IP for logging/location
@@ -198,7 +200,8 @@ export default async function handler(
         } catch (error) {
           logger.error("Text-to-Speech API error (cache hit):", error);
           const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-          return res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+          res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+          return;
         }
       }
       // Ensure .txt file is always written and matches reply
@@ -235,7 +238,8 @@ export default async function handler(
     ]);
     if (result && typeof result === "object" && "timeout" in result) {
       logger.info(`[Chat API] 408 Request Timeout | requestId=${requestId}`);
-      return res.status(408).json({ reply: "Request timed out.", requestId });
+      res.status(408).json({ reply: "Request timed out.", requestId });
+      return;
     }
     if (!isOpenAIResponse(result)) {
       logger.info(`[Chat API] 500 Internal Server Error: Invalid OpenAI response | requestId=${requestId}`);
@@ -305,7 +309,8 @@ export default async function handler(
       } catch (error) {
         logger.error("Text-to-Speech API error:", error);
         const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        return res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+        res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+        return;
       }
     }
     // --- Ensure .txt file is always written and matches reply ---
@@ -330,6 +335,7 @@ export default async function handler(
       audioFileUrl,
       requestId
     });
+    return;
   } catch (error) {
     logger.error(`API error | requestId=${requestId}:`, error);
     const errorMessage =
@@ -340,5 +346,6 @@ export default async function handler(
       error: errorMessage,
       requestId
     });
+    return;
   }
 }

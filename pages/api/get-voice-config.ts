@@ -16,13 +16,21 @@ import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") {
+    res.status(405).end();
+    return;
+  }
   const { name, gender } = req.body;
-  if (!name) return res.status(400).json({ error: "Name required" });
+  if (!name) {
+    res.status(400).json({ error: "Name required" });
+    return;
+  }
   try {
     const config = await getVoiceConfigForCharacter(name, gender);
     res.status(200).json(config);
+    return;
   } catch {
     res.status(500).json({ error: "Failed to get voice config" });
+    return;
   }
 }

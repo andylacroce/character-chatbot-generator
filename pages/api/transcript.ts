@@ -21,7 +21,8 @@ export default async function handler(
   if (req.method !== "POST") {
     logger.info(`[Transcript API] 405 Method Not Allowed for ${req.method}`);
     res.setHeader("Allow", ["POST"]);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return;
   }
 
   // Expect messages directly from JSON body (sent by downloadTranscript utility)
@@ -32,7 +33,8 @@ export default async function handler(
     logger.error(
       "[Transcript API] Invalid request: Messages array required in JSON body.",
     );
-    return res.status(400).json({ error: "Messages array required" });
+    res.status(400).json({ error: "Messages array required" });
+    return;
   }
 
   logger.info(`[Transcript API] Received messages for download: ${messages.length}`);

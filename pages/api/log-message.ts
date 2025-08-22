@@ -82,7 +82,8 @@ export default async function handler(
       requestId
     }));
     res.setHeader("Allow", ["POST"]);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return;
   }
   try {
     const { sender, text, sessionId, sessionDatetime } = req.body;
@@ -95,12 +96,13 @@ export default async function handler(
       logEvent("warn", "log_api_missing_fields", "Missing required fields", sanitizeLogMeta({
         requestId
       }));
-      return res
+      res
         .status(400)
         .json({
           error: "Sender, text, sessionId, and sessionDatetime required",
           requestId
         });
+      return;
     }
 
     // Validate input types and lengths BEFORE sanitizing
@@ -109,28 +111,32 @@ export default async function handler(
         sender,
         requestId
       }));
-      return res.status(400).json({ error: "Invalid sender", requestId });
+      res.status(400).json({ error: "Invalid sender", requestId });
+      return;
     }
     if (typeof text !== "string" || text.length > 2000) {
       logEvent("warn", "log_api_invalid_text", "Invalid text", sanitizeLogMeta({
         textLength: typeof text === "string" ? text.length : undefined,
         requestId
       }));
-      return res.status(400).json({ error: "Invalid text", requestId });
+      res.status(400).json({ error: "Invalid text", requestId });
+      return;
     }
     if (typeof sessionId !== "string" || sessionId.length > 100) {
       logEvent("warn", "log_api_invalid_sessionId", "Invalid sessionId", sanitizeLogMeta({
         sessionId,
         requestId
       }));
-      return res.status(400).json({ error: "Invalid sessionId", requestId });
+      res.status(400).json({ error: "Invalid sessionId", requestId });
+      return;
     }
     if (typeof sessionDatetime !== "string" || sessionDatetime.length > 30) {
       logEvent("warn", "log_api_invalid_sessionDatetime", "Invalid sessionDatetime", sanitizeLogMeta({
         sessionDatetime,
         requestId
       }));
-      return res.status(400).json({ error: "Invalid sessionDatetime", requestId });
+      res.status(400).json({ error: "Invalid sessionDatetime", requestId });
+      return;
     }
 
     // Sanitize sender and text to prevent XSS in logs
@@ -202,7 +208,8 @@ export default async function handler(
         });
       } catch (error) {
         logger.error("[Log API] Error appending to Vercel Blob:", error);
-        return res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({ error: "Internal Server Error" });
+        return;
       }
     } else {
       // Append to local file
@@ -221,7 +228,8 @@ export default async function handler(
         fs.appendFileSync(resolvedFilePath, logEntry, "utf8");
       } catch (error) {
         logger.error("[Log API] Error appending to local file:", error);
-        return res.status(500).json({ error: "Internal Server Error" });
+        res.status(500).json({ error: "Internal Server Error" });
+        return;
       }
     }
     // --- End Append to Log ---
@@ -237,6 +245,7 @@ export default async function handler(
       text: cleanText
     }));
     res.status(200).json({ success: true, requestId });
+    return;
   } catch (error) {
     logger.error("Internal Server Error", {
       event: "log_api_internal_error",
@@ -244,6 +253,7 @@ export default async function handler(
       error: error instanceof Error ? error.message : String(error)
     });
     res.status(500).json({ error: "Internal Server Error", requestId });
+    return;
     logEvent("warn", "log_api_internal_error_info", "Internal Server Error", sanitizeLogMeta({
       requestId
     }));
