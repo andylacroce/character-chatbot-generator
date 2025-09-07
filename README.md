@@ -62,7 +62,7 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
    ```bash
    npm run dev
    ```
-
+   
 5. **Run Tests**
    ```bash
    npm test
@@ -100,6 +100,7 @@ Contributions are welcome! Please:
 - Open an issue for bugs or feature requests
 - Submit pull requests with clear descriptions and relevant tests
 - Follow the existing code style and documentation practices
+
 
 ## License
 
