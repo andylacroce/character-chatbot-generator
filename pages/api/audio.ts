@@ -14,6 +14,8 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 
+// Note: deterministic serialization is implemented in pages/api/chat.ts where it's used for audio URL encoding.
+
 // SYSTEM_PROMPT: Generalize to a Character Chatbot Generator persona
 const SYSTEM_PROMPT = `You are a helpful character chatbot. Respond concisely, helpfully, and in a friendly tone. Use the style, knowledge, and quirks of the selected character. Stay in character at all times.`;
 
@@ -72,7 +74,20 @@ export default async function handler(
     } else {
       // .txt missing or does not match, regenerate audio and update .txt
       try {
-        const voiceConfig = await getVoiceConfigForCharacter(botName);
+        // Prefer explicit voiceConfig passed in query (base64-encoded stable JSON) for deterministic regeneration
+        let voiceConfig: CharacterVoiceConfig | null = null;
+        if (typeof req.query.voiceConfig === 'string' && req.query.voiceConfig) {
+          try {
+            const decoded = Buffer.from(decodeURIComponent(req.query.voiceConfig), 'base64').toString('utf8');
+            voiceConfig = JSON.parse(decoded) as CharacterVoiceConfig;
+          } catch (e) {
+            logEvent('warn', 'audio_voice_decode_failed', 'Failed to decode voiceConfig from query, falling back', sanitizeLogMeta({ botName, err: e }));
+            voiceConfig = null;
+          }
+        }
+        if (!voiceConfig) {
+          voiceConfig = await getVoiceConfigForCharacter(botName);
+        }
         logEvent("info", "audio_voice_selected", "TTS voice config selected", sanitizeLogMeta({
           botName,
           voiceConfig
@@ -145,7 +160,19 @@ export default async function handler(
           txtContent
         }));
         try {
-          const voiceConfig = await getVoiceConfigForCharacter(botName);
+          let voiceConfig: CharacterVoiceConfig | null = null;
+          if (typeof req.query.voiceConfig === 'string' && req.query.voiceConfig) {
+            try {
+              const decoded = Buffer.from(decodeURIComponent(req.query.voiceConfig), 'base64').toString('utf8');
+              voiceConfig = JSON.parse(decoded) as CharacterVoiceConfig;
+            } catch (e) {
+              logEvent('warn', 'audio_voice_decode_failed', 'Failed to decode voiceConfig from query, falling back', sanitizeLogMeta({ botName, err: e }));
+              voiceConfig = null;
+            }
+          }
+          if (!voiceConfig) {
+            voiceConfig = await getVoiceConfigForCharacter(botName);
+          }
           // Determine if Studio voice (robust: check type and name)
           const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
           // Fallback: if type is missing, check name pattern
@@ -267,7 +294,19 @@ export default async function handler(
                 const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
                 fs.writeFileSync(txtFilePath, aiReply, "utf8");
                 // Now TTS
-                const voiceConfig = await getVoiceConfigForCharacter(botName);
+                let voiceConfig: CharacterVoiceConfig | null = null;
+                if (typeof req.query.voiceConfig === 'string' && req.query.voiceConfig) {
+                  try {
+                    const decoded = Buffer.from(decodeURIComponent(req.query.voiceConfig), 'base64').toString('utf8');
+                    voiceConfig = JSON.parse(decoded) as CharacterVoiceConfig;
+                  } catch (e) {
+                    logEvent('warn', 'audio_voice_decode_failed', 'Failed to decode voiceConfig from query, falling back', sanitizeLogMeta({ botName, err: e }));
+                    voiceConfig = null;
+                  }
+                }
+                if (!voiceConfig) {
+                  voiceConfig = await getVoiceConfigForCharacter(botName);
+                }
                 // Determine if Studio voice (robust: check type and name)
                 const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
                 // Fallback: if type is missing, check name pattern

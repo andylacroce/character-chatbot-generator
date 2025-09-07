@@ -33,6 +33,21 @@ if (!apiKey) {
 }
 const openai = new OpenAI({ apiKey });
 
+// Deterministic serializer for objects to ensure identical cache keys across nodes
+function stableStringify(obj: unknown): string {
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(obj as Record<string, unknown>).sort();
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify((obj as Record<string, unknown>)[k])).join(',') + '}';
+}
+
+function getAudioCacheKey(text: string, voiceConfig: Record<string, unknown>) {
+  return crypto.createHash('sha256')
+    .update(text)
+    .update(stableStringify(voiceConfig))
+    .digest('hex');
+}
+
 /**
  * Checks if the given object is a valid OpenAI chat completion response.
  * @param {any} obj - The object to check.
@@ -213,7 +228,8 @@ export default async function handler(
       } catch (err) {
         logger.error("Failed to ensure .txt file for audio reply (cache hit):", err);
       }
-      const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}`;
+      const voiceParam = encodeURIComponent(Buffer.from(stableStringify(selectedVoice)).toString('base64'));
+      const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&voiceConfig=${voiceParam}`;
       return res.status(200).json({
         reply: cachedReply,
         audioFileUrl,
@@ -284,13 +300,7 @@ export default async function handler(
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
     }
-    // --- Utility to hash reply text and voice config for audio caching ---
-    function getAudioCacheKey(text: string, voiceConfig: Record<string, unknown>) {
-      return crypto.createHash("sha256")
-        .update(text)
-        .update(JSON.stringify(voiceConfig))
-        .digest("hex");
-    }
+    // --- Utility: top-level getAudioCacheKey is defined above and used for caching ---
     // --- Audio cache logic for OpenAI response (cache miss path) ---
     const audioCacheKey = getAudioCacheKey(botReply, selectedVoice);
     const audioFileName = `${audioCacheKey}.mp3`;
@@ -329,7 +339,8 @@ export default async function handler(
     );
     logger.info(`[Chat API] 200 OK: Reply and audioFileUrl sent | requestId=${requestId}`);
     // Return audioFileUrl with text param for stateless regeneration
-    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}`;
+    const voiceParam = encodeURIComponent(Buffer.from(stableStringify(selectedVoice)).toString('base64'));
+    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&voiceConfig=${voiceParam}`;
     res.status(200).json({
       reply: botReply,
       audioFileUrl,
