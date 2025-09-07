@@ -44,13 +44,13 @@ console.warn = (...args) => {
 
 // Polyfill performance.markResourceTiming for undici in Jest/jsdom
 global.performance = global.performance || {};
-global.performance.markResourceTiming = global.performance.markResourceTiming || (() => {});
+global.performance.markResourceTiming = global.performance.markResourceTiming || (() => { });
 
 // Mock ResizeObserver for libraries that rely on it (react-window hooks)
 class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe() { }
+  unobserve() { }
+  disconnect() { }
 }
 global.ResizeObserver = global.ResizeObserver || MockResizeObserver;
 
