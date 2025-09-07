@@ -9,7 +9,7 @@
  * @module BotCreator
  */
 
-import React, { useRef, useEffect, useContext } from "react";
+import React, { useRef, useEffect, useContext, useState } from "react";
 import { DarkModeContext } from "./DarkModeContext";
 import styles from "./styles/BotCreator.module.css";
 import DarkModeToggle from "./DarkModeToggle";
@@ -34,7 +34,7 @@ const progressSteps = [
   },
   {
     key: "avatar",
-    label: "Generating portrait"
+    label: "Generating portrait — this may take a minute"
   },
   {
     key: "voice",
@@ -60,6 +60,27 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
 
   const currentStep = progressSteps.find((s) => s.key === progress);
   const isBusy = loading || randomizing;
+  const [elapsed, setElapsed] = useState<number>(0);
+  const [MAX_AVATAR_SECONDS, setMaxAvatarSeconds] = useState<number | null>(null);
+  useEffect(() => {
+    // fetch server-side config (safe subset) so UI matches server timeout
+    let mounted = true;
+    fetch('/api/config')
+      .then(r => r.json())
+      .then((data) => { if (mounted && data && typeof data.avatarTimeoutSeconds === 'number') setMaxAvatarSeconds(data.avatarTimeoutSeconds); })
+      .catch(() => { /* ignore, fall back to 60 */ });
+    return () => { mounted = false; };
+  }, []);
+  useEffect(() => {
+    let timer: number | null = null;
+    if (loading && progress === 'avatar' && MAX_AVATAR_SECONDS !== null) {
+      setElapsed(0);
+      timer = window.setInterval(() => setElapsed((e) => Math.min(e + 1, MAX_AVATAR_SECONDS)), 1000);
+    } else {
+      setElapsed(0);
+    }
+    return () => { if (timer) window.clearInterval(timer); };
+  }, [loading, progress, MAX_AVATAR_SECONDS]);
 
   return (
     <>
@@ -137,7 +158,12 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
         {loading && currentStep && (
           <div className={styles.progressContainer} data-testid="bot-creator-progress">
             <span className={styles.genericSpinner} aria-label="Loading" />
-            <div className={styles.progressText}>{loadingMessage || currentStep.label}</div>
+            <div className={styles.progressText}>
+              {loadingMessage || currentStep.label}
+              {loading && progress === 'avatar' && MAX_AVATAR_SECONDS !== null && (
+                <span style={{ opacity: 0.85 }}>{elapsed < MAX_AVATAR_SECONDS ? ` (${elapsed}s)` : ` (${MAX_AVATAR_SECONDS}s max)`}</span>
+              )}
+            </div>
             <button
               type="button"
               className={styles.createButton}

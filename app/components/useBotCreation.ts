@@ -126,12 +126,12 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             }
         } catch { }
         onProgress("avatar");
-        setLoadingMessage("Generating portrait");
+        setLoadingMessage("Generating portrait — may take up to a minute");
         let avatarUrl = "/silhouette.svg";
         let gender: string | null = null;
         if (cancelRequested.current) throw new Error("cancelled");
         try {
-            setLoadingMessage("Generating portrait");
+            setLoadingMessage("Generating portrait — may take up to a minute");
             const avatarRes = await fetch("/api/generate-avatar", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
