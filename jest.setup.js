@@ -46,6 +46,14 @@ console.warn = (...args) => {
 global.performance = global.performance || {};
 global.performance.markResourceTiming = global.performance.markResourceTiming || (() => {});
 
+// Mock ResizeObserver for libraries that rely on it (react-window hooks)
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+global.ResizeObserver = global.ResizeObserver || MockResizeObserver;
+
 // Mock global fetch to prevent undici TCPWRAP handle leaks in tests
 if (typeof global.fetch === 'undefined') {
   global.fetch = async () => ({ ok: true, status: 200, json: async () => ({}) });
