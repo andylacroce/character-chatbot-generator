@@ -21,7 +21,7 @@
     "@vercel/analytics": "^1.4.1",
     "@vercel/blob": "^1.1.1",
     "@vercel/speed-insights": "^1.2.0",
-    "axios": "^1.11.0",
+    "axios": "^1.12.0",
     "brace-expansion": "^4.0.0",
     "critters": "^0.0.25",
     "eslint-config-next": "^15.5.3",
