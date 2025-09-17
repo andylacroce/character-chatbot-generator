@@ -19,7 +19,7 @@
     "@typescript-eslint/typescript-estree": "^8.44.0",
     "@typescript-eslint/utils": "^8.43.0",
     "@vercel/analytics": "^1.4.1",
-    "@vercel/blob": "^1.1.1",
+    "@vercel/blob": "^2.0.0",
     "@vercel/speed-insights": "^1.2.0",
     "axios": "^1.12.2",
     "brace-expansion": "^4.0.0",
