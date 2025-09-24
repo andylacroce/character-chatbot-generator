@@ -24,7 +24,7 @@
     "axios": "^1.12.2",
     "brace-expansion": "^4.0.0",
     "critters": "^0.0.25",
-    "eslint-config-next": "^15.5.3",
+    "eslint-config-next": "^15.5.4",
     "lru-cache": "^11.2.1",
     "minimatch": "^10.0.3",
     "next": "^15.5.3",
