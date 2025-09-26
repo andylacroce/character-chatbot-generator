@@ -8,7 +8,6 @@
   "githubPages": true,
   "theme": "default",
   "readme": "README.md",
-  "tsconfig": "tsconfig.typedoc.json",
   "entryPointStrategy": "expand",
   "highlightLanguages": [
     "typescript",

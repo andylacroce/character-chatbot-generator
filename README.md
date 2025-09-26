@@ -14,80 +14,6 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 - Logging to Vercel Blob or local file system
 - **All internal API endpoints are public by default**
 
-## How it Works
-
-1. **Character Creation**: Users create a chatbot persona by entering a name or choosing a random character. The app generates a personality, avatar, and voice configuration.
-2. **Chat**: Users chat in real time. The app sends messages to OpenAI's API, receives characterful replies, and synthesizes voice responses using Google TTS.
-3. **Transcript & Logging**: Users can download chat transcripts. All chats can be logged to Vercel Blob or the local file system.
-
-## Setup
-
-1. **Clone & Install**
-   ```bash
-   git clone https://github.com/andylacroce/character-chatbot-generator.git
-   cd character-chatbot-generator
-   npm install
-   ```
-2. **Environment Variables**
-
-   - Create `.env.local`:
-     ```ini
-     OPENAI_API_KEY=your_openai_api_key_here
-     GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
-     VERCEL_BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
-     ```
-   - For Vercel, paste the full JSON string for `GOOGLE_APPLICATION_CREDENTIALS_JSON` and your `VERCEL_BLOB_READ_WRITE_TOKEN` in the dashboard.
-
-   - **Vercel Blob Setup:**
-     - This app can log chat transcripts and other data to Vercel Blob storage.
-     - To enable this, you must set the `VERCEL_BLOB_READ_WRITE_TOKEN` environment variable with a valid token from your Vercel project settings.
-     - See the [Vercel Blob documentation](https://vercel.com/docs/storage/vercel-blob/quickstart) for details on generating a token and managing Blob storage.
-
-3. **Update Middleware for Custom Domains or Ports**
-
-   - The file `middleware.ts` restricts API access to specific origins for security.
-   - If you run the app locally on a different port, domain, or deploy to a different Vercel project, you must update the `allowedOrigins` array in `middleware.ts` to include your new URL(s).
-   - Example:
-     ```ts
-     const allowedOrigins = [
-         'http://localhost:3000',
-         'http://127.0.0.1:3000',
-         'https://your-custom-domain.com', // Add your domain here
-     ];
-     ```
-   - Without this update, API requests from your environment will be blocked with a 403 Forbidden error.
-
-4. **Run Locally**
-
-   ```bash
-   npm run dev
-   ```
-   
-5. **Run Tests**
-   ```bash
-   npm test
-   ```
-   - API endpoint tests automatically mock required environment variables.
-   - All internal API endpoints are tested for public access.
-
-## Project Structure
-````markdown
-# Character Chatbot Generator
-
-A Next.js app featuring a real-time chat interface, character personas, and voice responses via Google Text-to-Speech.
-
-## Features
-
-- Voice responses via Google TTS
-- Chat powered by OpenAI's ChatGPT
-- Built with Next.js & React
-- TypeScript throughout
-- Comprehensive Jest test suite
-- Responsive, accessible design
-- Downloadable chat transcripts
-- Logging to Vercel Blob or local file system
-- **All internal API endpoints are public by default**
-
 ## Project structure
 
 - `app/` - Next.js app & components
@@ -104,70 +30,65 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 ## Setup (local)
 
 1. **Clone & install**
-    ```bash
-    git clone https://github.com/andylacroce/character-chatbot-generator.git
-    cd character-chatbot-generator
-    npm install
-    ```
+   ```bash
+   git clone https://github.com/andylacroce/character-chatbot-generator.git
+   cd character-chatbot-generator
+   npm install
+   ```
 
 2. **Environment variables**
 
-    - Create `.env.local` for local development (example):
-       ```ini
-       OPENAI_API_KEY=your_openai_api_key_here
-       GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
-       VERCEL_BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
-       ```
-    - For Vercel, paste the full JSON string for `GOOGLE_APPLICATION_CREDENTIALS_JSON` and your `VERCEL_BLOB_READ_WRITE_TOKEN` in the Project Settings (see "Deployment" notes below).
+   - Create `.env.local` for local development (example):
+
+   ```ini
+   OPENAI_API_KEY=your_openai_api_key_here
+   GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
+   VERCEL_BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
+   ```
+
+   - For Vercel, paste the full JSON string for `GOOGLE_APPLICATION_CREDENTIALS_JSON` and your `VERCEL_BLOB_READ_WRITE_TOKEN` in the Project Settings (see "Deployment" notes below).
 
 3. **Middleware / CORS**
 
-    - The file `middleware.ts` restricts API access to specific origins for security. If you run the app locally on a different port/domain or deploy to another Vercel project, update the `allowedOrigins` array in `middleware.ts`.
-    - Example:
-       ```ts
-       const allowedOrigins = [
-          'http://localhost:3000',
-          'http://127.0.0.1:3000',
-          'https://your-custom-domain.com',
-       ];
-       ```
+   - The file `middleware.ts` restricts API access to specific origins for security. If you run the app locally on a different port/domain or deploy to another Vercel project, update the `allowedOrigins` array in `middleware.ts`.
+
+   Example:
+
+   ```ts
+   const allowedOrigins = [
+     'http://localhost:3000',
+     'http://127.0.0.1:3000',
+     'https://your-custom-domain.com',
+   ];
+   ```
 
 4. **Run locally**
 
-```bash
-npm run dev
-```
+   ```bash
+   npm run dev
+   ```
 
 5. **Run tests**
 
-```bash
-npm test
-```
+   ```bash
+   npm test
+   ```
 
 ## Testing notes
 
 - The project includes a small manual Jest mock for the `uuid` package at `__mocks__/uuid.js`.
-   - Why: `uuid@13+` is ESM and contains `export` syntax. Transforming ESM node_modules can complicate Jest/Babel config. The mock is a small CommonJS-compatible shim used only for tests to keep them deterministic.
-   - How to remove the mock:
-      1. Configure Babel/Jest to transform `uuid` (the project already whitelists `uuid` in `transformIgnorePatterns`, but you may need to tweak Babel), or
-      2. Pin `uuid` to a CJS-compatible release (not recommended), or
-      3. Replace the mock with a test helper that uses a CJS-safe UUID generator.
-
-## Documentation
-
-- API and utility documentation is generated using TypeDoc and JSDoc comments.
-- The generated HTML docs in `docs/` are not committed to git (see `.gitignore`).
-- To generate documentation locally:
-   ```bash
-   npx typedoc --out docs .
-   ```
+  - Why: `uuid@13+` is ESM and contains `export` syntax. Transforming ESM node_modules can complicate Jest/Babel config. The mock is a small CommonJS-compatible shim used only for tests to keep them deterministic.
+  - How to remove the mock:
+    1. Configure Babel/Jest to transform `uuid` (the project already whitelists `uuid` in `transformIgnorePatterns`, but you may need to tweak Babel), or
+    2. Pin `uuid` to a CJS-compatible release (not recommended), or
+    3. Replace the mock with a test helper that uses a CJS-safe UUID generator.
 
 ## Deployment (Vercel)
 
 - This app runs on Vercel. Provide secrets via Project Settings (Environment Variables):
-   - `OPENAI_API_KEY`
-   - `VERCEL_BLOB_READ_WRITE_TOKEN` (if using Vercel Blob)
-   - `GOOGLE_APPLICATION_CREDENTIALS_JSON` — paste the full service-account JSON as a secret (do not commit `config/gcp-key.json`)
+  - `OPENAI_API_KEY`
+  - `VERCEL_BLOB_READ_WRITE_TOKEN` (if using Vercel Blob)
+  - `GOOGLE_APPLICATION_CREDENTIALS_JSON` — paste the full service-account JSON as a secret (do not commit `config/gcp-key.json`)
 - Ensure server-side API routes that use Node-only SDKs (Google client libraries) are not configured as Edge functions (use the default Node runtime).
 - Set a Node engine (>=18) in `package.json` or in Vercel settings if needed.
 
@@ -177,5 +98,3 @@ Contributions are welcome! Please:
 - Open an issue for bugs or feature requests
 - Submit pull requests with clear descriptions and relevant tests
 - Follow the existing code style and documentation practices
-
-````
