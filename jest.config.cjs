@@ -29,8 +29,12 @@ const customJestConfig = {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
     "^@/(.*)$": "<rootDir>/$1", // Fixes path alias resolution
   },
+  // By default Jest ignores transforming files in node_modules. Newer dependencies (ESM
+  // packages like `uuid@13`) ship `export` syntax and must be transformed by Babel for
+  // Jest to parse them. The pattern below whitelists specific packages while keeping
+  // the default behavior for others. It handles both POSIX and Windows path separators.
   transformIgnorePatterns: [
-    "/node_modules/(?!(lodash-es)/)", // Ensures Jest doesn't ignore ES modules that need transpiling
+    "node_modules[/\\\\]?(?!(lodash-es|uuid)(?:[/\\\\]|$))",
   ],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"], // Ensure test setup is loaded
   testMatch: [
