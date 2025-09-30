@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# This script scans the repository for secrets using custom logic.
+# Ensure this script is executable before running it in workflows.
+
+# Add your secret scanning logic below.
+# Example: Use tools like truffleHog, git-secrets, or custom regex patterns.
+
 # Lightweight secret scanner for staged files or the whole repo.
 # Exits non-zero when likely secrets are found.
 
