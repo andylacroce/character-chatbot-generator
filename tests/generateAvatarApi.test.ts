@@ -158,19 +158,11 @@ describe('generate-avatar API', () => {
         expect(data.avatarUrl).toBeTruthy();
     });
 
-    it('returns 200 and a data URL for gpt-image-1 model', async () => {
-        jest.resetModules();
-        jest.doMock('../src/utils/openaiModelSelector', () => ({
-            getOpenAIModel: (type: "text" | "image") => {
-                if (type === 'text') return 'gpt-3.5-turbo';
-                if (type === 'image') return { primary: 'gpt-image-1', fallback: 'gpt-image-1' };
-                throw new Error('Unknown type');
-            }
-        }));
-        jest.doMock('openai', () => {
+    it('returns fallback silhouette if OpenAI returns empty image data', async () => {
+        jest.mock('openai', () => {
             return jest.fn().mockImplementation(() => ({
                 chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{"race":"Black","gender":"male","other":"basketball player"}' } }] }) } },
-                images: { generate: jest.fn().mockResolvedValue({ data: [{ b64_json: Buffer.from('fakeimg').toString('base64') }] }) }
+                images: { generate: jest.fn().mockResolvedValue({ data: [] }) }
             }));
         });
         const handler = (await import('../pages/api/generate-avatar')).default;
@@ -184,6 +176,6 @@ describe('generate-avatar API', () => {
         } catch (e) {
             data = dataRaw;
         }
-        expect(data.avatarUrl).toMatch(/^data:image\//);
+        expect(data.avatarUrl).toBe('/silhouette.svg');
     });
 });
