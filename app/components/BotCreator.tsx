@@ -106,19 +106,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
         </div>
         <div className={styles.buttonRow + (isBusy ? ' ' + styles.hideMobile : '')}>
           <button
-            type="submit"
-            className={styles.createButton}
-            disabled={isBusy}
-            data-testid="bot-creator-button"
-            aria-label="Create character"
-          >
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-              <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none" />
-              <path d="M10 14h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <path d="M15 11l3 3-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button
             type="button"
             className={styles.randomButton}
             disabled={isBusy}
@@ -135,6 +122,19 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
             </svg>
             <span style={{ display: 'none' }}>🎲</span>
           </button>
+          <button
+            type="submit"
+            className={styles.createButton}
+            disabled={isBusy}
+            data-testid="bot-creator-button"
+            aria-label="Create character"
+          >
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+              <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none" />
+              <path d="M10 14h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M15 11l3 3-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
         {!(loading || randomizing) && (
           <div className={styles.instructionsCentered}>
@@ -142,7 +142,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
               Choose a character name to create your own chatbot. You can invent a new personality or use someone famous.
             </div>
             <div>
-              Press the <b>arrow</b> button to generate your character, or try the <b>dice</b> button for a random suggestion.
+              Enter a character name or click the <b>dice</b> button for a random suggestion, then press the <b>arrow</b> button to generate your character.
             </div>
             <div className={styles.instructionsTip}>
               Explore different names from books, movies, history, or your imagination.
