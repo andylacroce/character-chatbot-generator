@@ -1,4 +1,3 @@
-
 const INITIAL_VISIBLE_COUNT = 20;
 const LOAD_MORE_COUNT = 10;
 
@@ -42,16 +41,27 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
 
     const { playAudio, stopAudio } = useAudioPlayer(audioEnabledRef);
 
+    // Fix TypeScript errors by explicitly typing parameters
+    const profileApiCall = async <T>(label: string, fn: () => Promise<T>): Promise<T> => {
+        const start = performance.now();
+        try {
+            return await fn();
+        } finally {
+            const end = performance.now();
+            console.debug(`${label} took ${end - start}ms`);
+        }
+    };
+
     const logMessage = useCallback(
         async (message: Message) => {
             if (!sessionId || !sessionDatetime) return;
             try {
-                await axios.post("/api/log-message", {
+                await profileApiCall("Log Message", () => axios.post("/api/log-message", {
                     sender: message.sender,
                     text: message.text,
                     sessionId: sessionId,
                     sessionDatetime: sessionDatetime,
-                });
+                }));
             } catch (error) {
                 console.warn("Failed to log message", {
                     event: "client_log_message_failed",
@@ -81,12 +91,12 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                         }
                         return;
                     }
-                    const response = await axios.post("/api/chat", {
+                    const response = await profileApiCall("Fetch Intro", () => axios.post("/api/chat", {
                         message: "Introduce yourself in 2 sentences or less.",
                         personality: bot.personality,
                         botName: bot.name,
                         voiceConfig: bot.voiceConfig
-                    });
+                    }));
                     const introMsg: Message = {
                         sender: bot.name,
                         text: response.data.reply,
@@ -164,11 +174,13 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 setLoading(false);
                 return;
             }
+            console.debug("Calling retryWithBackoff...");
             const response = await retryWithBackoff(
                 () => axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: bot.voiceConfig }),
                 2,
                 800
             );
+            console.debug("retryWithBackoff succeeded.");
             const botReply: Message = {
                 sender: bot.name,
                 text: response.data.reply,
@@ -177,6 +189,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             setMessages((prevMessages) => [...prevMessages, botReply]);
             logMessage(botReply);
         } catch (e) {
+            console.debug("Error caught in sendMessage:", e);
+            console.debug("Error handling block reached in sendMessage.");
+            console.debug("Bot object:", bot);
+            console.debug("Error object:", e);
             const msg = "Failed to send message or generate reply.";
             setError(msg);
             handleApiError(new Error(msg));
