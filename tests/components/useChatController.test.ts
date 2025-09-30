@@ -1,4 +1,4 @@
-import { renderHook, act } from "@testing-library/react-hooks";
+import { renderHook, act } from "@testing-library/react";
 import { useChatController } from "../../app/components/useChatController";
 import axios from "axios";
 import type { Bot } from "../../app/components/BotCreator";
