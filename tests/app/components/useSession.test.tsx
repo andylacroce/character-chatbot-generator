@@ -1,7 +1,6 @@
-
-
 import React from 'react';
 import { render } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { useSession } from '../../../app/components/useSession';
 
 describe('useSession', () => {
@@ -48,13 +47,4 @@ describe('useSession', () => {
         render(<TestComponent onResult={handleResult} />);
     });
 
-    it('returns empty strings on server (window undefined)', () => {
-        // jsdom always defines window, so this test is not meaningful in this environment
-        if (typeof window !== 'undefined') {
-            // Skip this test in jsdom/browser
-            return;
-        }
-
-        // This branch is not testable in jsdom
-    });
 });

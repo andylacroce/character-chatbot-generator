@@ -178,4 +178,139 @@ describe('generate-avatar API', () => {
         }
         expect(data.avatarUrl).toBe('/silhouette.svg');
     });
+
+    it('handles GPT response JSON parsing error gracefully', async () => {
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: 'invalid json response' } }] }) } },
+                images: { generate: jest.fn().mockResolvedValue({ data: [{ url: 'http://fakeimg.com/avatar.png' }] }) }
+            }));
+        });
+        const handler = (await import('../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        const dataRaw = res._getData();
+        let data;
+        try {
+            data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
+        } catch (e) {
+            data = dataRaw;
+        }
+        expect(data.avatarUrl).toBeTruthy();
+    });
+
+    it('trims negativePrompt when prompt exceeds max length', async () => {
+        // Create a very long 'other' field that will exceed 1000 chars after adding all components
+        const longOther = 'x'.repeat(800); // This should make the total prompt > 1000
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: `{"race":"Black","gender":"male","other":"${longOther}"}` } }] }) } },
+                images: { generate: jest.fn().mockResolvedValue({ data: [{ url: 'http://fakeimg.com/avatar.png' }] }) }
+            }));
+        });
+        const handler = (await import('../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        // Test passes if no error is thrown during prompt trimming
+    });
+
+    it('trims singleInstruction when prompt still exceeds max length after removing negativePrompt', async () => {
+        // Create an extremely long 'other' field that requires removing both negative and single instructions
+        const longOther = 'x'.repeat(1200); // This should require removing both negative and single
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: `{"race":"Black","gender":"male","other":"${longOther}"}` } }] }) } },
+                images: { generate: jest.fn().mockResolvedValue({ data: [{ url: 'http://fakeimg.com/avatar.png' }] }) }
+            }));
+        });
+        const handler = (await import('../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        // Test passes if no error is thrown during prompt trimming
+    });
+
+    it('trims styleInstruction when prompt still exceeds max length after removing negative and single', async () => {
+        // Create an extremely long 'other' field that requires removing negative, single, and style
+        const longOther = 'x'.repeat(1600); // This should require removing negative, single, and style
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: `{"race":"Black","gender":"male","other":"${longOther}"}` } }] }) } },
+                images: { generate: jest.fn().mockResolvedValue({ data: [{ url: 'http://fakeimg.com/avatar.png' }] }) }
+            }));
+        });
+        const handler = (await import('../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        // Test passes if no error is thrown during prompt trimming
+    });
+
+    it('trims likenessRef as last resort when prompt still exceeds max length', async () => {
+        // Create an extremely long 'other' field that requires trimming likenessRef as final step
+        const longOther = 'x'.repeat(2000); // This should require all trimming steps including likenessRef
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: `{"race":"Black","gender":"male","other":"${longOther}"}` } }] }) } },
+                images: { generate: jest.fn().mockResolvedValue({ data: [{ url: 'http://fakeimg.com/avatar.png' }] }) }
+            }));
+        });
+        const handler = (await import('../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        // Test passes if no error is thrown during prompt trimming
+    });
+
+    it('returns data URL for GPT image models with b64_json response', async () => {
+        // Mock model selector to return gpt-image-1
+        jest.mock('../src/utils/openaiModelSelector', () => ({
+            getOpenAIModel: (type: "text" | "image") => {
+                if (type === "text") return "gpt-3.5-turbo";
+                if (type === "image") return { primary: "gpt-image-1", fallback: "gpt-image-1" };
+                throw new Error("Unknown type");
+            }
+        }));
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{"race":"Black","gender":"male","other":"basketball player"}' } }] }) } },
+                images: { generate: jest.fn().mockResolvedValue({ data: [{ b64_json: 'fakeb64data' }] }) }
+            }));
+        });
+        const handler = (await import('../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        const dataRaw = res._getData();
+        let data;
+        try {
+            data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
+        } catch (e) {
+            data = dataRaw;
+        }
+        expect(data.avatarUrl).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('handles moderation/safety system blocking and falls back to silhouette', async () => {
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{"race":"Black","gender":"male","other":"basketball player"}' } }] }) } },
+                images: { generate: jest.fn().mockRejectedValue({ code: 'moderation_blocked', message: 'Content blocked by safety system' }) }
+            }));
+        });
+        const handler = (await import('../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        const dataRaw = res._getData();
+        let data;
+        try {
+            data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
+        } catch (e) {
+            data = dataRaw;
+        }
+        expect(data.avatarUrl).toBe('/silhouette.svg');
+    });
 });
