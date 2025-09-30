@@ -200,6 +200,27 @@ describe('generate-avatar API', () => {
         expect(data.avatarUrl).toBeTruthy();
     });
 
+    it('handles GPT response with empty content gracefully', async () => {
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '' } }] }) } },
+                images: { generate: jest.fn().mockResolvedValue({ data: [{ url: 'http://fakeimg.com/avatar.png' }] }) }
+            }));
+        });
+        const handler = (await import('../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Dennis Rodman' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        const dataRaw = res._getData();
+        let data;
+        try {
+            data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
+        } catch (e) {
+            data = dataRaw;
+        }
+        expect(data.avatarUrl).toBeTruthy();
+    });
+
     it('trims negativePrompt when prompt exceeds max length', async () => {
         // Create a very long 'other' field that will exceed 1000 chars after adding all components
         const longOther = 'x'.repeat(800); // This should make the total prompt > 1000

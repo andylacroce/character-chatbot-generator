@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { render, act } from '@testing-library/react';
+import { render, act, waitFor } from '@testing-library/react';
 import { DarkModeContext, DarkModeProvider } from '@/app/components/DarkModeContext';
 
 describe('DarkModeContext', () => {
@@ -48,11 +48,13 @@ describe('DarkModeContext', () => {
       contextValue = useContext(DarkModeContext);
       return <span>Test</span>;
     }
-    render(
-      <DarkModeProvider>
-        <Consumer />
-      </DarkModeProvider>
-    );
+    act(() => {
+      render(
+        <DarkModeProvider>
+          <Consumer />
+        </DarkModeProvider>
+      );
+    });
     expect(contextValue && contextValue.darkMode).toBe(false);
     expect(document.documentElement.classList.contains('dark')).toBe(false);
     expect(localStorage.getItem('darkMode')).toBe('false');
@@ -65,31 +67,38 @@ describe('DarkModeContext', () => {
       contextValue = useContext(DarkModeContext);
       return <span>Test</span>;
     }
-    render(
-      <DarkModeProvider>
-        <Consumer />
-      </DarkModeProvider>
-    );
+    act(() => {
+      render(
+        <DarkModeProvider>
+          <Consumer />
+        </DarkModeProvider>
+      );
+    });
     expect(contextValue && contextValue.darkMode).toBe(true);
     expect(document.documentElement.classList.contains('dark')).toBe(true);
     expect(localStorage.getItem('darkMode')).toBe('true');
   });
 
   it('covers else branch: defaults to dark mode when localStorage returns null', () => {
-    // Ensure localStorage.getItem returns null
+    // Set localStorage to false first, then remove it to trigger the else branch
+    localStorage.setItem('darkMode', 'false');
     localStorage.removeItem('darkMode');
     let contextValue: { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
     function Consumer() {
       contextValue = useContext(DarkModeContext);
       return <span>Test</span>;
     }
-    render(
-      <DarkModeProvider>
-        <Consumer />
-      </DarkModeProvider>
-    );
+    act(() => {
+      render(
+        <DarkModeProvider>
+          <Consumer />
+        </DarkModeProvider>
+      );
+    });
     // The else branch should set darkMode to true when stored is null
     expect(contextValue && contextValue.darkMode).toBe(true);
+    // Also check that DOM is updated
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
   });
 
   it('toggles dark mode and updates DOM/localStorage', () => {
@@ -122,19 +131,19 @@ describe('DarkModeContext', () => {
       return <span>Test</span>;
     }
     expect(() => {
-      render(
-        <DarkModeProvider>
-          <Consumer />
-        </DarkModeProvider>
-      );
+      act(() => {
+        render(
+          <DarkModeProvider>
+            <Consumer />
+          </DarkModeProvider>
+        );
+      });
     }).not.toThrow();
     // Should default to dark mode
     expect(contextValue && contextValue.darkMode).toBe(true);
     // Restore window
     global.window = originalWindow;
-  });
-
-  it('calls default setDarkMode outside provider (for coverage)', () => {
+  });  it('calls default setDarkMode outside provider (for coverage)', () => {
     // Directly call the default setDarkMode for coverage
     expect(() => {
       const { setDarkMode } = (DarkModeContext as any)._currentValue || {};
@@ -152,11 +161,13 @@ describe('DarkModeContext', () => {
       contextValue = useContext(DarkModeContext);
       return <span>Test</span>;
     }
-    render(
-      <DarkModeProvider>
-        <Consumer />
-      </DarkModeProvider>
-    );
+    act(() => {
+      render(
+        <DarkModeProvider>
+          <Consumer />
+        </DarkModeProvider>
+      );
+    });
     // Changing darkMode should not throw (else branch in effect)
     act(() => contextValue && contextValue.setDarkMode(false));
     act(() => contextValue && contextValue.setDarkMode(true));
