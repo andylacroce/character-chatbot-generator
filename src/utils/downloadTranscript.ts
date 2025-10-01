@@ -42,20 +42,29 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
     });
   } catch (err) {
     // Network error
-    throw err;
+    throw new Error(`Network error: ${err instanceof Error ? err.message : String(err)}`);
   }
-  if (!response.ok) throw new Error("Failed to fetch transcript");
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => 'Unknown error');
+    throw new Error(`API error (${response.status}): ${errorText}`);
+  }
   let htmlContent;
   try {
     htmlContent = await response.text();
   } catch (err) {
-    throw err;
+    throw new Error(`Failed to read response: ${err instanceof Error ? err.message : String(err)}`);
   }
-  if (!window.URL || !window.URL.createObjectURL) throw new Error("window.URL.createObjectURL is not available");
+  if (!window.URL || !window.URL.createObjectURL) {
+    throw new Error("Browser does not support required APIs for opening new tabs");
+  }
   const blob = new Blob([htmlContent], { type: "text/html; charset=utf-8" });
   const url = window.URL.createObjectURL(blob);
   const newWindow = window.open(url, "_blank");
-  if (!newWindow) throw new Error("Failed to open new tab - popup blocker may be active");
+  if (!newWindow) {
+    // Clean up the blob URL since we can't use it
+    window.URL.revokeObjectURL(url);
+    throw new Error("Failed to open new tab - popup blocker may be active or browser security settings prevent it");
+  }
   setTimeout(() => {
     if (window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(url);
   }, typeof process !== 'undefined' && process.env.JEST_WORKER_ID ? 0 : 100);

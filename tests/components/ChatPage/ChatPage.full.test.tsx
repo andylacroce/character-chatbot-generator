@@ -89,7 +89,7 @@ describe("ChatPage full feature coverage", () => {
     await userEvent.click(screen.getByLabelText(/open menu/i));
     const downloadBtn = screen.getByLabelText(/download chat transcript/i);
     await userEvent.click(downloadBtn);
-    await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Failed to download transcript."));
+    await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Failed to open transcript: fail"));
     window.alert = originalAlert;
   });
 

@@ -320,9 +320,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     const handleDownloadTranscript = async () => {
         try {
             await downloadTranscript(messages as Message[], { name: bot.name, avatarUrl: bot.avatarUrl });
-        } catch {
-            console.error("Failed to download transcript");
-            alert("Failed to download transcript.");
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+            console.error("Failed to download transcript:", errorMessage);
+            alert(`Failed to open transcript: ${errorMessage}`);
         }
     };
 
