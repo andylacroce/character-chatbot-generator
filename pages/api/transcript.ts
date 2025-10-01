@@ -1,7 +1,7 @@
 // =============================
 // pages/api/transcript.ts
 // Next.js API route for generating and returning a downloadable chat transcript.
-// Accepts POST requests with messages and returns a text file response.
+// Accepts POST requests with messages (up to 10MB) and returns HTML.
 // =============================
 
 import { NextApiRequest, NextApiResponse } from "next";
@@ -42,6 +42,21 @@ export default async function handler(
       "[Transcript API] Invalid request: Messages array required in JSON body.",
     );
     res.status(400).json({ error: "Messages array required" });
+    return;
+  }
+
+  // Validate message count to prevent abuse
+  if (messages.length > 10000) {
+    logger.info(`[Transcript API] 400 Bad Request: Too many messages (${messages.length})`);
+    res.status(400).json({ error: "Too many messages (max 10000)" });
+    return;
+  }
+
+  // Validate total content size to prevent extremely large payloads
+  const totalSize = JSON.stringify(messages).length;
+  if (totalSize > 5 * 1024 * 1024) { // 5MB limit
+    logger.info(`[Transcript API] 400 Bad Request: Transcript too large (${totalSize} bytes)`);
+    res.status(400).json({ error: "Transcript too large (max 5MB)" });
     return;
   }
 
