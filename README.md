@@ -10,7 +10,7 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 - TypeScript throughout
 - Comprehensive Jest test suite
 - Responsive, accessible design
-- Downloadable chat transcripts
+- HTML chat transcripts with character images (opens in new tabs)
 - Logging to Vercel Blob or local file system
 - **All internal API endpoints are public by default**
 
@@ -31,7 +31,17 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
    - Automatically start generating the character
 
 2. **Chat**: Users chat in real time. The app sends messages to OpenAI's API, receives characterful replies, and synthesizes voice responses using Google TTS.
-3. **Transcript & Logging**: Users can download chat transcripts. All chats can be logged to Vercel Blob or the local file system.
+3. **Transcript & Logging**: Users can view chat transcripts as formatted HTML pages with character images in new browser tabs. All chats can be logged to Vercel Blob or the local file system.
+
+## Transcript Feature
+
+The app provides a rich HTML transcript feature that opens in new browser tabs:
+
+- **Format**: Clean HTML with responsive styling and character avatars
+- **Access**: Click the transcript button in the chat header to open in a new tab
+- **Filename**: Browser tab title shows "{Character Name} transcript {datetime}"
+- **Content**: Includes all chat messages with proper formatting and character images
+- **Browser Compatibility**: Works on all modern browsers (may be blocked by popup blockers)
 
 ## Setup (local)
 
