@@ -52,6 +52,49 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         audioEnabledRef.current = audioEnabled;
     }, [audioEnabled]);
 
+    // Reset state when bot changes
+    useEffect(() => {
+        // Reset messages to load the new bot's chat history
+        const newChatHistoryKey = `chatbot-history-${bot.name}`;
+        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+            try {
+                const saved = localStorage.getItem(newChatHistoryKey);
+                if (saved) {
+                    setMessages(JSON.parse(saved));
+                } else {
+                    setMessages([]);
+                }
+            } catch {
+                setMessages([]);
+            }
+        } else {
+            setMessages([]);
+        }
+
+        // Reset intro sent flag so new character gets introduction
+        introSentRef.current = false;
+
+        // Clear any previous errors
+        setIntroError(null);
+        setError("");
+
+        // Reset retrying state
+        setRetrying(false);
+
+        // Reset input
+        setInput("");
+
+        // Reset loading state
+        setLoading(false);
+
+        // Reset visible count
+        setVisibleCount(INITIAL_VISIBLE_COUNT);
+
+        // Reset last played audio hash for new character
+        lastPlayedAudioHashRef.current = null;
+
+    }, [bot.name]); // Only depend on bot.name to avoid unnecessary resets
+
     const { playAudio, stopAudio } = useAudioPlayer(audioEnabledRef);
 
     // Fix TypeScript errors by explicitly typing parameters
