@@ -315,6 +315,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     const lastPlayedAudioHashRef = useRef<string | null>(null);
     useEffect(() => {
         let cancelled = false;
+        const abortController = new AbortController();
         if (!audioEnabledRef.current) return;
         if (messages.length === 0) return;
         const lastMsg = messages[messages.length - 1];
@@ -331,16 +332,21 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         ) {
             (async () => {
                 if (!cancelled) {
-                    await playAudio(lastMsg.audioFileUrl!);
+                    await playAudio(lastMsg.audioFileUrl!, abortController.signal);
                     lastPlayedAudioHashRef.current = lastMsgHash;
                     if (typeof window !== 'undefined') {
                         sessionStorage.setItem(`lastPlayedAudioHash-${bot.name}`, lastMsgHash);
                     }
                 }
-            })();
+            })().catch((err) => {
+                if (err.name !== 'AbortError') {
+                    console.error('Audio playback error:', err);
+                }
+            });
         }
         return () => {
             cancelled = true;
+            abortController.abort();
             stopAudio();
         };
     }, [messages, bot.name, playAudio, stopAudio]);

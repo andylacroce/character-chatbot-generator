@@ -111,7 +111,7 @@ afterAll(() => {
 describe('useAudioPlayer', () => {
   // Helper test component to expose the hook
   interface TestComponentHandles {
-    playAudio: (src: string) => Promise<HTMLAudioElement | null>;
+    playAudio: (src: string, signal?: AbortSignal) => Promise<HTMLAudioElement | null>;
     audioRef: React.MutableRefObject<HTMLAudioElement | null>;
   }
   interface TestComponentProps {

@@ -69,7 +69,7 @@ describe("ChatPage branch coverage edge cases", () => {
         fireEvent.change(input, { target: { value: "Hi" } });
         fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
         await waitFor(() => {
-            expect(playAudio).toHaveBeenCalledWith("audio.mp3");
+            expect(playAudio).toHaveBeenCalledWith("audio.mp3", expect.any(AbortSignal));
         });
     });
 

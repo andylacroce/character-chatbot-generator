@@ -9,7 +9,7 @@ import { useRef, useCallback } from "react";
 /**
  * Custom hook to handle audio playback for chat messages.
  * Ensures only one audio plays at a time and respects an audioEnabled ref.
- * Returns playAudio(audioFileUrl: string) and audioRef.
+ * Returns playAudio(audioFileUrl: string, signal?: AbortSignal) and audioRef.
  */
 export function useAudioPlayer(
   audioEnabledRef: React.MutableRefObject<boolean>,
@@ -26,7 +26,7 @@ export function useAudioPlayer(
   const audioContextRef = useRef<AudioContext | null>(null);
 
   // Update useCallback dependencies
-  const playAudio = useCallback(async (src: string) => {
+  const playAudio = useCallback(async (src: string, signal?: AbortSignal) => {
     if (!audioEnabledRef.current) {
       // Stop any previous Web Audio playback
       if (sourceRef.current) {
@@ -65,7 +65,7 @@ export function useAudioPlayer(
     }
     const audioContext = audioContextRef.current;
     // Fetch audio data
-    const response = await fetch(src);
+    const response = await fetch(src, { signal });
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
     // Create a new buffer with silence prepended
