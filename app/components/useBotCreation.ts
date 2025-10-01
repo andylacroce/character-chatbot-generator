@@ -166,6 +166,12 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         if (!voiceConfig) {
             throw new Error("Failed to generate a consistent voice for this character. Please try again.");
         }
+        // Store voiceConfig in sessionStorage for consistency across messages
+        if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
+            try {
+                sessionStorage.setItem(`voiceConfig-${correctedName}`, JSON.stringify(voiceConfig));
+            } catch { }
+        }
         return { name: correctedName, personality, avatarUrl, voiceConfig, gender };
     }
 

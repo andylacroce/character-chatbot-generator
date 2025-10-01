@@ -201,6 +201,18 @@ describe("ChatPage branch coverage edge cases", () => {
     }, 10000); // Reduced timeout to 10,000 ms
 
     it("shows error if bot.voiceConfig is missing in sendMessage", async () => {
+        // Mock sessionStorage to ensure getVoiceConfig returns null
+        const mockSessionStorage = {
+            getItem: jest.fn(() => null),
+            setItem: jest.fn(),
+            removeItem: jest.fn(),
+            clear: jest.fn(),
+        };
+        Object.defineProperty(window, 'sessionStorage', {
+            value: mockSessionStorage,
+            writable: true,
+        });
+
         const botNoVoice = { ...mockBot, voiceConfig: null };
         render(<ChatPage bot={botNoVoice} />);
         const input = screen.getByRole("textbox");
@@ -211,6 +223,118 @@ describe("ChatPage branch coverage edge cases", () => {
             expect(errorDiv).toBeInTheDocument();
             if (!errorDiv) throw new Error("errorDiv not found");
             expect(errorDiv.textContent).toMatch(/voice configuration missing for this character/i);
+        });
+    });
+
+    describe('voice config retrieval from sessionStorage', () => {
+        let mockSessionStorage: any;
+
+        beforeEach(() => {
+            // Mock sessionStorage
+            mockSessionStorage = {
+                setItem: jest.fn(),
+                getItem: jest.fn(),
+                removeItem: jest.fn(),
+                clear: jest.fn(),
+            };
+            Object.defineProperty(window, 'sessionStorage', {
+                value: mockSessionStorage,
+                writable: true,
+            });
+        });
+
+        it('retrieves voice config from sessionStorage when available', async () => {
+            const storedVoiceConfig = {
+                languageCodes: ['en-GB'],
+                name: 'en-GB-Wavenet-B',
+                ssmlGender: 1,
+                pitch: 0,
+                rate: 1.0,
+                type: 'Wavenet'
+            };
+
+            mockSessionStorage.getItem.mockReturnValue(JSON.stringify(storedVoiceConfig));
+
+            render(<ChatPage bot={mockBot} />);
+            const input = screen.getByRole("textbox");
+
+            // Send a message to trigger voice config retrieval
+            fireEvent.change(input, { target: { value: "Hello" } });
+            fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+            await waitFor(() => {
+                expect(axios.post).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
+                    voiceConfig: storedVoiceConfig
+                }));
+            });
+
+            // Should not store voice config again since it was already in sessionStorage
+            expect(mockSessionStorage.setItem).not.toHaveBeenCalledWith(
+                'voiceConfig-Gandalf',
+                JSON.stringify(storedVoiceConfig)
+            );
+        });
+
+        it('stores voice config in sessionStorage when not present and bot has one', async () => {
+            mockSessionStorage.getItem.mockReturnValue(null); // Not in sessionStorage
+
+            render(<ChatPage bot={mockBot} />);
+            const input = screen.getByRole("textbox");
+
+            // Send a message to trigger voice config retrieval
+            fireEvent.change(input, { target: { value: "Hello" } });
+            fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+            await waitFor(() => {
+                expect(axios.post).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
+                    voiceConfig: mockBot.voiceConfig
+                }));
+            });
+
+            // Should store the voice config in sessionStorage
+            expect(mockSessionStorage.setItem).toHaveBeenCalledWith(
+                'voiceConfig-Gandalf',
+                JSON.stringify(mockBot.voiceConfig)
+            );
+        });
+
+        it('falls back to bot.voiceConfig when sessionStorage is empty', async () => {
+            mockSessionStorage.getItem.mockReturnValue(null); // Not in sessionStorage
+
+            render(<ChatPage bot={mockBot} />);
+            const input = screen.getByRole("textbox");
+
+            // Send a message to trigger voice config retrieval
+            fireEvent.change(input, { target: { value: "Hello" } });
+            fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+            await waitFor(() => {
+                expect(axios.post).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
+                    voiceConfig: mockBot.voiceConfig
+                }));
+            });
+        });
+
+        it('handles sessionStorage errors gracefully', async () => {
+            mockSessionStorage.getItem.mockImplementation((key: string) => {
+                if (key === 'voiceConfig-Gandalf') {
+                    throw new Error('sessionStorage error');
+                }
+                return null; // For other keys like sessionId, datetime
+            });
+
+            render(<ChatPage bot={mockBot} />);
+            const input = screen.getByRole("textbox");
+
+            // Send a message to trigger voice config retrieval
+            fireEvent.change(input, { target: { value: "Hello" } });
+            fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+            await waitFor(() => {
+                expect(axios.post).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
+                    voiceConfig: mockBot.voiceConfig
+                }));
+            });
         });
     });
 });

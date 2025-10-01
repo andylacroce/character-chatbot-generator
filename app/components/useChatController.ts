@@ -22,6 +22,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 const stored = sessionStorage.getItem(`voiceConfig-${bot.name}`);
                 if (stored) {
                     return JSON.parse(stored);
+                } else if (bot.voiceConfig) {
+                    // Store in sessionStorage for consistency
+                    sessionStorage.setItem(`voiceConfig-${bot.name}`, JSON.stringify(bot.voiceConfig));
+                    return bot.voiceConfig;
                 }
             } catch { }
         }

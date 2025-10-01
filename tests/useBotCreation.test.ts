@@ -149,6 +149,56 @@ describe('useBotCreation', () => {
       expect(result.current.progress).toBe(null);
       expect(mockOnBotCreated).toHaveBeenCalled();
     });
+
+    it('stores voice config in sessionStorage after successful creation', async () => {
+      // Mock sessionStorage
+      const mockSessionStorage = {
+        setItem: jest.fn(),
+        getItem: jest.fn(),
+        removeItem: jest.fn(),
+        clear: jest.fn(),
+      };
+      Object.defineProperty(window, 'sessionStorage', {
+        value: mockSessionStorage,
+        writable: true,
+      });
+
+      const { result } = renderHook(() => useBotCreation(mockOnBotCreated));
+
+      act(() => {
+        result.current.setInput('Gandalf');
+      });
+
+      await act(async () => {
+        await result.current.handleCreate({ preventDefault: jest.fn() } as any);
+      });
+
+      expect(result.current.loading).toBe(false);
+      expect(result.current.progress).toBe(null);
+      expect(result.current.error).toBe('');
+
+      expect(mockOnBotCreated).toHaveBeenCalledWith({
+        name: 'Gandalf the Grey',
+        personality: 'You are a wise wizard.',
+        avatarUrl: '/gandalf-avatar.jpg',
+        voiceConfig: {
+          voice: 'deep_male_voice',
+          stability: 0.8,
+          similarity_boost: 0.9
+        },
+        gender: 'male'
+      });
+
+      // Verify voice config was stored in sessionStorage
+      expect(sessionStorage.setItem).toHaveBeenCalledWith(
+        'voiceConfig-Gandalf the Grey',
+        JSON.stringify({
+          voice: 'deep_male_voice',
+          stability: 0.8,
+          similarity_boost: 0.9
+        })
+      );
+    });
   });
 
   describe('API failure handling', () => {
