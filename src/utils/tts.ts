@@ -65,6 +65,11 @@ function getGoogleAuthCredentials(): GoogleCredentials | unknown {
 /**
  * Build a google-auth-library GoogleAuth instance when explicit service account credentials are provided.
  * Returns undefined when no explicit credentials are provided so client libraries will use ADC.
+ *
+ * Note: we intentionally construct a GoogleAuth instance (not a raw JWT) so the
+ * @google-cloud client receives a full auth object with the expected runtime
+ * surface (methods such as getUniverseDomain). Passing a plain JWT-like object
+ * or credentials blob directly can cause runtime errors in newer client versions.
  */
 function getGoogleAuthClient(): GoogleAuth | undefined {
   try {

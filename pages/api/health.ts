@@ -64,6 +64,8 @@ export default async function handler(
     }
     const credentials = JSON.parse(creds);
   // Build a GoogleAuth instance when explicit credentials provided, otherwise let ADC take over
+  // Note: construct a GoogleAuth instance (not pass a raw credentials/JWT object)
+  // so the @google-cloud client receives the full auth API it expects at runtime.
     let ttsClient: import('@google-cloud/text-to-speech').TextToSpeechClient;
     if (credentials && credentials.client_email && credentials.private_key) {
       // Build a GoogleAuth instance from the credentials so the client receives
