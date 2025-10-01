@@ -11,6 +11,13 @@ const allowedOrigins = [
 
 export function middleware(req: NextRequest) {
     const origin = req.headers.get('origin') || req.headers.get('referer') || '';
+    const host = req.headers.get('host') || '';
+
+    // Allow requests without origin if they come from our own domain
+    if (origin === '' && host.includes('vercel.app')) {
+        return NextResponse.next();
+    }
+
     if (!allowedOrigins.some((allowed) => {
         if (typeof allowed === 'string') {
             return origin.startsWith(allowed);
