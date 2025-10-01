@@ -518,8 +518,8 @@ export async function getVoiceConfigForCharacter(name: string, genderOverride?: 
   try {
     description = await fetchVoiceDescriptionFromOpenAI(normalized);
   } catch {
-    // fallback to Default if OpenAI fails
-    return CHARACTER_VOICE_MAP['Default'];
+    // fallback to deterministic voice based on name if OpenAI fails
+    description = `A character named ${normalized}`;
   }
   // If genderOverride is provided, convert to SSML_GENDER
   let genderNum: number | undefined = undefined;
