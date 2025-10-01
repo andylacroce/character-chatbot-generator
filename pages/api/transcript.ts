@@ -34,7 +34,7 @@ export default async function handler(
   }
 
   // Expect messages directly from JSON body (sent by downloadTranscript utility)
-  const { messages, exportedAt, bot } = req.body;
+  const { messages, bot } = req.body;
 
   if (!Array.isArray(messages)) {
     logger.info(`[Transcript API] 400 Bad Request: Messages array required`);
@@ -43,6 +43,26 @@ export default async function handler(
     );
     res.status(400).json({ error: "Messages array required" });
     return;
+  }
+
+  // Validate inputs
+  if (bot !== undefined && (typeof bot !== 'object' || bot === null)) {
+    res.status(400).json({ error: "bot must be an object" });
+    return;
+  }
+  if (bot && typeof bot.name !== 'string') {
+    res.status(400).json({ error: "bot.name must be a string" });
+    return;
+  }
+  if (bot && typeof bot.avatarUrl !== 'string') {
+    res.status(400).json({ error: "bot.avatarUrl must be a string" });
+    return;
+  }
+  for (const msg of messages) {
+    if (typeof msg !== 'object' || msg === null || typeof msg.sender !== 'string' || typeof msg.text !== 'string') {
+      res.status(400).json({ error: "Invalid message format" });
+      return;
+    }
   }
 
   // Validate message count to prevent abuse
@@ -145,12 +165,12 @@ export default async function handler(
       <div class="container">
         <h1>Character Chatbot Generator Transcript</h1>
         <div class="header-info">
-          <p><strong>Exported:</strong> ${escapeHtml(exportedAt || datetime)}</p>
+          <p><strong>Exported:</strong> ${datetime}</p>
           <p><strong>Messages:</strong> ${messages.length}</p>
         </div>
         ${bot ? `
           <div style="text-align: center; margin-bottom: 30px;">
-            ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${bot.avatarUrl}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ''}
+            ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${escapeHtml(bot.avatarUrl)}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ''}
             <h2>${escapeHtml(bot.name)}</h2>
           </div>
         ` : ''}
