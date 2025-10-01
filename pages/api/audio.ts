@@ -36,10 +36,19 @@ export default async function handler(
   req: import("next").NextApiRequest,
   res: import("next").NextApiResponse,
 ): Promise<void> {
-  const { file, text: expectedText } = req.query;
+  const { file, text: expectedText, voiceConfig: voiceConfigParam } = req.query;
   const botName = typeof req.query.botName === "string" ? req.query.botName : "Character";
   const gender = typeof req.query.gender === "string" ? req.query.gender : null;
-  const voiceConfig = await getVoiceConfigForCharacter(botName, gender);
+  let voiceConfig: CharacterVoiceConfig;
+  if (typeof voiceConfigParam === "string") {
+    try {
+      voiceConfig = JSON.parse(decodeURIComponent(voiceConfigParam));
+    } catch {
+      voiceConfig = await getVoiceConfigForCharacter(botName, gender);
+    }
+  } else {
+    voiceConfig = await getVoiceConfigForCharacter(botName, gender);
+  }
   if (!file || typeof file !== "string") {
     logEvent("info", "audio_bad_request", "Audio API bad request: file parameter is required", sanitizeLogMeta({
       file,

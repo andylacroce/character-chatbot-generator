@@ -48,8 +48,13 @@ const Home = () => {
     if (nameFromUrl) {
       setLoadingBot(false);
     } else {
-      setBot(getValidBotFromStorage());
+      const loadedBot = getValidBotFromStorage();
+      setBot(loadedBot);
       setLoadingBot(false);
+      // Store voiceConfig in sessionStorage when loading existing bot
+      if (loadedBot?.voiceConfig) {
+        sessionStorage.setItem(`voiceConfig-${loadedBot.name}`, JSON.stringify(loadedBot.voiceConfig));
+      }
     }
   }, [nameFromUrl]);
 
