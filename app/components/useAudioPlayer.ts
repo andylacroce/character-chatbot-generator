@@ -69,7 +69,7 @@ export function useAudioPlayer(
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
     // Create a new buffer with silence prepended
-    const silenceDuration = 2.0; // 2000ms silence (increased from 120ms)
+    const silenceDuration = 0.5; // 500ms silence (reduced from 2000ms)
     const numChannels = audioBuffer.numberOfChannels;
     const sampleRate = audioBuffer.sampleRate;
     const silenceLength = Math.floor(silenceDuration * sampleRate);
