@@ -26,6 +26,7 @@ interface Bot {
 
 interface BotCreatorProps {
   onBotCreated: (bot: Bot) => void;
+  returningToCreator?: boolean;
 }
 
 const progressSteps = [
@@ -44,7 +45,7 @@ const progressSteps = [
 ];
 
 
-const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
+const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreator = false }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { darkMode } = useContext(DarkModeContext);
   const searchParams = useSearchParams();
@@ -74,11 +75,17 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   }, [nameFromUrl, input, setInput]);
 
   useEffect(() => {
-    if (nameFromUrl && input === nameFromUrl && !hasAutoSubmitted && !isBusy) {
+    if (returningToCreator) {
+      setInput('');
+    }
+  }, [returningToCreator, setInput]);
+
+  useEffect(() => {
+    if (nameFromUrl && input === nameFromUrl && !hasAutoSubmitted && !isBusy && !returningToCreator) {
       setHasAutoSubmitted(true);
       handleCreate();
     }
-  }, [nameFromUrl, input, hasAutoSubmitted, isBusy, handleCreate]);
+  }, [nameFromUrl, input, hasAutoSubmitted, isBusy, returningToCreator, handleCreate]);
   useEffect(() => {
     // fetch server-side config (safe subset) so UI matches server timeout
     let mounted = true;

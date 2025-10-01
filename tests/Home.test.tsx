@@ -4,8 +4,10 @@ import { Bot } from '../app/components/BotCreator';
 
 // Mock next/navigation
 const mockSearchParams = new URLSearchParams();
+const mockRouter = { push: jest.fn() };
 jest.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
+  useRouter: () => mockRouter,
 }));
 
 // Mock dynamic imports

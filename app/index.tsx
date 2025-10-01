@@ -7,7 +7,7 @@
 "use client";
 
 import React, { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Bot } from "./components/BotCreator";
 import { getValidBotFromStorage } from "../src/utils/getValidBotFromStorage";
@@ -38,7 +38,9 @@ const Home = () => {
   const [bot, setBot] = React.useState<Bot | null>(null);
   const [loadingBot, setLoadingBot] = React.useState(true);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const nameFromUrl = searchParams?.get('name');
+  const [returningToCreator, setReturningToCreator] = React.useState(false);
 
   // Restore bot from localStorage on mount, using utility
   React.useEffect(() => {
@@ -59,10 +61,22 @@ const Home = () => {
     }
   }, [bot]);
 
-  const handleBackToCharacterCreation = React.useCallback(() => setBot(null), []);
+  const handleBotCreated = React.useCallback((bot: Bot) => {
+    setBot(bot);
+    setReturningToCreator(false);
+  }, []);
+
+  const handleBackToCharacterCreation = React.useCallback(() => {
+    // Clear the bot from localStorage to kill the session
+    localStorage.removeItem("chatbot-bot");
+    localStorage.removeItem("chatbot-bot-timestamp");
+    setBot(null);
+    setReturningToCreator(true);
+    router.push('/');
+  }, [router]);
   if (loadingBot) return null; // Prevent UI flash
   if (!bot) {
-    return <BotCreator onBotCreated={setBot} />;
+    return <BotCreator onBotCreated={handleBotCreated} returningToCreator={returningToCreator} />;
   }
   // Pass bot as prop to ChatPage
   return <ChatPage bot={bot} onBackToCharacterCreation={handleBackToCharacterCreation} />;
