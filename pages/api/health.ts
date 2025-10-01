@@ -63,7 +63,7 @@ export default async function handler(
       creds = fs.readFileSync(creds, "utf8");
     }
     const credentials = JSON.parse(creds);
-    // Build a JWT auth client when explicit credentials provided, otherwise let ADC take over
+  // Build a GoogleAuth instance when explicit credentials provided, otherwise let ADC take over
     let ttsClient: import('@google-cloud/text-to-speech').TextToSpeechClient;
     if (credentials && credentials.client_email && credentials.private_key) {
       // Build a GoogleAuth instance from the credentials so the client receives
@@ -74,6 +74,8 @@ export default async function handler(
       });
       ttsClient = new textToSpeech.TextToSpeechClient({ auth });
     } else {
+      // No explicit credentials found; fallback to ADC for the health check.
+      logEvent("info", "health_tts_adc_fallback", "Falling back to Application Default Credentials (ADC) for TTS client", sanitizeLogMeta({ requestId }));
       ttsClient = new textToSpeech.TextToSpeechClient();
     }
     const [response] = await ttsClient.synthesizeSpeech({

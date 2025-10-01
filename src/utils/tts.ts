@@ -63,7 +63,7 @@ function getGoogleAuthCredentials(): GoogleCredentials | unknown {
 }
 
 /**
- * Build a google-auth-library JWT client when explicit service account credentials are provided.
+ * Build a google-auth-library GoogleAuth instance when explicit service account credentials are provided.
  * Returns undefined when no explicit credentials are provided so client libraries will use ADC.
  */
 function getGoogleAuthClient(): GoogleAuth | undefined {
@@ -101,7 +101,8 @@ function getTTSClient() {
       // the @google-cloud client (avoids runtime errors such as getUniverseDomain missing).
       ttsClient = new textToSpeech.TextToSpeechClient({ auth: authClient });
     } else {
-      // Let the client discover credentials via ADC
+      // Let the client discover credentials via ADC and log this for debugging
+      logger.info('No explicit Google credentials found; falling back to Application Default Credentials (ADC)');
       ttsClient = new textToSpeech.TextToSpeechClient();
     }
   }
