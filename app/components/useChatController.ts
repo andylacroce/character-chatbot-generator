@@ -93,7 +93,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         // Reset last played audio hash for new character
         lastPlayedAudioHashRef.current = null;
 
-    }, [bot.name]); // Only depend on bot.name to avoid unnecessary resets
+    }, [bot.name, setError]); // Only depend on bot.name to avoid unnecessary resets
 
     const { playAudio, stopAudio } = useAudioPlayer(audioEnabledRef);
 
@@ -319,7 +319,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
 
     const handleDownloadTranscript = async () => {
         try {
-            await downloadTranscript(messages as Message[]);
+            await downloadTranscript(messages as Message[], { name: bot.name, avatarUrl: bot.avatarUrl });
         } catch {
             console.error("Failed to download transcript");
             alert("Failed to download transcript.");

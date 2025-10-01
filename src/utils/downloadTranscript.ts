@@ -7,15 +7,16 @@
 import type { Message } from "../types/message";
 
 /**
- * Downloads the chat transcript as a text file by calling the /api/transcript endpoint.
+ * Downloads the chat transcript as an HTML file by calling the /api/transcript endpoint.
  *
  * Validates input, posts messages to the API, and triggers a browser download of the transcript.
  *
  * @param {Array<object>} messages - The array of chat messages to include in the transcript.
+ * @param {object} bot - The bot/character information including name and avatarUrl.
  * @returns {Promise<void>} Resolves when the download is triggered.
  * @throws {Error} If the transcript fetch fails or browser APIs are unavailable.
  */
-export async function downloadTranscript(messages: Array<Record<string, unknown>> | Message[]) {
+export async function downloadTranscript(messages: Array<Record<string, unknown>> | Message[], bot?: { name: string; avatarUrl: string }) {
   if (!Array.isArray(messages)) {
     throw new Error("Transcript must be an array");
   }
@@ -39,7 +40,7 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
     response = await fetch("/api/transcript", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: safeMessages, exportedAt: friendlyTime }),
+      body: JSON.stringify({ messages: safeMessages, exportedAt: friendlyTime, bot }),
     });
   } catch (err) {
     // Network error
@@ -52,7 +53,7 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
   } catch (err) {
     throw err;
   }
-  const filename = `Chat Transcript ${datetime}.txt`;
+  const filename = `Chat Transcript ${datetime}.html`;
   if (!window.URL || !window.URL.createObjectURL) throw new Error("window.URL.createObjectURL is not available");
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");

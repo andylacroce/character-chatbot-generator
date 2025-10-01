@@ -39,19 +39,27 @@ describe('downloadTranscript', () => {
   });
 
   it('calls fetch and triggers download for valid messages', async () => {
-    const blob = new Blob(['test'], { type: 'text/plain' });
+    const blob = new Blob(['<html>test</html>'], { type: 'text/html' });
     fetchMock.mockResolvedValue({
       ok: true,
       blob: () => Promise.resolve(blob),
     });
     const messages = [{ sender: 'User', text: 'Hello' }];
-    await downloadTranscript(messages);
+    const bot = { name: 'TestBot', avatarUrl: '/test-avatar.jpg' };
+    await downloadTranscript(messages, bot);
     // Wait for the setTimeout to flush
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/transcript',
-      expect.objectContaining({ method: 'POST' })
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"messages":[{"sender":"User","text":"Hello"}]')
+      })
     );
+    const callArgs = fetchMock.mock.calls[0][1] as any;
+    const body = JSON.parse(callArgs.body);
+    expect(body.bot).toEqual(bot);
+    expect(typeof body.exportedAt).toBe('string');
     expect(createObjectURL).toHaveBeenCalledWith(blob);
     expect(appendChild).toHaveBeenCalled();
     expect(click).toHaveBeenCalled();
