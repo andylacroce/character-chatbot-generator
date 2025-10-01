@@ -55,8 +55,12 @@ describe('downloadTranscript', () => {
   });
 
   it('throws if response is not ok', async () => {
-    fetchMock.mockResolvedValue({ ok: false });
-    await expect(downloadTranscript([])).rejects.toThrow('Failed to fetch transcript');
+    fetchMock.mockResolvedValue({ 
+      ok: false, 
+      status: 500,
+      text: () => Promise.resolve('Server error')
+    });
+    await expect(downloadTranscript([])).rejects.toThrow('API error (500): Server error');
   });
 
   it('throws if text conversion fails', async () => {
@@ -85,7 +89,7 @@ describe('downloadTranscript', () => {
       ok: true,
       text: () => Promise.resolve('<html>test</html>'),
     });
-    await expect(downloadTranscript([])).rejects.toThrow('window.URL.createObjectURL is not available');
+    await expect(downloadTranscript([])).rejects.toThrow('Browser does not support required APIs for opening new tabs');
     global.URL.createObjectURL = orig;
   });
 });
