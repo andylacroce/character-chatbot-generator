@@ -7,6 +7,7 @@
 "use client";
 
 import React from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Bot } from "./components/BotCreator";
 import { getValidBotFromStorage } from "../src/utils/getValidBotFromStorage";
@@ -38,12 +39,19 @@ const Home = () => {
   // Add state for bot selection at the top level
   const [bot, setBot] = React.useState<Bot | null>(null);
   const [loadingBot, setLoadingBot] = React.useState(true);
+  const searchParams = useSearchParams();
+  const nameFromUrl = searchParams?.get('name');
 
   // Restore bot from localStorage on mount, using utility
   React.useEffect(() => {
-    setBot(getValidBotFromStorage());
-    setLoadingBot(false);
-  }, []);
+    // If name is provided in URL, don't load existing bot
+    if (nameFromUrl) {
+      setLoadingBot(false);
+    } else {
+      setBot(getValidBotFromStorage());
+      setLoadingBot(false);
+    }
+  }, [nameFromUrl]);
 
   // Save bot to localStorage whenever it changes, with timestamp
   React.useEffect(() => {

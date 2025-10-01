@@ -24,6 +24,12 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 ## How it works
 
 1. **Character Creation**: Users create a chatbot persona by entering a name or choosing a random character. The app generates a personality, avatar, and voice configuration.
+
+   **Direct Character Creation via URL**: You can also create a character directly by including a `name` query parameter in the URL. For example: `https://your-domain.com/?name=Sherlock%20Holmes`. This will:
+   - Load the character creation page (even if a character already exists)
+   - Prepopulate the name field with the specified character
+   - Automatically start generating the character
+
 2. **Chat**: Users chat in real time. The app sends messages to OpenAI's API, receives characterful replies, and synthesizes voice responses using Google TTS.
 3. **Transcript & Logging**: Users can download chat transcripts. All chats can be logged to Vercel Blob or the local file system.
 

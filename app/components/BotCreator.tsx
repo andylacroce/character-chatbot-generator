@@ -10,6 +10,7 @@
  */
 
 import React, { useRef, useEffect, useContext, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { DarkModeContext } from "./DarkModeContext";
 import styles from "./styles/BotCreator.module.css";
 import DarkModeToggle from "./DarkModeToggle";
@@ -46,6 +47,8 @@ const progressSteps = [
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { darkMode } = useContext(DarkModeContext);
+  const searchParams = useSearchParams();
+  const nameFromUrl = searchParams?.get('name') || null;
   const {
     input, setInput, error, loading, progress,
     randomizing, loadingMessage,
@@ -62,6 +65,20 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
   const isBusy = loading || randomizing;
   const [elapsed, setElapsed] = useState<number>(0);
   const [MAX_AVATAR_SECONDS, setMaxAvatarSeconds] = useState<number | null>(null);
+  const [hasAutoSubmitted, setHasAutoSubmitted] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (nameFromUrl && !input.trim()) {
+      setInput(nameFromUrl);
+    }
+  }, [nameFromUrl, input, setInput]);
+
+  useEffect(() => {
+    if (nameFromUrl && input === nameFromUrl && !hasAutoSubmitted && !isBusy) {
+      setHasAutoSubmitted(true);
+      handleCreate();
+    }
+  }, [nameFromUrl, input, hasAutoSubmitted, isBusy, handleCreate]);
   useEffect(() => {
     // fetch server-side config (safe subset) so UI matches server timeout
     let mounted = true;
