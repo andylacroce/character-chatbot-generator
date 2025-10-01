@@ -13,6 +13,19 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         return [];
     });
 
+    // Get voiceConfig from sessionStorage, fallback to bot.voiceConfig
+    const getVoiceConfig = useCallback(() => {
+        if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
+            try {
+                const stored = sessionStorage.getItem(`voiceConfig-${bot.name}`);
+                if (stored) {
+                    return JSON.parse(stored);
+                }
+            } catch { }
+        }
+        return bot.voiceConfig;
+    }, [bot.name, bot.voiceConfig]);
+
     const [input, setInput] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
     const [audioEnabled, setAudioEnabled] = useState<boolean>(() => {
@@ -82,7 +95,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             introSentRef.current = true;
             const getIntro = async () => {
                 try {
-                    if (!bot.voiceConfig) {
+                    if (!getVoiceConfig()) {
                         const msg = "Voice configuration missing for this character. Please recreate the bot.";
                         setIntroError(msg);
                         setError(msg);
@@ -95,7 +108,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                         message: "Introduce yourself in 2 sentences or less.",
                         personality: bot.personality,
                         botName: bot.name,
-                        voiceConfig: bot.voiceConfig,
+                        voiceConfig: getVoiceConfig(),
                         gender: bot.gender
                     }));
                     const introMsg: Message = {
@@ -117,7 +130,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             };
             getIntro();
         }
-    }, [messages.length, apiAvailable, bot, logMessage, playAudio, setError]);
+    }, [messages.length, apiAvailable, bot, logMessage, playAudio, setError, getVoiceConfig]);
 
     const sendMessage = useCallback(async () => {
         async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 2, initialDelay = 800): Promise<T> {
@@ -166,7 +179,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         setError("");
         logMessage(userMessage);
         try {
-            if (!bot.voiceConfig) {
+            if (!getVoiceConfig()) {
                 const msg = "Voice configuration missing for this character. Please recreate the bot.";
                 setError(msg);
                 if (typeof window !== 'undefined') {
@@ -177,7 +190,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             }
             console.debug("Calling retryWithBackoff...");
             const response = await retryWithBackoff(
-                () => axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: bot.voiceConfig, gender: bot.gender }),
+                () => axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: getVoiceConfig(), gender: bot.gender }),
                 2,
                 800
             );
@@ -203,7 +216,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         } finally {
             setLoading(false);
         }
-    }, [input, apiAvailable, logMessage, loading, handleApiError, setError, bot]);
+    }, [input, apiAvailable, logMessage, loading, handleApiError, setError, bot, getVoiceConfig]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && !loading && apiAvailable && input.trim()) {

@@ -13,16 +13,33 @@
  */
 
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
+import { GoogleAuth } from "google-auth-library";
 import fs from "fs";
 import path from "path";
 import logger, { sanitizeLogMeta } from "./logger";
 
 /**
- * Retrieves Google Cloud authentication credentials for TTS.
- * @returns {object} The credentials object.
+ * Google Cloud service account credentials interface
+ */
+interface GoogleCredentials {
+  type?: string;
+  project_id?: string;
+  private_key_id?: string;
+  private_key?: string;
+  client_email?: string;
+  client_id?: string;
+  auth_uri?: string;
+  token_uri?: string;
+  auth_provider_x509_cert_url?: string;
+  client_x509_cert_url?: string;
+}
+
+/**
+ * Retrieves Google Cloud authentication for TTS.
+ * @returns {GoogleAuth | unknown} The GoogleAuth instance or override result.
  * @throws {Error} If credentials are missing or invalid.
  */
-function getGoogleAuthCredentials() {
+function getGoogleAuthCredentials(): GoogleAuth | unknown {
   const overrideFn = (getGoogleAuthCredentials as unknown as { override?: (() => unknown) }).override;
   if (overrideFn) {
     return overrideFn();
@@ -32,14 +49,19 @@ function getGoogleAuthCredentials() {
       "Missing GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable",
     );
   }
+  let credentials: GoogleCredentials;
   if (process.env.VERCEL_ENV) {
-    return JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
   } else {
     const credentialsPath = path.resolve(
       process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
     );
-    return JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
+    credentials = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
   }
+  
+  return new GoogleAuth({
+    credentials: credentials,
+  });
 }
 
 let ttsClient:
@@ -53,7 +75,7 @@ let ttsClient:
 function getTTSClient() {
   if (!ttsClient) {
     ttsClient = new textToSpeech.TextToSpeechClient({
-      credentials: getGoogleAuthCredentials(),
+      auth: getGoogleAuthCredentials() as GoogleAuth,
     });
   }
   return ttsClient;
@@ -205,9 +227,9 @@ function cleanupTempFiles(files: string[]): void {
 
 /**
  * TEST-ONLY: Reset singletons and allow credential override for testing.
- * @param {(() => unknown) | null} [overrideCredsFn] - Optional override function for credentials.
+ * @param {(() => GoogleAuth | unknown) | null} [overrideCredsFn] - Optional override function for credentials.
  */
-export function __resetSingletonsForTest(overrideCredsFn?: (() => unknown) | null) {
+export function __resetSingletonsForTest(overrideCredsFn?: (() => GoogleAuth | unknown) | null) {
   ttsClient = null;
   const target = getGoogleAuthCredentials as unknown as { override?: (() => unknown) };
   if (overrideCredsFn) {

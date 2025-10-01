@@ -6,6 +6,7 @@
 
 import OpenAI from "openai";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
+import { GoogleAuth } from "google-auth-library";
 import fs from "fs";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
@@ -61,8 +62,11 @@ export default async function handler(
     if (!creds.trim().startsWith("{")) {
       creds = fs.readFileSync(creds, "utf8");
     }
-    const ttsClient = new textToSpeech.TextToSpeechClient({
+    const auth = new GoogleAuth({
       credentials: JSON.parse(creds),
+    });
+    const ttsClient = new textToSpeech.TextToSpeechClient({
+      auth,
     });
     const [response] = await ttsClient.synthesizeSpeech({
       input: { text: "ping" },

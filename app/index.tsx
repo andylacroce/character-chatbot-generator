@@ -64,6 +64,10 @@ const Home = () => {
   const handleBotCreated = React.useCallback((bot: Bot) => {
     setBot(bot);
     setReturningToCreator(false);
+    // Store voiceConfig in sessionStorage keyed by character name
+    if (bot.voiceConfig) {
+      sessionStorage.setItem(`voiceConfig-${bot.name}`, JSON.stringify(bot.voiceConfig));
+    }
   }, []);
 
   const handleBackToCharacterCreation = React.useCallback(() => {
