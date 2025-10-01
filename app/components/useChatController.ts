@@ -3,6 +3,8 @@ const LOAD_MORE_COUNT = 10;
 
 export function useChatController(bot: Bot, onBackToCharacterCreation?: () => void) {
     const chatHistoryKey = `chatbot-history-${bot.name}`;
+    
+    // Memoize messages loading from localStorage
     const [messages, setMessages] = useState<Message[]>(() => {
         if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && chatHistoryKey) {
             try {
@@ -13,7 +15,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         return [];
     });
 
-    // Get voiceConfig from sessionStorage, fallback to bot.voiceConfig
+    // Memoize voice config getter to prevent unnecessary re-renders
     const getVoiceConfig = useCallback(() => {
         if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
             try {
@@ -152,7 +154,8 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                         personality: bot.personality,
                         botName: bot.name,
                         voiceConfig: getVoiceConfig(),
-                        gender: bot.gender
+                        gender: bot.gender,
+                        conversationHistory: []
                     }));
                     const introMsg: Message = {
                         sender: bot.name,
@@ -232,8 +235,19 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 return;
             }
             console.debug("Calling retryWithBackoff...");
+            // Convert messages to conversation history format for API
+            const conversationHistory = messages.slice(-20).map(msg => 
+                msg.sender === bot.name ? `Bot: ${msg.text}` : `User: ${msg.text}`
+            );
             const response = await retryWithBackoff(
-                () => axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: getVoiceConfig(), gender: bot.gender }),
+                () => axios.post("/api/chat", { 
+                    message: currentInput, 
+                    personality: bot.personality, 
+                    botName: bot.name, 
+                    voiceConfig: getVoiceConfig(), 
+                    gender: bot.gender,
+                    conversationHistory 
+                }),
                 2,
                 800
             );
@@ -259,7 +273,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         } finally {
             setLoading(false);
         }
-    }, [input, apiAvailable, logMessage, loading, handleApiError, setError, bot, getVoiceConfig]);
+    }, [input, apiAvailable, logMessage, loading, handleApiError, setError, bot, getVoiceConfig, messages]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === "Enter" && !loading && apiAvailable && input.trim()) {

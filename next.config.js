@@ -3,6 +3,7 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
   },
+  serverExternalPackages: ['winston'],
   images: {
     remotePatterns: [
       {
@@ -12,6 +13,10 @@ const nextConfig = {
       },
     ],
   },
+  // Performance optimizations
+  compress: true,
+  poweredByHeader: false,
+  reactStrictMode: true,
 };
 
 export default nextConfig;

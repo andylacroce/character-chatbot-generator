@@ -25,13 +25,50 @@ if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   );
 }
 
-let conversationHistory: string[] = [];
+
 
 const apiKey = process.env.OPENAI_API_KEY;
 if (!apiKey) {
   throw new Error("Missing OpenAI API key");
 }
 const openai = new OpenAI({ apiKey });
+
+// Cleanup old audio files periodically (every 100 requests)
+let requestCount = 0;
+const CLEANUP_INTERVAL = 100;
+const AUDIO_FILE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+
+function cleanupOldAudioFiles() {
+  try {
+    const tmpDir = "/tmp";
+    if (!fs.existsSync(tmpDir)) return;
+    
+    const files = fs.readdirSync(tmpDir);
+    const now = Date.now();
+    let cleanedCount = 0;
+    
+    for (const file of files) {
+      if (file.endsWith('.mp3') || file.endsWith('.txt')) {
+        const filePath = path.join(tmpDir, file);
+        try {
+          const stats = fs.statSync(filePath);
+          if (now - stats.mtime.getTime() > AUDIO_FILE_MAX_AGE) {
+            fs.unlinkSync(filePath);
+            cleanedCount++;
+          }
+        } catch {
+          // Ignore errors for individual files
+        }
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      logger.info(`Cleaned up ${cleanedCount} old audio files`);
+    }
+  } catch (err) {
+    logger.error("Error during audio file cleanup:", err);
+  }
+}
 
 // Deterministic serializer for objects to ensure identical cache keys across nodes
 function stableStringify(obj: unknown): string {
@@ -121,10 +158,17 @@ export default async function handler(
     return;
   }
   try {
+    // Periodic cleanup of old audio files
+    requestCount++;
+    if (requestCount % CLEANUP_INTERVAL === 0) {
+      cleanupOldAudioFiles();
+    }
+    
     const userMessage = req.body.message;
     const personality = req.body.personality || `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`;
     const botName = req.body.botName || "Character";
     const gender = req.body.gender;
+    const conversationHistory = req.body.conversationHistory || [];
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required | requestId=${requestId}`);
       res.status(400).json({ error: "Message is required", requestId });
@@ -146,12 +190,10 @@ export default async function handler(
     }
 
     const timestamp = new Date().toISOString();
-    conversationHistory.push(`User: ${userMessage}`);
-    if (conversationHistory.length > 50) {
-      conversationHistory = conversationHistory.slice(-50);
-    }
+    // Limit conversation history to last 50 messages to prevent excessive context
+    const limitedHistory = conversationHistory.slice(-50);
     // Build messages array with correct types
-    const oldMessages = buildOpenAIMessages(conversationHistory.slice(0, -1), userMessage, botName).slice(1); // skip old system prompt
+    const oldMessages = buildOpenAIMessages(limitedHistory.slice(0, -1), userMessage, botName).slice(1); // skip old system prompt
     const messages: ChatCompletionMessageParam[] = [
       { role: "system", content: personality } as ChatCompletionMessageParam,
       ...oldMessages
@@ -162,7 +204,7 @@ export default async function handler(
     const cacheKey = JSON.stringify({
       botName,
       personality,
-      history: conversationHistory.slice(-10), // last 10 exchanges for context
+      history: limitedHistory.slice(-10), // last 10 exchanges for context
       userMessage,
     });
     const cachedReply = getReplyCache(cacheKey);
@@ -266,7 +308,6 @@ export default async function handler(
       logger.info(`[Chat API] 500 Internal Server Error: Empty bot response | requestId=${requestId}`);
       throw new Error("Generated bot response is empty.");
     }
-    conversationHistory.push(`Bot: ${botReply}`);
 
     // Prepare TTS request (voice tuned for character)
     const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
