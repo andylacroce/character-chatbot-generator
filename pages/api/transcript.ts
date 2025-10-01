@@ -7,6 +7,14 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
 /**
  * Next.js API route handler for generating and downloading chat transcripts.
  * Accepts POST requests with a messages array and returns a text file.
