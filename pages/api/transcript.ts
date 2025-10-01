@@ -214,9 +214,14 @@ export function escapeHtml(str: string): string {
 // Helper for validating avatar URL
 export function isValidAvatarUrl(url: string): boolean {
   if (typeof url !== 'string') return false;
+  // Allow relative URLs or absolute paths starting with /
+  if (url.startsWith('/')) return true;
+  // Allow relative URLs without / (like 'silhouette.svg')
+  if (!url.includes('://')) return true;
+  // For full URLs, check protocol
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' || url.startsWith('/');
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
   } catch {
     return false;
   }
