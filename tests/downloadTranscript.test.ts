@@ -3,27 +3,11 @@ import { downloadTranscript } from '../src/utils/downloadTranscript';
 // Mock browser APIs
 const createObjectURL = jest.fn(() => 'blob:url');
 const revokeObjectURL = jest.fn();
-const click = jest.fn();
-const appendChild = jest.fn();
-const remove = jest.fn();
+const open = jest.fn(() => ({} as Window));
 
 global.URL.createObjectURL = createObjectURL;
 global.URL.revokeObjectURL = revokeObjectURL;
-
-global.document.createElement = jest.fn(() => {
-  // Minimal mock of HTMLAnchorElement
-  return {
-    href: '',
-    download: '',
-    click,
-    remove,
-    style: {},
-    setAttribute: jest.fn(),
-    getAttribute: jest.fn(),
-    // Add any other properties/methods your code under test uses
-  } as unknown as HTMLAnchorElement;
-});
-global.document.body.appendChild = appendChild;
+global.window.open = open;
 
 // Use correct type for fetch mock
 const fetchMock = jest.fn();
@@ -38,11 +22,11 @@ describe('downloadTranscript', () => {
     await expect(downloadTranscript(null as any)).rejects.toThrow('Transcript must be an array');
   });
 
-  it('calls fetch and triggers download for valid messages', async () => {
-    const blob = new Blob(['<html>test</html>'], { type: 'text/html' });
+  it('calls fetch and opens transcript in new tab for valid messages', async () => {
+    const htmlContent = '<html><head><title>Test Transcript</title></head><body>test</body></html>';
     fetchMock.mockResolvedValue({
       ok: true,
-      blob: () => Promise.resolve(blob),
+      text: () => Promise.resolve(htmlContent),
     });
     const messages = [{ sender: 'User', text: 'Hello' }];
     const bot = { name: 'TestBot', avatarUrl: '/test-avatar.jpg' };
@@ -60,11 +44,9 @@ describe('downloadTranscript', () => {
     const body = JSON.parse(callArgs.body);
     expect(body.bot).toEqual(bot);
     expect(typeof body.exportedAt).toBe('string');
-    expect(createObjectURL).toHaveBeenCalledWith(blob);
-    expect(appendChild).toHaveBeenCalled();
-    expect(click).toHaveBeenCalled();
+    expect(createObjectURL).toHaveBeenCalledWith(new Blob([htmlContent], { type: 'text/html; charset=utf-8' }));
+    expect(open).toHaveBeenCalledWith('blob:url', '_blank');
     expect(revokeObjectURL).toHaveBeenCalled();
-    expect(remove).toHaveBeenCalled();
   });
 
   it('throws if fetch fails', async () => {
@@ -77,12 +59,22 @@ describe('downloadTranscript', () => {
     await expect(downloadTranscript([])).rejects.toThrow('Failed to fetch transcript');
   });
 
-  it('throws if blob conversion fails', async () => {
+  it('throws if text conversion fails', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      blob: () => { throw new Error('blob error'); },
+      text: () => { throw new Error('text error'); },
     });
-    await expect(downloadTranscript([])).rejects.toThrow('blob error');
+    await expect(downloadTranscript([])).rejects.toThrow('text error');
+  });
+
+  it('throws if window.open fails (popup blocker)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('<html>test</html>'),
+    });
+    global.window.open = jest.fn(() => null);
+    await expect(downloadTranscript([])).rejects.toThrow('Failed to open new tab - popup blocker may be active');
+    global.window.open = open;
   });
 
   it('throws if window.URL.createObjectURL is not available', async () => {
@@ -91,7 +83,7 @@ describe('downloadTranscript', () => {
     global.URL.createObjectURL = undefined;
     fetchMock.mockResolvedValue({
       ok: true,
-      blob: () => Promise.resolve(new Blob(['test'])),
+      text: () => Promise.resolve('<html>test</html>'),
     });
     await expect(downloadTranscript([])).rejects.toThrow('window.URL.createObjectURL is not available');
     global.URL.createObjectURL = orig;

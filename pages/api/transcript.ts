@@ -39,14 +39,13 @@ export default async function handler(
 
   logger.info(`[Transcript API] Received messages for download: ${messages.length}`);
 
-  // Generate a simple filename for the download
+  // Generate filename for the HTML document title
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
   const datetime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-  const filename = `Character Chat Transcript ${datetime}.html`;
-  const encodedFilename = encodeURIComponent(filename);
+  const filename = bot ? `${bot.name} transcript ${datetime}.html` : `Character Chat Transcript ${datetime}.html`;
 
-  logger.info(`[Transcript API] Generated download filename: ${filename}`);
+  logger.info(`[Transcript API] Generated filename: ${filename}`);
 
   // Generate HTML transcript
   const htmlTranscript = `
@@ -55,7 +54,7 @@ export default async function handler(
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Character Chat Transcript</title>
+      <title>${filename}</title>
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -151,13 +150,8 @@ export default async function handler(
   `;
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename=\"${filename}\"; filename*=UTF-8''${encodedFilename}`,
-  );
-  logger.info(`[Transcript API] Set Content-Disposition header for download: attachment; filename=\"${filename}\"; filename*=UTF-8''${encodedFilename}`);
   res.status(200).send(htmlTranscript);
-  logger.info(`[Transcript API] 200 OK: Transcript sent for download, messages=${messages.length}`);
+  logger.info(`[Transcript API] 200 OK: Transcript sent for display, messages=${messages.length}`);
 }
 
 // Helper for HTML escaping

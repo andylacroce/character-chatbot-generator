@@ -1,19 +1,19 @@
 // =============================
 // downloadTranscript.ts
-// Utility for downloading the chat transcript as a text file via the /api/transcript endpoint.
-// Handles browser compatibility, error handling, and file naming.
+// Utility for opening the chat transcript as HTML in a new browser tab via the /api/transcript endpoint.
+// Handles browser compatibility, error handling, and content display.
 // =============================
 
 import type { Message } from "../types/message";
 
 /**
- * Downloads the chat transcript as an HTML file by calling the /api/transcript endpoint.
+ * Opens the chat transcript as HTML in a new browser tab by calling the /api/transcript endpoint.
  *
- * Validates input, posts messages to the API, and triggers a browser download of the transcript.
+ * Validates input, posts messages to the API, and opens the HTML transcript in a new tab.
  *
  * @param {Array<object>} messages - The array of chat messages to include in the transcript.
  * @param {object} bot - The bot/character information including name and avatarUrl.
- * @returns {Promise<void>} Resolves when the download is triggered.
+ * @returns {Promise<void>} Resolves when the new tab is opened.
  * @throws {Error} If the transcript fetch fails or browser APIs are unavailable.
  */
 export async function downloadTranscript(messages: Array<Record<string, unknown>> | Message[], bot?: { name: string; avatarUrl: string }) {
@@ -23,8 +23,6 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
   // If messages are Message[], convert to Record<string, unknown>[]
   const safeMessages: Record<string, unknown>[] = messages.map((msg) => ({ ...msg }));
   const now = new Date();
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  const datetime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
   const friendlyTime = now.toLocaleString(undefined, {
     year: "numeric",
     month: "long",
@@ -47,22 +45,18 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
     throw err;
   }
   if (!response.ok) throw new Error("Failed to fetch transcript");
-  let blob;
+  let htmlContent;
   try {
-    blob = await response.blob();
+    htmlContent = await response.text();
   } catch (err) {
     throw err;
   }
-  const filename = `Chat Transcript ${datetime}.html`;
   if (!window.URL || !window.URL.createObjectURL) throw new Error("window.URL.createObjectURL is not available");
+  const blob = new Blob([htmlContent], { type: "text/html; charset=utf-8" });
   const url = window.URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
+  const newWindow = window.open(url, "_blank");
+  if (!newWindow) throw new Error("Failed to open new tab - popup blocker may be active");
   setTimeout(() => {
     if (window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(url);
-    if (a.remove) a.remove();
   }, typeof process !== 'undefined' && process.env.JEST_WORKER_ID ? 0 : 100);
 }
