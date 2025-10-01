@@ -95,7 +95,8 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                         message: "Introduce yourself in 2 sentences or less.",
                         personality: bot.personality,
                         botName: bot.name,
-                        voiceConfig: bot.voiceConfig
+                        voiceConfig: bot.voiceConfig,
+                        gender: bot.gender
                     }));
                     const introMsg: Message = {
                         sender: bot.name,
@@ -176,7 +177,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             }
             console.debug("Calling retryWithBackoff...");
             const response = await retryWithBackoff(
-                () => axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: bot.voiceConfig }),
+                () => axios.post("/api/chat", { message: currentInput, personality: bot.personality, botName: bot.name, voiceConfig: bot.voiceConfig, gender: bot.gender }),
                 2,
                 800
             );

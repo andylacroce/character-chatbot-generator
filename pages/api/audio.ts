@@ -38,6 +38,8 @@ export default async function handler(
 ): Promise<void> {
   const { file, text: expectedText } = req.query;
   const botName = typeof req.query.botName === "string" ? req.query.botName : "Character";
+  const gender = typeof req.query.gender === "string" ? req.query.gender : null;
+  const voiceConfig = await getVoiceConfigForCharacter(botName, gender);
   if (!file || typeof file !== "string") {
     logEvent("info", "audio_bad_request", "Audio API bad request: file parameter is required", sanitizeLogMeta({
       file,
@@ -74,20 +76,6 @@ export default async function handler(
     } else {
       // .txt missing or does not match, regenerate audio and update .txt
       try {
-        // Prefer explicit voiceConfig passed in query (base64-encoded stable JSON) for deterministic regeneration
-        let voiceConfig: CharacterVoiceConfig | null = null;
-        if (typeof req.query.voiceConfig === 'string' && req.query.voiceConfig) {
-          try {
-            const decoded = Buffer.from(decodeURIComponent(req.query.voiceConfig), 'base64').toString('utf8');
-            voiceConfig = JSON.parse(decoded) as CharacterVoiceConfig;
-          } catch (e) {
-            logEvent('warn', 'audio_voice_decode_failed', 'Failed to decode voiceConfig from query, falling back', sanitizeLogMeta({ botName, err: e }));
-            voiceConfig = null;
-          }
-        }
-        if (!voiceConfig) {
-          voiceConfig = await getVoiceConfigForCharacter(botName);
-        }
         logEvent("info", "audio_voice_selected", "TTS voice config selected", sanitizeLogMeta({
           botName,
           voiceConfig
@@ -160,19 +148,6 @@ export default async function handler(
           txtContent
         }));
         try {
-          let voiceConfig: CharacterVoiceConfig | null = null;
-          if (typeof req.query.voiceConfig === 'string' && req.query.voiceConfig) {
-            try {
-              const decoded = Buffer.from(decodeURIComponent(req.query.voiceConfig), 'base64').toString('utf8');
-              voiceConfig = JSON.parse(decoded) as CharacterVoiceConfig;
-            } catch (e) {
-              logEvent('warn', 'audio_voice_decode_failed', 'Failed to decode voiceConfig from query, falling back', sanitizeLogMeta({ botName, err: e }));
-              voiceConfig = null;
-            }
-          }
-          if (!voiceConfig) {
-            voiceConfig = await getVoiceConfigForCharacter(botName);
-          }
           // Determine if Studio voice (robust: check type and name)
           const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
           // Fallback: if type is missing, check name pattern
@@ -231,7 +206,7 @@ export default async function handler(
         }
         if (originalText) {
           try {
-            const voiceConfig = await getVoiceConfigForCharacter(botName);
+            const voiceConfig = await getVoiceConfigForCharacter(botName, gender);
             // Determine if Studio voice (robust: check type and name)
             const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
             // Fallback: if type is missing, check name pattern
@@ -294,19 +269,6 @@ export default async function handler(
                 const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
                 fs.writeFileSync(txtFilePath, aiReply, "utf8");
                 // Now TTS
-                let voiceConfig: CharacterVoiceConfig | null = null;
-                if (typeof req.query.voiceConfig === 'string' && req.query.voiceConfig) {
-                  try {
-                    const decoded = Buffer.from(decodeURIComponent(req.query.voiceConfig), 'base64').toString('utf8');
-                    voiceConfig = JSON.parse(decoded) as CharacterVoiceConfig;
-                  } catch (e) {
-                    logEvent('warn', 'audio_voice_decode_failed', 'Failed to decode voiceConfig from query, falling back', sanitizeLogMeta({ botName, err: e }));
-                    voiceConfig = null;
-                  }
-                }
-                if (!voiceConfig) {
-                  voiceConfig = await getVoiceConfigForCharacter(botName);
-                }
                 // Determine if Studio voice (robust: check type and name)
                 const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
                 // Fallback: if type is missing, check name pattern

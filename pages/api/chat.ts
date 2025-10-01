@@ -124,6 +124,7 @@ export default async function handler(
     const userMessage = req.body.message;
     const personality = req.body.personality || `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`;
     const botName = req.body.botName || "Character";
+    const gender = req.body.gender;
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required | requestId=${requestId}`);
       res.status(400).json({ error: "Message is required", requestId });
@@ -228,8 +229,7 @@ export default async function handler(
       } catch (err) {
         logger.error("Failed to ensure .txt file for audio reply (cache hit):", err);
       }
-      const voiceParam = encodeURIComponent(Buffer.from(stableStringify(selectedVoice)).toString('base64'));
-      const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&voiceConfig=${voiceParam}`;
+      const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}`;
       return res.status(200).json({
         reply: cachedReply,
         audioFileUrl,
@@ -339,8 +339,7 @@ export default async function handler(
     );
     logger.info(`[Chat API] 200 OK: Reply and audioFileUrl sent | requestId=${requestId}`);
     // Return audioFileUrl with text param for stateless regeneration
-    const voiceParam = encodeURIComponent(Buffer.from(stableStringify(selectedVoice)).toString('base64'));
-    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&voiceConfig=${voiceParam}`;
+    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}`;
     res.status(200).json({
       reply: botReply,
       audioFileUrl,
