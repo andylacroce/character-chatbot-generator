@@ -6,7 +6,7 @@
 
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Bot } from "./components/BotCreator";
@@ -35,8 +35,6 @@ const BotCreator = dynamic(() => import("./components/BotCreator"), { ssr: false
  * @returns {JSX.Element} The rendered ChatPage component
  */
 const Home = () => {
-
-  // Add state for bot selection at the top level
   const [bot, setBot] = React.useState<Bot | null>(null);
   const [loadingBot, setLoadingBot] = React.useState(true);
   const searchParams = useSearchParams();
@@ -70,4 +68,19 @@ const Home = () => {
   return <ChatPage bot={bot} onBackToCharacterCreation={handleBackToCharacterCreation} />;
 };
 
-export default Home;
+/**
+ * HomeWithSuspense component that wraps Home in a Suspense boundary
+ * to handle useSearchParams() in client components.
+ *
+ * @function
+ * @returns {JSX.Element} The rendered Home component wrapped in Suspense
+ */
+const HomeWithSuspense = () => {
+  return (
+    <Suspense fallback={null}>
+      <Home />
+    </Suspense>
+  );
+};
+
+export default HomeWithSuspense;
