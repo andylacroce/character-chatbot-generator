@@ -13,6 +13,7 @@
  */
 
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
+import { GoogleAuth } from 'google-auth-library';
 import fs from "fs";
 import path from "path";
 import logger, { sanitizeLogMeta } from "./logger";
@@ -61,6 +62,29 @@ function getGoogleAuthCredentials(): GoogleCredentials | unknown {
   return credentials;
 }
 
+/**
+ * Build a google-auth-library JWT client when explicit service account credentials are provided.
+ * Returns undefined when no explicit credentials are provided so client libraries will use ADC.
+ */
+function getGoogleAuthClient(): GoogleAuth | undefined {
+  try {
+    const creds = getGoogleAuthCredentials();
+    if (!creds || typeof creds !== 'object') return undefined;
+    const c = creds as GoogleCredentials;
+    if (!c.client_email || !c.private_key) return undefined;
+    // Create a GoogleAuth instance using the explicit credentials so the underlying
+    // Google client receives an auth object with the expected API.
+    const auth = new GoogleAuth({
+      credentials: c as Record<string, unknown>,
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    });
+    return auth;
+  } catch {
+    // If credentials aren't available or invalid, fall back to ADC by returning undefined
+    return undefined;
+  }
+}
+
 let ttsClient:
   | import("@google-cloud/text-to-speech").TextToSpeechClient
   | null = null;
@@ -71,9 +95,15 @@ let ttsClient:
  */
 function getTTSClient() {
   if (!ttsClient) {
-    ttsClient = new textToSpeech.TextToSpeechClient({
-      credentials: getGoogleAuthCredentials() as GoogleCredentials,
-    });
+    const authClient = getGoogleAuthClient();
+    if (authClient) {
+      // Pass the GoogleAuth instance directly; this provides the methods expected by
+      // the @google-cloud client (avoids runtime errors such as getUniverseDomain missing).
+      ttsClient = new textToSpeech.TextToSpeechClient({ auth: authClient });
+    } else {
+      // Let the client discover credentials via ADC
+      ttsClient = new textToSpeech.TextToSpeechClient();
+    }
   }
   return ttsClient;
 }

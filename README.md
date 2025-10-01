@@ -108,6 +108,21 @@ The app provides a rich HTML transcript feature that opens in new browser tabs:
 - Ensure server-side API routes that use Node-only SDKs (Google client libraries) are not configured as Edge functions (use the default Node runtime).
 - Set a Node engine (>=18) in `package.json` or in Vercel settings if needed.
 
+### Google Cloud credentials (updated)
+
+The project previously passed raw `credentials` objects to Google client constructors which newer Google SDKs now warn is deprecated. This repository has been updated to:
+
+- Construct a google-auth-library `JWT` auth client from the service-account JSON when you provide explicit credentials.
+- Pass that auth client as the `auth` option to Google client constructors (for example, `new TextToSpeechClient({ auth: jwt })`).
+- Fall back to Application Default Credentials (ADC) when no explicit credentials are provided (recommended for many deployments).
+
+How to provide credentials:
+
+- Local (recommended for development): point `GOOGLE_APPLICATION_CREDENTIALS_JSON` at a path to your JSON file, e.g. `config/gcp-key.json` in `.env.local`.
+- Vercel: paste the full service-account JSON string into the `GOOGLE_APPLICATION_CREDENTIALS_JSON` environment variable in Project Settings.
+
+Why this change: it avoids deprecation warnings on Vercel and ensures the SDK uses the supported `auth` constructor pattern. No secret values are committed to the repo.
+
 ## Contributing
 
 Contributions are welcome! Please:

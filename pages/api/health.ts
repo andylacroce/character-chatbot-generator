@@ -6,6 +6,7 @@
 
 import OpenAI from "openai";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
+import { GoogleAuth } from 'google-auth-library';
 import fs from "fs";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
@@ -62,9 +63,19 @@ export default async function handler(
       creds = fs.readFileSync(creds, "utf8");
     }
     const credentials = JSON.parse(creds);
-    const ttsClient = new textToSpeech.TextToSpeechClient({
-      credentials,
-    });
+    // Build a JWT auth client when explicit credentials provided, otherwise let ADC take over
+    let ttsClient: import('@google-cloud/text-to-speech').TextToSpeechClient;
+    if (credentials && credentials.client_email && credentials.private_key) {
+      // Build a GoogleAuth instance from the credentials so the client receives
+      // a fully-featured auth object with the expected methods.
+      const auth = new GoogleAuth({
+        credentials: credentials as Record<string, unknown>,
+        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      });
+      ttsClient = new textToSpeech.TextToSpeechClient({ auth });
+    } else {
+      ttsClient = new textToSpeech.TextToSpeechClient();
+    }
     const [response] = await ttsClient.synthesizeSpeech({
       input: { text: "ping" },
       voice: {
