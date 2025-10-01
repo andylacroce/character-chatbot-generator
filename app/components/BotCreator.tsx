@@ -109,7 +109,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
             type="button"
             className={styles.randomButton}
             disabled={isBusy}
-            aria-label="Choose a random real character"
+            aria-label="Choose a random character name"
             onClick={handleRandomCharacter}
           >
             <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style={{ display: 'block' }}>
@@ -139,13 +139,13 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated }) => {
         {!(loading || randomizing) && (
           <div className={styles.instructionsCentered}>
             <div>
-              Choose a character name to create your own chatbot. You can invent a new personality or use someone famous.
+              Create a chatbot character using public domain figures from classic literature, mythology, or historical figures. Avoid copyrighted or trademarked names from modern media.
             </div>
             <div>
               Enter a character name or click the <b>dice</b> button for a random suggestion, then press the <b>arrow</b> button to generate your character.
             </div>
             <div className={styles.instructionsTip}>
-              Explore different names from books, movies, history, or your imagination.
+              Examples: Sherlock Holmes, Dracula, Cleopatra, Robin Hood, or create your own original character.
             </div>
           </div>
         )}

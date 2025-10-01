@@ -66,20 +66,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const exclusionStr = exclude.map(n => `"${n}"`).join(", ");
       const prompt = `### INSTRUCTIONS
-You are an expert in world history, literature, pop culture, and media. Your task is to suggest the name of a real, well-known character from history, literature, film, TV, comics, or pop culture. Follow these rules:
+You are a creative name generator. Your task is to suggest a character name that could be used for a chatbot. Follow these rules:
 - Reply ONLY with the character's name. Do not include any description, explanation, or extra text.
 - Do NOT pick any of the following: ${exclusionStr}.
 - Do NOT pick any character that is too similar to those listed above, or that you have suggested recently.
-- Each time, pick a character from a different genre, time period, country, or background than those recently suggested.
-- Vary gender, culture, time period, and genre.
+- Prioritize public domain characters from classic literature, mythology, folklore, and historical figures (e.g., Sherlock Holmes, Dracula, Alice, Robin Hood, King Arthur, Cleopatra, Leonardo da Vinci).
+- You may also suggest famous historical figures who are not copyrighted or trademarked.
 - Avoid repeats, near-duplicates, or generic names.
-- Think carefully and take your time to select a truly unique and interesting character.
 - Output format: Only the character's name, nothing else.
 ### END INSTRUCTIONS`;
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: "You are a helpful assistant. Always pick a different, random character each time. Avoid repeating any character you've suggested recently. Vary genres, time periods, and backgrounds. Prioritize creativity, diversity, and randomness in your choices." },
+          { role: "system", content: "You are a creative name generator for chatbots. Suggest public domain characters from literature, mythology, folklore, and historical figures. You may also suggest famous historical figures who are not copyrighted or trademarked. Always provide just the name, nothing else." },
           { role: "user", content: prompt },
         ],
         max_tokens: 32,
@@ -127,7 +126,7 @@ You are an expert in world history, literature, pop culture, and media. Your tas
   logEvent("warn", "random_character_fallback", "RandomCharacter fallback", sanitizeLogMeta({
     error: lastError instanceof Error ? lastError.message : String(lastError)
   }));
-  const fallback = 'Gandalf';
+  const fallback = 'Sherlock Holmes';
   await logRandomCharacter(`[FALLBACK] ${fallback}`);
   res.status(200).json({ name: fallback, fallback: true, error: "Failed to get random character after 3 attempts, using fallback." });
 }

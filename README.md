@@ -98,3 +98,7 @@ Contributions are welcome! Please:
 - Open an issue for bugs or feature requests
 - Submit pull requests with clear descriptions and relevant tests
 - Follow the existing code style and documentation practices
+
+## Disclaimer
+
+This project is a demonstration of using the OpenAI API to generate chatbots. It is intended solely for educational and portfolio purposes. Users are responsible for any content they generate. Do not use this tool to create or distribute chatbots based on copyrighted or trademarked characters. Instead, we encourage creating chatbots based on public domain characters (such as those from classic literature like Sherlock Holmes, Dracula, or Alice in Wonderland) or completely original characters. This project is not affiliated with or endorsed by OpenAI or any third-party rights holders.

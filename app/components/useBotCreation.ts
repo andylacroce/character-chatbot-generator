@@ -34,7 +34,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
                     name = data.name.trim();
                 }
             } catch {
-                name = 'Gandalf';
+                name = 'Dracula';
                 if (name.toLowerCase() !== lastName.toLowerCase() && !recentRandomNames.current.map((n: string) => n.toLowerCase()).includes(name.toLowerCase())) {
                     recentRandomNames.current.push(name);
                     if (recentRandomNames.current.length > RECENT_HISTORY_LIMIT) recentRandomNames.current.shift();
