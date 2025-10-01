@@ -13,7 +13,6 @@
  */
 
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
-import { GoogleAuth } from "google-auth-library";
 import fs from "fs";
 import path from "path";
 import logger, { sanitizeLogMeta } from "./logger";
@@ -36,10 +35,10 @@ interface GoogleCredentials {
 
 /**
  * Retrieves Google Cloud authentication for TTS.
- * @returns {GoogleAuth | unknown} The GoogleAuth instance or override result.
+ * @returns {GoogleCredentials | unknown} The credentials object or override result.
  * @throws {Error} If credentials are missing or invalid.
  */
-function getGoogleAuthCredentials(): GoogleAuth | unknown {
+function getGoogleAuthCredentials(): GoogleCredentials | unknown {
   const overrideFn = (getGoogleAuthCredentials as unknown as { override?: (() => unknown) }).override;
   if (overrideFn) {
     return overrideFn();
@@ -59,9 +58,7 @@ function getGoogleAuthCredentials(): GoogleAuth | unknown {
     credentials = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
   }
   
-  return new GoogleAuth({
-    credentials: credentials,
-  });
+  return credentials;
 }
 
 let ttsClient:
@@ -75,7 +72,7 @@ let ttsClient:
 function getTTSClient() {
   if (!ttsClient) {
     ttsClient = new textToSpeech.TextToSpeechClient({
-      auth: getGoogleAuthCredentials() as GoogleAuth,
+      credentials: getGoogleAuthCredentials() as GoogleCredentials,
     });
   }
   return ttsClient;
@@ -227,9 +224,9 @@ function cleanupTempFiles(files: string[]): void {
 
 /**
  * TEST-ONLY: Reset singletons and allow credential override for testing.
- * @param {(() => GoogleAuth | unknown) | null} [overrideCredsFn] - Optional override function for credentials.
+ * @param {(() => GoogleCredentials | unknown) | null} [overrideCredsFn] - Optional override function for credentials.
  */
-export function __resetSingletonsForTest(overrideCredsFn?: (() => GoogleAuth | unknown) | null) {
+export function __resetSingletonsForTest(overrideCredsFn?: (() => GoogleCredentials | unknown) | null) {
   ttsClient = null;
   const target = getGoogleAuthCredentials as unknown as { override?: (() => unknown) };
   if (overrideCredsFn) {
