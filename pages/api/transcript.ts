@@ -66,7 +66,7 @@ export default async function handler(
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
   const datetime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-  const filename = bot ? `${bot.name} transcript ${datetime}.html` : `Character Chat Transcript ${datetime}.html`;
+  const filename = bot ? `${escapeHtml(bot.name)} transcript ${datetime}.html` : `Character Chat Transcript ${datetime}.html`;
 
   logger.info(`[Transcript API] Generated filename: ${filename}`);
 
@@ -145,13 +145,13 @@ export default async function handler(
       <div class="container">
         <h1>Character Chatbot Generator Transcript</h1>
         <div class="header-info">
-          <p><strong>Exported:</strong> ${exportedAt || datetime}</p>
+          <p><strong>Exported:</strong> ${escapeHtml(exportedAt || datetime)}</p>
           <p><strong>Messages:</strong> ${messages.length}</p>
         </div>
         ${bot ? `
           <div style="text-align: center; margin-bottom: 30px;">
-            <img src="${bot.avatarUrl}" alt="${bot.name}" class="character-image" />
-            <h2>${bot.name}</h2>
+            ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${bot.avatarUrl}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ''}
+            <h2>${escapeHtml(bot.name)}</h2>
           </div>
         ` : ''}
         <div class="messages">
@@ -160,7 +160,7 @@ export default async function handler(
               const isUser = msg.sender === "User";
               return `
                 <div class="message ${isUser ? 'user-message' : 'bot-message'}">
-                  <strong class="${isUser ? 'user-sender' : 'bot-sender'}">${isUser ? "Me" : (bot ? bot.name : msg.sender)}:</strong>
+                  <strong class="${isUser ? 'user-sender' : 'bot-sender'}">${isUser ? "Me" : (bot ? escapeHtml(bot.name) : escapeHtml(msg.sender))}:</strong>
                   <span style="margin-left: 8px;">${escapeHtml(msg.text)}</span>
                 </div>
               `;
@@ -189,4 +189,15 @@ export function escapeHtml(str: string): string {
     };
     return chars[tag] || tag;
   });
+}
+
+// Helper for validating avatar URL
+export function isValidAvatarUrl(url: string): boolean {
+  if (typeof url !== 'string') return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' || url.startsWith('/');
+  } catch {
+    return false;
+  }
 }
