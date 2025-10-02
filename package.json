@@ -31,7 +31,7 @@
     "minimatch": "^10.0.3",
     "next": "^15.5.4",
     "node-fetch": "^3.3.2",
-    "openai": "^6.0.0",
+    "openai": "^6.0.1",
     "react": "^19.1.1",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",
