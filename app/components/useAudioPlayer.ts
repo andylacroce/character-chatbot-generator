@@ -5,6 +5,7 @@
 // =============================
 
 import { useRef, useCallback } from "react";
+import { authenticatedFetch } from "../../src/utils/api";
 
 /**
  * Custom hook to handle audio playback for chat messages.
@@ -65,7 +66,7 @@ export function useAudioPlayer(
     }
     const audioContext = audioContextRef.current;
     // Fetch audio data
-    const response = await fetch(src, { signal });
+    const response = await authenticatedFetch(src, { signal });
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
     // Create a new buffer with silence prepended

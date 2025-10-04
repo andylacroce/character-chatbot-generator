@@ -12,6 +12,7 @@
 import React, { useRef, useEffect, useContext, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { DarkModeContext } from "./DarkModeContext";
+import { authenticatedFetch } from "../../src/utils/api";
 import styles from "./styles/BotCreator.module.css";
 import DarkModeToggle from "./DarkModeToggle";
 import { useBotCreation } from "./useBotCreation";
@@ -89,7 +90,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   useEffect(() => {
     // fetch server-side config (safe subset) so UI matches server timeout
     let mounted = true;
-    fetch('/api/config')
+    authenticatedFetch('/api/config')
       .then(r => r.json())
       .then((data) => { if (mounted && data && typeof data.avatarTimeoutSeconds === 'number') setMaxAvatarSeconds(data.avatarTimeoutSeconds); })
       .catch(() => { /* ignore, fall back to 60 */ });

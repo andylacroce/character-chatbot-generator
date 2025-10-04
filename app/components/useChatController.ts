@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import axios from "axios";
 import { downloadTranscript } from "../../src/utils/downloadTranscript";
+import { authenticatedFetch } from "../../src/utils/api";
 import { useSession } from "./useSession";
 import { useApiError } from "./useApiError";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
@@ -140,12 +140,16 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         async (message: Message) => {
             if (!sessionId || !sessionDatetime) return;
             try {
-                await profileApiCall("Log Message", () => axios.post("/api/log-message", {
-                    sender: message.sender,
-                    text: message.text,
-                    sessionId: sessionId,
-                    sessionDatetime: sessionDatetime,
-                }));
+                await profileApiCall("Log Message", () => authenticatedFetch("/api/log-message", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        sender: message.sender,
+                        text: message.text,
+                        sessionId: sessionId,
+                        sessionDatetime: sessionDatetime,
+                    }),
+                }).then(res => { if (!res.ok) throw new Error('Log failed'); }));
             } catch (error) {
                 console.warn("Failed to log message", {
                     event: "client_log_message_failed",
@@ -175,18 +179,22 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                         }
                         return;
                     }
-                    const response = await profileApiCall("Fetch Intro", () => axios.post("/api/chat", {
-                        message: "Introduce yourself in 2 sentences or less.",
-                        personality: bot.personality,
-                        botName: bot.name,
-                        voiceConfig: getVoiceConfig(),
-                        gender: bot.gender,
-                        conversationHistory: []
-                    }));
+                    const response = await profileApiCall("Fetch Intro", () => authenticatedFetch("/api/chat", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            message: "Introduce yourself in 2 sentences or less.",
+                            personality: bot.personality,
+                            botName: bot.name,
+                            voiceConfig: getVoiceConfig(),
+                            gender: bot.gender,
+                            conversationHistory: []
+                        }),
+                    }).then(res => res.json()));
                     const introMsg: Message = {
                         sender: bot.name,
-                        text: response.data.reply,
-                        audioFileUrl: response.data.audioFileUrl,
+                        text: response.reply,
+                        audioFileUrl: response.audioFileUrl,
                     };
                     setMessages([introMsg]);
                     logMessage(introMsg);
@@ -266,13 +274,20 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 msg.sender === bot.name ? `Bot: ${msg.text}` : `User: ${msg.text}`
             );
             const response = await retryWithBackoff(
-                () => axios.post("/api/chat", { 
-                    message: currentInput, 
-                    personality: bot.personality, 
-                    botName: bot.name, 
-                    voiceConfig: getVoiceConfig(), 
-                    gender: bot.gender,
-                    conversationHistory 
+                () => authenticatedFetch("/api/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: currentInput,
+                        personality: bot.personality,
+                        botName: bot.name,
+                        voiceConfig: getVoiceConfig(),
+                        gender: bot.gender,
+                        conversationHistory
+                    }),
+                }).then(res => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.json();
                 }),
                 2,
                 800
@@ -280,8 +295,8 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             console.debug("retryWithBackoff succeeded.");
             const botReply: Message = {
                 sender: bot.name,
-                text: response.data.reply,
-                audioFileUrl: response.data.audioFileUrl,
+                text: response.reply,
+                audioFileUrl: response.audioFileUrl,
             };
             setMessages((prevMessages) => [...prevMessages, botReply]);
             logMessage(botReply);
@@ -333,12 +348,11 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     useEffect(() => {
         if (healthCheckRan.current) return;
         healthCheckRan.current = true;
-        axios
-            .get("/api/health")
-                .then(() => {
-                    setApiAvailable(true);
-                    safeFocus(inputRef);
-                })
+        authenticatedFetch("/api/health")
+            .then(() => {
+                setApiAvailable(true);
+                safeFocus(inputRef);
+            })
             .catch((err) => {
                 setApiAvailable(false);
                 handleApiError(err);

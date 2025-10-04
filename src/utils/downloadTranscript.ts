@@ -5,6 +5,7 @@
 // =============================
 
 import type { Message } from "../types/message";
+import { authenticatedFetch } from "./api";
 
 /**
  * Opens the chat transcript as HTML in a new browser tab by calling the /api/transcript endpoint.
@@ -35,7 +36,7 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
   });
   let response;
   try {
-    response = await fetch("/api/transcript", {
+    response = await authenticatedFetch("/api/transcript", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: safeMessages, exportedAt: friendlyTime, bot }),

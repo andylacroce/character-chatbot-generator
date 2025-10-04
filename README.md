@@ -12,7 +12,7 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 - Responsive, accessible design
 - HTML chat transcripts with character images (opens in new tabs)
 - Logging to Vercel Blob or local file system
-- **All internal API endpoints are public by default**
+- **API Security**: All internal API endpoints are protected by API key authentication and origin restrictions
 
 ## Project structure
 
@@ -23,25 +23,13 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 
 ## How it works
 
-1. **Character Creation**: Users create a chatbot persona by entering a name or choosing a random character. The app generates a personality, avatar, and voice configuration.
-
-   **Direct Character Creation via URL**: You can also create a character directly by including a `name` query parameter in the URL. For example: `https://your-domain.com/?name=Sherlock%20Holmes`. This will:
-   - Load the character creation page (even if a character already exists)
-   - Prepopulate the name field with the specified character
-   - Automatically start generating the character
-
-2. **Chat**: Users chat in real time. The app sends messages to OpenAI's API, receives characterful replies, and synthesizes voice responses using Google TTS.
-3. **Transcript & Logging**: Users can view chat transcripts as formatted HTML pages with character images in new browser tabs. All chats can be logged to Vercel Blob or the local file system.
+1. **Character Creation**: Enter a name or choose a random character. The app generates a personality, avatar, and voice configuration.
+2. **Chat**: Real-time chat powered by OpenAI with characterful responses and Google TTS voice synthesis.
+3. **Transcripts**: View formatted HTML transcripts with character images in new browser tabs.
 
 ## Transcript Feature
 
-The app provides a rich HTML transcript feature that opens in new browser tabs:
-
-- **Format**: Clean HTML with responsive styling and character avatars
-- **Access**: Click the transcript button in the chat header to open in a new tab
-- **Filename**: Browser tab title shows "{Character Name} transcript {datetime}"
-- **Content**: Includes all chat messages with proper formatting and character images
-- **Browser Compatibility**: Works on all modern browsers (may be blocked by popup blockers)
+Clean HTML transcripts with character avatars that open in new browser tabs. Compatible with all modern browsers.
 
 ## Setup (local)
 
@@ -60,23 +48,19 @@ The app provides a rich HTML transcript feature that opens in new browser tabs:
    OPENAI_API_KEY=your_openai_api_key_here
    GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
    VERCEL_BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
+   API_SECRET=your_api_secret_here
+   NEXT_PUBLIC_API_SECRET=your_api_secret_here
    ```
 
-   - For Vercel, paste the full JSON string for `GOOGLE_APPLICATION_CREDENTIALS_JSON` and your `VERCEL_BLOB_READ_WRITE_TOKEN` in the Project Settings (see "Deployment" notes below).
+3. **API Security**
 
-3. **Middleware / CORS**
+   Multi-layered protection with origin restrictions and API key authentication. All `/api/*` endpoints require valid `x-api-key` headers. Failed attempts are logged for monitoring.
 
-   - The file `middleware.ts` restricts API access to specific origins for security. If you run the app locally on a different port/domain or deploy to another Vercel project, update the `allowedOrigins` array in `middleware.ts`.
+   **Required Environment Variables**:
+   - `API_SECRET`: Server-side API key
+   - `NEXT_PUBLIC_API_SECRET`: Client-side API key (same value)
 
-   Example:
-
-   ```ts
-   const allowedOrigins = [
-     'http://localhost:3000',
-     'http://127.0.0.1:3000',
-     'https://your-custom-domain.com',
-   ];
-   ```
+   **Custom Domains**: Update `allowedOrigins` in `middleware.ts` for non-standard deployments.
 
 4. **Run locally**
 
@@ -90,47 +74,30 @@ The app provides a rich HTML transcript feature that opens in new browser tabs:
    npm test
    ```
 
-## Testing notes
+## Testing
 
-- The project includes a small manual Jest mock for the `uuid` package at `__mocks__/uuid.js`.
-  - Why: `uuid@13+` is ESM and contains `export` syntax. Transforming ESM node_modules can complicate Jest/Babel config. The mock is a small CommonJS-compatible shim used only for tests to keep them deterministic.
-  - How to remove the mock:
-    1. Configure Babel/Jest to transform `uuid` (the project already whitelists `uuid` in `transformIgnorePatterns`, but you may need to tweak Babel), or
-    2. Pin `uuid` to a CJS-compatible release (not recommended), or
-    3. Replace the mock with a test helper that uses a CJS-safe UUID generator.
+Run tests with `npm test`. The project includes a UUID mock for deterministic testing.
 
 ## Deployment (Vercel)
 
-- This app runs on Vercel. Provide secrets via Project Settings (Environment Variables):
-  - `OPENAI_API_KEY`
-  - `VERCEL_BLOB_READ_WRITE_TOKEN` (if using Vercel Blob)
-  - `GOOGLE_APPLICATION_CREDENTIALS_JSON` — paste the full service-account JSON as a secret (do not commit `config/gcp-key.json`)
-- Ensure server-side API routes that use Node-only SDKs (Google client libraries) are not configured as Edge functions (use the default Node runtime).
-- Set a Node engine (>=18) in `package.json` or in Vercel settings if needed.
+Set these environment variables in Vercel Project Settings:
+- `OPENAI_API_KEY`
+- `VERCEL_BLOB_READ_WRITE_TOKEN` (optional)
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON`
+- `API_SECRET`
+- `NEXT_PUBLIC_API_SECRET`
 
-### Google Cloud credentials (updated)
+Use Node runtime (not Edge) for API routes. Node version ≥18 recommended.
 
+### Google Cloud Setup
 
-The project previously passed raw `credentials` objects to Google client constructors which newer Google SDKs now warn is deprecated. This repository has been updated to:
-
-- Construct a google-auth-library `GoogleAuth` instance from the service-account JSON when you provide explicit credentials.
-- Pass that auth object as the `auth` option to Google client constructors (for example, `new TextToSpeechClient({ auth })`).
-- Fall back to Application Default Credentials (ADC) when no explicit credentials are provided (recommended for many deployments).
-
-How to provide credentials:
-
-- Local (recommended for development): point `GOOGLE_APPLICATION_CREDENTIALS_JSON` at a path to your JSON file, e.g. `config/gcp-key.json` in `.env.local`.
-- Vercel: paste the full service-account JSON string into the `GOOGLE_APPLICATION_CREDENTIALS_JSON` environment variable in Project Settings.
-
-Why this change: it avoids deprecation warnings on Vercel and ensures the SDK uses the supported `auth` constructor pattern. No secret values are committed to the repo.
+- **Local**: Set `GOOGLE_APPLICATION_CREDENTIALS_JSON` to your service account JSON file path
+- **Vercel**: Paste the full JSON string into the `GOOGLE_APPLICATION_CREDENTIALS_JSON` environment variable
 
 ## Contributing
 
-Contributions are welcome! Please:
-- Open an issue for bugs or feature requests
-- Submit pull requests with clear descriptions and relevant tests
-- Follow the existing code style and documentation practices
+Open issues for bugs/features. Submit PRs with tests. Follow existing code style.
 
 ## Disclaimer
 
-This project is a demonstration of using the OpenAI API to generate chatbots. It is intended solely for educational and portfolio purposes. Users are responsible for any content they generate. Do not use this tool to create or distribute chatbots based on copyrighted or trademarked characters. Instead, we encourage creating chatbots based on public domain characters (such as those from classic literature like Sherlock Holmes, Dracula, or Alice in Wonderland) or completely original characters. This project is not affiliated with or endorsed by OpenAI or any third-party rights holders.
+Educational/portfolio project. Use public domain characters only. Not affiliated with OpenAI.

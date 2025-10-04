@@ -1,5 +1,6 @@
 import { useState, useRef, MutableRefObject } from "react";
 import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
+import { authenticatedFetch } from "../../src/utils/api";
 import type { Bot } from "./BotCreator";
 
 type ProgressStep = "personality" | "avatar" | "voice" | null;
@@ -22,7 +23,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         while (tries < maxTries) {
             try {
                 const exclude = [...recentRandomNames.current, lastName].filter(Boolean).join(",");
-                const res = await fetch(`/api/random-character?cb=${Date.now()}-${Math.random()}&exclude=${encodeURIComponent(exclude)}`);
+                const res = await authenticatedFetch(`/api/random-character?cb=${Date.now()}-${Math.random()}&exclude=${encodeURIComponent(exclude)}`);
                 const data = await res.json();
                 if (res.ok && data && typeof data.name === "string" && data.name.trim() && !recentRandomNames.current.includes(data.name.trim())) {
                     name = data.name.replace(/^\[STATIC\]\s*/, '').trim();
@@ -113,7 +114,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         if (cancelRequested.current) throw new Error("cancelled");
         try {
             setLoadingMessage("Creating personality");
-            const personalityRes = await fetch("/api/generate-personality", {
+            const personalityRes = await authenticatedFetch("/api/generate-personality", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: originalInputName }),
@@ -132,7 +133,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         if (cancelRequested.current) throw new Error("cancelled");
         try {
             setLoadingMessage("Generating portrait — may take up to a minute");
-            const avatarRes = await fetch("/api/generate-avatar", {
+            const avatarRes = await authenticatedFetch("/api/generate-avatar", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: correctedName }),
