@@ -27,6 +27,35 @@ module.exports = {
     "coverage/",
     "tmp/",
     "jest.setup.js", // Exclude Jest setup file from linting
+    "scripts/**",
+    "**/*.sh",
+  ],
+  overrides: [
+    {
+      files: ["**/*.test.{ts,tsx,js,jsx}", "tests/**", "tests/**/**"],
+      rules: {
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/ban-ts-comment": "off",
+        "@typescript-eslint/no-require-imports": "off",
+  "@typescript-eslint/no-unused-vars": "off",
+        "@typescript-eslint/no-this-alias": "off",
+        "@typescript-eslint/no-var-requires": "off",
+        "@typescript-eslint/no-unused-expressions": "off"
+      }
+    },
+    {
+      files: ["**/*.cjs", "**/*.config.js", "jest.*", "scripts/**"],
+      rules: {
+        "@typescript-eslint/no-require-imports": "off",
+        "@typescript-eslint/no-var-requires": "off"
+      }
+    },
+    {
+      files: ["**/*.d.ts"],
+      rules: {
+        "@typescript-eslint/triple-slash-reference": "off"
+      }
+    }
   ],
   rules: {
     // Add or override rules here as needed

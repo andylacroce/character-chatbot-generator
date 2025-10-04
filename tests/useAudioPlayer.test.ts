@@ -37,13 +37,13 @@ class AudioMock {
   constructor(src: string) {
     this.src = src;
     this.play = jest.fn(function (this: AudioMock) {
-      // eslint-disable-next-line no-console
+       
       console.log('play called on', this.src);
       this.paused = false;
       if (this.onended) this.onended();
     });
     this.pause = jest.fn(function (this: AudioMock) {
-      // eslint-disable-next-line no-console
+       
       console.log('pause called on', this.src);
       this.paused = true;
     });

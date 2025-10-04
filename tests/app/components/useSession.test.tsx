@@ -1,6 +1,5 @@
 import React from 'react';
 import { render } from '@testing-library/react';
-import { renderHook } from '@testing-library/react';
 import { useSession } from '../../../app/components/useSession';
 
 describe('useSession', () => {
@@ -14,8 +13,13 @@ describe('useSession', () => {
 
     function TestComponent({ onResult }: { onResult: (sessionId: string, sessionDatetime: string) => void }) {
         const [sessionId, sessionDatetime] = useSession();
+        const onResultRef = React.useRef(onResult);
         React.useEffect(() => {
-            onResult(sessionId, sessionDatetime);
+            onResultRef.current = onResult;
+        }, [onResult]);
+
+        React.useEffect(() => {
+            onResultRef.current(sessionId, sessionDatetime);
         }, [sessionId, sessionDatetime]);
         return null;
     }

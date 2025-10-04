@@ -1,8 +1,8 @@
-import React, { useRef } from "react";
+import React from "react";
 import { render, act } from "@testing-library/react";
 import { useChatScrollAndFocus } from "../app/components/useChatScrollAndFocus";
 
-function setup({ messages = [], loading = false } = {}) {
+function setup({ messages: _messages = [], loading: _loading = false } = {}) {
   const chatBoxRef = React.createRef<HTMLDivElement>();
   const inputRef = React.createRef<HTMLInputElement>();
   function TestComponent({ messages, loading }: { messages: any[]; loading: boolean }) {

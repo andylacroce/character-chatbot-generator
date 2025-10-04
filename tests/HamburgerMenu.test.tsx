@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent, screen, act, waitFor } from "@testing-library/react";
+import { render, fireEvent, screen, waitFor } from "@testing-library/react";
 import HamburgerMenu from "../app/components/HamburgerMenu";
 
 // Simple child button for testing

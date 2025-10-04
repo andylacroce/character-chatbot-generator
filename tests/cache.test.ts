@@ -6,7 +6,7 @@ jest.mock('fs', () => ({
 const fs = require('fs');
 
 describe('cache utility', () => {
-    const CACHE_FILE = '/tmp/bot-reply-cache.json';
+    const _CACHE_FILE = '/tmp/bot-reply-cache.json';
     beforeEach(() => {
         jest.resetModules();
         delete process.env.VERCEL_ENV;
@@ -18,7 +18,7 @@ describe('cache utility', () => {
 
     function getCache() {
         // Always require after env setup
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+         
         return require('../src/utils/cache');
     }
 
@@ -32,7 +32,7 @@ describe('cache utility', () => {
 
     it('setReplyCache and getReplyCache use file in non-Vercel', () => {
         (fs.existsSync as jest.Mock).mockReturnValue(true);
-        let fileCache = { foo: 'baz' };
+        const fileCache = { foo: 'baz' };
         (fs.readFileSync as jest.Mock).mockImplementation(() => JSON.stringify(fileCache));
         const cache = getCache();
         expect(() => cache.setReplyCache('foo', 'bar')).not.toThrow();
@@ -69,7 +69,7 @@ describe('cache utility', () => {
 
     it('deleteReplyCache works in non-Vercel', () => {
         (fs.existsSync as jest.Mock).mockReturnValue(true);
-        let fileCache = { foo: 'bar' };
+        const fileCache = { foo: 'bar' };
         (fs.readFileSync as jest.Mock).mockImplementation(() => JSON.stringify(fileCache));
         const cache = getCache();
         expect(() => cache.deleteReplyCache('foo')).not.toThrow();

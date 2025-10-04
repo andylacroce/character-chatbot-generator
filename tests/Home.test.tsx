@@ -11,7 +11,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 // Mock dynamic imports
-jest.mock('next/dynamic', () => (importFunc: any) => {
+jest.mock('next/dynamic', () => (_importFunc: any) => {
   const MockComponent = () => <div data-testid="mock-component">Mock Component</div>;
   return MockComponent;
 });

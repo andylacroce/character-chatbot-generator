@@ -37,7 +37,7 @@ describe("useChatController uncovered branches", () => {
 
     it("handles missing voiceConfig in getIntro", async () => {
         const botWithoutVoiceConfig = { ...mockBot, voiceConfig: null };
-        const { result } = renderHook(() => useChatController(botWithoutVoiceConfig));
+        const { result: _result } = renderHook(() => useChatController(botWithoutVoiceConfig));
         await act(async () => {
             (axios.get as jest.Mock).mockResolvedValueOnce({}); // Simulate successful API health check
         });

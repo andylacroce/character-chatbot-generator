@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { render, act, waitFor } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import { DarkModeContext, DarkModeProvider } from '@/app/components/DarkModeContext';
 
 describe('DarkModeContext', () => {
