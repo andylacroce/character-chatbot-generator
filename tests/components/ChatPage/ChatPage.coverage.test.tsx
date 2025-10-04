@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import ChatPage from "../../../app/components/ChatPage";
 import { Bot } from "../../../app/components/BotCreator";
 import axios from "axios";
@@ -54,8 +55,7 @@ describe("ChatPage branch coverage edge cases", () => {
             .mockRejectedValueOnce(new Error("fail3"));
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
-        fireEvent.change(input, { target: { value: "Force fail" } });
-        fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+        await userEvent.type(input, "Force fail{Enter}");
         // Wait for error to be handled and loading to be reset
         await waitFor(() => {
             expect(screen.getByTestId("chat-layout")).toBeInTheDocument();
@@ -66,8 +66,7 @@ describe("ChatPage branch coverage edge cases", () => {
         (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Bot reply", audioFileUrl: "audio.mp3" } });
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
-        fireEvent.change(input, { target: { value: "Hi" } });
-        fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+        await userEvent.type(input, "Hi{Enter}");
         await waitFor(() => {
             expect(playAudio).toHaveBeenCalledWith("audio.mp3", expect.any(AbortSignal));
         });
@@ -91,8 +90,7 @@ describe("ChatPage branch coverage edge cases", () => {
         (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Bot reply", audioFileUrl: null } });
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
-        fireEvent.change(input, { target: { value: "Hi" } });
-        fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+        await userEvent.type(input, "Hi{Enter}");
         await waitFor(() => {
             expect(screen.getByTestId("chat-layout")).toBeInTheDocument();
         });
@@ -111,8 +109,7 @@ describe("ChatPage branch coverage edge cases", () => {
         (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Bot reply", audioFileUrl: "audio.mp3" } });
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
-        fireEvent.change(input, { target: { value: "Hi" } });
-        fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+        await userEvent.type(input, "Hi{Enter}");
         await waitFor(() => {
             expect(playAudio).not.toHaveBeenCalled();
         });
@@ -122,9 +119,8 @@ describe("ChatPage branch coverage edge cases", () => {
     it("does not call playAudio if last message is not from bot or has no audioFileUrl", async () => {
         (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Bot reply", audioFileUrl: null } });
         render(<ChatPage bot={mockBot} />);
-        const input = screen.getByRole("textbox");
-        fireEvent.change(input, { target: { value: "Hi" } });
-        fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+        const input = await screen.findByRole("textbox");
+        await userEvent.type(input, "Hi{Enter}");
         await waitFor(() => {
             expect(playAudio).not.toHaveBeenCalled();
         });
@@ -133,10 +129,7 @@ describe("ChatPage branch coverage edge cases", () => {
     it("handleScroll updates visibleCount branch", async () => {
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
-        for (let i = 0; i < 25; i++) {
-            fireEvent.change(input, { target: { value: `msg${i}` } });
-            fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
-        }
+        for (let i = 0; i < 25; i++) await userEvent.type(input, `msg${i}{Enter}`);
         const chatContainer = screen.getByTestId("chat-messages-container");
         Object.defineProperty(chatContainer, "scrollTop", { value: 0, writable: true });
         fireEvent.scroll(chatContainer);
@@ -158,8 +151,7 @@ describe("ChatPage branch coverage edge cases", () => {
         (axios.post as jest.Mock).mockRejectedValue(new Error("fail"));
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
-        fireEvent.change(input, { target: { value: "Hi" } });
-        fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+        await userEvent.type(input, "Hi{Enter}");
         await waitFor(() => {
             expect(screen.getByTestId("chat-layout")).toBeInTheDocument();
         });
@@ -169,10 +161,7 @@ describe("ChatPage branch coverage edge cases", () => {
         const debugSpy = jest.spyOn(console, "debug").mockImplementation(() => {});
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
-        for (let i = 0; i < 25; i++) {
-            fireEvent.change(input, { target: { value: `msg${i}` } });
-            fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
-        }
+        for (let i = 0; i < 25; i++) await userEvent.type(input, `msg${i}{Enter}`);
         const chatContainer = screen.getByTestId("chat-messages-container");
         Object.defineProperty(chatContainer, "scrollTop", { value: 0, writable: true });
         fireEvent.scroll(chatContainer);
@@ -184,9 +173,7 @@ describe("ChatPage branch coverage edge cases", () => {
         const debugSpy = jest.spyOn(console, "debug").mockImplementation(() => {});
         let lastText = "";
         try {
-            await act(async () => {
-                render(<ChatPage bot={{ name: "TestBot", personality: "friendly", avatarUrl: "/mock-avatar-url", voiceConfig: null }} />);
-            });
+            render(<ChatPage bot={{ name: "TestBot", personality: "friendly", avatarUrl: "/mock-avatar-url", voiceConfig: null }} />);
             await waitFor(() => {
                 const errorMessage = screen.getByText(/Voice configuration missing/);
                 expect(errorMessage).toBeInTheDocument();
@@ -216,8 +203,7 @@ describe("ChatPage branch coverage edge cases", () => {
         const botNoVoice = { ...mockBot, voiceConfig: null };
         render(<ChatPage bot={botNoVoice} />);
         const input = screen.getByRole("textbox");
-        fireEvent.change(input, { target: { value: "Hi" } });
-        fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+        await userEvent.type(input, "Hi{Enter}");
         await waitFor(() => {
             const errorDiv = screen.getByTestId("error-message");
             expect(errorDiv).toBeInTheDocument();

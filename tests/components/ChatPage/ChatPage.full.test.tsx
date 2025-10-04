@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import ChatPage from "../../../app/components/ChatPage";
 import { Bot } from "../../../app/components/BotCreator";
 import axios from "axios";
@@ -47,12 +47,13 @@ describe("ChatPage full feature coverage", () => {
 
   it("renders and focuses input after health check", async () => {
     render(<ChatPage bot={mockBot} />);
-    await waitFor(() => expect(screen.getByRole("textbox")).toHaveFocus());
+    const input = await screen.findByRole("textbox");
+    expect(input).toHaveFocus();
   });
 
   it("toggles audio and persists preference", async () => {
     render(<ChatPage bot={mockBot} />);
-    const toggle = screen.getByLabelText(/audio/i);
+    const toggle = await screen.findByLabelText(/audio/i);
     await userEvent.click(toggle);
     expect(localStorage.getItem("audioEnabled")).toBe("false");
     await userEvent.click(toggle);
@@ -64,20 +65,10 @@ describe("ChatPage full feature coverage", () => {
   it("downloads transcript when header button clicked", async () => {
     (downloadTranscript as jest.Mock).mockClear();
     render(<ChatPage bot={mockBot} />);
-    // Wait for menu button, log DOM if not found
-    let menuBtn: HTMLElement | null = null;
-    await waitFor(() => {
-      menuBtn = screen.queryByLabelText(/open menu/i);
-      expect(menuBtn).toBeInTheDocument();
-    }, { timeout: 2000 });
-    await userEvent.click(menuBtn!);
-    // Wait for download button
-    let downloadBtn: HTMLElement | null = null;
-    await waitFor(() => {
-      downloadBtn = screen.queryByLabelText(/download chat transcript/i);
-      expect(downloadBtn).toBeInTheDocument();
-    }, { timeout: 2000 });
-    await userEvent.click(downloadBtn!);
+    const menuBtn = await screen.findByLabelText(/open menu/i, {}, { timeout: 2000 });
+    await userEvent.click(menuBtn);
+    const downloadBtn = await screen.findByLabelText(/download chat transcript/i, {}, { timeout: 2000 });
+    await userEvent.click(downloadBtn);
     await waitFor(() => expect(downloadTranscript).toHaveBeenCalled(), { timeout: 1000 });
   });
 
@@ -86,8 +77,9 @@ describe("ChatPage full feature coverage", () => {
     const originalAlert = window.alert;
     window.alert = jest.fn();
     render(<ChatPage bot={mockBot} />);
-    await userEvent.click(screen.getByLabelText(/open menu/i));
-    const downloadBtn = screen.getByLabelText(/download chat transcript/i);
+    const menuBtn = await screen.findByLabelText(/open menu/i);
+    await userEvent.click(menuBtn);
+    const downloadBtn = await screen.findByLabelText(/download chat transcript/i);
     await userEvent.click(downloadBtn);
     await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Failed to open transcript: fail"));
     window.alert = originalAlert;
@@ -98,20 +90,10 @@ describe("ChatPage full feature coverage", () => {
     const mockStopAudio = jest.fn();
     (mockUseAudioPlayer as jest.Mock).mockImplementation(() => ({ playAudio: jest.fn(), stopAudio: mockStopAudio, audioRef: { current: { pause: jest.fn(), currentTime: 42 } } }));
     render(<ChatPage bot={mockBot} onBackToCharacterCreation={onBack} />);
-    // Wait for menu button
-    let menuBtn: HTMLElement | null = null;
-    await waitFor(() => {
-      menuBtn = screen.queryByLabelText(/open menu/i);
-      expect(menuBtn).toBeInTheDocument();
-    }, { timeout: 2000 });
-    await userEvent.click(menuBtn!);
-    // Wait for back button
-    let backBtn: HTMLElement | null = null;
-    await waitFor(() => {
-      backBtn = screen.queryByLabelText(/back to character creation/i);
-      expect(backBtn).toBeInTheDocument();
-    }, { timeout: 2000 });
-    await userEvent.click(backBtn!);
+    const menuBtn = await screen.findByLabelText(/open menu/i, {}, { timeout: 2000 });
+    await userEvent.click(menuBtn);
+    const backBtn = await screen.findByLabelText(/back to character creation/i, {}, { timeout: 2000 });
+    await userEvent.click(backBtn);
     await waitFor(() => {
       expect(mockStopAudio).toHaveBeenCalled();
       expect(onBack).toHaveBeenCalled();
@@ -120,11 +102,10 @@ describe("ChatPage full feature coverage", () => {
 
   it("handles input and sends message on Enter", async () => {
     render(<ChatPage bot={mockBot} />);
-    const input = screen.getByRole("textbox");
-    fireEvent.change(input, { target: { value: "Hello" } });
-    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
-    await waitFor(() => {
-      const replies = screen.getAllByText(/Bot reply/i);
+    const input = await screen.findByRole("textbox");
+    await userEvent.type(input, "Hello{Enter}");
+    await waitFor(async () => {
+      const replies = await screen.findAllByText(/Bot reply/i);
       expect(replies.length).toBeGreaterThan(0);
     });
   });
@@ -139,24 +120,23 @@ describe("ChatPage full feature coverage", () => {
   it("calls onBackToCharacterCreation when header back button is clicked", async () => {
     const onBack = jest.fn();
     render(<ChatPage bot={mockBot} onBackToCharacterCreation={onBack} />);
-    // Open hamburger menu
-    fireEvent.click(screen.getByLabelText(/open menu/i));
-    const backBtn = screen.getByLabelText(/back to character creation/i);
-    fireEvent.click(backBtn);
+    const menuBtn = await screen.findByLabelText(/open menu/i);
+    await userEvent.click(menuBtn);
+    const backBtn = await screen.findByLabelText(/back to character creation/i);
+    await userEvent.click(backBtn);
     await waitFor(() => expect(onBack).toHaveBeenCalled());
   });
 
   it("loads more messages on scroll to top", async () => {
     render(<ChatPage bot={mockBot} />);
 
-    // Add enough messages to enable scrolling
-    const input = screen.getByRole("textbox");
+    // Add enough messages to enable scrolling by typing quickly
+    const input = await screen.findByRole("textbox");
     for (let i = 0; i < 30; i++) {
-      fireEvent.change(input, { target: { value: `msg${i}` } });
-      fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+      await userEvent.type(input, `msg${i}{Enter}`);
     }
 
-    const chatContainer = screen.getByTestId("chat-messages-container");
+    const chatContainer = await screen.findByTestId("chat-messages-container");
 
     // Mock scroll height and trigger scroll event
     Object.defineProperty(chatContainer, "scrollHeight", { value: 100, writable: true });
@@ -164,7 +144,6 @@ describe("ChatPage full feature coverage", () => {
     Object.defineProperty(chatContainer, "scrollTop", { value: 0, writable: true });
 
     fireEvent.scroll(chatContainer);
-    console.log('Mocked scrollTop:', chatContainer.scrollTop);
 
     await waitFor(() => {
       const firstMessage = screen.getByText("msg0");
