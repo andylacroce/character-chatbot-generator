@@ -19,7 +19,9 @@ describe('downloadTranscript', () => {
   });
 
   it('throws if messages is not an array', async () => {
-    await expect(downloadTranscript(null as any)).rejects.toThrow('Transcript must be an array');
+  // Call the function via an unknown-typed reference to intentionally pass a non-array value
+  const fn = downloadTranscript as unknown as (m: unknown) => Promise<void>;
+  await expect(fn(null)).rejects.toThrow('Transcript must be an array');
   });
 
   it('calls fetch and opens transcript in new tab for valid messages', async () => {
@@ -40,8 +42,8 @@ describe('downloadTranscript', () => {
         body: expect.stringContaining('"messages":[{"sender":"User","text":"Hello"}]')
       })
     );
-    const callArgs = fetchMock.mock.calls[0][1] as any;
-    const body = JSON.parse(callArgs.body);
+  const callArgs = fetchMock.mock.calls[0][1] as unknown as Record<string, unknown>;
+  const body = JSON.parse(callArgs.body as string);
     expect(body.bot).toEqual(bot);
     expect(typeof body.exportedAt).toBe('string');
     expect(createObjectURL).toHaveBeenCalledWith(new Blob([htmlContent], { type: 'text/html; charset=utf-8' }));
@@ -83,8 +85,8 @@ describe('downloadTranscript', () => {
 
   it('throws if window.URL.createObjectURL is not available', async () => {
     const orig = global.URL.createObjectURL;
-    // @ts-ignore
-    global.URL.createObjectURL = undefined;
+  // @ts-expect-error test-mock: simulate missing createObjectURL
+  global.URL.createObjectURL = undefined;
     fetchMock.mockResolvedValue({
       ok: true,
       text: () => Promise.resolve('<html>test</html>'),

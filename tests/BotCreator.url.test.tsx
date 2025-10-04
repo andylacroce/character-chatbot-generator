@@ -12,14 +12,14 @@ describe('BotCreator URL parameter functionality', () => {
     beforeEach(() => {
         // Reset search params
         mockSearchParams.delete('name');
-        // mock fetch to return avatarTimeoutSeconds = 3
-        // @ts-ignore
-        global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({ avatarTimeoutSeconds: 3 }) }));
+    // mock fetch to return avatarTimeoutSeconds = 3
+    // @ts-expect-error test-mock: assign mocked fetch to global
+    global.fetch = jest.fn(() => Promise.resolve({ json: () => Promise.resolve({ avatarTimeoutSeconds: 3 }) }));
     });
 
     afterEach(() => {
-        // @ts-ignore
-        delete global.fetch;
+    // @ts-expect-error test-mock: remove mocked fetch from global
+    delete global.fetch;
         jest.resetModules();
     });
 

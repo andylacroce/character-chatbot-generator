@@ -11,7 +11,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 // Mock dynamic imports
-jest.mock('next/dynamic', () => (_importFunc: any) => {
+jest.mock('next/dynamic', () => (_importFunc: unknown) => {
   const MockComponent = () => <div data-testid="mock-component">Mock Component</div>;
   return MockComponent;
 });
@@ -24,7 +24,11 @@ jest.mock('../src/utils/getValidBotFromStorage', () => ({
 import Home from '../app/index';
 
 describe('Home component URL parameter functionality', () => {
-  const mockGetValidBotFromStorage = require('../src/utils/getValidBotFromStorage').getValidBotFromStorage;
+  // Use jest.requireMock so we don't rely on CommonJS require()
+  // and to ensure we get the mocked module created by jest.mock above.
+  // typed as jest.Mock for convenience in tests
+  type GetValidBotModule = { getValidBotFromStorage: jest.Mock };
+  const mockGetValidBotFromStorage = (jest.requireMock('../src/utils/getValidBotFromStorage') as unknown as GetValidBotModule).getValidBotFromStorage;
 
   beforeEach(() => {
     jest.clearAllMocks();

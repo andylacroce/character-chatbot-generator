@@ -34,13 +34,15 @@ module.exports = {
     {
       files: ["**/*.test.{ts,tsx,js,jsx}", "tests/**", "tests/**/**"],
       rules: {
-        "@typescript-eslint/no-explicit-any": "off",
-        "@typescript-eslint/ban-ts-comment": "off",
+        "@typescript-eslint/no-explicit-any": "warn",
+        "@typescript-eslint/ban-ts-comment": "warn",
+        // Allow require-style imports in tests for legacy mocks
         "@typescript-eslint/no-require-imports": "off",
-  "@typescript-eslint/no-unused-vars": "off",
-        "@typescript-eslint/no-this-alias": "off",
         "@typescript-eslint/no-var-requires": "off",
-        "@typescript-eslint/no-unused-expressions": "off"
+        // Allow unused vars that start with underscore (common test pattern)
+        "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+        "@typescript-eslint/no-this-alias": "warn",
+        "@typescript-eslint/no-unused-expressions": "warn"
       }
     },
     {

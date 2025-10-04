@@ -32,7 +32,8 @@ describe('logger utility', () => {
             expect(truncate('a'.repeat(150), 100)).toBe('a'.repeat(100) + '…');
         });
         it('returns input unchanged if not a string', () => {
-            expect(truncate(123 as any, 10)).toBe(123);
+    // Pass a non-string via unknown cast to test non-string behavior without using `any`
+    expect(truncate((123 as unknown) as string, 10)).toBe(123);
         });
     });
 
@@ -65,10 +66,11 @@ describe('logger utility', () => {
     it('should polyfill setImmediate if missing', () => {
         const original = globalThis.setImmediate;
         // Remove setImmediate
-        // @ts-ignore
-        delete globalThis.setImmediate;
+    // @ts-expect-error test-mock: remove setImmediate to test polyfill
+    delete globalThis.setImmediate;
         jest.resetModules();
-        require('../src/utils/logger');
+        // Use jest.requireActual so Jest re-evaluates the module under test after we modified globals
+        jest.requireActual('../src/utils/logger');
         expect(typeof globalThis.setImmediate).toBe('function');
         // Restore
         globalThis.setImmediate = original;

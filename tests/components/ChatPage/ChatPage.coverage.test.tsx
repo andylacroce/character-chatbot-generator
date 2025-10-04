@@ -213,7 +213,12 @@ describe("ChatPage branch coverage edge cases", () => {
     });
 
     describe('voice config retrieval from sessionStorage', () => {
-        let mockSessionStorage: any;
+        let mockSessionStorage: {
+            getItem: jest.Mock;
+            setItem: jest.Mock;
+            removeItem: jest.Mock;
+            clear: jest.Mock;
+        };
 
         beforeEach(() => {
             // Mock sessionStorage

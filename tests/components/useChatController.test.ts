@@ -24,7 +24,7 @@ describe("useChatController uncovered branches", () => {
         (axios.get as jest.Mock).mockResolvedValue({ data: {} });
         jest.spyOn(console, 'error').mockImplementation(() => {});
         // Add a debug statement to log when sendMessage is called
-        jest.spyOn(console, 'log').mockImplementation((...args: any[]) => {
+        jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
             if (args[0] === 'sendMessage called') {
                 console.log('sendMessage was invoked during the test.');
             }

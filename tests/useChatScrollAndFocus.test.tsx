@@ -5,7 +5,7 @@ import { useChatScrollAndFocus } from "../app/components/useChatScrollAndFocus";
 function setup({ messages: _messages = [], loading: _loading = false } = {}) {
   const chatBoxRef = React.createRef<HTMLDivElement>();
   const inputRef = React.createRef<HTMLInputElement>();
-  function TestComponent({ messages, loading }: { messages: any[]; loading: boolean }) {
+  function TestComponent({ messages, loading }: { messages: unknown[]; loading: boolean }) {
     // Cast refs to match the expected types in the hook
     useChatScrollAndFocus({
       chatBoxRef: chatBoxRef as React.RefObject<HTMLDivElement>,
@@ -93,16 +93,17 @@ describe("useChatScrollAndFocus", () => {
       value: "Mozilla/5.0 (Android; Mobile; rv:89.0) Gecko/89.0 Firefox/89.0",
       configurable: true
     });
-    (window as any).visualViewport = {
+    // Minimal visualViewport mock
+    (window as unknown as { visualViewport?: { addEventListener?: jest.Mock; removeEventListener?: jest.Mock } }).visualViewport = {
       addEventListener: jest.fn(),
       removeEventListener: jest.fn()
     };
-    const { TestComponent, chatBoxRef } = setup();
+    const { TestComponent, chatBoxRef: _chatBoxRef } = setup();
     render(<TestComponent messages={[]} loading={false} />);
-    expect((window.visualViewport as any).addEventListener.mock.calls[0][0]).toBe("resize");
+    expect((window.visualViewport as unknown as { addEventListener: jest.Mock }).addEventListener.mock.calls[0][0]).toBe("resize");
     // Clean up
     Object.defineProperty(window.navigator, "userAgent", { value: origUA, configurable: true });
-    (window as any).visualViewport = origVV;
+  Object.defineProperty(window, 'visualViewport', { value: origVV, configurable: true });
   });
 
   it("handles focus/blur events on input (Firefox Android)", () => {

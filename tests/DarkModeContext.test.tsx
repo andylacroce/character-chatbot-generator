@@ -11,7 +11,7 @@ describe('DarkModeContext', () => {
   it('provides default value (dark mode)', () => {
     let contextValue: { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
     function Consumer() {
-      contextValue = useContext(DarkModeContext);
+      contextValue = useContext(DarkModeContext) as unknown as { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
       return <span>Test</span>;
     }
     render(
@@ -123,8 +123,8 @@ describe('DarkModeContext', () => {
 
   it('does not throw and defaults to dark mode if window is undefined (SSR)', () => {
     const originalWindow = global.window;
-    // @ts-ignore
-    delete global.window;
+  // @ts-expect-error test-mock: simulate SSR by removing global window
+  delete global.window;
     let contextValue: { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
     function Consumer() {
       contextValue = useContext(DarkModeContext);
@@ -146,7 +146,9 @@ describe('DarkModeContext', () => {
   });  it('calls default setDarkMode outside provider (for coverage)', () => {
     // Directly call the default setDarkMode for coverage
     expect(() => {
-      const { setDarkMode } = (DarkModeContext as any)._currentValue || {};
+      // Access internal default value for coverage; cast to unknown first
+  const internals = (DarkModeContext as unknown as { _currentValue?: unknown })._currentValue || {};
+  const { setDarkMode } = internals as { setDarkMode?: (v: boolean) => void };
       if (setDarkMode) setDarkMode(false);
     }).not.toThrow();
   });
@@ -154,8 +156,8 @@ describe('DarkModeContext', () => {
   it('SSR: else branch in effect does not throw on darkMode change', () => {
     // Simulate SSR: window is undefined
     const originalWindow = global.window;
-    // @ts-ignore
-    delete global.window;
+  // @ts-expect-error test-mock: simulate SSR by removing global window
+  delete global.window;
     let contextValue: { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
     function Consumer() {
       contextValue = useContext(DarkModeContext);

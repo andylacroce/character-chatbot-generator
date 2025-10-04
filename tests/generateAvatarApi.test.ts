@@ -55,7 +55,7 @@ describe('generate-avatar API', () => {
         let data;
         try {
             data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (_e) {
+        } catch {
             data = dataRaw;
         }
         expect(data.avatarUrl).toBeTruthy();
@@ -76,7 +76,7 @@ describe('generate-avatar API', () => {
         let data;
         try {
             data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (_e) {
+        } catch {
             data = dataRaw;
         }
         expect(data.avatarUrl).toBe('/silhouette.svg');
@@ -97,7 +97,7 @@ describe('generate-avatar API', () => {
         let data;
         try {
             data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (_e) {
+        } catch {
             data = dataRaw;
         }
         expect(data.avatarUrl).toBeTruthy();
@@ -115,7 +115,7 @@ describe('generate-avatar API', () => {
         let data;
         try {
             data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (_e) {
+        } catch {
             data = dataRaw;
         }
         expect(data.avatarUrl).toBe('/silhouette.svg');
@@ -154,7 +154,7 @@ describe('generate-avatar API', () => {
         expect(res._getStatusCode()).toBe(200);
         const dataRaw = res._getData();
         let data;
-        try { data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw; } catch (e) { data = dataRaw; }
+    try { data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw; } catch { data = dataRaw; }
         expect(data.avatarUrl).toBeTruthy();
     });
 
@@ -173,7 +173,7 @@ describe('generate-avatar API', () => {
         let data;
         try {
             data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (_e) {
+        } catch {
             data = dataRaw;
         }
         expect(data.avatarUrl).toBe('/silhouette.svg');
@@ -194,7 +194,7 @@ describe('generate-avatar API', () => {
         let data;
         try {
             data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (_e) {
+        } catch {
             data = dataRaw;
         }
         expect(data.avatarUrl).toBeTruthy();
@@ -215,7 +215,7 @@ describe('generate-avatar API', () => {
         let data;
         try {
             data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (_e) {
+        } catch {
             data = dataRaw;
         }
         expect(data.avatarUrl).toBeTruthy();
@@ -308,7 +308,7 @@ describe('generate-avatar API', () => {
         let data;
         try {
             data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (_e) {
+        } catch {
             data = dataRaw;
         }
         expect(data.avatarUrl).toMatch(/^data:image\/png;base64,/);
@@ -329,7 +329,7 @@ describe('generate-avatar API', () => {
         let data;
         try {
             data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
-        } catch (_e) {
+        } catch {
             data = dataRaw;
         }
         expect(data.avatarUrl).toBe('/silhouette.svg');

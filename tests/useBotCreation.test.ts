@@ -1,3 +1,4 @@
+import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useBotCreation } from '../app/components/useBotCreation';
 
@@ -12,7 +13,10 @@ global.fetch = mockFetch;
 
 describe('useBotCreation', () => {
   const mockOnBotCreated = jest.fn();
-  const mockApiGetVoiceConfig = require('../app/components/api_getVoiceConfigForCharacter').api_getVoiceConfigForCharacter;
+  // Reference the mocked module via jest.requireMock to avoid direct require()
+  type ApiGetVoiceModule = { api_getVoiceConfigForCharacter: jest.Mock };
+  const mockApiGetVoiceConfig = (jest.requireMock('../app/components/api_getVoiceConfigForCharacter') as unknown as ApiGetVoiceModule)
+    .api_getVoiceConfigForCharacter;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -66,7 +70,7 @@ describe('useBotCreation', () => {
       });
 
       await act(async () => {
-        await result.current.handleCreate({ preventDefault: jest.fn() } as any);
+          await result.current.handleCreate({ preventDefault: jest.fn() } as unknown as React.FormEvent<Element>);
       });
 
       expect(mockOnBotCreated).toHaveBeenCalledWith(
@@ -108,7 +112,7 @@ describe('useBotCreation', () => {
       });
 
       await act(async () => {
-        await result.current.handleCreate({ preventDefault: jest.fn() } as any);
+          await result.current.handleCreate({ preventDefault: jest.fn() } as unknown as React.FormEvent<Element>);
       });
 
       expect(result.current.loading).toBe(false);
@@ -137,7 +141,7 @@ describe('useBotCreation', () => {
 
       // Start the creation process
       act(() => {
-        result.current.handleCreate({ preventDefault: jest.fn() } as any);
+          result.current.handleCreate({ preventDefault: jest.fn() } as unknown as React.FormEvent<Element>);
       });
 
       // Wait for the process to complete
@@ -170,7 +174,7 @@ describe('useBotCreation', () => {
       });
 
       await act(async () => {
-        await result.current.handleCreate({ preventDefault: jest.fn() } as any);
+          await result.current.handleCreate({ preventDefault: jest.fn() } as unknown as React.FormEvent<Element>);
       });
 
       expect(result.current.loading).toBe(false);
@@ -219,7 +223,7 @@ describe('useBotCreation', () => {
       });
 
       await act(async () => {
-        await result.current.handleCreate({ preventDefault: jest.fn() } as any);
+          await result.current.handleCreate({ preventDefault: jest.fn() } as unknown as React.FormEvent<Element>);
       });
 
       expect(mockOnBotCreated).toHaveBeenCalledWith(
@@ -247,7 +251,7 @@ describe('useBotCreation', () => {
       });
 
       await act(async () => {
-        await result.current.handleCreate({ preventDefault: jest.fn() } as any);
+          await result.current.handleCreate({ preventDefault: jest.fn() } as unknown as React.FormEvent<Element>);
       });
 
       expect(mockOnBotCreated).toHaveBeenCalledWith(
@@ -277,7 +281,7 @@ describe('useBotCreation', () => {
       });
 
       await act(async () => {
-        await result.current.handleCreate({ preventDefault: jest.fn() } as any);
+          await result.current.handleCreate({ preventDefault: jest.fn() } as unknown as React.FormEvent<Element>);
       });
 
       expect(result.current.error).toBe('Failed to generate character. Please try again.');

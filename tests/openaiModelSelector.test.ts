@@ -47,7 +47,7 @@ describe('getOpenAIModel', () => {
     });
 
     it('throws on unknown type', () => {
-        // @ts-expect-error
+        // @ts-expect-error test: passing invalid type should throw
         expect(() => getOpenAIModel('audio')).toThrow('Unknown OpenAI model type: audio');
     });
 });

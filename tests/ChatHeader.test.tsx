@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ChatHeader from '@/app/components/ChatHeader';
+import { Bot } from '@/app/components/BotCreator';
 
 const mockOnDownloadTranscript = jest.fn();
 const mockOnShowPrompt = jest.fn();
@@ -61,7 +62,7 @@ describe('ChatHeader', () => {
 
   it('renders nothing if bot is not provided', () => {
     const { container } = render(
-      <ChatHeader {...defaultProps} bot={undefined as any} />
+    <ChatHeader {...defaultProps} bot={undefined as unknown as Bot} />
     );
     expect(container.firstChild).toBeNull();
   });

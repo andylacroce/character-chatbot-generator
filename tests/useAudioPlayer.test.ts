@@ -69,15 +69,15 @@ afterEach(() => {
 });
 
 // Polyfill for AudioContext and BufferSource for Jest/jsdom
-let lastBufferSourceInstance: any = null;
+let lastBufferSourceInstance: { onended?: () => void } | null = null;
 class DummyAudioBufferSourceNode {
-  buffer: any;
-  onended: (() => void) | null = null;
+  buffer: unknown;
+  onended?: (() => void) | undefined = undefined;
   connect() { }
   disconnect() { }
   start() { setTimeout(() => this.onended && this.onended(), 1); }
   stop() { }
-  constructor() { lastBufferSourceInstance = this; }
+  constructor() { lastBufferSourceInstance = this as unknown as { onended?: () => void }; }
 }
 class DummyAudioContext {
   currentTime = 0;
@@ -92,19 +92,19 @@ class DummyAudioContext {
     };
   }
   createBufferSource() { return new DummyAudioBufferSourceNode(); }
-  decodeAudioData(buffer: ArrayBuffer) { return Promise.resolve(this.createBuffer(1, 44100, 44100)); }
+  decodeAudioData(_buffer: ArrayBuffer) { return Promise.resolve(this.createBuffer(1, 44100, 44100)); }
   close() { return Promise.resolve(); }
 }
 beforeAll(() => {
-  // @ts-ignore
+  // @ts-expect-error test-mock: provide a dummy AudioContext implementation
   global.AudioContext = DummyAudioContext;
-  // @ts-ignore
+  // @ts-expect-error test-mock: provide a dummy webkitAudioContext implementation
   global.webkitAudioContext = DummyAudioContext;
 });
 afterAll(() => {
-  // @ts-ignore
+  // @ts-expect-error test-mock: clean up dummy AudioContext
   delete global.AudioContext;
-  // @ts-ignore
+  // @ts-expect-error test-mock: clean up dummy webkitAudioContext
   delete global.webkitAudioContext;
 });
 
@@ -128,16 +128,20 @@ describe('useAudioPlayer', () => {
 
   // Helper test component to expose the hook and its internal refs for cleanup tests
   interface TestComponentHandlesWithInternals extends TestComponentHandles {
-    _sourceRef: React.MutableRefObject<any>;
-    _audioRef: React.MutableRefObject<any>;
+    _sourceRef: React.MutableRefObject<unknown>;
+    _audioRef: React.MutableRefObject<unknown>;
     stopAudio: () => void;
   }
   const TestComponentWithInternals = forwardRef<TestComponentHandlesWithInternals, TestComponentProps>(({ audioEnabledRef }, ref) => {
     // Use refs outside the hook, then pass them in for testability
-    const audioRef = React.useRef<any>(null);
-    const sourceRef = React.useRef<any>(null);
-    // Patch the hook to accept external refs for testing
-    const { playAudio, stopAudio } = useAudioPlayer(audioEnabledRef, audioRef, sourceRef);
+    const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const sourceRef = React.useRef<unknown>(null);
+    // Patch the hook to accept external refs for testing (cast to expected types)
+    const { playAudio, stopAudio } = useAudioPlayer(
+      audioEnabledRef,
+      audioRef as React.MutableRefObject<HTMLAudioElement | null>,
+      sourceRef as React.MutableRefObject<AudioBufferSourceNode | null>
+    );
     useImperativeHandle(ref, () => ({
       playAudio,
       audioRef,
@@ -199,13 +203,13 @@ describe('useAudioPlayer', () => {
     const audioEnabledRef = { current: true };
     const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
-    let dummyAudio: HTMLAudioElement | null = null;
+  let _dummyAudio: HTMLAudioElement | null = null;
     await act(async () => {
-      if (ref.current) {
-        dummyAudio = await ref.current.playAudio('test.mp3');
+  if (ref.current) {
+   	_dummyAudio = await ref.current.playAudio('test.mp3');
         // Simulate the buffer source's onended, which is what the hook uses for cleanup
-        if (lastBufferSourceInstance && lastBufferSourceInstance.onended) {
-          act(() => { lastBufferSourceInstance.onended(); });
+        if (lastBufferSourceInstance && typeof lastBufferSourceInstance.onended === 'function') {
+          act(() => { (lastBufferSourceInstance as { onended?: () => void }).onended!(); });
         }
       }
     });

@@ -3,7 +3,12 @@ jest.mock('fs', () => ({
     readFileSync: jest.fn(),
     writeFileSync: jest.fn(),
 }));
-const fs = require('fs');
+// Use jest.requireMock to access the mocked fs module instead of require('fs')
+const fs = jest.requireMock('fs') as {
+    existsSync: jest.Mock;
+    readFileSync: jest.Mock;
+    writeFileSync: jest.Mock;
+};
 
 describe('cache utility', () => {
     const _CACHE_FILE = '/tmp/bot-reply-cache.json';
@@ -17,9 +22,9 @@ describe('cache utility', () => {
     });
 
     function getCache() {
-        // Always require after env setup
-         
-        return require('../src/utils/cache');
+        // Always re-import the module after any env changes
+        jest.resetModules();
+        return jest.requireActual('../src/utils/cache');
     }
 
     it('setReplyCache and getReplyCache use memory in Vercel', () => {
