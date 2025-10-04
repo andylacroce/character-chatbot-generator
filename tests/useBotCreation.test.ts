@@ -8,8 +8,9 @@ jest.mock('../app/components/api_getVoiceConfigForCharacter', () => ({
 }));
 
 // Mock fetch
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
+// Use a generic mocked function to avoid requiring a full Response shape in tests
+const mockFetch = jest.fn() as jest.MockedFunction<(...args: any[]) => Promise<any>>;
+;(global as any).fetch = mockFetch;
 
 describe('useBotCreation', () => {
   const mockOnBotCreated = jest.fn();
