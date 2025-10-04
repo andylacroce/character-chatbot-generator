@@ -1,5 +1,27 @@
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import axios from "axios";
+import { downloadTranscript } from "../../src/utils/downloadTranscript";
+import { useSession } from "./useSession";
+import { useApiError } from "./useApiError";
+import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
+import { useAudioPlayer } from "./useAudioPlayer";
+import type { Message } from "../../src/types/message";
+import type { Bot } from "./BotCreator";
+
 const INITIAL_VISIBLE_COUNT = 20;
 const LOAD_MORE_COUNT = 10;
+
+// Safe focus helper: defer focusing to avoid synchronous DOM updates inside async callbacks
+const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
+    try {
+        const el = ref?.current;
+        if (!el || typeof el.focus !== "function") return;
+        if (typeof document !== "undefined" && !document.contains(el)) return;
+        setTimeout(() => {
+            try { el.focus(); } catch {}
+        }, 0);
+    } catch {}
+};
 
 export function useChatController(bot: Bot, onBackToCharacterCreation?: () => void) {
     const chatHistoryKey = `chatbot-history-${bot.name}`;
@@ -313,12 +335,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         healthCheckRan.current = true;
         axios
             .get("/api/health")
-            .then(() => {
-                setApiAvailable(true);
-                if (inputRef.current) {
-                    inputRef.current.focus();
-                }
-            })
+                .then(() => {
+                    setApiAvailable(true);
+                    safeFocus(inputRef);
+                })
             .catch((err) => {
                 setApiAvailable(false);
                 handleApiError(err);
@@ -459,12 +479,4 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         handleAudioToggle,
     };
 }
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import axios from "axios";
-import { downloadTranscript } from "../../src/utils/downloadTranscript";
-import { useSession } from "./useSession";
-import { useApiError } from "./useApiError";
-import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
-import { useAudioPlayer } from "./useAudioPlayer";
-import type { Message } from "../../src/types/message";
-import type { Bot } from "./BotCreator";
+ 

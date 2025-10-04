@@ -4,9 +4,8 @@ module.exports = {
     "next/core-web-vitals",
     "plugin:@typescript-eslint/recommended",
     "plugin:react/recommended",
-    "plugin:react-hooks/recommended",
   ],
-  plugins: ["@typescript-eslint", "react", "react-hooks"],
+  plugins: ["@typescript-eslint", "react"],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: 2021,
