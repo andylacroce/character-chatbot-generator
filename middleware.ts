@@ -8,7 +8,7 @@ const allowedOrigins = [
     'http://127.0.0.1:3000',
     'https://character-chatbot-generator.vercel.app',
     // Allow Vercel preview deployments (they have random subdomains)
-    /^https:\/\/character-chatbot-generator(?:-git)?-[a-z0-9-]+-andylacroces-projects\.vercel\.app$/,
+    /^https:\/\/character-chatbot-generator(?:-git)?-[a-z0-9-]+-andylacroces-projects\.vercel\.app\/?$/,
 ];
 
 const apiSecret = process.env.API_SECRET;
