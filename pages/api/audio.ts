@@ -48,6 +48,14 @@ async function handler(
   req: import("next").NextApiRequest,
   res: import("next").NextApiResponse,
 ): Promise<void> {
+  // Apply rate limiting
+  await new Promise<void>((resolve) => {
+    audioRateLimit(req, res, () => resolve());
+  });
+  if (res.headersSent) {
+    return;
+  }
+  
   const { file, text: expectedText, voiceConfig: voiceConfigParam } = req.query;
   const botName = typeof req.query.botName === "string" ? req.query.botName : "Character";
   const gender = typeof req.query.gender === "string" ? req.query.gender : null;
@@ -398,4 +406,4 @@ async function handler(
   res.send(audioContent);
 }
 
-export default audioRateLimit(handler);
+export default handler;

@@ -163,6 +163,15 @@ async function handler(
   res: NextApiResponse,
 ) {
   const requestId = req.headers["x-request-id"] || generateRequestId();
+  
+  // Apply rate limiting
+  await new Promise<void>((resolve) => {
+    chatRateLimit(req, res, () => resolve());
+  });
+  if (res.headersSent) {
+    return;
+  }
+  
   if (req.method !== "POST") {
     logger.info(`[Chat API] 405 Method Not Allowed for ${req.method} | requestId=${requestId}`);
     res.setHeader("Allow", ["POST"]);
@@ -413,4 +422,4 @@ async function handler(
   }
 }
 
-export default chatRateLimit(handler);
+export default handler;
