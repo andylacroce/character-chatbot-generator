@@ -3,8 +3,6 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ChatPage from "../../../app/components/ChatPage";
 import { Bot } from "../../../app/components/BotCreator";
-import axios from "axios";
-jest.mock("axios");
 
 // Move playAudio mock to top-level for correct injection
 const playAudio = jest.fn();
@@ -16,6 +14,18 @@ jest.mock("../../../app/components/useAudioPlayer", () => ({
         audioRef: { current: null },
     }),
 }));
+
+// Mock authenticatedFetch instead of axios since that's what the component actually uses
+const mockAuthenticatedFetch = jest.fn();
+jest.mock("../../../src/utils/api", () => ({
+    authenticatedFetch: (...args: any[]) => mockAuthenticatedFetch(...args),
+}));
+
+const mockResponse = (data: any, status = 200) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(data),
+});
 
 const mockBot: Bot = {
     name: "Gandalf",
@@ -44,12 +54,11 @@ jest.mock("axios", () => {
 describe("ChatPage branch coverage edge cases", () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        (axios.get as jest.Mock).mockResolvedValue({ data: { status: "ok" } });
-        (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Mock reply", audioFileUrl: "mock-audio-url.mp3" } });
+        mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Mock reply", audioFileUrl: "mock-audio-url.mp3" }));
     });
 
     it("handles retry fallback and final failure in sendMessage", async () => {
-        (axios.post as jest.Mock)
+        mockAuthenticatedFetch
             .mockRejectedValueOnce(new Error("fail1"))
             .mockRejectedValueOnce(new Error("fail2"))
             .mockRejectedValueOnce(new Error("fail3"));
@@ -63,7 +72,7 @@ describe("ChatPage branch coverage edge cases", () => {
     });
 
     it("calls playAudio for bot message with audioFileUrl", async () => {
-        (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Bot reply", audioFileUrl: "audio.mp3" } });
+        mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: "audio.mp3" }));
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
         await userEvent.type(input, "Hi{Enter}");
@@ -76,18 +85,16 @@ describe("ChatPage branch coverage edge cases", () => {
         // Patch ChatPage to expose retryWithBackoff for test
         const originalError = console.error;
         console.error = jest.fn(); // Silence expected error
-        (axios.post as jest.Mock).mockImplementation(() => { throw new Error("fail"); });
-        // Simulate maxRetries = 0 by sending an empty message (sendMessage will not call API)
+        // This test is just for coverage - the fallback branch is not reachable in normal usage
+        // We don't actually call sendMessage or trigger API calls, just ensure the component renders
         render(<ChatPage bot={mockBot} />);
-        // Directly call sendMessage with empty input to force early return (simulate fallback)
-        // Not directly accessible, so this is a no-op for coverage, but included for completeness
         // The fallback is not reachable in normal usage, but is covered by the test runner
         console.error = originalError;
     });
 
     it("resets loading after sendMessage success and failure", async () => {
         // Success
-        (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Bot reply", audioFileUrl: null } });
+        mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: null }));
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
         await userEvent.type(input, "Hi{Enter}");
@@ -95,7 +102,7 @@ describe("ChatPage branch coverage edge cases", () => {
             expect(screen.getByTestId("chat-layout")).toBeInTheDocument();
         });
         // Failure
-        (axios.post as jest.Mock).mockRejectedValueOnce(new Error("fail"));
+        mockAuthenticatedFetch.mockRejectedValueOnce(new Error("fail"));
         fireEvent.change(input, { target: { value: "fail" } });
         fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
         await waitFor(() => {
@@ -106,7 +113,7 @@ describe("ChatPage branch coverage edge cases", () => {
     it("does not call playAudio if audio is disabled", async () => {
         // Patch localStorage to return 'false' for audioEnabled
         window.localStorage.setItem('audioEnabled', 'false');
-        (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Bot reply", audioFileUrl: "audio.mp3" } });
+        mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: "audio.mp3" }));
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
         await userEvent.type(input, "Hi{Enter}");
@@ -117,7 +124,7 @@ describe("ChatPage branch coverage edge cases", () => {
     });
 
     it("does not call playAudio if last message is not from bot or has no audioFileUrl", async () => {
-        (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Bot reply", audioFileUrl: null } });
+        mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: null }));
         render(<ChatPage bot={mockBot} />);
         const input = await screen.findByRole("textbox");
         await userEvent.type(input, "Hi{Enter}");
@@ -148,7 +155,7 @@ describe("ChatPage branch coverage edge cases", () => {
     });
 
     it("covers retryWithBackoff unreachable fallback", async () => {
-        (axios.post as jest.Mock).mockRejectedValue(new Error("fail"));
+        mockAuthenticatedFetch.mockRejectedValue(new Error("fail"));
         render(<ChatPage bot={mockBot} />);
         const input = screen.getByRole("textbox");
         await userEvent.type(input, "Hi{Enter}");
@@ -254,8 +261,9 @@ describe("ChatPage branch coverage edge cases", () => {
             fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
             await waitFor(() => {
-                expect(axios.post).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
-                    voiceConfig: storedVoiceConfig
+                expect(mockAuthenticatedFetch).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
+                    method: 'POST',
+                    body: expect.stringContaining(JSON.stringify(storedVoiceConfig))
                 }));
             });
 
@@ -277,8 +285,9 @@ describe("ChatPage branch coverage edge cases", () => {
             fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
             await waitFor(() => {
-                expect(axios.post).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
-                    voiceConfig: mockBot.voiceConfig
+                expect(mockAuthenticatedFetch).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
+                    method: 'POST',
+                    body: expect.stringContaining(JSON.stringify(mockBot.voiceConfig))
                 }));
             });
 
@@ -300,8 +309,9 @@ describe("ChatPage branch coverage edge cases", () => {
             fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
             await waitFor(() => {
-                expect(axios.post).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
-                    voiceConfig: mockBot.voiceConfig
+                expect(mockAuthenticatedFetch).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
+                    method: 'POST',
+                    body: expect.stringContaining(JSON.stringify(mockBot.voiceConfig))
                 }));
             });
         });
@@ -322,8 +332,9 @@ describe("ChatPage branch coverage edge cases", () => {
             fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
 
             await waitFor(() => {
-                expect(axios.post).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
-                    voiceConfig: mockBot.voiceConfig
+                expect(mockAuthenticatedFetch).toHaveBeenCalledWith('/api/chat', expect.objectContaining({
+                    method: 'POST',
+                    body: expect.stringContaining(JSON.stringify(mockBot.voiceConfig))
                 }));
             });
         });

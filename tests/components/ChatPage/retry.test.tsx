@@ -2,8 +2,20 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import ChatPage from "../../../app/components/ChatPage";
 import { Bot } from "../../../app/components/BotCreator";
-import axios from "axios";
 import "@testing-library/jest-dom";
+
+// Mock authenticatedFetch instead of axios
+const mockAuthenticatedFetch = jest.fn();
+jest.mock("../../../src/utils/api", () => ({
+    authenticatedFetch: (...args: any[]) => mockAuthenticatedFetch(...args),
+}));
+
+const mockResponse = (data: any, status = 200) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(data),
+});
+
 jest.mock("../../../app/components/useAudioPlayer", () => ({
   __esModule: true,
   useAudioPlayer: () => ({
@@ -12,8 +24,6 @@ jest.mock("../../../app/components/useAudioPlayer", () => ({
     audioRef: { current: null },
   }),
 }));
-
-jest.mock("axios");
 
 const mockBot: Bot = {
   name: "Gandalf",
@@ -37,11 +47,11 @@ describe("ChatPage API retry logic", () => {
       configurable: true,
       value: jest.fn(),
     });
-    (axios.get as jest.Mock).mockResolvedValue({ data: { status: "ok" } });
+    mockAuthenticatedFetch.mockResolvedValue(mockResponse({ status: "ok" }));
   });
 
   it("calls the chat API 3 times and shows retrying indicator at least once if all fail", async () => {
-    (axios.post as jest.Mock)
+    mockAuthenticatedFetch
       .mockRejectedValueOnce(new Error('Network error 1'))
       .mockRejectedValueOnce(new Error('Network error 2'))
       .mockRejectedValue(new Error('Network error 3'));
@@ -54,18 +64,22 @@ describe("ChatPage API retry logic", () => {
     // Wait for retrying indicator to appear at least once
     expect(await screen.findByTestId("retrying-message", {}, { timeout: 3000 })).toBeInTheDocument();
 
-    // Wait for all axios calls
+    // Wait for all authenticatedFetch calls
     await waitFor(() => {
-      const chatCalls = (axios.post as jest.Mock).mock.calls.filter(([url]) => url === "/api/chat");
+      const chatCalls = mockAuthenticatedFetch.mock.calls.filter(([url]) => url === "/api/chat");
       expect(chatCalls.length).toBe(3);
     }, { timeout: 4000 });
   });
 
   it("calls the chat API 3 times and shows retrying indicator if retry eventually succeeds", async () => {
-    (axios.post as jest.Mock)
+    // Mock intro to succeed so it doesn't consume retry mocks
+    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ reply: 'Welcome!', audioFileUrl: null }));
+    
+    // Then mock the user message retries
+    mockAuthenticatedFetch
       .mockRejectedValueOnce(new Error('Network error 1'))
       .mockRejectedValueOnce(new Error('Network error 2'))
-      .mockResolvedValueOnce({ data: { reply: 'You shall not pass!', audioFileUrl: null } });
+      .mockResolvedValueOnce(mockResponse({ reply: 'You shall not pass!', audioFileUrl: null }));
 
     render(<ChatPage bot={mockBot} />);
     const input = screen.getByRole("textbox");
@@ -75,10 +89,10 @@ describe("ChatPage API retry logic", () => {
     // Wait for retrying indicator to appear at least once
     expect(await screen.findByTestId("retrying-message", {}, { timeout: 3000 })).toBeInTheDocument();
 
-    // Wait for all axios calls
+    // Wait for all authenticatedFetch calls to /api/chat
     await waitFor(() => {
-      const chatCalls = (axios.post as jest.Mock).mock.calls.filter(([url]) => url === "/api/chat");
-      expect(chatCalls.length).toBe(3);
+      const chatCalls = mockAuthenticatedFetch.mock.calls.filter(([url]) => url === "/api/chat");
+      expect(chatCalls.length).toBe(3); // 3 retries (intro failed)
     }, { timeout: 4000 });
   });
 });

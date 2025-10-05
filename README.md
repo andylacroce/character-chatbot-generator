@@ -49,16 +49,18 @@ Clean HTML transcripts with character avatars that open in new browser tabs. Com
    GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
    VERCEL_BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
    API_SECRET=your_api_secret_here
-   NEXT_PUBLIC_API_SECRET=your_api_secret_here
    ```
 
 3. **API Security**
 
-   Multi-layered protection with origin restrictions and API key authentication. All `/api/*` endpoints require valid `x-api-key` headers. Failed attempts are logged for monitoring.
+   Multi-layered protection with origin restrictions and API key authentication:
+   - Requests from allowed origins (localhost, production Vercel, preview deployments) are automatically authenticated
+   - Requests from external origins require valid `x-api-key` headers
+   - All `/api/*` endpoints are protected by middleware
+   - Failed attempts are logged for monitoring
 
    **Required Environment Variables**:
-   - `API_SECRET`: Server-side API key
-   - `NEXT_PUBLIC_API_SECRET`: Client-side API key (same value)
+   - `API_SECRET`: Server-side API key (used for external API access)
 
    **Custom Domains**: Update `allowedOrigins` in `middleware.ts` for non-standard deployments.
 
@@ -85,7 +87,6 @@ Set these environment variables in Vercel Project Settings:
 - `VERCEL_BLOB_READ_WRITE_TOKEN` (optional)
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON`
 - `API_SECRET`
-- `NEXT_PUBLIC_API_SECRET`
 
 Use Node runtime (not Edge) for API routes. Node version ≥18 recommended.
 

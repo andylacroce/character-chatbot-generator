@@ -1,9 +1,19 @@
-import { renderHook, act } from "@testing-library/react";
-import { useChatController } from "../../app/components/useChatController";
-import axios from "axios";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import type { Bot } from "../../app/components/BotCreator";
 
-jest.mock("axios");
+// Mock authenticatedFetch instead of axios
+const mockAuthenticatedFetch = jest.fn();
+jest.mock("../../src/utils/api", () => ({
+    authenticatedFetch: (...args: any[]) => mockAuthenticatedFetch(...args),
+}));
+
+import { useChatController } from "../../app/components/useChatController";
+
+const mockResponse = (data: any, status = 200) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(data),
+});
 
 const mockBot: Bot = {
     name: "Gandalf",
@@ -21,8 +31,10 @@ const mockBot: Bot = {
 
 describe("useChatController uncovered branches", () => {
     beforeEach(() => {
-        (axios.get as jest.Mock).mockResolvedValue({ data: {} });
+        jest.clearAllMocks();
         jest.spyOn(console, 'error').mockImplementation(() => {});
+        // Set default mock for authenticatedFetch
+        mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Default reply", audioFileUrl: null }));
         // Add a debug statement to log when sendMessage is called
         jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
             if (args[0] === 'sendMessage called') {
@@ -36,10 +48,11 @@ describe("useChatController uncovered branches", () => {
     });
 
     it("handles missing voiceConfig in getIntro", async () => {
+        mockAuthenticatedFetch.mockResolvedValue(mockResponse({}));
         const botWithoutVoiceConfig = { ...mockBot, voiceConfig: null };
         const { result: _result } = renderHook(() => useChatController(botWithoutVoiceConfig));
         await act(async () => {
-            (axios.get as jest.Mock).mockResolvedValueOnce({}); // Simulate successful API health check
+            // Wait for intro attempt
         });
         expect(console.error).toHaveBeenCalledWith(
             "Intro error:",
@@ -52,9 +65,14 @@ describe("useChatController uncovered branches", () => {
         // Mock console.error
         const errorMock = jest.spyOn(console, 'error').mockImplementation(() => {});
         
-        // Mock axios.post to reject with error
-        const axiosMock = axios as jest.Mocked<typeof axios>;
-        axiosMock.post.mockRejectedValueOnce(new Error('OpenAI API Error'));
+        // Mock authenticatedFetch to resolve health check but reject chat calls
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === "/api/health") {
+                return Promise.resolve(mockResponse({}));
+            } else {
+                return Promise.reject(new Error('OpenAI API Error'));
+            }
+        });
 
         try {
             // Setup bot with valid voiceConfig so we reach the API call
@@ -74,11 +92,19 @@ describe("useChatController uncovered branches", () => {
 
             const { result } = renderHook(() => useChatController(botWithVoiceConfig));
             
+            // Wait for intro to complete (it will fail)
+            await act(async () => {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            });
+            
+            // Clear any errors from intro
+            errorMock.mockClear();
+            
             // Set input so sendMessage doesn't return early
             act(() => {
                 result.current.setInput("test message");
             });
-
+            
             // Call sendMessage
             await act(async () => {
                 await result.current.sendMessage();
@@ -96,10 +122,38 @@ describe("useChatController uncovered branches", () => {
         } finally {
             errorMock.mockRestore();
         }
-    });
+    });    test("sendMessage updates messages state", async () => {
+        // Use a deterministic implementation so the test doesn't depend on call ordering
+        mockAuthenticatedFetch.mockImplementation((url: string, options?: any) => {
+            // Health check
+            if (url === "/api/health") return Promise.resolve(mockResponse({}));
 
-    test("sendMessage updates messages state", async () => {
+            // Chat API: detect intro vs user message by body contents
+            if (url === "/api/chat" && options && typeof options.body === 'string') {
+                try {
+                    const body = JSON.parse(options.body);
+                    if (body.message && body.message.includes("Introduce yourself")) {
+                        return Promise.resolve(mockResponse({ reply: "Intro message", audioFileUrl: null }));
+                    }
+                    if (body.message && body.message === "Hello") {
+                        return Promise.resolve(mockResponse({ reply: "Bot reply", audioFileUrl: null }));
+                    }
+                    if (body.message && body.message === "test message") {
+                        return Promise.resolve(mockResponse({ reply: "Default reply", audioFileUrl: null }));
+                    }
+                } catch {
+                    // fallthrough
+                }
+            }
+
+            // Logging endpoints and any other calls -> return empty success
+            return Promise.resolve(mockResponse({}));
+        });
+
         const { result } = renderHook(() => useChatController(mockBot));
+
+        // Wait for intro to complete
+        await waitFor(() => expect(result.current.messages).toHaveLength(1));
 
         act(() => {
             result.current.setInput("Hello");
@@ -109,8 +163,12 @@ describe("useChatController uncovered branches", () => {
             await result.current.sendMessage();
         });
 
-        expect(result.current.messages).toHaveLength(1);
-        expect(result.current.messages[0].text).toBe("Hello");
+        expect(result.current.messages).toHaveLength(3); // Intro message + user message + bot message
+        expect(result.current.messages[0].text).toBe("Intro message"); // Intro message is first
+        expect(result.current.messages[0].sender).toBe("Gandalf");
+        expect(result.current.messages[1].text).toBe("Hello"); // User message is second
+        expect(result.current.messages[1].sender).toBe("User");
+        expect(result.current.messages[2].text).toBe("Bot reply"); // Bot message is third
     });
 
     test("handleScroll loads more messages when scrolled to top", () => {

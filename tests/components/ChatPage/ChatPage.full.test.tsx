@@ -2,11 +2,22 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import ChatPage from "../../../app/components/ChatPage";
 import { Bot } from "../../../app/components/BotCreator";
-import axios from "axios";
 import "@testing-library/jest-dom";
 import { downloadTranscript } from "../../../src/utils/downloadTranscript";
 import userEvent from "@testing-library/user-event";
-jest.mock("axios");
+
+// Mock authenticatedFetch instead of axios
+const mockAuthenticatedFetch = jest.fn();
+jest.mock("../../../src/utils/api", () => ({
+    authenticatedFetch: (...args: any[]) => mockAuthenticatedFetch(...args),
+}));
+
+const mockResponse = (data: any, status = 200) => ({
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(data),
+});
+
 jest.mock("../../../src/utils/downloadTranscript");
 jest.mock("../../../app/components/useAudioPlayer", () => ({
   __esModule: true,
@@ -40,8 +51,7 @@ describe("ChatPage full feature coverage", () => {
       configurable: true,
       value: jest.fn(),
     });
-    (axios.get as jest.Mock).mockResolvedValue({ data: { status: "ok" } });
-    (axios.post as jest.Mock).mockResolvedValue({ data: { reply: "Bot reply", audioFileUrl: null } });
+    mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: null }));
     localStorage.clear();
   });
 
@@ -111,7 +121,13 @@ describe("ChatPage full feature coverage", () => {
   });
 
   it("shows API unavailable modal if health check fails", async () => {
-    (axios.get as jest.Mock).mockRejectedValueOnce(new Error("fail"));
+    // Mock health check to fail
+    mockAuthenticatedFetch.mockImplementation((url) => {
+      if (url === "/api/health") {
+        return Promise.reject(new Error("fail"));
+      }
+      return Promise.resolve(mockResponse({ reply: "Bot reply", audioFileUrl: null }));
+    });
     render(<ChatPage bot={mockBot} />);
     // The modal shows a message about the bot vanishing
     await waitFor(() => expect(screen.getByText(/bot has vanished from the chat/i)).toBeInTheDocument());

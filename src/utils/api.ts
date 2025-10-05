@@ -1,25 +1,15 @@
 // =============================
 // src/utils/api.ts
-// Utility for making authenticated API requests with API key header.
+// Utility for making API requests. No longer needs API key for allowed origins.
 // =============================
 
-const apiSecret = process.env.NEXT_PUBLIC_API_SECRET;
-if (!apiSecret) {
-    throw new Error('Missing NEXT_PUBLIC_API_SECRET environment variable');
-}
-
 /**
- * Makes a fetch request with the API key header added.
+ * Makes a fetch request. API key authentication is handled by middleware based on origin.
  * @param url - The URL to fetch.
  * @param options - Fetch options.
  * @returns The fetch response.
  */
 export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
-    const headers = new Headers(options.headers);
-    headers.set('x-api-key', apiSecret!);
-
-    return fetch(url, {
-        ...options,
-        headers,
-    });
+    // No longer sending API key header - middleware validates based on origin
+    return fetch(url, options);
 }
