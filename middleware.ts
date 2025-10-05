@@ -1,7 +1,7 @@
 // This middleware restricts API access to only allowed origins (local dev and Vercel prod)
 // and requires a valid API key for API routes from external origins.
 import { NextRequest, NextResponse } from 'next/server';
-import logger, { logEvent, sanitizeLogMeta } from './src/utils/logger';
+import { logEvent, sanitizeLogMeta } from './src/utils/logger';
 
 const allowedOrigins = [
     'http://localhost:3000',

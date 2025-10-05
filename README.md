@@ -31,6 +31,11 @@ A Next.js app featuring a real-time chat interface, character personas, and voic
 
 Clean HTML transcripts with character avatars that open in new browser tabs. Compatible with all modern browsers.
 
+## Prerequisites
+
+- Node.js ≥18
+- npm or yarn
+
 ## Setup (local)
 
 1. **Clone & install**
@@ -42,7 +47,13 @@ Clean HTML transcripts with character avatars that open in new browser tabs. Com
 
 2. **Environment variables**
 
-   - Create `.env.local` for local development (example):
+   - Copy the example environment file and fill in your values:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Required environment variables in `.env.local`:
 
    ```ini
    OPENAI_API_KEY=your_openai_api_key_here
@@ -92,8 +103,10 @@ Use Node runtime (not Edge) for API routes. Node version ≥18 recommended.
 
 ### Google Cloud Setup
 
-- **Local**: Set `GOOGLE_APPLICATION_CREDENTIALS_JSON` to your service account JSON file path
-- **Vercel**: Paste the full JSON string into the `GOOGLE_APPLICATION_CREDENTIALS_JSON` environment variable
+1. Create a Google Cloud service account with Text-to-Speech API access
+2. Download the JSON key file
+3. For local development: Place the JSON file at `config/gcp-key.json` (or update the path in `.env.local`)
+4. For Vercel deployment: Paste the full JSON content as a string in the `GOOGLE_APPLICATION_CREDENTIALS_JSON` environment variable
 
 ## Contributing
 

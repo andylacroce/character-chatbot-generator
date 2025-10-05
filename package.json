@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build || echo 'Build completed with warnings - artifacts generated successfully'",
+    "build": "next build",
     "build:ci": "npm run test:coverage && next build",
     "vercel-build": "next build",
     "start": "next start",
