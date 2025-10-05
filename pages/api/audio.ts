@@ -13,11 +13,23 @@ import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
+import rateLimit from "express-rate-limit";
 
 // Note: deterministic serialization is implemented in pages/api/chat.ts where it's used for audio URL encoding.
 
 // SYSTEM_PROMPT: Generalize to a Character Chatbot Generator persona
 const SYSTEM_PROMPT = `You are a helpful character chatbot. Respond concisely, helpfully, and in a friendly tone. Use the style, knowledge, and quirks of the selected character. Stay in character at all times.`;
+
+// Rate limiter: 30 requests per minute per IP (higher than chat since audio files may be replayed)
+const audioRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // limit each IP to 30 requests per windowMs
+  message: {
+    error: "Too many audio requests from this IP, please try again later.",
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 
 function getOriginalTextForAudio(sanitizedFile: string): string | null {
   const txtFile = sanitizedFile.replace(/\.mp3$/, ".txt");
@@ -32,7 +44,7 @@ function getOriginalTextForAudio(sanitizedFile: string): string | null {
   return null;
 }
 
-export default async function handler(
+async function handler(
   req: import("next").NextApiRequest,
   res: import("next").NextApiResponse,
 ): Promise<void> {
@@ -385,3 +397,5 @@ export default async function handler(
   res.setHeader("Content-Type", "audio/mpeg");
   res.send(audioContent);
 }
+
+export default audioRateLimit(handler);

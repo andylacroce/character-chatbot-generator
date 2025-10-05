@@ -18,6 +18,7 @@ import type { ChatCompletionMessageParam } from "openai/resources/chat/completio
 import { setReplyCache, getReplyCache } from "../../src/utils/cache";
 import crypto from "crypto";
 import { getOpenAIModel } from "../../src/utils/openaiModelSelector";
+import rateLimit from "express-rate-limit";
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   throw new Error(
@@ -32,6 +33,17 @@ if (!apiKey) {
   throw new Error("Missing OpenAI API key");
 }
 const openai = new OpenAI({ apiKey });
+
+// Rate limiter: 10 requests per minute per IP
+const chatRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: {
+    error: "Too many chat requests from this IP, please try again later.",
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
 
 // Cleanup old audio files periodically (every 100 requests)
 let requestCount = 0;
@@ -146,7 +158,7 @@ function buildOpenAIMessages(
  * @returns {Promise<void>} Resolves when the response is sent.
  * @throws {Error} On missing input, OpenAI/TTS errors, or internal failures.
  */
-export default async function handler(
+async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
@@ -400,3 +412,5 @@ export default async function handler(
     return;
   }
 }
+
+export default chatRateLimit(handler);
