@@ -21,7 +21,10 @@ import { DarkModeProvider } from "./components/DarkModeContext";
  */
 const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html lang="en" className="">
+    // suppressHydrationWarning avoids noisy hydration-mismatch errors when
+    // browser extensions (e.g. Dark Reader) inject attributes into the
+    // server-rendered HTML that don't exist on the client.
+    <html lang="en" className="" suppressHydrationWarning>
       <head>
         <title>Character Chatbot Generator</title>
         <meta name="description" content="Create and chat with your own AI-powered characters." />

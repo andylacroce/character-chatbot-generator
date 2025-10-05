@@ -101,3 +101,9 @@ Open issues for bugs/features. Submit PRs with tests. Follow existing code style
 ## Disclaimer
 
 Educational/portfolio project. Use public domain characters only. Not affiliated with OpenAI.
+
+## Troubleshooting
+
+### Hydration Mismatch Warning
+
+If you see a React hydration mismatch error in development pointing to attributes like `data-darkreader-mode` (from browser extensions like Dark Reader), this is expected. The root `<html>` element has `suppressHydrationWarning` to reduce noisy warnings. For a permanent fix, disable browser extensions that modify HTML during development.
