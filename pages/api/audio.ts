@@ -29,6 +29,14 @@ const audioRateLimit = rateLimit({
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  keyGenerator: (req) => {
+    // Handle IP extraction for Next.js API routes
+    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+           (req.headers['x-real-ip'] as string) ||
+           (req.connection?.remoteAddress) ||
+           (req.socket?.remoteAddress) ||
+           'unknown';
+  },
 });
 
 function getOriginalTextForAudio(sanitizedFile: string): string | null {
