@@ -4,30 +4,105 @@
  */
 
 /**
+ * Decodes HTML entities in a string
+ * @param {string} str - The string to decode
+ * @returns {string} The decoded string
+ */
+export function decodeHtmlEntities(str: string): string {
+  if (typeof str !== 'string') return '';
+  // Handle common named entities
+  const entityMap: { [key: string]: string } = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+    '&#x27;': "'",
+    '&#x2F;': '/',
+    '&#x60;': '`',
+    '&#x3D;': '=',
+  };
+  
+  return str.replace(/&[a-zA-Z0-9#]+;/g, (entity) => {
+    if (entityMap[entity]) return entityMap[entity];
+    
+    // Handle numeric entities
+    if (entity.startsWith('&#x')) {
+      // Hexadecimal
+      const code = parseInt(entity.slice(3, -1), 16);
+      if (code >= 0 && code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF)) {
+        return String.fromCodePoint(code);
+      }
+    } else if (entity.startsWith('&#')) {
+      // Decimal
+      const code = parseInt(entity.slice(2, -1), 10);
+      if (code >= 0 && code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF)) {
+        return String.fromCodePoint(code);
+      }
+    }
+    
+    return entity; // Unknown or invalid entity, leave as is
+  });
+}
+
+/**
  * Escapes HTML characters to prevent XSS attacks
  * @param {string} str - The string to escape
  * @returns {string} The escaped string
  */
 export function escapeHtml(str: string): string {
   if (typeof str !== 'string') return '';
-  return str.replace(/[&<>"']/g, function (tag) {
+  return str.replace(/[&<>"`]/g, function (tag) {
     const chars: { [key: string]: string } = {
       "&": "&amp;",
       "<": "&lt;",
       ">": "&gt;",
       '"': "&quot;",
-      "'": "&#39;",
+      "`": "&#x60;",
     };
     return chars[tag] || tag;
   });
 }
 
 /**
- * Sanitizes a string for safe display by escaping HTML
+ * Unescapes JavaScript string escape sequences
+ * @param {string} str - The string to unescape
+ * @returns {string} The unescaped string
+ */
+export function unescapeString(str: string): string {
+  if (typeof str !== 'string') return '';
+  return str.replace(/\\(.)/g, (match, char) => {
+    switch (char) {
+      case 'n': return '\n';
+      case 'r': return '\r';
+      case 't': return '\t';
+      case 'b': return '\b';
+      case 'f': return '\f';
+      case 'v': return '\v';
+      case '0': return '\0';
+      case '\\': return '\\';
+      case '"': return '"';
+      case "'": return "'";
+      default: return match;
+    }
+  });
+}
+
+/**
+ * Sanitizes a string for safe display by unescaping, decoding HTML entities, and escaping HTML
  * @param {string} str - The string to sanitize
  * @returns {string} The sanitized string
  */
 export function sanitizeForDisplay(str: string): string {
+  if (typeof str !== 'string') return '';
+  
+  // First unescape JavaScript escape sequences
+  str = unescapeString(str);
+  
+  // Then decode HTML entities
+  str = decodeHtmlEntities(str);
+  
+  // Finally escape dangerous HTML characters
   return escapeHtml(str);
 }
 

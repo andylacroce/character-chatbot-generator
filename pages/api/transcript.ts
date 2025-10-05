@@ -7,6 +7,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
 import rateLimit from "express-rate-limit";
+import { sanitizeForDisplay } from "../../src/utils/security";
 
 export const config = {
   api: {
@@ -208,7 +209,7 @@ export default async function handler(
               return `
                 <div class="message ${isUser ? 'user-message' : 'bot-message'}">
                   <strong class="${isUser ? 'user-sender' : 'bot-sender'}">${isUser ? "Me" : (bot ? escapeHtml(bot.name) : escapeHtml(msg.sender))}:</strong>
-                  <span style="margin-left: 8px;">${escapeHtml(msg.text)}</span>
+                  <span style="margin-left: 8px;">${sanitizeForDisplay(msg.text)}</span>
                 </div>
               `;
             })

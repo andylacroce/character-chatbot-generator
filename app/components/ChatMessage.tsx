@@ -55,7 +55,7 @@ const ChatMessage = React.memo(
       <div
         className={`${styles.message} ${messageClass} my-2`}
         role="article"
-        aria-label={isUser ? `Message from you: ${message.text}` : `Message from ${bot.name}: ${message.text}`}
+        aria-label={isUser ? `Message from you: ${sanitizeForDisplay(message.text)}` : `Message from ${bot.name}: ${sanitizeForDisplay(message.text)}`}
       >
         <div className="rounded p-2 text-sm" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           {!isUser && (
