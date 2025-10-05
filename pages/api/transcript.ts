@@ -6,6 +6,7 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
+import rateLimit from "express-rate-limit";
 
 export const config = {
   api: {
@@ -14,6 +15,25 @@ export const config = {
     },
   },
 };
+
+// Rate limiter: 10 requests per minute per IP (transcript generation)
+const transcriptRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: {
+    error: "Too many transcript requests from this IP, please try again later.",
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  keyGenerator: (req) => {
+    // Handle IP extraction for Next.js API routes
+    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+           (req.headers['x-real-ip'] as string) ||
+           (req.connection?.remoteAddress) ||
+           (req.socket?.remoteAddress) ||
+           'unknown';
+  },
+});
 
 /**
  * Next.js API route handler for generating and downloading chat transcripts.
@@ -30,6 +50,14 @@ export default async function handler(
     logger.info(`[Transcript API] 405 Method Not Allowed for ${req.method}`);
     res.setHeader("Allow", ["POST"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
+    return;
+  }
+
+  // Apply rate limiting
+  await new Promise<void>((resolve) => {
+    transcriptRateLimit(req, res, () => resolve());
+  });
+  if (res.headersSent) {
     return;
   }
 

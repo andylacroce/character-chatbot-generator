@@ -8,6 +8,27 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import logger, { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getOpenAIModel } from "../../src/utils/openaiModelSelector";
 import type { OpenAIImageGenerateParams } from "../../src/types/openai-image";
+import { sanitizeCharacterName } from "../../src/utils/security";
+import rateLimit from "express-rate-limit";
+
+// Rate limiter: 5 requests per minute per IP (avatar generation is expensive)
+const avatarRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // limit each IP to 5 requests per windowMs
+  message: {
+    error: "Too many avatar generation requests from this IP, please try again later.",
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  keyGenerator: (req) => {
+    // Handle IP extraction for Next.js API routes
+    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+           (req.headers['x-real-ip'] as string) ||
+           (req.connection?.remoteAddress) ||
+           (req.socket?.remoteAddress) ||
+           'unknown';
+  },
+});
 
 /**
  * Next.js API route handler for generating a character avatar image using OpenAI.
@@ -22,9 +43,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(405).end();
     return;
   }
+
+  // Apply rate limiting
+  await new Promise<void>((resolve) => {
+    avatarRateLimit(req, res, () => resolve());
+  });
+  if (res.headersSent) {
+    return;
+  }
   const { name } = req.body;
-  if (!name) {
-    res.status(400).json({ error: "Name required" });
+  if (!name || typeof name !== 'string') {
+    res.status(400).json({ error: "Valid name required" });
+    return;
+  }
+  const sanitizedName = sanitizeCharacterName(name);
+  if (!sanitizedName) {
+    res.status(400).json({ error: "Invalid character name" });
     return;
   }
   let genderOut: string | null = null;
@@ -32,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Move OpenAI client instantiation inside the handler for better error coverage
     const OpenAI = (await import("openai")).default;
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-    logEvent("info", "avatar_generate_start", "Avatar generation started", sanitizeLogMeta({ name }));
+    logEvent("info", "avatar_generate_start", "Avatar generation started", sanitizeLogMeta({ name: sanitizedName }));
     // Use OpenAI GPT to get a detailed, attribute-rich description
     let race = null;
     let gender = null;
@@ -49,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
           {
             role: "user",
-            content: `Describe ${name} with keys: race, gender, other.`
+            content: `Describe ${sanitizedName} with keys: race, gender, other.`
           }
         ],
         max_tokens: 100,
@@ -79,19 +113,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Build the likenessRef for DALL-E
     let likenessRef = null;
     if (race && gender && other && race !== "unknown" && gender !== "unknown" && other !== "unknown") {
-      likenessRef = `Depict: ${name}, a ${race} ${gender}. ${other}.`;
+      likenessRef = `Depict: ${sanitizedName}, a ${race} ${gender}. ${other}.`;
     } else {
-      likenessRef = `Accurately depict the real or canonical appearance of ${name} as seen in reference images.`;
+      likenessRef = `Accurately depict the real or canonical appearance of ${sanitizedName} as seen in reference images.`;
     }
     // Stronger negative and positive modifiers to avoid multiple depictions
     const soloModifiers = "single, solo, alone, isolated, only one subject, no background distractions, centered, close-up portrait, no other people, no duplicates, no reflections, no shadows, no group shots, no collage, no split frames, no multiple versions, no background elements that resemble other characters.";
-    const styleInstruction = `If ${name} is a cartoon, animated, or illustrated character, use a matching art style. Otherwise, use a photorealistic style.`;
-    const singleInstruction = `Create a single, centered, close-up portrait of only ${name}. ${soloModifiers}`;
-    const negativePrompt = `Exclude: multiple people, extra faces, group shots, duplicate figures, reflections, shadows of other people, collage, split frames, or any representation of more than one version of ${name}.`;
+    const styleInstruction = `If ${sanitizedName} is a cartoon, animated, or illustrated character, use a matching art style. Otherwise, use a photorealistic style.`;
+    const singleInstruction = `Create a single, centered, close-up portrait of only ${sanitizedName}. ${soloModifiers}`;
+    const negativePrompt = `Exclude: multiple people, extra faces, group shots, duplicate figures, reflections, shadows of other people, collage, split frames, or any representation of more than one version of ${sanitizedName}.`;
 
     // Assemble prompt in order of importance
     const maxPromptLength = 1000;
-    const base = `Ultra-detailed portrait of ${name}. `;
+    const base = `Ultra-detailed portrait of ${sanitizedName}. `;
     let prompt = base;
     // Add likenessRef (subject description) first, up to 350 chars
     const likenessMax = 350;

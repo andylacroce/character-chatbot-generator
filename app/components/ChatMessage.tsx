@@ -7,6 +7,7 @@ import React from "react";
 import styles from "./styles/ChatMessage.module.css";
 import Image from "next/image";
 import { Bot } from "./BotCreator";
+import { sanitizeForDisplay } from "../../src/utils/security";
 
 /**
  * Interface representing a chat message's structure.
@@ -72,7 +73,7 @@ const ChatMessage = React.memo(
               {isUser ? "Me" : bot.name}
             </div>
             <div className="text-left" style={{ fontSize: 'var(--chat-message-font-size)' }}>
-              {message.text}
+              {sanitizeForDisplay(message.text)}
             </div>
           </div>
         </div>
