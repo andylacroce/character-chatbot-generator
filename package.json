@@ -30,7 +30,7 @@
     "express-rate-limit": "^8.1.0",
     "lru-cache": "^11.2.2",
     "minimatch": "^10.0.3",
-    "next": "^15.5.4",
+    "next": "^15.5.5",
     "node-fetch": "^3.3.2",
     "openai": "^6.3.0",
     "react": "^19.2.0",
