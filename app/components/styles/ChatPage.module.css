@@ -43,6 +43,8 @@
   padding-left: 12px;
   padding-right: 12px;
   position: relative;
+  /* Smoothly animate padding-bottom changes caused by on-screen keyboard */
+  transition: padding-bottom 180ms ease;
   /* Grid item that fills available space */
 }
 

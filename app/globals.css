@@ -20,7 +20,8 @@
 
 :root {
   /* Material Design 3 inspired light palette with foresty earth tones */
-  --color-background: #f3f7f3;
+  /* Slightly duller off-white for light mode (less bright than pure white) */
+  --color-background: #cfcfcf;
   /* misty forest light */
   --color-surface: #e8f0ea;
   /* pale moss surface */
@@ -291,9 +292,14 @@ body,
   border-color: var(--disabled-bg) !important;
 }
 
-/* --- Firefox Android input focus workaround --- */
-.ff-android-input-focus .chatMessagesScroll {
-  padding-bottom: 220px !important;
+/* --- Mobile keyboard input focus workaround ---
+   Keep Firefox-specific class for Firefox Android, and add a general
+   `mobile-keyboard-open` class that's toggled for Chromium-based browsers.
+   JS sets `--vv-keyboard-pad` dynamically; this rule uses that variable
+   with a sensible fallback for browsers that don't support it. */
+.ff-android-input-focus .chatMessagesScroll,
+.mobile-keyboard-open .chatMessagesScroll {
+  padding-bottom: var(--vv-keyboard-pad, 220px) !important;
 }
 
 /* --- Dark mode button focus/hover fix --- */
