@@ -7,64 +7,65 @@ node_modules/
 config/gcp-key.json
 
 # Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Node
+node_modules/
 
-# Build
+# Next.js build output
+.next/
+.next/cache/
+
+# Build output
 out/
 dist/
 
-# IDE
+# Environment files and secrets
+.env*
+config/gcp-key.json
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Test coverage and Jest cache
+coverage/
+.jest/
+.jest-cache/
+.jest-test-results.json
+
+# Test keys and local test artifacts
+/tests/api/fake-gcp-key.json
+
+# TypeScript build info
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Editor & OS files
 .vscode/
 .idea/
 .DS_Store
 *.swp
+Thumbs.db
 
-# Docs
+# Caches
+.swc/
+.eslintcache
+
+# Temporary & local artifacts
+tmp/
+tmp/**
+*.tmp
+*.local
+*.bak
+
+# Public generated assets
+public/avatars/*
+
+# Documentation directories
 /docs/
 docs/
 
 # GitHub Actions workflows (do NOT ignore)
 !.github/
 !.github/workflows/
-
-# Test coverage and Jest cache (already present, but clarify)
-coverage/
-.jest/
-.jest-cache/
-.jest-test-results.json
-
-# Test keys and secrets
-/tests/api/fake-gcp-key.json
-
-# Misc
-*.local
-*.log
-*.tmp
-*.bak
-tmp/ # Ignore the tmp directory for local transcripts and logs
-tmp/**/* # Explicitly ignore all contents of tmp directory
-# Explicitly ignore txt logs
-tmp/logs/
-
-# OS
-Thumbs.db
-
-# public avatars
-public/avatars/*
-
-# Add SWC cache (Next.js)
-.swc/
-
-# Add TypeScript build info
-*.tsbuildinfo
-
-# Next.js output and cache
-.next/
-.next/cache/
-tsconfig.tsbuildinfo
-.next/cache/.tsbuildinfo
-
-# Add ESLint cache
-.eslintcache
