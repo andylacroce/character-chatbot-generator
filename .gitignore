@@ -60,5 +60,11 @@ public/avatars/*
 # Add TypeScript build info
 *.tsbuildinfo
 
+# Next.js output and cache
+.next/
+.next/cache/
+tsconfig.tsbuildinfo
+.next/cache/.tsbuildinfo
+
 # Add ESLint cache
 .eslintcache
