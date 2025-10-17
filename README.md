@@ -1,5 +1,80 @@
 # Character Chatbot Generator
 
+A concise Next.js + TypeScript app that provides a character-driven chat UI with OpenAI-powered responses and Google Text-to-Speech audio replies.
+
+Quick highlights:
+- Chat with character personas
+- Google TTS audio playback for bot replies
+- Local transcript export and browser-friendly UI
+- Test-suite with Jest
+
+Prerequisites
+- Node.js >= 18
+- npm (or yarn)
+
+Quickstart (local)
+1. Clone and install:
+
+```powershell
+git clone https://github.com/andylacroce/character-chatbot-generator.git
+cd character-chatbot-generator
+npm install
+```
+
+2. Create a local env file and provide required secrets:
+
+Copy an example (if present) or create `.env.local` at project root. The important environment variables are listed below. For local Google TTS you can either place a JSON key at `config/gcp-key.json` or paste the JSON into `GOOGLE_APPLICATION_CREDENTIALS_JSON`.
+
+Example `.env.local` (replace values):
+
+```ini
+OPENAI_API_KEY=sk_...
+API_SECRET=your_server_api_secret
+GOOGLE_APPLICATION_CREDENTIALS_JSON={...} # or set path like config/gcp-key.json
+VERCEL_BLOB_READ_WRITE_TOKEN=optional_token
+```
+
+3. Start the dev server:
+
+```powershell
+npm run dev
+```
+
+Running tests
+
+```powershell
+npm test
+```
+
+Environment variables (summary)
+- OPENAI_API_KEY — OpenAI API key used for chat generation.
+- API_SECRET — Server-side API secret used by middleware for request authorization.
+- GOOGLE_APPLICATION_CREDENTIALS_JSON — Either the JSON content of a GCP service account (with Text-to-Speech access) or a local path to the JSON file (e.g., `config/gcp-key.json`).
+- VERCEL_BLOB_READ_WRITE_TOKEN — Optional: token to enable logging to Vercel Blob.
+- TTS_TMP_DIR — Optional: path for temporary TTS files (defaults to system temp).
+
+Notes about Google TTS
+- For local development, put your GCP service account key at `config/gcp-key.json` and reference it in `GOOGLE_APPLICATION_CREDENTIALS_JSON` or paste the JSON contents into the env var when deploying.
+
+Deployment (Vercel)
+- Add the required environment variables to your Vercel project settings (OPENAI_API_KEY, API_SECRET, GOOGLE_APPLICATION_CREDENTIALS_JSON, etc.).
+- Use Node.js runtime for API routes (server-side), not Edge Functions.
+
+Config to be aware of
+- `middleware.ts` contains `allowedOrigins`; update it when deploying to a custom domain.
+
+Troubleshooting
+- Hydration warnings in dev may come from browser extensions that alter the DOM (e.g., Dark Reader). Disable the extension or ignore the warning for local development.
+- If audio or TTS errors occur, ensure `GOOGLE_APPLICATION_CREDENTIALS_JSON` is set correctly and the service account has the Text-to-Speech API enabled.
+
+Contributing
+- PRs welcome. Please include tests for new behavior and follow existing code style.
+
+License / Disclaimer
+- Educational / portfolio project. Not affiliated with OpenAI.
+
+# Character Chatbot Generator
+
 A Next.js app featuring a real-time chat interface, character personas, and voice responses via Google Text-to-Speech.
 
 ## Features
