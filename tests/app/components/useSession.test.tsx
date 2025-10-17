@@ -4,9 +4,9 @@ import { useSession } from '../../../app/components/useSession';
 
 describe('useSession', () => {
     beforeEach(() => {
-        // Clear sessionStorage before each test
+        // Clear localStorage before each test
         if (typeof window !== 'undefined') {
-            sessionStorage.clear();
+            localStorage.clear();
         }
     });
 
@@ -24,7 +24,7 @@ describe('useSession', () => {
         return null;
     }
 
-    it('generates a sessionId and sessionDatetime and stores them in sessionStorage', (done) => {
+    it('generates a sessionId and sessionDatetime and stores them in localStorage', (done) => {
         let called = false;
         function handleResult(sessionId: string, sessionDatetime: string) {
             if (called) return;
@@ -40,8 +40,8 @@ describe('useSession', () => {
                 expect(typeof sessionDatetime).toBe('string');
                 expect(sessionDatetime.length).toBeGreaterThan(0);
                 if (typeof window !== 'undefined') {
-                    expect(sessionStorage.getItem('bot-session-id')).toBe(sessionId);
-                    expect(sessionStorage.getItem('bot-session-datetime')).toBe(sessionDatetime);
+                    expect(localStorage.getItem('bot-session-id')).toBe(sessionId);
+                    expect(localStorage.getItem('bot-session-datetime')).toBe(sessionDatetime);
                 }
                 done();
             } catch (e) {

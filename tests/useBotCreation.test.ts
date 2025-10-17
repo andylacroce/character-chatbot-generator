@@ -9,8 +9,9 @@ jest.mock('../app/components/api_getVoiceConfigForCharacter', () => ({
 
 // Mock fetch
 // Use a generic mocked function to avoid requiring a full Response shape in tests
-const mockFetch = jest.fn() as jest.MockedFunction<(...args: any[]) => Promise<any>>;
-;(global as any).fetch = mockFetch;
+const mockFetch = jest.fn() as jest.MockedFunction<(...args: unknown[]) => Promise<unknown>>;
+// Attach to global in a typed-safe way
+(global as unknown as Record<string, unknown>).fetch = mockFetch;
 
 describe('useBotCreation', () => {
   const mockOnBotCreated = jest.fn();
@@ -155,16 +156,16 @@ describe('useBotCreation', () => {
       expect(mockOnBotCreated).toHaveBeenCalled();
     });
 
-    it('stores voice config in sessionStorage after successful creation', async () => {
-      // Mock sessionStorage
-      const mockSessionStorage = {
+  it('stores voice config in localStorage after successful creation', async () => {
+      // Mock localStorage
+      const mockLocalStorage = {
         setItem: jest.fn(),
         getItem: jest.fn(),
         removeItem: jest.fn(),
         clear: jest.fn(),
       };
-      Object.defineProperty(window, 'sessionStorage', {
-        value: mockSessionStorage,
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
         writable: true,
       });
 
@@ -194,15 +195,17 @@ describe('useBotCreation', () => {
         gender: 'male'
       });
 
-      // Verify voice config was stored in sessionStorage
-      expect(sessionStorage.setItem).toHaveBeenCalledWith(
-        'voiceConfig-Gandalf the Grey',
-        JSON.stringify({
-          voice: 'deep_male_voice',
-          stability: 0.8,
-          similarity_boost: 0.9
-        })
-      );
+      // Verify voice config was stored in localStorage (versioned wrapper)
+      expect(localStorage.setItem).toHaveBeenCalled();
+      const calls = (localStorage.setItem as jest.Mock).mock.calls.filter(c => c[0] === 'voiceConfig-Gandalf the Grey');
+      expect(calls.length).toBeGreaterThan(0);
+      const stored = JSON.parse(calls[0][1]);
+      expect(stored.v).toBe(1);
+      expect(stored.payload).toEqual({
+        voice: 'deep_male_voice',
+        stability: 0.8,
+        similarity_boost: 0.9
+      });
     });
   });
 

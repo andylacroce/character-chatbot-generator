@@ -4,12 +4,12 @@ import type { Bot } from "../../app/components/BotCreator";
 // Mock authenticatedFetch instead of axios
 const mockAuthenticatedFetch = jest.fn();
 jest.mock("../../src/utils/api", () => ({
-    authenticatedFetch: (...args: any[]) => mockAuthenticatedFetch(...args),
+    authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
 }));
 
 import { useChatController } from "../../app/components/useChatController";
 
-const mockResponse = (data: any, status = 200) => ({
+const mockResponse = (data: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,
     status,
     json: () => Promise.resolve(data),
@@ -124,25 +124,29 @@ describe("useChatController uncovered branches", () => {
         }
     });    test("sendMessage updates messages state", async () => {
         // Use a deterministic implementation so the test doesn't depend on call ordering
-        mockAuthenticatedFetch.mockImplementation((url: string, options?: any) => {
+        mockAuthenticatedFetch.mockImplementation((url: string, options?: unknown) => {
             // Health check
             if (url === "/api/health") return Promise.resolve(mockResponse({}));
 
             // Chat API: detect intro vs user message by body contents
-            if (url === "/api/chat" && options && typeof options.body === 'string') {
-                try {
-                    const body = JSON.parse(options.body);
-                    if (body.message && body.message.includes("Introduce yourself")) {
-                        return Promise.resolve(mockResponse({ reply: "Intro message", audioFileUrl: null }));
+            if (url === "/api/chat") {
+                const opts = options as Record<string, unknown> | undefined;
+                if (opts && typeof opts.body === 'string') {
+                    try {
+                        const body = JSON.parse(opts.body) as Record<string, unknown>;
+                        const message = body.message as string | undefined;
+                        if (message && message.includes("Introduce yourself")) {
+                            return Promise.resolve(mockResponse({ reply: "Intro message", audioFileUrl: null }));
+                        }
+                        if (message && message === "Hello") {
+                            return Promise.resolve(mockResponse({ reply: "Bot reply", audioFileUrl: null }));
+                        }
+                        if (message && message === "test message") {
+                            return Promise.resolve(mockResponse({ reply: "Default reply", audioFileUrl: null }));
+                        }
+                    } catch {
+                        // fallthrough
                     }
-                    if (body.message && body.message === "Hello") {
-                        return Promise.resolve(mockResponse({ reply: "Bot reply", audioFileUrl: null }));
-                    }
-                    if (body.message && body.message === "test message") {
-                        return Promise.resolve(mockResponse({ reply: "Default reply", audioFileUrl: null }));
-                    }
-                } catch {
-                    // fallthrough
                 }
             }
 

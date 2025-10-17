@@ -7,13 +7,13 @@ import "@testing-library/jest-dom";
 // Mock authenticatedFetch instead of axios
 const mockAuthenticatedFetch = jest.fn();
 jest.mock("../../../src/utils/api", () => ({
-    authenticatedFetch: (...args: any[]) => mockAuthenticatedFetch(...args),
+  authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
 }));
 
-const mockResponse = (data: any, status = 200) => ({
-    ok: status >= 200 && status < 300,
-    status,
-    json: () => Promise.resolve(data),
+const mockResponse = (data: unknown, status = 200) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: () => Promise.resolve(data),
 });
 
 jest.mock("../../../app/components/useAudioPlayer", () => ({

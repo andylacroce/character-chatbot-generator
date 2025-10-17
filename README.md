@@ -121,3 +121,15 @@ Educational/portfolio project. Use public domain characters only. Not affiliated
 ### Hydration Mismatch Warning
 
 If you see a React hydration mismatch error in development pointing to attributes like `data-darkreader-mode` (from browser extensions like Dark Reader), this is expected. The root `<html>` element has `suppressHydrationWarning` to reduce noisy warnings. For a permanent fix, disable browser extensions that modify HTML during development.
+
+## Storage (client-side)
+
+This project uses a small safe storage wrapper at `src/utils/storage.ts` that centralizes access to `localStorage` and provides an in-memory fallback for environments (like tests) where `localStorage` is unavailable. Use the helper instead of direct `localStorage` reads/writes.
+
+Important notes:
+- Voice configurations are stored versioned under `voiceConfig-<bot.name>` as an object: `{ v: 1, createdAt: ISO, payload: { ...voiceConfig } }`.
+- Other keys used: `chatbot-bot`, `chatbot-bot-timestamp`, `chatbot-history-<bot.name>`, `lastPlayedAudioHash-<bot.name>`, `audioEnabled`, `darkMode`, `bot-session-id`, `bot-session-datetime`.
+- Do not store secrets or sensitive PII in client-side storage.
+- If you need cross-device sync later, implement an authenticated server-side backup; for now localStorage provides durable client-side persistence independent of server runtime.
+
+If you change the shape of stored objects, bump the version (`v`) to allow migration logic to detect and transform older entries.

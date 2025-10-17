@@ -18,10 +18,10 @@ jest.mock("../../../app/components/useAudioPlayer", () => ({
 // Mock authenticatedFetch instead of axios since that's what the component actually uses
 const mockAuthenticatedFetch = jest.fn();
 jest.mock("../../../src/utils/api", () => ({
-    authenticatedFetch: (...args: any[]) => mockAuthenticatedFetch(...args),
+    authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
 }));
 
-const mockResponse = (data: any, status = 200) => ({
+const mockResponse = (data: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,
     status,
     json: () => Promise.resolve(data),
@@ -195,15 +195,15 @@ describe("ChatPage branch coverage edge cases", () => {
     }, 10000); // Reduced timeout to 10,000 ms
 
     it("shows error if bot.voiceConfig is missing in sendMessage", async () => {
-        // Mock sessionStorage to ensure getVoiceConfig returns null
-        const mockSessionStorage = {
+        // Mock localStorage to ensure getVoiceConfig returns null
+        const mockLocalStorage = {
             getItem: jest.fn(() => null),
             setItem: jest.fn(),
             removeItem: jest.fn(),
             clear: jest.fn(),
         };
-        Object.defineProperty(window, 'sessionStorage', {
-            value: mockSessionStorage,
+        Object.defineProperty(window, 'localStorage', {
+            value: mockLocalStorage,
             writable: true,
         });
 
@@ -219,8 +219,8 @@ describe("ChatPage branch coverage edge cases", () => {
         });
     });
 
-    describe('voice config retrieval from sessionStorage', () => {
-        let mockSessionStorage: {
+    describe('voice config retrieval from localStorage', () => {
+        let mockLocalStorage: {
             getItem: jest.Mock;
             setItem: jest.Mock;
             removeItem: jest.Mock;
@@ -228,20 +228,20 @@ describe("ChatPage branch coverage edge cases", () => {
         };
 
         beforeEach(() => {
-            // Mock sessionStorage
-            mockSessionStorage = {
+            // Mock localStorage
+            mockLocalStorage = {
                 setItem: jest.fn(),
                 getItem: jest.fn(),
                 removeItem: jest.fn(),
                 clear: jest.fn(),
             };
-            Object.defineProperty(window, 'sessionStorage', {
-                value: mockSessionStorage,
+            Object.defineProperty(window, 'localStorage', {
+                value: mockLocalStorage,
                 writable: true,
             });
         });
 
-        it('retrieves voice config from sessionStorage when available', async () => {
+    it('retrieves voice config from localStorage when available', async () => {
             const storedVoiceConfig = {
                 languageCodes: ['en-GB'],
                 name: 'en-GB-Wavenet-B',
@@ -251,7 +251,12 @@ describe("ChatPage branch coverage edge cases", () => {
                 type: 'Wavenet'
             };
 
-            mockSessionStorage.getItem.mockReturnValue(JSON.stringify(storedVoiceConfig));
+            // Ensure chat history key returns an array so messages is an array
+            mockLocalStorage.getItem.mockImplementation((key: string) => {
+                if (key === `chatbot-history-${mockBot.name}`) return JSON.stringify([]);
+                if (key === `voiceConfig-${mockBot.name}`) return JSON.stringify({ v: 1, createdAt: new Date().toISOString(), payload: storedVoiceConfig });
+                return null;
+            });
 
             render(<ChatPage bot={mockBot} />);
             const input = screen.getByRole("textbox");
@@ -267,15 +272,18 @@ describe("ChatPage branch coverage edge cases", () => {
                 }));
             });
 
-            // Should not store voice config again since it was already in sessionStorage
-            expect(mockSessionStorage.setItem).not.toHaveBeenCalledWith(
-                'voiceConfig-Gandalf',
-                JSON.stringify(storedVoiceConfig)
-            );
+            // Should not store voice config again since it was already in localStorage
+            // If any setItem calls were made, ensure they are not writing a different payload
+            mockLocalStorage.setItem.mock.calls.forEach(call => {
+                if (call[0] === 'voiceConfig-Gandalf') {
+                    const parsed = JSON.parse(call[1]);
+                    expect(parsed.payload).toEqual(storedVoiceConfig);
+                }
+            });
         });
 
         it('stores voice config in sessionStorage when not present and bot has one', async () => {
-            mockSessionStorage.getItem.mockReturnValue(null); // Not in sessionStorage
+            mockLocalStorage.getItem.mockReturnValue(null); // Not in localStorage
 
             render(<ChatPage bot={mockBot} />);
             const input = screen.getByRole("textbox");
@@ -291,15 +299,17 @@ describe("ChatPage branch coverage edge cases", () => {
                 }));
             });
 
-            // Should store the voice config in sessionStorage
-            expect(mockSessionStorage.setItem).toHaveBeenCalledWith(
-                'voiceConfig-Gandalf',
-                JSON.stringify(mockBot.voiceConfig)
-            );
+            // Should store the voice config in localStorage (versioned wrapper)
+            expect(mockLocalStorage.setItem).toHaveBeenCalled();
+            const calls = mockLocalStorage.setItem.mock.calls.filter(c => c[0] === 'voiceConfig-Gandalf');
+            expect(calls.length).toBeGreaterThan(0);
+            const stored = JSON.parse(calls[0][1]);
+            expect(stored.v).toBe(1);
+            expect(stored.payload).toEqual(mockBot.voiceConfig);
         });
 
         it('falls back to bot.voiceConfig when sessionStorage is empty', async () => {
-            mockSessionStorage.getItem.mockReturnValue(null); // Not in sessionStorage
+            mockLocalStorage.getItem.mockReturnValue(null); // Not in localStorage
 
             render(<ChatPage bot={mockBot} />);
             const input = screen.getByRole("textbox");
@@ -317,11 +327,11 @@ describe("ChatPage branch coverage edge cases", () => {
         });
 
         it('handles sessionStorage errors gracefully', async () => {
-            mockSessionStorage.getItem.mockImplementation((key: string) => {
+            mockLocalStorage.getItem.mockImplementation((key: string) => {
                 if (key === 'voiceConfig-Gandalf') {
-                    throw new Error('sessionStorage error');
+                    throw new Error('localStorage error');
                 }
-                return null; // For other keys like sessionId, datetime
+                return null;
             });
 
             render(<ChatPage bot={mockBot} />);

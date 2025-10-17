@@ -11,6 +11,46 @@ import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Bot } from "./components/BotCreator";
 import { getValidBotFromStorage } from "../src/utils/getValidBotFromStorage";
+import storage from '../src/utils/storage';
+
+// Known storage key patterns to attempt migration on startup
+const KNOWN_KEYS_TO_MIGRATE = [
+  "chatbot-bot",
+  "chatbot-bot-timestamp",
+  "lastPlayedAudioHash-", // suffixed by bot name
+  "voiceConfig-", // suffixed by bot name
+  "chatbot-history-", // suffixed by bot name
+  "audioEnabled",
+  "darkMode",
+];
+
+export function runStartupMigrations() {
+  try {
+    // For keys that are pattern-based (suffix), scan localStorage for matches
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const keys = Object.keys(localStorage || {});
+      keys.forEach((k) => {
+        // If any known prefix matches, attempt migration
+        for (const prefix of KNOWN_KEYS_TO_MIGRATE) {
+          if (prefix.endsWith('-') || prefix.endsWith('-')) {
+            // prefix already includes dash to indicate suffix-style keys
+          }
+          if (k === prefix || k.startsWith(prefix)) {
+            try {
+              // Attempt to migrate; transform is optional and not provided here
+              storage.migrateToVersioned(k, 1);
+            } catch {
+              // swallow migration errors — runtime should be tolerant
+            }
+            break;
+          }
+        }
+      });
+    }
+  } catch {
+    // not fatal
+  }
+}
 
 /**
  * Dynamically import the ChatPage component with server-side rendering enabled.
@@ -51,9 +91,11 @@ const Home = () => {
       const loadedBot = getValidBotFromStorage();
       setBot(loadedBot);
       setLoadingBot(false);
-      // Store voiceConfig in sessionStorage when loading existing bot
+      // Store voiceConfig in local storage (versioned) when loading existing bot
       if (loadedBot?.voiceConfig) {
-        sessionStorage.setItem(`voiceConfig-${loadedBot.name}`, JSON.stringify(loadedBot.voiceConfig));
+        try {
+          storage.setVersionedJSON(`voiceConfig-${loadedBot.name}`, loadedBot.voiceConfig, 1);
+        } catch {}
       }
     }
   }, [nameFromUrl]);
@@ -61,24 +103,26 @@ const Home = () => {
   // Save bot to localStorage whenever it changes, with timestamp
   React.useEffect(() => {
     if (bot) {
-      localStorage.setItem("chatbot-bot", JSON.stringify(bot));
-      localStorage.setItem("chatbot-bot-timestamp", Date.now().toString());
+      storage.setJSON("chatbot-bot", bot);
+      storage.setItem("chatbot-bot-timestamp", Date.now().toString());
     }
   }, [bot]);
 
   const handleBotCreated = React.useCallback((bot: Bot) => {
     setBot(bot);
     setReturningToCreator(false);
-    // Store voiceConfig in sessionStorage keyed by character name
+    // Store voiceConfig in localStorage (versioned) keyed by character name for durability
     if (bot.voiceConfig) {
-      sessionStorage.setItem(`voiceConfig-${bot.name}`, JSON.stringify(bot.voiceConfig));
+      try {
+        storage.setVersionedJSON(`voiceConfig-${bot.name}`, bot.voiceConfig, 1);
+      } catch {}
     }
   }, []);
 
   const handleBackToCharacterCreation = React.useCallback(() => {
     // Clear the bot from localStorage to kill the session
-    localStorage.removeItem("chatbot-bot");
-    localStorage.removeItem("chatbot-bot-timestamp");
+  storage.removeItem("chatbot-bot");
+  storage.removeItem("chatbot-bot-timestamp");
     setBot(null);
     setReturningToCreator(true);
     router.push('/');

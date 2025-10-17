@@ -9,9 +9,9 @@ import {
 describe('Security Utils', () => {
   describe('decodeHtmlEntities', () => {
     it('should return empty string for non-string input', () => {
-      expect(decodeHtmlEntities(null as any)).toBe('');
-      expect(decodeHtmlEntities(undefined as any)).toBe('');
-      expect(decodeHtmlEntities(123 as any)).toBe('');
+  expect(decodeHtmlEntities(null as unknown as string)).toBe('');
+  expect(decodeHtmlEntities(undefined as unknown as string)).toBe('');
+  expect(decodeHtmlEntities(123 as unknown as string)).toBe('');
     });
 
     it('should decode named HTML entities', () => {
@@ -54,9 +54,9 @@ describe('Security Utils', () => {
 
   describe('escapeHtml', () => {
     it('should return empty string for non-string input', () => {
-      expect(escapeHtml(null as any)).toBe('');
-      expect(escapeHtml(undefined as any)).toBe('');
-      expect(escapeHtml(123 as any)).toBe('');
+  expect(escapeHtml(null as unknown as string)).toBe('');
+  expect(escapeHtml(undefined as unknown as string)).toBe('');
+  expect(escapeHtml(123 as unknown as string)).toBe('');
     });
 
     it('should escape dangerous HTML characters', () => {
@@ -80,9 +80,9 @@ describe('Security Utils', () => {
 
   describe('unescapeString', () => {
     it('should return empty string for non-string input', () => {
-      expect(unescapeString(null as any)).toBe('');
-      expect(unescapeString(undefined as any)).toBe('');
-      expect(unescapeString(123 as any)).toBe('');
+  expect(unescapeString(null as unknown as string)).toBe('');
+  expect(unescapeString(undefined as unknown as string)).toBe('');
+  expect(unescapeString(123 as unknown as string)).toBe('');
     });
 
     it('should unescape common escape sequences', () => {
@@ -114,9 +114,9 @@ describe('Security Utils', () => {
 
   describe('sanitizeForDisplay', () => {
     it('should return empty string for non-string input', () => {
-      expect(sanitizeForDisplay(null as any)).toBe('');
-      expect(sanitizeForDisplay(undefined as any)).toBe('');
-      expect(sanitizeForDisplay(123 as any)).toBe('');
+  expect(sanitizeForDisplay(null as unknown as string)).toBe('');
+  expect(sanitizeForDisplay(undefined as unknown as string)).toBe('');
+  expect(sanitizeForDisplay(123 as unknown as string)).toBe('');
     });
 
     it('should process strings through unescape, decode, and escape', () => {
@@ -131,9 +131,9 @@ describe('Security Utils', () => {
 
   describe('sanitizeCharacterName', () => {
     it('should return empty string for non-string input', () => {
-      expect(sanitizeCharacterName(null as any)).toBe('');
-      expect(sanitizeCharacterName(undefined as any)).toBe('');
-      expect(sanitizeCharacterName(123 as any)).toBe('');
+  expect(sanitizeCharacterName(null as unknown as string)).toBe('');
+  expect(sanitizeCharacterName(undefined as unknown as string)).toBe('');
+  expect(sanitizeCharacterName(123 as unknown as string)).toBe('');
     });
 
     it('should remove dangerous characters', () => {

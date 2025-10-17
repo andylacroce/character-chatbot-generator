@@ -5,6 +5,7 @@ import { useSession } from "./useSession";
 import { useApiError } from "./useApiError";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 import { useAudioPlayer } from "./useAudioPlayer";
+import storage from '../../src/utils/storage';
 import type { Message } from "../../src/types/message";
 import type { Bot } from "./BotCreator";
 
@@ -28,41 +29,51 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     
     // Memoize messages loading from localStorage
     const [messages, setMessages] = useState<Message[]>(() => {
-        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && chatHistoryKey) {
-            try {
-                const saved = localStorage.getItem(chatHistoryKey);
-                if (saved) return JSON.parse(saved);
-            } catch { }
-        }
+        try {
+            const saved = storage.getItem(chatHistoryKey);
+            if (saved) return JSON.parse(saved);
+        } catch { }
         return [];
     });
 
     // Memoize voice config getter to prevent unnecessary re-renders
     const getVoiceConfig = useCallback(() => {
-        if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
-            try {
-                const stored = sessionStorage.getItem(`voiceConfig-${bot.name}`);
-                if (stored) {
-                    return JSON.parse(stored);
-                } else if (bot.voiceConfig) {
-                    // Store in sessionStorage for consistency
-                    sessionStorage.setItem(`voiceConfig-${bot.name}`, JSON.stringify(bot.voiceConfig));
+        try {
+            if (typeof window !== 'undefined') {
+                // Use localStorage for durable client-side voice config storage
+                try {
+                    const versioned = storage.getVersionedJSON(`voiceConfig-${bot.name}`);
+                    if (versioned) return versioned.payload;
+                } catch {}
+
+                // Finally, check the saved bot in localStorage and populate both stores if found
+                try {
+                    const savedBotRaw = storage.getItem('chatbot-bot');
+                    if (savedBotRaw) {
+                        const parsed = JSON.parse(savedBotRaw);
+                        if (parsed?.name === bot.name && parsed.voiceConfig) {
+                            try { storage.setVersionedJSON(`voiceConfig-${bot.name}`, parsed.voiceConfig, 1); } catch {}
+                            return parsed.voiceConfig;
+                        }
+                    }
+                } catch {}
+
+                if (bot.voiceConfig) {
+                    try { storage.setVersionedJSON(`voiceConfig-${bot.name}`, bot.voiceConfig, 1); } catch {}
                     return bot.voiceConfig;
                 }
-            } catch { }
-        }
+            }
+        } catch { }
         return bot.voiceConfig;
     }, [bot.name, bot.voiceConfig]);
 
     const [input, setInput] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
     const [audioEnabled, setAudioEnabled] = useState<boolean>(() => {
-        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-            const savedAudioPreference = localStorage.getItem('audioEnabled');
-            if (savedAudioPreference !== null) {
-                return savedAudioPreference === 'true';
-            }
-        }
+        try {
+            const savedAudioPreference = storage.getItem('audioEnabled');
+            if (savedAudioPreference !== null) return savedAudioPreference === 'true';
+        } catch { }
         return true;
     });
     const [apiAvailable, setApiAvailable] = useState<boolean>(true);
@@ -84,18 +95,11 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     useEffect(() => {
         // Reset messages to load the new bot's chat history
         const newChatHistoryKey = `chatbot-history-${bot.name}`;
-        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-            try {
-                const saved = localStorage.getItem(newChatHistoryKey);
-                if (saved) {
-                    setMessages(JSON.parse(saved));
-                } else {
-                    setMessages([]);
-                }
-            } catch {
-                setMessages([]);
-            }
-        } else {
+        try {
+            const saved = storage.getItem(newChatHistoryKey);
+            if (saved) setMessages(JSON.parse(saved));
+            else setMessages([]);
+        } catch {
             setMessages([]);
         }
 
@@ -325,9 +329,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     const handleAudioToggle = useCallback(() => {
         setAudioEnabled((prev) => {
             const newEnabled = !prev;
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('audioEnabled', String(newEnabled));
-            }
+            try { storage.setItem('audioEnabled', String(newEnabled)); } catch {}
             if (!newEnabled) {
                 stopAudio();
             }
@@ -339,9 +341,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     }, [stopAudio, inputRef]);
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
-            localStorage.setItem('audioEnabled', String(audioEnabled));
-        }
+        try { storage.setItem('audioEnabled', String(audioEnabled)); } catch {}
     }, [audioEnabled]);
 
     const healthCheckRan = useRef(false);
@@ -360,13 +360,9 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     }, [handleApiError]);
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && chatHistoryKey) {
-            try {
-                localStorage.setItem(chatHistoryKey, JSON.stringify(messages));
-            } catch {
-                // ignore
-            }
-        }
+        try {
+            if (chatHistoryKey) storage.setItem(chatHistoryKey, JSON.stringify(messages));
+        } catch {}
     }, [messages, chatHistoryKey]);
 
     const handleDownloadTranscript = async () => {
@@ -430,8 +426,8 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         const lastMsg = messages[messages.length - 1];
         const lastMsgHash = getMessageHash(lastMsg);
         if (typeof window !== 'undefined') {
-            if (lastPlayedAudioHashRef.current === null) {
-                lastPlayedAudioHashRef.current = sessionStorage.getItem(`lastPlayedAudioHash-${bot.name}`);
+                if (lastPlayedAudioHashRef.current === null) {
+                try { lastPlayedAudioHashRef.current = storage.getItem(`lastPlayedAudioHash-${bot.name}`); } catch {}
             }
         }
         if (
@@ -441,17 +437,27 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         ) {
             (async () => {
                 if (!cancelled) {
-                    await playAudio(lastMsg.audioFileUrl!, abortController.signal);
+                    // Mark this message as being played to avoid concurrent double-play
                     lastPlayedAudioHashRef.current = lastMsgHash;
-                    if (typeof window !== 'undefined') {
-                        sessionStorage.setItem(`lastPlayedAudioHash-${bot.name}`, lastMsgHash);
+                    try {
+                        await playAudio(lastMsg.audioFileUrl!, abortController.signal);
+                        try { storage.setItem(`lastPlayedAudioHash-${bot.name}`, lastMsgHash); } catch {}
+                    } catch (err: unknown) {
+                        // If playback failed or was aborted, clear the in-progress marker
+                        const errName = (err && typeof err === 'object' && 'name' in err)
+                            ? (err as Record<string, unknown>)['name'] as string | undefined
+                            : undefined;
+                        if (errName === 'AbortError') {
+                            // aborted - do not log as error
+                        } else {
+                            console.error('Audio playback error:', err);
+                        }
+                        if (lastPlayedAudioHashRef.current === lastMsgHash) {
+                            lastPlayedAudioHashRef.current = null;
+                        }
                     }
                 }
-            })().catch((err) => {
-                if (err.name !== 'AbortError') {
-                    console.error('Audio playback error:', err);
-                }
-            });
+            })();
         }
         return () => {
             cancelled = true;
