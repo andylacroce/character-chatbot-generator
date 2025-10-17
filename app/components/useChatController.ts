@@ -477,6 +477,13 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             setTimeout(() => {
                 onViewportChange();
                 try { chatEl.scrollTop = chatEl.scrollHeight; } catch {}
+                // Also ensure the page itself is scrolled to the bottom on mobile
+                try {
+                    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+                    if (/Android|iP(ad|hone|od)/i.test(ua)) {
+                        window.scrollTo(0, document.body.scrollHeight);
+                    }
+                } catch {}
             }, 50);
         };
 

@@ -87,13 +87,43 @@ export function useChatScrollAndFocus({
     if (!input) return;
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
     const isFirefoxAndroid = ua.includes("Firefox") && ua.includes("Android");
+    const isMobile = /Android|iP(ad|hone|od)/i.test(ua);
     const handleFocus = () => {
+      // Always try to keep the chat scrolled to the bottom first
       scrollToBottom();
-      if (isFirefoxAndroid) {
+
+      // On mobile browsers the virtual keyboard can change the viewport
+      // asynchronously. Delay and then ensure both the chat container
+      // and the page viewport are at the bottom so the last message and
+      // the input remain visible.
+      if (isMobile) {
         setTimeout(() => {
-          input.scrollIntoView({ block: "end", behavior: "smooth" });
-          window.scrollTo(0, document.body.scrollHeight);
-          document.body.classList.add("ff-android-input-focus");
+          try {
+            // Ensure the chat container is at the bottom
+            scrollToBottom();
+          } catch {}
+          try {
+            // Bring the input into view (some browsers reposition better
+            // with scrollIntoView than window.scrollTo)
+            input.scrollIntoView({ block: "end", behavior: "auto" });
+          } catch {}
+          try {
+            // Also attempt to scroll the page to the bottom for cases
+            // where the chat container isn't the main scroller
+            window.scrollTo(0, document.body.scrollHeight);
+          } catch {}
+
+          // Add FF Android class when appropriate (preserve previous behavior)
+          if (isFirefoxAndroid) {
+            try { document.body.classList.add("ff-android-input-focus"); } catch {}
+          }
+        }, 120);
+      } else if (isFirefoxAndroid) {
+        // Non-mobile fallback for the Firefox-on-Android special case
+        setTimeout(() => {
+          try { input.scrollIntoView({ block: "end", behavior: "smooth" }); } catch {}
+          try { window.scrollTo(0, document.body.scrollHeight); } catch {}
+          try { document.body.classList.add("ff-android-input-focus"); } catch {}
         }, 100);
       }
     };
