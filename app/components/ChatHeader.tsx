@@ -82,15 +82,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
         </div>
         <div className={styles.headerRight}>
           <a
-            href="https://mastodon.world/@AndyLacroce"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onHeaderLinkClick}
-            aria-label="Visit Andy Lacroce on Mastodon"
-          >
-            <Image src="/mastodon.png" alt="Mastodon" width={50} height={50} />
-          </a>
-          <a
             href="https://www.andylacroce.com/"
             target="_blank"
             rel="noopener noreferrer"

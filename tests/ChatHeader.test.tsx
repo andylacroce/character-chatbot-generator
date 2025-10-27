@@ -55,9 +55,8 @@ describe('ChatHeader', () => {
   it('calls onHeaderLinkClick when Mastodon or website links are clicked', () => {
     render(<ChatHeader {...defaultProps} />);
     fireEvent.click(screen.getByLabelText(/open menu/i));
-    fireEvent.click(screen.getByLabelText(/visit andy lacroce on mastodon/i));
     fireEvent.click(screen.getByLabelText(/visit andy lacroce's website/i));
-    expect(mockOnHeaderLinkClick).toHaveBeenCalledTimes(2);
+    expect(mockOnHeaderLinkClick).toHaveBeenCalledTimes(1);
   });
 
   it('renders nothing if bot is not provided', () => {
