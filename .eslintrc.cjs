@@ -1,11 +1,8 @@
 module.exports = {
   extends: [
-    "next",
-    "next/core-web-vitals",
     "plugin:@typescript-eslint/recommended",
-    "plugin:react/recommended",
   ],
-  plugins: ["@typescript-eslint", "react"],
+  plugins: ["@typescript-eslint"],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: 2021,
@@ -14,11 +11,6 @@ module.exports = {
       jsx: true,
     },
     // project: ["./tsconfig.json"], // Uncomment if you use rules requiring type information
-  },
-  settings: {
-    react: {
-      version: "detect",
-    },
   },
   ignorePatterns: [
     "node_modules/",
@@ -61,8 +53,8 @@ module.exports = {
   ],
   rules: {
     // Add or override rules here as needed
-    "react/react-in-jsx-scope": "off", // Next.js doesn't require React in scope
+    // Next.js doesn't require React in scope; react plugin removed to avoid circular-config issues in some environments
     "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-    "react/prop-types": "off",
+    // react/prop-types rule removed because react plugin is not loaded in this config
   },
 };

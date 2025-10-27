@@ -1,14 +1,14 @@
 import storage, { getItem, getJSON, getVersionedJSON } from '../src/utils/storage';
 
 describe('storage fallback (no localStorage)', () => {
-  let originalLocalStorage: any;
+  let originalLocalStorage: unknown;
 
   beforeEach(() => {
     // Save existing localStorage and remove it to simulate environments without it
-    originalLocalStorage = (global as any).localStorage;
+    const g = global as unknown as Record<string, unknown>;
+    originalLocalStorage = g.localStorage;
     try {
-      // @ts-ignore - intentionally delete for test
-      delete (global as any).localStorage;
+      delete g.localStorage;
     } catch {}
     storage.clearMemoryFallback();
   });
@@ -16,7 +16,8 @@ describe('storage fallback (no localStorage)', () => {
   afterEach(() => {
     // Restore original localStorage
     try {
-      (global as any).localStorage = originalLocalStorage;
+      const g = global as unknown as Record<string, unknown>;
+      g.localStorage = originalLocalStorage;
     } catch {}
     storage.clearMemoryFallback();
   });

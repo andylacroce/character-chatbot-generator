@@ -24,7 +24,8 @@ describe('cache fresh-get behavior', () => {
             writeFileSync: jest.Mock;
         };
         const now = Date.now();
-        const fileCache: Record<string, any> = {
+        interface CachedEntry { value: string; timestamp: number }
+        const fileCache: Record<string, CachedEntry> = {
             foo: { value: 'bar', timestamp: now }
         };
         (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(fileCache));

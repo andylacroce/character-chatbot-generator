@@ -1,4 +1,3 @@
-import storage from '../src/utils/storage';
 import { runStartupMigrations } from '../app/index';
 
 describe('startup migrations', () => {

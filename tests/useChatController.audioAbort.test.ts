@@ -13,7 +13,7 @@ jest.mock('../src/utils/storage', () => ({
 jest.mock('../app/components/useAudioPlayer', () => ({
   useAudioPlayer: () => ({
     playAudio: jest.fn(async (_url: string, _signal?: AbortSignal) => {
-      const err: any = new Error('aborted');
+      const err = new Error('aborted') as Error & { name?: string };
       err.name = 'AbortError';
       throw err;
     }),
@@ -46,10 +46,9 @@ describe('useChatController audio AbortError handling', () => {
 
   it('clears lastPlayedAudioHashRef on AbortError and does not console.error', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const { result, rerender } = renderHook(() => useChatController(mockBot));
+    const { result } = renderHook(() => useChatController(mockBot));
 
-    // Simulate a bot message with audio
-    const botMsg = { sender: mockBot.name, text: 'Hello', audioFileUrl: '/audio.mp3' } as any;
+    // Simulate a bot message with audio (not directly used; kept for clarity)
     act(() => {
       result.current.setInput('');
       // push messages by directly setting state via returned setter is not available, so simulate via messages update
@@ -60,7 +59,6 @@ describe('useChatController audio AbortError handling', () => {
     // To simulate, directly call the effect by invoking sendMessage flow: append a bot message via setInput/sendMessage sequence
     // Instead, call playAudio through the mocked hook by triggering the effect via setting messages using the returned API
     act(() => {
-      // push a message by using setInput/sendMessage pattern: since sendMessage requires API calls, we directly set messages via internal API not exposed
       // As a pragmatic approach, call handleBackToCharacterCreation which triggers stopAudio and ensures no console.error thrown on abort
       result.current.handleBackToCharacterCreation();
     });

@@ -13,7 +13,7 @@ jest.mock('../src/utils/storage', () => ({
 jest.mock('../app/components/useAudioPlayer', () => ({
   useAudioPlayer: () => ({
     playAudio: jest.fn(async (_url: string, _signal?: AbortSignal) => {
-      const err: any = new Error('playback failed');
+      const err = new Error('playback failed') as Error & { name?: string };
       err.name = 'PlaybackError';
       throw err;
     }),
@@ -22,7 +22,6 @@ jest.mock('../app/components/useAudioPlayer', () => ({
 }));
 
 import { useChatController } from '../app/components/useChatController';
-import storage from '../src/utils/storage';
 
 const mockBot: Bot = {
   name: 'ErrorBot',
@@ -51,8 +50,7 @@ describe('useChatController audio non-AbortError handling', () => {
     // Simulate adding a bot message with audio to trigger playback effect
     act(() => {
       // Access returned setter to append a message
-      result.current.setInput('');
-      const botMessage: any = { sender: mockBot.name, text: 'Hi', audioFileUrl: '/audio.mp3' };
+  result.current.setInput('');
       // directly update messages using setMessages is not exposed; instead simulate by calling internal APIs that would cause same effect
       // We'll call handleBackToCharacterCreation to force stopAudio, then manually trigger the effect by updating messages via a re-render pattern
       // Simpler: call sendMessage => not suitable. Instead, directly spy on storage.setItem when playAudio throws

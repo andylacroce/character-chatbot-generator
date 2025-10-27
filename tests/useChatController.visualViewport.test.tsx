@@ -15,8 +15,10 @@ jest.mock('../app/components/useAudioPlayer', () => ({
 }));
 
 import { useChatController } from '../app/components/useChatController';
+import type { Bot } from '../app/components/BotCreator';
 
-const mockBot = {
+type MinimalBot = { name: string; personality: string; avatarUrl: string; voiceConfig?: unknown };
+const mockBot: MinimalBot = {
   name: 'VVBot',
   personality: 'neutral',
   avatarUrl: '/silhouette.svg',
@@ -34,8 +36,8 @@ describe('useChatController visualViewport keyboard handling', () => {
   it('sets --vv-keyboard-pad and classes on focus when visualViewport shrinks and removes them on blur', async () => {
     // Create a mock visualViewport implementation that stores listeners
     const listeners: Record<string, EventListener[]> = {};
-    // @ts-ignore
-    global.window.visualViewport = {
+    // provide a typed visualViewport mock
+    (global as unknown as { visualViewport?: VisualViewport }).visualViewport = {
       height: 600,
       addEventListener: (ev: string, cb: EventListener) => {
         listeners[ev] = listeners[ev] || [];
@@ -44,19 +46,18 @@ describe('useChatController visualViewport keyboard handling', () => {
       removeEventListener: (ev: string, cb: EventListener) => {
         listeners[ev] = (listeners[ev] || []).filter(f => f !== cb);
       }
-    } as any;
+    } as unknown as VisualViewport;
 
     // Ensure an innerHeight greater than visualViewport.height
-    // @ts-ignore
-    global.window.innerHeight = 1000;
+  (global as unknown as { innerHeight?: number }).innerHeight = 1000;
 
     // Render a harness component that attaches the hook's refs to real DOM elements
     function Harness() {
-      const ctrl = useChatController(mockBot as any);
+      const ctrl = useChatController(mockBot as unknown as Bot);
       return (
         <div>
-          <div data-testid="chat" ref={ctrl.chatBoxRef as any} />
-          <input data-testid="input" ref={ctrl.inputRef as any} />
+          <div data-testid="chat" ref={ctrl.chatBoxRef as unknown as React.Ref<HTMLDivElement>} />
+          <input data-testid="input" ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>} />
         </div>
       );
     }

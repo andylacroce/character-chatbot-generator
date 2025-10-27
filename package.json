@@ -9,7 +9,7 @@
     "build:ci": "npm run test:coverage && next build",
     "vercel-build": "next build",
     "start": "next start",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+  "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "test": "jest",
     "test:coverage": "jest --coverage --silent --coverageReporters=text --coverageReporters=text-summary",
     "type-check": "tsc --noEmit"
