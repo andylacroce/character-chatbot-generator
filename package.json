@@ -58,7 +58,7 @@
     "babel-jest": "^30.2.0",
     "eslint": "^9.38.0",
     "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "express": "^5.1.0",
     "ipinfo": "^1.5.2",
     "jest": "^30.2.0",
