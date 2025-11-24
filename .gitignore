@@ -69,3 +69,6 @@ docs/
 # GitHub Actions workflows (do NOT ignore)
 !.github/
 !.github/workflows/
+
+# Local AI agent guidance (keep local overrides out of commits)
+.github/copilot-instructions.md
