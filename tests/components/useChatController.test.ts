@@ -1,6 +1,14 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import type { Bot } from "../../app/components/BotCreator";
 
+// Mock logger
+const mockLogEvent = jest.fn();
+const mockSanitizeLogMeta = jest.fn((meta) => meta);
+jest.mock("../../src/utils/logger", () => ({
+    logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+    sanitizeLogMeta: (...args: unknown[]) => mockSanitizeLogMeta(...(args as unknown[])),
+}));
+
 // Mock authenticatedFetch instead of axios
 const mockAuthenticatedFetch = jest.fn();
 jest.mock("../../src/utils/api", () => ({
@@ -54,17 +62,18 @@ describe("useChatController uncovered branches", () => {
         await act(async () => {
             // Wait for intro attempt
         });
-        expect(console.error).toHaveBeenCalledWith(
-            "Intro error:",
-            "Voice configuration missing for this character. Please recreate the bot.",
-            { bot: botWithoutVoiceConfig }
+        expect(mockLogEvent).toHaveBeenCalledWith(
+            'error',
+            'chat_intro_voice_config_missing',
+            'Voice configuration missing for this character. Please recreate the bot.',
+            expect.objectContaining({
+                botName: 'Gandalf',
+                hasVoiceConfig: false
+            })
         );
     });
 
     it("handles OpenAI API error in sendMessage", async () => {
-        // Mock console.error
-        const errorMock = jest.spyOn(console, 'error').mockImplementation(() => {});
-        
         // Mock authenticatedFetch to resolve health check but reject chat calls
         mockAuthenticatedFetch.mockImplementation((url: string) => {
             if (url === "/api/health") {
@@ -74,54 +83,52 @@ describe("useChatController uncovered branches", () => {
             }
         });
 
-        try {
-            // Setup bot with valid voiceConfig so we reach the API call
-            const botWithVoiceConfig = {
-                name: 'TestBot',
-                personality: 'friendly',
-                avatarUrl: '/mock-url',
-                voiceConfig: {
-                    languageCodes: ["en-US"],
-                    name: "en-US-Wavenet-D",
-                    ssmlGender: 1,
-                    pitch: 0,
-                    rate: 1.0,
-                    type: "Wavenet"
-                },
-            };
+        // Setup bot with valid voiceConfig so we reach the API call
+        const botWithVoiceConfig = {
+            name: 'TestBot',
+            personality: 'friendly',
+            avatarUrl: '/mock-url',
+            voiceConfig: {
+                languageCodes: ["en-US"],
+                name: "en-US-Wavenet-D",
+                ssmlGender: 1,
+                pitch: 0,
+                rate: 1.0,
+                type: "Wavenet"
+            },
+        };
 
-            const { result } = renderHook(() => useChatController(botWithVoiceConfig));
-            
-            // Wait for intro to complete (it will fail)
-            await act(async () => {
-                await new Promise(resolve => setTimeout(resolve, 100));
-            });
-            
-            // Clear any errors from intro
-            errorMock.mockClear();
-            
-            // Set input so sendMessage doesn't return early
-            act(() => {
-                result.current.setInput("test message");
-            });
-            
-            // Call sendMessage
-            await act(async () => {
-                await result.current.sendMessage();
-            });
+        const { result } = renderHook(() => useChatController(botWithVoiceConfig));
+        
+        // Wait for intro to complete (it will fail)
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        });
+        
+        // Clear any log events from intro
+        mockLogEvent.mockClear();
+        
+        // Set input so sendMessage doesn't return early
+        act(() => {
+            result.current.setInput("test message");
+        });
+        
+        // Call sendMessage
+        await act(async () => {
+            await result.current.sendMessage();
+        });
 
-            // Capture and verify console errors
-            const errorCalls = errorMock.mock.calls;
-            console.log('Error calls detected:', errorCalls);
-
-            expect(errorCalls).toContainEqual([
-                'SendMessage error:',
-                'Failed to send message or generate reply.',
-                expect.any(Object),
-            ]);
-        } finally {
-            errorMock.mockRestore();
-        }
+        // Verify structured logging was called
+        expect(mockLogEvent).toHaveBeenCalledWith(
+            'error',
+            'chat_send_message_failed',
+            'Failed to send message or generate reply.',
+            expect.objectContaining({
+                botName: 'TestBot',
+                error: expect.any(String),
+                hasVoiceConfig: true
+            })
+        );
     });    test("sendMessage updates messages state", async () => {
         // Use a deterministic implementation so the test doesn't depend on call ordering
         mockAuthenticatedFetch.mockImplementation((url: string, options?: unknown) => {

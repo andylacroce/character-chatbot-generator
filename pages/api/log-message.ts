@@ -207,7 +207,7 @@ export default async function handler(
           allowOverwrite: true, // Allow overwriting the existing blob
         });
       } catch (error) {
-        logger.error("[Log API] Error appending to Vercel Blob:", error);
+        logger.error("[Log API] Error appending to Vercel Blob:", { error });
         res.status(500).json({ error: "Internal Server Error" });
         return;
       }
@@ -227,7 +227,7 @@ export default async function handler(
         fs.mkdirSync(logDir, { recursive: true });
         fs.appendFileSync(resolvedFilePath, logEntry, "utf8");
       } catch (error) {
-        logger.error("[Log API] Error appending to local file:", error);
+        logger.error("[Log API] Error appending to local file:", { error });
         res.status(500).json({ error: "Internal Server Error" });
         return;
       }

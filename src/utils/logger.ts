@@ -1,28 +1,73 @@
-import winston from "winston";
 import { v4 as uuidv4 } from "uuid";
 
 /**
- * Winston logger instance for application-wide logging.
+ * Browser-compatible logger for application-wide logging.
  *
- * Provides log formatting, request ID tracing, and log level control.
+ * Provides structured logging with event tracking and metadata support.
+ * Uses console methods in browser, Winston on server.
  *
  * @module logger
  */
-if (typeof globalThis.setImmediate === "undefined") {
-  (globalThis as Record<string, unknown>).setImmediate = (fn: (...args: unknown[]) => void, ...args: unknown[]) => setTimeout(fn, 0, ...args);
+
+// Type definitions for logger interface
+interface LoggerInstance {
+  log: (level: string, message: string, meta?: Record<string, unknown>) => void;
 }
 
-const logger = winston.createLogger({
-  level: "info",
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.printf(({ timestamp, level, message, ...meta }) => {
-      const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
-      return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
-    }),
-  ),
-  transports: [new winston.transports.Console()],
-});
+// Browser-compatible logger implementation
+const createBrowserLogger = (): LoggerInstance => {
+  return {
+    log: (level: string, message: string, meta?: Record<string, unknown>) => {
+      const timestamp = new Date().toISOString();
+      const metaString = meta && Object.keys(meta).length ? JSON.stringify(meta) : "";
+      const logMessage = `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
+      
+      // Use appropriate console method based on level
+      if (level === 'error') {
+        console.error(logMessage);
+      } else if (level === 'warn') {
+        console.warn(logMessage);
+      } else {
+        console.log(logMessage);
+      }
+    }
+  };
+};
+
+// Server-side Winston logger (only imported on server)
+let loggerInstance: LoggerInstance;
+
+if (typeof window === 'undefined') {
+  // Server-side: use Winston
+  try {
+    // Dynamic import to avoid bundling Winston in client code
+    const winston = require('winston');
+    
+    if (typeof globalThis.setImmediate === "undefined") {
+      (globalThis as Record<string, unknown>).setImmediate = (fn: (...args: unknown[]) => void, ...args: unknown[]) => setTimeout(fn, 0, ...args);
+    }
+
+    const logger = winston.createLogger({
+      level: "info",
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.printf(({ timestamp, level, message, ...meta }: { timestamp: string; level: string; message: string; [key: string]: unknown }) => {
+          const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
+          return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
+        }),
+      ),
+      transports: [new winston.transports.Console()],
+    });
+    
+    loggerInstance = logger as unknown as LoggerInstance;
+  } catch (error) {
+    // Fallback if Winston fails to load
+    loggerInstance = createBrowserLogger();
+  }
+} else {
+  // Client-side: use browser-compatible logger
+  loggerInstance = createBrowserLogger();
+}
 
 /**
  * Generates a unique request ID for tracing logs across services.
@@ -31,8 +76,6 @@ const logger = winston.createLogger({
 export function generateRequestId() {
   return uuidv4();
 }
-
-const loggerInstance = logger as unknown as winston.Logger;
 
 /**
  * Logs a message at the specified level with optional metadata.
@@ -54,6 +97,25 @@ export function log(level: string, message: string, meta?: Record<string, unknow
 export function logEvent(level: "info" | "warn" | "error", event: string, message: string, meta?: Record<string, unknown>) {
   loggerInstance.log(level, message, { event, ...(meta || {}) });
 }
+
+/**
+ * Convenience methods for direct logging (backward compatibility with API routes)
+ */
+export const logger = {
+  info: (message: string, meta?: Record<string, unknown> | unknown) => {
+    const sanitizedMeta = typeof meta === 'object' && meta !== null ? meta as Record<string, unknown> : { data: meta };
+    loggerInstance.log('info', message, sanitizedMeta);
+  },
+  warn: (message: string, meta?: Record<string, unknown> | unknown) => {
+    const sanitizedMeta = typeof meta === 'object' && meta !== null ? meta as Record<string, unknown> : { data: meta };
+    loggerInstance.log('warn', message, sanitizedMeta);
+  },
+  error: (message: string, meta?: Record<string, unknown> | unknown) => {
+    const sanitizedMeta = typeof meta === 'object' && meta !== null ? meta as Record<string, unknown> : { data: meta };
+    loggerInstance.log('error', message, sanitizedMeta);
+  },
+  log: (level: string, message: string, meta?: Record<string, unknown>) => loggerInstance.log(level, message, meta),
+};
 
 /**
  * Truncates a string to a max length, adding ellipsis if needed.
@@ -84,4 +146,4 @@ export function sanitizeLogMeta(meta: Record<string, unknown>): Record<string, u
   return result;
 }
 
-export default loggerInstance;
+export default logger;

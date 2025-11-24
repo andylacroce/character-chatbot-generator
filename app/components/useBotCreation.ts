@@ -2,6 +2,7 @@ import { useState, useRef, MutableRefObject } from "react";
 import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
 import { authenticatedFetch } from "../../src/utils/api";
 import type { Bot } from "./BotCreator";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
 type ProgressStep = "personality" | "avatar" | "voice" | null;
 
@@ -53,6 +54,11 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             setError("Please enter a name or character.");
             return;
         }
+        if (typeof window !== 'undefined') {
+            logEvent('info', 'bot_creation_started', 'User initiated bot creation', sanitizeLogMeta({
+                characterName: input.trim()
+            }));
+        }
         setError("");
         setLoading(true);
         setProgress("personality");
@@ -68,10 +74,23 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             if (!cancelRequested.current) {
                 setProgress(null);
                 setLoadingMessage(null);
+                if (typeof window !== 'undefined') {
+                    logEvent('info', 'bot_creation_success', 'Bot created successfully', sanitizeLogMeta({
+                        characterName: bot.name,
+                        hasVoiceConfig: !!bot.voiceConfig,
+                        avatarUrl: bot.avatarUrl
+                    }));
+                }
                 onBotCreated(bot);
             }
-        } catch {
+        } catch (err) {
             if (!cancelRequested.current) {
+                if (typeof window !== 'undefined') {
+                    logEvent('error', 'bot_creation_failed', 'Bot creation failed', sanitizeLogMeta({
+                        characterName: input.trim(),
+                        error: err instanceof Error ? err.message : String(err)
+                    }));
+                }
                 setError("Failed to generate character. Please try again.");
                 setProgress(null);
                 setLoadingMessage(null);
@@ -94,7 +113,17 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             const { name } = await getRandomCharacterNameAvoidRepeat(lastRandomNameRef.current);
             setInput(name);
             lastRandomNameRef.current = name;
-        } catch {
+            if (typeof window !== 'undefined') {
+                logEvent('info', 'bot_random_character_selected', 'Random character selected', sanitizeLogMeta({
+                    characterName: name
+                }));
+            }
+        } catch (err) {
+            if (typeof window !== 'undefined') {
+                logEvent('error', 'bot_random_character_failed', 'Random character selection failed', sanitizeLogMeta({
+                    error: err instanceof Error ? err.message : String(err)
+                }));
+            }
             setError("Failed to get random character");
         } finally {
             setRandomizing(false);
@@ -124,8 +153,21 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
                 const data = await personalityRes.json();
                 if (data.personality) personality = data.personality;
                 if (data.correctedName) correctedName = data.correctedName;
+                if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+                    logEvent('info', 'bot_personality_generated', 'Personality generated', sanitizeLogMeta({
+                        characterName: correctedName,
+                        originalName: originalInputName
+                    }));
+                }
             }
-        } catch { }
+        } catch (err) {
+            if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+                logEvent('warn', 'bot_personality_generation_failed', 'Personality generation failed, using default', sanitizeLogMeta({
+                    characterName: originalInputName,
+                    error: err instanceof Error ? err.message : String(err)
+                }));
+            }
+        }
         onProgress("avatar");
         setLoadingMessage("Generating portrait — may take up to a minute");
         let avatarUrl = "/silhouette.svg";
@@ -160,7 +202,19 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         if (cancelRequested.current) throw new Error("cancelled");
         try {
             voiceConfig = await api_getVoiceConfigForCharacter(correctedName, gender);
-        } catch {
+            if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+                logEvent('info', 'bot_voice_config_generated', 'Voice config generated', sanitizeLogMeta({
+                    characterName: correctedName,
+                    voiceName: voiceConfig?.name
+                }));
+            }
+        } catch (err) {
+            if (typeof window !== 'undefined') {
+                logEvent('warn', 'bot_voice_config_generation_failed', 'Voice config generation failed', sanitizeLogMeta({
+                    characterName: correctedName,
+                    error: err instanceof Error ? err.message : String(err)
+                }));
+            }
             setLoadingMessage("Using default voice");
         }
         if (cancelRequested.current) throw new Error("cancelled");

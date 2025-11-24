@@ -126,13 +126,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           logEvent("info", "avatar_gpt_parsed", "Avatar description parsed", sanitizeLogMeta({ race, gender, other }));
           genderOut = gender;
         } catch (jsonErr) {
-          logger.warn("Failed to parse GPT JSON:", jsonErr, content);
+          logger.warn("Failed to parse GPT JSON:", { error: jsonErr, content });
         }
       } else {
         logEvent("info", "avatar_gpt_response_empty", "GPT response for avatar is empty");
       }
     } catch (descErr) {
-      logger.warn("Failed to get description from OpenAI:", descErr);
+      logger.warn("Failed to get description from OpenAI:", { error: descErr });
     }
     // Build the likenessRef for DALL-E
     let likenessRef = null;

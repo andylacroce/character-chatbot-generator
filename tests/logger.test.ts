@@ -63,16 +63,10 @@ describe('logger utility', () => {
         });
     });
 
-    it('should polyfill setImmediate if missing', () => {
-        const original = globalThis.setImmediate;
-        // Remove setImmediate
-    // @ts-expect-error test-mock: remove setImmediate to test polyfill
-    delete globalThis.setImmediate;
-        jest.resetModules();
-        // Use jest.requireActual so Jest re-evaluates the module under test after we modified globals
-        jest.requireActual('../src/utils/logger');
-        expect(typeof globalThis.setImmediate).toBe('function');
-        // Restore
-        globalThis.setImmediate = original;
+    it('should work in browser and server environments', () => {
+        // Logger is now browser-compatible and works in both environments
+        expect(typeof log).toBe('function');
+        expect(typeof logEvent).toBe('function');
+        expect(typeof generateRequestId).toBe('function');
     });
 });

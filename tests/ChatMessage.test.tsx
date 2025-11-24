@@ -1,6 +1,13 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import ChatMessage, { Message } from "../app/components/ChatMessage";
+import { logEvent } from "../src/utils/logger";
+
+// Mock the logger
+jest.mock("../src/utils/logger", () => ({
+  logEvent: jest.fn(),
+  sanitizeLogMeta: jest.fn((meta) => meta),
+}));
 
 const mockBot = {
   name: "Gandalf",
@@ -27,12 +34,15 @@ describe("ChatMessage", () => {
   });
 
   it("returns null and logs error for invalid message", () => {
-    const spy = jest.spyOn(console, "error").mockImplementation(() => {});
     // @ts-expect-error purposely invalid
     const { container } = render(<ChatMessage message={null} bot={mockBot} />);
     expect(container.firstChild).toBeNull();
-    expect(spy).toHaveBeenCalled();
-    spy.mockRestore();
+    expect(logEvent).toHaveBeenCalledWith(
+      'error',
+      'chat_message_invalid',
+      'Invalid message object received',
+      expect.any(Object)
+    );
   });
 
   it("handles missing optional audioFileUrl", () => {

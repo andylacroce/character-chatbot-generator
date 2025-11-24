@@ -8,6 +8,7 @@ import { useAudioPlayer } from "./useAudioPlayer";
 import storage from '../../src/utils/storage';
 import type { Message } from "../../src/types/message";
 import type { Bot } from "./BotCreator";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
 const INITIAL_VISIBLE_COUNT = 20;
 const LOAD_MORE_COUNT = 10;
@@ -136,7 +137,9 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             return await fn();
         } finally {
             const end = performance.now();
-            console.debug(`${label} took ${end - start}ms`);
+            if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+                logEvent('info', 'chat_api_timing', `${label} completed`, { duration: Math.round(end - start), operation: label });
+            }
         }
     };
 
@@ -155,13 +158,13 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                     }),
                 }).then(res => { if (!res.ok) throw new Error('Log failed'); }));
             } catch (error) {
-                console.warn("Failed to log message", {
-                    event: "client_log_message_failed",
-                    error: error instanceof Error ? error.message : String(error),
-                    message,
-                    sessionId,
-                    sessionDatetime
-                });
+                if (typeof window !== 'undefined') {
+                    logEvent('warn', 'client_log_message_failed', 'Failed to log message to server', sanitizeLogMeta({
+                        error: error instanceof Error ? error.message : String(error),
+                        sender: message.sender,
+                        sessionId
+                    }));
+                }
             }
         },
         [sessionId, sessionDatetime],
@@ -179,7 +182,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                         setIntroError(msg);
                         setError(msg);
                         if (typeof window !== 'undefined') {
-                            console.error("Intro error:", msg, { bot });
+                            logEvent('error', 'chat_intro_voice_config_missing', msg, sanitizeLogMeta({
+                                botName: bot.name,
+                                hasVoiceConfig: !!bot.voiceConfig
+                            }));
                         }
                         return;
                     }
@@ -208,7 +214,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                     setIntroError(msg);
                     setError(msg);
                     if (typeof window !== 'undefined') {
-                        console.error("Intro error:", msg, { bot, error: e });
+                        logEvent('error', 'chat_intro_generation_failed', msg, sanitizeLogMeta({
+                            botName: bot.name,
+                            error: e instanceof Error ? e.message : String(e)
+                        }));
                     }
                 }
             };
@@ -267,12 +276,17 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 const msg = "Voice configuration missing for this character. Please recreate the bot.";
                 setError(msg);
                 if (typeof window !== 'undefined') {
-                    console.error("SendMessage error:", msg, { bot });
+                    logEvent('error', 'chat_send_voice_config_missing', msg, sanitizeLogMeta({
+                        botName: bot.name,
+                        hasVoiceConfig: !!bot.voiceConfig
+                    }));
                 }
                 setLoading(false);
                 return;
             }
-            console.debug("Calling retryWithBackoff...");
+            if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+                logEvent('info', 'chat_send_retry_start', 'Starting message send with retry logic', { botName: bot.name });
+            }
             // Convert messages to conversation history format for API
             const conversationHistory = messages.slice(-20).map(msg => 
                 msg.sender === bot.name ? `Bot: ${msg.text}` : `User: ${msg.text}`
@@ -296,7 +310,9 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 2,
                 800
             );
-            console.debug("retryWithBackoff succeeded.");
+            if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+                logEvent('info', 'chat_send_retry_success', 'Message send succeeded', { botName: bot.name });
+            }
             const botReply: Message = {
                 sender: bot.name,
                 text: response.reply,
@@ -305,15 +321,17 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             setMessages((prevMessages) => [...prevMessages, botReply]);
             logMessage(botReply);
         } catch (e) {
-            console.debug("Error caught in sendMessage:", e);
-            console.debug("Error handling block reached in sendMessage.");
-            console.debug("Bot object:", bot);
-            console.debug("Error object:", e);
             const msg = "Failed to send message or generate reply.";
             setError(msg);
             handleApiError(new Error(msg));
             if (typeof window !== 'undefined') {
-                console.error("SendMessage error:", msg, { bot, error: e });
+                logEvent('error', 'chat_send_message_failed', msg, sanitizeLogMeta({
+                    botName: bot.name,
+                    error: e instanceof Error ? e.message : String(e),
+                    errorType: e instanceof Error ? e.constructor.name : typeof e,
+                    hasVoiceConfig: !!getVoiceConfig(),
+                    messageCount: messages.length
+                }));
             }
         } finally {
             setLoading(false);
@@ -368,9 +386,21 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     const handleDownloadTranscript = async () => {
         try {
             await downloadTranscript(messages as Message[], { name: bot.name, avatarUrl: bot.avatarUrl });
+            if (typeof window !== 'undefined') {
+                logEvent('info', 'chat_transcript_downloaded', 'Transcript downloaded successfully', sanitizeLogMeta({
+                    botName: bot.name,
+                    messageCount: messages.length
+                }));
+            }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-            console.error("Failed to download transcript:", errorMessage);
+            if (typeof window !== 'undefined') {
+                logEvent('error', 'chat_transcript_download_failed', 'Failed to download transcript', sanitizeLogMeta({
+                    botName: bot.name,
+                    error: errorMessage,
+                    messageCount: messages.length
+                }));
+            }
             alert(`Failed to open transcript: ${errorMessage}`);
         }
     };
@@ -562,8 +592,17 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                             : undefined;
                         if (errName === 'AbortError') {
                             // aborted - do not log as error
+                            if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+                                logEvent('info', 'chat_audio_playback_aborted', 'Audio playback aborted', { botName: bot.name });
+                            }
                         } else {
-                            console.error('Audio playback error:', err);
+                            if (typeof window !== 'undefined') {
+                                logEvent('error', 'chat_audio_playback_error', 'Audio playback failed', sanitizeLogMeta({
+                                    botName: bot.name,
+                                    error: err instanceof Error ? err.message : String(err),
+                                    errorName: errName
+                                }));
+                            }
                         }
                         if (lastPlayedAudioHashRef.current === lastMsgHash) {
                             lastPlayedAudioHashRef.current = null;

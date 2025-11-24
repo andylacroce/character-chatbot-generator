@@ -86,7 +86,7 @@ function cleanupOldAudioFiles() {
       logger.info(`Cleaned up ${cleanedCount} old audio files`);
     }
   } catch (err) {
-    logger.error("Error during audio file cleanup:", err);
+    logger.error("Error during audio file cleanup:", { error: err });
   }
 }
 
@@ -139,7 +139,7 @@ async function summarizeConversation(
     
     return summaryResponse.choices[0]?.message?.content?.trim() ?? "Previous conversation history.";
   } catch (error) {
-    logger.error("Failed to summarize conversation:", error);
+    logger.error("Failed to summarize conversation:", { error });
     return "Previous conversation covered various topics.";
   }
 }
@@ -260,7 +260,7 @@ async function handler(
         const locationData = await ipinfo(userIp as string);
         userLocation = `${locationData.city}, ${locationData.region}, ${locationData.country}`;
       } catch (error) {
-        logger.error("IP info error:", error);
+        logger.error("IP info error:", { error });
       }
     }
 
@@ -359,7 +359,7 @@ async function handler(
           fs.writeFileSync(txtFilePath, cachedReply, "utf8");
           setReplyCache(audioFileName, cachedReply);
         } catch (error) {
-          logger.error("Text-to-Speech API error (cache hit):", error);
+          logger.error("Text-to-Speech API error (cache hit):", { error });
           const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
           res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
           return;
@@ -372,7 +372,7 @@ async function handler(
           fs.writeFileSync(txtFilePath, cachedReply, "utf8");
         }
       } catch (err) {
-        logger.error("Failed to ensure .txt file for audio reply (cache hit):", err);
+        logger.error("Failed to ensure .txt file for audio reply (cache hit):", { error: err });
       }
       const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
       return res.status(200).json({
@@ -462,7 +462,7 @@ async function handler(
         logger.info(`${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`);
         return;
       } catch (streamErr) {
-        logger.error("Streaming error:", streamErr);
+        logger.error("Streaming error:", { error: streamErr });
         res.write(`data: ${JSON.stringify({ error: "Streaming failed", done: true })}\n\n`);
         res.end();
         return;
@@ -546,7 +546,7 @@ async function handler(
         fs.writeFileSync(txtFilePath, botReply, "utf8");
         setReplyCache(audioFileName, botReply);
       } catch (error) {
-        logger.error("Text-to-Speech API error:", error);
+        logger.error("Text-to-Speech API error:", { error });
         const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
         res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
         return;
@@ -559,7 +559,7 @@ async function handler(
         fs.writeFileSync(txtFilePath, botReply, "utf8");
       }
     } catch (err) {
-      logger.error("Failed to ensure .txt file for audio reply:", err);
+      logger.error("Failed to ensure .txt file for audio reply:", { error: err });
     }
     // After getting botReply from OpenAI, add to cache:
     setReplyCache(cacheKey, botReply);
@@ -576,7 +576,7 @@ async function handler(
     });
     return;
   } catch (error) {
-    logger.error(`API error | requestId=${requestId}:`, error);
+    logger.error(`API error | requestId=${requestId}:`, { error });
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     logger.info(`[Chat API] 500 Internal Server Error | requestId=${requestId}`);

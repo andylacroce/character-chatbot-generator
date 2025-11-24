@@ -8,6 +8,7 @@ import styles from "./styles/ChatMessage.module.css";
 import Image from "next/image";
 import { Bot } from "./BotCreator";
 import { sanitizeForReact } from "../../src/utils/security";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
 /**
  * Interface representing a chat message's structure.
@@ -40,7 +41,13 @@ const ChatMessage = React.memo(
   ({ message, bot }: ChatMessageProps) => {
     // Validate message object to prevent rendering errors
     if (!message || typeof message.text !== "string" || typeof message.sender !== "string") {
-      console.error("Invalid message object", message);
+      if (typeof window !== 'undefined') {
+        logEvent('error', 'chat_message_invalid', 'Invalid message object received', sanitizeLogMeta({
+          hasSender: !!(message && typeof message.sender === 'string'),
+          hasText: !!(message && typeof message.text === 'string'),
+          messageType: typeof message
+        }));
+      }
       return null; // Render nothing if the message is invalid
     }
 

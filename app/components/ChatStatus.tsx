@@ -9,6 +9,7 @@
  */
 
 import React from "react";
+import { logEvent } from "../../src/utils/logger";
 
 interface ChatStatusProps {
   error: string;
@@ -16,11 +17,13 @@ interface ChatStatusProps {
 }
 
 const ChatStatus: React.FC<ChatStatusProps> = ({ error, retrying }) => {
-  console.debug("ChatStatus render", {
-    event: "chat_status_render",
-    retrying,
-    error
-  });
+  if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+    logEvent('info', 'chat_status_render', 'ChatStatus component rendered', {
+      event: 'chat_status_render',
+      retrying,
+      hasError: !!error
+    });
+  }
   return (
     <div
       className="chat-status-area"
