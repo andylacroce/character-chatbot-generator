@@ -300,6 +300,112 @@ describe('useAudioPlayer', () => {
     expect(playCalled).toBe(false);
   });
 
+  it('should handle play() returning a Promise and attach catch', async () => {
+    // Audio that returns a Promise from play()
+    class AudioMockPromise extends AudioMock {
+      constructor(src: string) {
+        super(src);
+        // play should return something with catch
+        this.play = jest.fn(() => Promise.reject(new Error('play failed')));
+      }
+    }
+    global.Audio = AudioMockPromise as unknown as typeof Audio;
+
+    const audioEnabledRef = { current: true };
+    const ref = React.createRef<TestComponentHandles>();
+    render(React.createElement(TestComponent, { ref, audioEnabledRef }));
+
+    // Should not throw even though play() returns a rejected promise; the hook attaches .catch
+    let audioInstance: HTMLAudioElement | null = null;
+    await act(async () => {
+      audioInstance = await ref.current!.playAudio('test.mp3');
+    });
+
+    expect(audioInstance).not.toBeNull();
+    expect(ref.current!.audioRef.current).toBe(audioInstance);
+  });
+
+  it('should clear audioRef when AbortSignal is triggered after play', async () => {
+    const audioEnabledRef = { current: true };
+    const ref = React.createRef<TestComponentHandlesWithInternals>();
+    render(React.createElement(TestComponentWithInternals, { ref, audioEnabledRef }));
+
+    // Use an Audio implementation that does not call onended synchronously so
+    // the audioRef remains set after play() returns.
+    class AudioMockNoEnded extends AudioMock {
+      constructor(src: string) {
+        super(src);
+        // Override play to NOT call onended synchronously
+        this.play = jest.fn(() => {
+          // keep playing — do not immediately call onended
+          return undefined;
+        });
+      }
+    }
+    global.Audio = AudioMockNoEnded as unknown as typeof Audio;
+
+    const ac = new AbortController();
+    // Start playback with a live signal
+    let audioInstance: HTMLAudioElement | null = null;
+    await act(async () => {
+      audioInstance = await ref.current!.playAudio('test.mp3', ac.signal);
+    });
+
+    // audioRef should be set
+    expect(ref.current!._audioRef.current).toBe(audioInstance);
+
+    // Abort the signal and assert cleanup
+    await act(async () => {
+      ac.abort();
+    });
+
+    expect(ref.current!._audioRef.current).toBeNull();
+  });
+
+  it('should stop and disconnect existing sourceRef before playing', async () => {
+    const audioEnabledRef = { current: true };
+    const ref = React.createRef<TestComponentHandlesWithInternals>();
+    render(React.createElement(TestComponentWithInternals, { ref, audioEnabledRef }));
+
+    // Put a mock source object into the sourceRef to simulate WebAudio playback
+    const stopMock = jest.fn();
+    const disconnectMock = jest.fn();
+    ref.current!._sourceRef.current = { stop: stopMock, disconnect: disconnectMock } as unknown as AudioBufferSourceNode;
+
+    await act(async () => {
+      await ref.current!.playAudio('first.mp3');
+    });
+
+    expect(stopMock).toHaveBeenCalled();
+    expect(disconnectMock).toHaveBeenCalled();
+    // After playAudio, the hook should clear sourceRef
+    expect(ref.current!._sourceRef.current).toBeNull();
+  });
+
+  it('should surface error when Audio constructor throws and avoid leaking audioRef', async () => {
+    // Make Audio constructor throw
+    class AudioThrow {
+      constructor(_src: string) { throw new Error('construct failed'); }
+    }
+    global.Audio = AudioThrow as unknown as typeof Audio;
+
+    const audioEnabledRef = { current: true };
+    const ref = React.createRef<TestComponentHandles>();
+    render(React.createElement(TestComponent, { ref, audioEnabledRef }));
+
+    let threw = false;
+    await act(async () => {
+      try {
+        await ref.current!.playAudio('fail.mp3');
+      } catch (e) {
+        threw = true;
+      }
+    });
+
+    expect(threw).toBe(true);
+    expect(ref.current!.audioRef.current).toBeNull();
+  });
+
   it('should not clean up audioRef if onended is called for a different audio', async () => {
     const audioEnabledRef = { current: true };
     const ref = React.createRef<TestComponentHandles>();

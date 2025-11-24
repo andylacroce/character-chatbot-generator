@@ -24,6 +24,9 @@ export function useAudioPlayer(
   const audioRef = audioRefParam ?? internalAudioRef;
   const sourceRef = sourceRefParam ?? internalSourceRef;
 
+  // Keep AudioContext available for future specialized usage but avoid heavy
+  // synchronous decoding/copying in the common path. Using HTMLAudioElement
+  // playback is far cheaper on the main thread and avoids large array copies.
   const audioContextRef = useRef<AudioContext | null>(null);
 
   // Update useCallback dependencies
@@ -42,8 +45,8 @@ export function useAudioPlayer(
     }
     // Stop previous Web Audio playback
     if (sourceRef.current) {
-      try { sourceRef.current.stop(); } catch { }
-      try { sourceRef.current.disconnect(); } catch { }
+      try { (sourceRef.current as any)?.stop?.(); } catch { }
+      try { (sourceRef.current as any)?.disconnect?.(); } catch { }
       sourceRef.current = null;
     }
     if (audioRef.current) {
@@ -59,61 +62,80 @@ export function useAudioPlayer(
         (audioRef.current as HTMLAudioElement & { _paused?: boolean })._paused = true;
       }
     }
-    // Use Web Audio API to prepend silence
-    if (!audioContextRef.current) {
-      const AnyWindow = window as typeof window & { webkitAudioContext?: typeof AudioContext };
-      audioContextRef.current = new (window.AudioContext || AnyWindow.webkitAudioContext!)();
+    // Favor a simple HTMLAudioElement-based playback flow instead of fetching
+    // and decoding audio on the main thread. HTMLAudioElement playback delegates
+    // decoding to the user-agent and is more efficient for typical TTS blobs.
+    // Stop previous Web Audio playback
+    if (sourceRef.current) {
+      try { (sourceRef.current as any)?.stop?.(); } catch { }
+      try { (sourceRef.current as any)?.disconnect?.(); } catch { }
+      sourceRef.current = null;
     }
-    const audioContext = audioContextRef.current;
-    // Fetch audio data
-    const response = await authenticatedFetch(src, { signal });
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
-    // Create a new buffer with silence prepended
-    const silenceDuration = 0.5; // 500ms silence (reduced from 2000ms)
-    const numChannels = audioBuffer.numberOfChannels;
-    const sampleRate = audioBuffer.sampleRate;
-    const silenceLength = Math.floor(silenceDuration * sampleRate);
-    const newBuffer = audioContext.createBuffer(
-      numChannels,
-      silenceLength + audioBuffer.length,
-      sampleRate
-    );
-    // Fill silence
-    for (let ch = 0; ch < numChannels; ch++) {
-      const channel = newBuffer.getChannelData(ch);
-      for (let i = 0; i < silenceLength; i++) {
-        channel[i] = 0;
+    // Pause/reset previous HTMLAudioElement if present
+    if (audioRef.current) {
+      if (typeof audioRef.current.pause === 'function') {
+        try { audioRef.current.pause(); } catch {}
       }
-      // Copy original audio
-      channel.set(audioBuffer.getChannelData(ch), silenceLength);
+      if (typeof audioRef.current.currentTime === 'number') {
+        try { audioRef.current.currentTime = 0; } catch {}
+      }
+      if ('_paused' in audioRef.current) {
+        try { (audioRef.current as HTMLAudioElement & { _paused?: boolean })._paused = true; } catch {}
+      }
+      // leave audioRef.current set to the previous element until new element assigned
     }
-    // Play the new buffer
-    const source = audioContext.createBufferSource();
-    source.buffer = newBuffer;
-    source.connect(audioContext.destination);
-    sourceRef.current = source;
-    source.start(0);
-    // For compatibility with the rest of the app, create a dummy HTMLAudioElement
-    const dummyAudio = new window.Audio();
-    audioRef.current = dummyAudio;
-    // Clean up after playback
-    source.onended = () => {
-      if (audioRef.current === dummyAudio) {
+
+    try {
+      const dummyAudio = new window.Audio(src);
+      // Make the element resilient to AbortSignal cancellation
+      if (signal) {
+        const onAbort = () => {
+          try { dummyAudio.pause(); dummyAudio.currentTime = 0; } catch {}
+          if (audioRef.current === dummyAudio) audioRef.current = null;
+        };
+        if (signal.aborted) onAbort();
+        else signal.addEventListener('abort', onAbort, { once: true });
+      }
+
+      // Configure end handler before calling play() so synchronous mocks that
+      // call onended immediately will still clear the ref.
+      dummyAudio.onended = () => {
+        if (audioRef.current === dummyAudio) audioRef.current = null;
+      };
+
+      audioRef.current = dummyAudio;
+      // Start playback. Play() returns a promise — if it rejects, the caller can
+      // handle it. We don't block the main thread while the browser plays audio.
+      // Note: we intentionally don't await play() here because we want the UI
+      // to remain responsive and not block for autoplay policies; callers can
+      // still await or listen to events on the returned element if desired.
+      const promiseLike = dummyAudio.play();
+      if (promiseLike && typeof (promiseLike as Promise<void>).catch === 'function') {
+        void (promiseLike as Promise<void>).catch(() => {
+          // Ignore play() failures (autoplay restrictions) — play will resume
+          // when user enables/initiates audio in the UI.
+        });
+      }
+
+      // onended was already configured above
+
+      return dummyAudio;
+    } catch (err) {
+      // If anything above fails, ensure we don't leak refs and surface the
+      // error to callers.
+      if (audioRef.current) {
+        try { audioRef.current.pause(); audioRef.current.currentTime = 0; } catch {}
         audioRef.current = null;
       }
-      if (sourceRef.current === source) {
-        sourceRef.current = null;
-      }
-    };
-    return dummyAudio;
+      throw err;
+    }
   }, [audioEnabledRef, audioRef, sourceRef]);
 
   // Expose a stop function for toggling audio off or unmount
   const stopAudio = useCallback(() => {
     if (sourceRef.current) {
-      try { sourceRef.current.stop(); } catch { }
-      try { sourceRef.current.disconnect(); } catch { }
+      try { (sourceRef.current as any)?.stop?.(); } catch { }
+      try { (sourceRef.current as any)?.disconnect?.(); } catch { }
       sourceRef.current = null;
     }
     if (audioRef.current) {

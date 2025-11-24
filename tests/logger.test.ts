@@ -5,6 +5,22 @@ describe('logger utility', () => {
         jest.clearAllMocks();
     });
 
+    it('loads server-side (winston) logger when window is undefined', () => {
+        const origWindow = (global as any).window;
+        // Simulate server-side environment
+        // @ts-expect-error test: temporarily remove window
+        delete (global as any).window;
+        // Clear modules so the logger module reinitializes in server context
+        jest.resetModules();
+        const serverLogger = require('../src/utils/logger');
+        expect(typeof serverLogger.logger.info).toBe('function');
+        // Should not throw when used
+        expect(() => serverLogger.logger.info('server test')).not.toThrow();
+        // restore window and modules
+        (global as any).window = origWindow;
+        jest.resetModules();
+    });
+
     it('should generate a unique request ID', () => {
         const id1 = generateRequestId();
         const id2 = generateRequestId();

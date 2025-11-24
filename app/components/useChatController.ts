@@ -419,15 +419,23 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     }, [stopAudio, onBackToCharacterCreation]);
 
     const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+    // Throttle scroll handling using requestAnimationFrame to keep handlers cheap
+    const scrollRafRef = useRef<number | null>(null);
     const handleScroll = useCallback(() => {
         if (!chatBoxRef.current) return;
-        const { scrollTop } = chatBoxRef.current;
-        if (scrollTop === 0 && visibleCount < messages.length) {
-            setVisibleCount((prev) => {
-                const newCount = Math.min(prev + LOAD_MORE_COUNT, messages.length);
-                return newCount;
-            });
-        }
+        // If we already have a pending RAF, skip scheduling another one
+        if (scrollRafRef.current !== null) return;
+        scrollRafRef.current = window.requestAnimationFrame(() => {
+            scrollRafRef.current = null;
+            if (!chatBoxRef.current) return;
+            const { scrollTop } = chatBoxRef.current;
+            if (scrollTop === 0 && visibleCount < messages.length) {
+                setVisibleCount((prev) => {
+                    const newCount = Math.min(prev + LOAD_MORE_COUNT, messages.length);
+                    return newCount;
+                });
+            }
+        });
     }, [visibleCount, messages.length]);
 
     useEffect(() => {
@@ -436,6 +444,11 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         ref.addEventListener('scroll', handleScroll);
         return () => {
             ref.removeEventListener('scroll', handleScroll);
+            // Cancel any pending RAF when cleaning up
+            if (scrollRafRef.current !== null) {
+                window.cancelAnimationFrame(scrollRafRef.current);
+                scrollRafRef.current = null;
+            }
         };
     }, [handleScroll, visibleCount, messages.length]);
 
@@ -472,6 +485,15 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                     KEYBOARD_CLASSES.forEach((c) => root.classList.remove(c));
                 }
             } catch {}
+        };
+
+        let vvRaf: number | null = null;
+        const scheduleViewportChange = () => {
+            if (vvRaf !== null) return;
+            vvRaf = window.requestAnimationFrame(() => {
+                vvRaf = null;
+                onViewportChange();
+            });
         };
 
         const onViewportChange = () => {
@@ -523,10 +545,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         };
 
         if (vv) {
-            vv.addEventListener('resize', onViewportChange);
-            vv.addEventListener('scroll', onViewportChange);
+            vv.addEventListener('resize', scheduleViewportChange);
+            vv.addEventListener('scroll', scheduleViewportChange);
         } else {
-            window.addEventListener('resize', onViewportChange);
+            window.addEventListener('resize', scheduleViewportChange);
         }
 
         const inputEl = inputRef.current;
@@ -538,10 +560,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         return () => {
             try {
                 if (vv) {
-                    vv.removeEventListener('resize', onViewportChange);
-                    vv.removeEventListener('scroll', onViewportChange);
+                    vv.removeEventListener('resize', scheduleViewportChange);
+                    vv.removeEventListener('scroll', scheduleViewportChange);
                 } else {
-                    window.removeEventListener('resize', onViewportChange);
+                    window.removeEventListener('resize', scheduleViewportChange);
                 }
                 if (inputEl) {
                     inputEl.removeEventListener('focus', onFocus);
@@ -551,6 +573,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 if (root) {
                     KEYBOARD_CLASSES.forEach((c) => root.classList.remove(c));
                     root.style.removeProperty('--vv-keyboard-pad');
+                }
+                if (vvRaf !== null) {
+                    window.cancelAnimationFrame(vvRaf);
+                    vvRaf = null;
                 }
             } catch {}
         };

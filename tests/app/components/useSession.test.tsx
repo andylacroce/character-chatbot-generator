@@ -51,4 +51,7 @@ describe('useSession', () => {
         render(<TestComponent onResult={handleResult} />);
     });
 
+    // SSR-specific behavior is tested indirectly elsewhere; attempting to simulate a full SSR
+    // environment within the JSDOM-based test runner proved flaky so we avoid a dedicated test here.
+
 });

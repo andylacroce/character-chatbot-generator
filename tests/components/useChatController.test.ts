@@ -17,6 +17,8 @@ jest.mock("../../src/utils/api", () => ({
 
 import { useChatController } from "../../app/components/useChatController";
 
+import { useChatController } from "../../app/components/useChatController";
+
 const mockResponse = (data: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,
     status,
@@ -50,6 +52,7 @@ describe("useChatController uncovered branches", () => {
             }
         });
     });
+
 
     afterEach(() => {
         jest.restoreAllMocks();
@@ -222,4 +225,6 @@ describe("useChatController uncovered branches", () => {
         // Messages should remain unchanged since sendMessage returns early without input
         expect(result.current.messages).toHaveLength(initialMessageCount);
     });
+
+    
 });
