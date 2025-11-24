@@ -26,9 +26,9 @@ describe('getOpenAIModel', () => {
         expect(getOpenAIModel('text')).toBe('gpt-4o');
     });
 
-    it('returns gpt-3.5-turbo for text in development', () => {
+    it('returns gpt-4o for text in development', () => {
         setEnv({ NODE_ENV: 'development', VERCEL_ENV: undefined });
-        expect(getOpenAIModel('text')).toBe('gpt-3.5-turbo');
+        expect(getOpenAIModel('text')).toBe('gpt-4o');
     });
 
     it('returns gpt-4o for text if VERCEL_ENV is production', () => {

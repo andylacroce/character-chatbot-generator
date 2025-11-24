@@ -198,6 +198,7 @@ async function handler(
     const botName = req.body.botName || "Character";
     const gender = req.body.gender;
     const conversationHistory = req.body.conversationHistory || [];
+    const stream = req.body.stream === true; // Support streaming mode
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required | requestId=${requestId}`);
       res.status(400).json({ error: "Message is required", requestId });
@@ -313,6 +314,82 @@ async function handler(
     const timeout = new Promise((resolve) =>
       setTimeout(() => resolve({ timeout: true }), 20000),
     );
+    
+    // Handle streaming mode
+    if (stream) {
+      // Set headers for Server-Sent Events
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      
+      try {
+        const streamResponse = await openai.chat.completions.create({
+          model: getOpenAIModel("text"),
+          messages,
+          max_tokens: 150,
+          temperature: 0.8,
+          stream: true,
+        });
+        
+        let botReply = '';
+        for await (const chunk of streamResponse) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            botReply += content;
+            // Send chunk to client
+            res.write(`data: ${JSON.stringify({ chunk: content, done: false })}\n\n`);
+          }
+        }
+        
+        if (!botReply || botReply.trim() === "") {
+          res.write(`data: ${JSON.stringify({ error: "Empty response", done: true })}\n\n`);
+          res.end();
+          return;
+        }
+        
+        // Generate audio after streaming is complete
+        const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
+        const isStudio = (voiceConfig.type === 'Studio') || (voiceConfig.name && voiceConfig.name.includes('Studio'));
+        let selectedVoice = voiceConfig;
+        if (isStudio) {
+          const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
+          if (!validStudioVoices.includes(voiceConfig.name)) {
+            selectedVoice = {
+              languageCodes: ['en-US'],
+              name: 'en-US-Studio-M',
+              ssmlGender: 1,
+              type: 'Studio',
+            };
+          }
+        }
+        
+        const audioFileName = `${botName.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.mp3`;
+        const audioDir = process.env.TTS_TMP_DIR || path.join(process.cwd(), "public", "audio");
+        if (!fs.existsSync(audioDir)) {
+          fs.mkdirSync(audioDir, { recursive: true });
+        }
+        const audioFilePath = path.join(audioDir, audioFileName);
+        
+        await synthesizeSpeechToFile(botReply, selectedVoice, audioFilePath);
+        const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
+        
+        // Send final message with audio URL
+        res.write(`data: ${JSON.stringify({ reply: botReply, audioFileUrl, done: true })}\n\n`);
+        res.end();
+        
+        // Cache and log
+        setReplyCache(cacheKey, botReply);
+        logger.info(`${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`);
+        return;
+      } catch (streamErr) {
+        logger.error("Streaming error:", streamErr);
+        res.write(`data: ${JSON.stringify({ error: "Streaming failed", done: true })}\n\n`);
+        res.end();
+        return;
+      }
+    }
+    
+    // Non-streaming mode (original behavior)
     const result = await Promise.race([
       openai.chat.completions.create({
         model: getOpenAIModel("text"),

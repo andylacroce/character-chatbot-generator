@@ -20,7 +20,7 @@ jest.mock('node-fetch', () => {
 
 jest.mock("../src/utils/openaiModelSelector", () => ({
     getOpenAIModel: (type: "text" | "image") => {
-        if (type === "text") return "gpt-3.5-turbo";
+        if (type === "text") return "gpt-4o";
         if (type === "image") return { primary: "dall-e-2", fallback: "dall-e-2" };
         throw new Error("Unknown type");
     }
@@ -289,7 +289,7 @@ describe('generate-avatar API', () => {
         // Mock model selector to return gpt-image-1
         jest.mock('../src/utils/openaiModelSelector', () => ({
             getOpenAIModel: (type: "text" | "image") => {
-                if (type === "text") return "gpt-3.5-turbo";
+                if (type === "text") return "gpt-4o";
                 if (type === "image") return { primary: "gpt-image-1", fallback: "gpt-image-1" };
                 throw new Error("Unknown type");
             }

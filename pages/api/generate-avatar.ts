@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const OpenAI = (await import("openai")).default;
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
     logEvent("info", "avatar_generate_start", "Avatar generation started", sanitizeLogMeta({ name: sanitizedName }));
-    // Use OpenAI GPT to get a detailed, attribute-rich description
+    // Use OpenAI GPT to get a detailed, attribute-rich description with structured outputs
     let race = null;
     let gender = null;
     let other = null;
@@ -79,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         messages: [
           {
             role: "system",
-            content: "You are an assistant that provides concise, factual, and explicit physical descriptions of people or fictional characters in JSON format. Respond ONLY with a JSON object with keys: race, gender, other. 'other' should be a brief, distinguishing description (e.g. hair, style, notable features, profession, etc). If unknown, use 'unknown'. Example: {\"race\":\"Black\",\"gender\":\"male\",\"other\":\"colorful hair, facial piercings, tattoos, flamboyant style, former NBA player\"}"
+            content: "You are an assistant that provides concise, factual, and explicit physical descriptions of people or fictional characters. Respond with a JSON object with keys: race, gender, other. 'other' should be a brief, distinguishing description (e.g. hair, style, notable features, profession, etc). If unknown, use 'unknown'."
           },
           {
             role: "user",
@@ -87,15 +87,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         ],
         max_tokens: 100,
-        temperature: 0.2
+        temperature: 0.2,
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "character_description",
+            strict: true,
+            schema: {
+              type: "object",
+              properties: {
+                race: {
+                  type: "string",
+                  description: "The racial or ethnic background of the character"
+                },
+                gender: {
+                  type: "string",
+                  description: "The gender of the character"
+                },
+                other: {
+                  type: "string",
+                  description: "Brief distinguishing physical features, style, or profession"
+                }
+              },
+              required: ["race", "gender", "other"],
+              additionalProperties: false
+            }
+          }
+        }
       });
       const content = gptResponse.choices?.[0]?.message?.content?.trim() || null;
       if (content) {
         logEvent("info", "avatar_gpt_response", "GPT response for avatar", sanitizeLogMeta({ content }));
         try {
-          // Strip code fences and markdown if present
-          const cleaned = content.replace(/^```[a-zA-Z]*\n?|```$/g, '').trim();
-          const parsed = JSON.parse(cleaned);
+          const parsed = JSON.parse(content);
           race = parsed.race || null;
           gender = parsed.gender || null;
           other = parsed.other || null;

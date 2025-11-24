@@ -12,8 +12,8 @@ export function getOpenAIModel(type: "text" | "image"): string | { primary: stri
     const vercelEnv = process.env.VERCEL_ENV;
     const isProd = env === "production" || vercelEnv === "production";
     if (type === "text") {
-        // Use gpt-4o in prod, gpt-3.5-turbo in dev (cheaper)
-        return isProd ? "gpt-4o" : "gpt-3.5-turbo";
+        // Use gpt-4o everywhere - it's faster, cheaper per token, and has 128K context
+        return "gpt-4o";
     }
     if (type === "image") {
         // Use gpt-image-1/dall-e-3 in prod, dall-e-2/dall-e-3 in dev (cheaper first)
