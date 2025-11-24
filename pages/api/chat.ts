@@ -445,7 +445,12 @@ async function handler(
         }
         const audioFilePath = path.join(audioDir, audioFileName);
         
-        await synthesizeSpeechToFile(botReply, selectedVoice, audioFilePath);
+        await synthesizeSpeechToFile({
+          text: botReply,
+          filePath: audioFilePath,
+          ssml: false,
+          voice: selectedVoice,
+        });
         const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
         
         // Send final message with audio URL

@@ -11,12 +11,14 @@ const allowedOrigins = [
     /^https:\/\/character-chatbot-generator(?:-git)?-[a-z0-9-]+-andylacroces-projects\.vercel\.app\/?$/,
 ];
 
-const apiSecret = process.env.API_SECRET;
-if (!apiSecret) {
-    throw new Error('Missing API_SECRET environment variable');
-}
-
 export function proxy(req: NextRequest) {
+    // Check API_SECRET at runtime instead of build time
+    const apiSecret = process.env.API_SECRET;
+    if (!apiSecret) {
+        logEvent('error', 'api_secret_missing', 'API_SECRET environment variable is not set', {});
+        return new NextResponse('Server configuration error', { status: 500 });
+    }
+
     // Since the matcher is set to /api/:path*, this proxy only runs for API routes
     const origin = req.headers.get('origin') || req.headers.get('referer') || '';
     const host = req.headers.get('host') || '';
