@@ -1,19 +1,39 @@
 # Character Chatbot Generator
 
-A concise Next.js + TypeScript app that provides a character-driven chat UI with OpenAI-powered responses and Google Text-to-Speech audio replies.
+A Next.js + TypeScript app that provides a character-driven chat UI with OpenAI-powered responses and Google Text-to-Speech audio replies.
 
-Quick highlights:
-- Chat with character personas
-- Google TTS audio playback for bot replies
-- Local transcript export and browser-friendly UI
-- Test-suite with Jest
+## Key Features
 
-Prerequisites
-- Node.js >= 18
-- npm (or yarn)
+- **Advanced OpenAI Integration**: Uses gpt-4o with streaming responses, conversation summarization, and prompt caching
+- **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
+- **Structured Outputs**: JSON Schema validation for reliable avatar generation
+- **Smart Context Management**: Automatic conversation summarization when history exceeds 50 messages
+- **Cost Optimization**: Prompt caching reduces API costs for repeated system prompts
+- **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
+- **Comprehensive Testing**: Jest test suite with 91%+ code coverage
+- **API Security**: Protected endpoints with origin validation and API key authentication
+- **Responsive Design**: Mobile-friendly UI with dark mode support
 
-Quickstart (local)
-1. Clone and install:
+## OpenAI Features
+
+This app leverages the latest OpenAI API capabilities:
+
+- **gpt-4o Model**: 128K context window, faster responses, more cost-effective
+- **Streaming Responses**: Real-time message delivery via Server-Sent Events
+- **Structured Outputs**: JSON Schema with strict mode for avatar generation
+- **Prompt Caching**: Reduces costs by caching repeated system prompts
+- **Conversation Summarization**: Maintains context beyond 50 messages automatically
+
+## Prerequisites
+
+- Node.js ≥18
+- npm or yarn
+- OpenAI API key
+- Google Cloud service account with Text-to-Speech API access
+
+## Quickstart (Local Development)
+
+1. **Clone and install**:
 
 ```powershell
 git clone https://github.com/andylacroce/character-chatbot-generator.git
@@ -21,190 +41,161 @@ cd character-chatbot-generator
 npm install
 ```
 
-2. Create a local env file and provide required secrets:
+2. **Environment Setup**
 
-Copy an example (if present) or create `.env.local` at project root. The important environment variables are listed below. For local Google TTS you can either place a JSON key at `config/gcp-key.json` or paste the JSON into `GOOGLE_APPLICATION_CREDENTIALS_JSON`.
-
-Example `.env.local` (replace values):
+Create `.env.local` at project root with required secrets:
 
 ```ini
-OPENAI_API_KEY=sk_...
+OPENAI_API_KEY=sk-...
 API_SECRET=your_server_api_secret
-GOOGLE_APPLICATION_CREDENTIALS_JSON={...} # or set path like config/gcp-key.json
-VERCEL_BLOB_READ_WRITE_TOKEN=optional_token
+GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
+# Optional:
+VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_token
+TTS_TMP_DIR=/custom/temp/path
 ```
 
-3. Start the dev server:
+3. **Google Cloud Setup**
+
+   - Create a GCP service account with Text-to-Speech API access
+   - Download the JSON key file
+   - Place it at `config/gcp-key.json` or paste contents into `GOOGLE_APPLICATION_CREDENTIALS_JSON`
+
+4. **Start Development Server**:
 
 ```powershell
 npm run dev
 ```
 
-Running tests
-
-```powershell
-npm test
-```
-
-Environment variables (summary)
-- OPENAI_API_KEY — OpenAI API key used for chat generation.
-- API_SECRET — Server-side API secret used by middleware for request authorization.
-- GOOGLE_APPLICATION_CREDENTIALS_JSON — Either the JSON content of a GCP service account (with Text-to-Speech access) or a local path to the JSON file (e.g., `config/gcp-key.json`).
-- VERCEL_BLOB_READ_WRITE_TOKEN — Optional: token to enable logging to Vercel Blob.
-- TTS_TMP_DIR — Optional: path for temporary TTS files (defaults to system temp).
-
-Notes about Google TTS
-- For local development, put your GCP service account key at `config/gcp-key.json` and reference it in `GOOGLE_APPLICATION_CREDENTIALS_JSON` or paste the JSON contents into the env var when deploying.
-
-Deployment (Vercel)
-- Add the required environment variables to your Vercel project settings (OPENAI_API_KEY, API_SECRET, GOOGLE_APPLICATION_CREDENTIALS_JSON, etc.).
-- Use Node.js runtime for API routes (server-side), not Edge Functions.
-
-Config to be aware of
-- `middleware.ts` contains `allowedOrigins`; update it when deploying to a custom domain.
-
-Troubleshooting
-- Hydration warnings in dev may come from browser extensions that alter the DOM (e.g., Dark Reader). Disable the extension or ignore the warning for local development.
-- If audio or TTS errors occur, ensure `GOOGLE_APPLICATION_CREDENTIALS_JSON` is set correctly and the service account has the Text-to-Speech API enabled.
-
-Contributing
-- PRs welcome. Please include tests for new behavior and follow existing code style.
-
-License / Disclaimer
-- Educational / portfolio project. Not affiliated with OpenAI.
-
-# Character Chatbot Generator
-
-A Next.js app featuring a real-time chat interface, character personas, and voice responses via Google Text-to-Speech.
-
-## Features
-
-- Voice responses via Google TTS
-- Chat powered by OpenAI's ChatGPT
-- Built with Next.js & React
-- TypeScript throughout
-- Comprehensive Jest test suite
-- Responsive, accessible design
-- HTML chat transcripts with character images (opens in new tabs)
-- Logging to Vercel Blob or local file system
-- **API Security**: All internal API endpoints are protected by API key authentication and origin restrictions
-
-## Project structure
-
-- `app/` - Next.js app & components
-- `pages/api/` - API routes (chat, logging, health, transcript, audio)
-- `src/` - Middleware, types, utilities (TTS, logger, cache, etc.)
-- `tests/` - Test files for API, components, and utilities
-
-## How it works
-
-1. **Character Creation**: Enter a name or choose a random character. The app generates a personality, avatar, and voice configuration.
-2. **Chat**: Real-time chat powered by OpenAI with characterful responses and Google TTS voice synthesis.
-3. **Transcripts**: View formatted HTML transcripts with character images in new browser tabs.
-
-## Transcript Feature
-
-Clean HTML transcripts with character avatars that open in new browser tabs. Compatible with all modern browsers.
-
-## Prerequisites
-
-- Node.js ≥18
-- npm or yarn
-
-## Setup (local)
-
-1. **Clone & install**
-   ```bash
-   git clone https://github.com/andylacroce/character-chatbot-generator.git
-   cd character-chatbot-generator
-   npm install
-   ```
-
-2. **Environment variables**
-
-   - Copy the example environment file and fill in your values:
-
-   ```bash
-   cp .env.example .env.local
-   ```
-
-   Required environment variables in `.env.local`:
-
-   ```ini
-   OPENAI_API_KEY=your_openai_api_key_here
-   GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
-   VERCEL_BLOB_READ_WRITE_TOKEN=your_vercel_blob_token_here
-   API_SECRET=your_api_secret_here
-   ```
-
-3. **API Security**
-
-   Multi-layered protection with origin restrictions and API key authentication:
-   - Requests from allowed origins (localhost, production Vercel, preview deployments) are automatically authenticated
-   - Requests from external origins require valid `x-api-key` headers
-   - All `/api/*` endpoints are protected by middleware
-   - Failed attempts are logged for monitoring
-
-   **Required Environment Variables**:
-   - `API_SECRET`: Server-side API key (used for external API access)
-
-   **Custom Domains**: Update `allowedOrigins` in `middleware.ts` for non-standard deployments.
-
-4. **Run locally**
-
-   ```bash
-   npm run dev
-   ```
-
-5. **Run tests**
-
-   ```bash
-   npm test
-   ```
+Visit `http://localhost:3000`
 
 ## Testing
 
-Run tests with `npm test`. The project includes a UUID mock for deterministic testing.
+Run the full test suite with coverage:
+
+```powershell
+npm run test:coverage
+```
+
+Run linting:
+
+```powershell
+npm run lint
+```
+
+## Environment Variables
+
+### Required
+
+- `OPENAI_API_KEY` — OpenAI API key for chat generation (gpt-4o)
+- `API_SECRET` — Server-side API secret for request authorization
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON` — Path to GCP JSON key or full JSON content
+
+### Optional
+
+- `VERCEL_BLOB_READ_WRITE_TOKEN` — Enables logging to Vercel Blob storage
+- `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
+
+## API Security
+
+Multi-layered protection for all API endpoints:
+
+- **Origin Validation**: Automatic authentication for localhost, Vercel production, and preview deployments
+- **API Key Authentication**: External origins require valid `x-api-key` header matching `API_SECRET`
+- **Route Protection**: All `/api/*` endpoints secured via proxy middleware
+- **Request Logging**: Failed authentication attempts logged for monitoring
+
+**Custom Domains**: Update `allowedOrigins` in `proxy.ts` when deploying to custom domains.
+
+## Project Structure
+
+```
+app/                  # Next.js app & UI components
+pages/api/           # API routes (chat, audio, health, transcript)
+  chat.ts            # Main chat endpoint with streaming & summarization
+  audio.ts           # TTS audio generation
+  generate-avatar.ts # Avatar generation with structured outputs
+src/
+  utils/             # Utilities (TTS, logger, cache, security)
+  types/             # TypeScript type definitions
+  config/            # Configuration files
+tests/               # Jest test suite
+proxy.ts             # API authentication middleware (Next.js 16)
+```
+
+## How It Works
+
+1. **Character Creation**: 
+   - Enter a name or generate a random character
+   - App creates personality, avatar (DALL-E), and voice configuration
+   - Uses structured outputs with JSON Schema validation
+
+2. **Chat Interface**:
+   - Real-time streaming responses via Server-Sent Events
+   - Automatic conversation summarization for long chats (>50 messages)
+   - Prompt caching reduces API costs for repeated prompts
+   - Character-specific voice synthesis with Google TTS
+
+3. **Transcripts**: 
+   - Clean HTML format with character avatars
+   - Opens in new browser tab
+   - Compatible with all modern browsers
 
 ## Deployment (Vercel)
 
-Set these environment variables in Vercel Project Settings:
-- `OPENAI_API_KEY`
-- `VERCEL_BLOB_READ_WRITE_TOKEN` (optional)
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON`
-- `API_SECRET`
+1. **Environment Variables**
 
-Use Node runtime (not Edge) for API routes. Node version ≥18 recommended.
+   Set these in Vercel Project Settings:
+   - `OPENAI_API_KEY`
+   - `API_SECRET`
+   - `GOOGLE_APPLICATION_CREDENTIALS_JSON` (paste full JSON content)
+   - `VERCEL_BLOB_READ_WRITE_TOKEN` (optional)
 
-### Google Cloud Setup
+2. **Runtime Configuration**
 
-1. Create a Google Cloud service account with Text-to-Speech API access
-2. Download the JSON key file
-3. For local development: Place the JSON file at `config/gcp-key.json` (or update the path in `.env.local`)
-4. For Vercel deployment: Paste the full JSON content as a string in the `GOOGLE_APPLICATION_CREDENTIALS_JSON` environment variable
+   - Use Node.js runtime (not Edge) for API routes
+   - Node version ≥18 recommended
+   - Next.js 16.0.0+ with Turbopack support
 
-## Contributing
+3. **Custom Domains**
 
-Open issues for bugs/features. Submit PRs with tests. Follow existing code style.
+   Update `allowedOrigins` in `proxy.ts` to include your custom domain.
 
-## Disclaimer
+## Storage (Client-Side)
 
-Educational/portfolio project. Use public domain characters only. Not affiliated with OpenAI.
+Uses safe storage wrapper at `src/utils/storage.ts` with localStorage and in-memory fallback.
+
+**Storage Keys**:
+- `voiceConfig-<bot.name>` — Versioned voice configuration
+- `chatbot-bot` — Current bot data
+- `chatbot-history-<bot.name>` — Chat history
+- `audioEnabled` — Audio toggle state
+- `darkMode` — Theme preference
+- `bot-session-id` — Session tracking
+
+**Important**: Never store secrets or PII in client storage. All data is client-side only.
 
 ## Troubleshooting
 
 ### Hydration Mismatch Warning
 
-If you see a React hydration mismatch error in development pointing to attributes like `data-darkreader-mode` (from browser extensions like Dark Reader), this is expected. The root `<html>` element has `suppressHydrationWarning` to reduce noisy warnings. For a permanent fix, disable browser extensions that modify HTML during development.
+React hydration warnings from browser extensions (e.g., Dark Reader) are expected. The root `<html>` element has `suppressHydrationWarning` enabled. Disable browser extensions during development if needed.
 
-## Storage (client-side)
+### TTS Errors
 
-This project uses a small safe storage wrapper at `src/utils/storage.ts` that centralizes access to `localStorage` and provides an in-memory fallback for environments (like tests) where `localStorage` is unavailable. Use the helper instead of direct `localStorage` reads/writes.
+Ensure `GOOGLE_APPLICATION_CREDENTIALS_JSON` is set correctly and the service account has Text-to-Speech API enabled.
 
-Important notes:
-- Voice configurations are stored versioned under `voiceConfig-<bot.name>` as an object: `{ v: 1, createdAt: ISO, payload: { ...voiceConfig } }`.
-- Other keys used: `chatbot-bot`, `chatbot-bot-timestamp`, `chatbot-history-<bot.name>`, `lastPlayedAudioHash-<bot.name>`, `audioEnabled`, `darkMode`, `bot-session-id`, `bot-session-datetime`.
-- Do not store secrets or sensitive PII in client-side storage.
-- If you need cross-device sync later, implement an authenticated server-side backup; for now localStorage provides durable client-side persistence independent of server runtime.
+### Streaming Issues
 
-If you change the shape of stored objects, bump the version (`v`) to allow migration logic to detect and transform older entries.
+Check browser console for SSE connection errors. Ensure the API endpoint isn't being blocked by corporate firewalls.
+
+## Contributing
+
+PRs welcome! Please include:
+- Tests for new features
+- Updated documentation
+- Follow existing code style
+- Run `npm run lint` before submitting
+
+## License & Disclaimer
+
+Educational/portfolio project. Not affiliated with OpenAI or Google. Use public domain characters only.
