@@ -71,4 +71,3 @@ docs/
 !.github/workflows/
 
 # Local AI agent guidance (keep local overrides out of commits)
-.github/copilot-instructions.md

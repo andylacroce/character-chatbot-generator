@@ -199,3 +199,7 @@ PRs welcome! Please include:
 ## License & Disclaimer
 
 Educational/portfolio project. Not affiliated with OpenAI or Google. Use public domain characters only.
+
+## Agent Instructions
+
+Agent-focused instructions are available at `AGENT_INSTRUCTIONS.md` at the repository root. This file is a concise, repo-specific guide for AI coding agents and contains setup, security, testing, and file-level guidance. Please consult it when making API, TTS, or storage-related changes.
