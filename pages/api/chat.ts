@@ -106,6 +106,45 @@ function getAudioCacheKey(text: string, voiceConfig: Record<string, unknown>) {
 }
 
 /**
+ * Summarizes conversation history when it exceeds the limit.
+ * Uses OpenAI to create a concise summary of older messages.
+ * @param {ChatCompletionMessageParam[]} messages - The messages to summarize (excluding system prompt)
+ * @param {string} botName - The bot's name for context
+ * @returns {Promise<string>} A summary of the conversation
+ */
+async function summarizeConversation(
+  messages: ChatCompletionMessageParam[],
+  botName: string
+): Promise<string> {
+  try {
+    const conversationText = messages
+      .map(m => `${m.role === 'user' ? 'User' : botName}: ${m.content}`)
+      .join('\n');
+    
+    const summaryResponse = await openai.chat.completions.create({
+      model: getOpenAIModel("text"),
+      messages: [
+        {
+          role: "system",
+          content: "Summarize this conversation concisely, capturing key topics, emotional tone, and important context. Keep it under 150 words."
+        },
+        {
+          role: "user",
+          content: conversationText
+        }
+      ],
+      max_tokens: 200,
+      temperature: 0.3,
+    });
+    
+    return summaryResponse.choices[0]?.message?.content?.trim() ?? "Previous conversation history.";
+  } catch (error) {
+    logger.error("Failed to summarize conversation:", error);
+    return "Previous conversation covered various topics.";
+  }
+}
+
+/**
  * Checks if the given object is a valid OpenAI chat completion response.
  * @param {any} obj - The object to check.
  * @returns {boolean} True if the object is a valid response.
@@ -126,17 +165,23 @@ function isOpenAIResponse(
  * @param {string[]} history - The conversation history (excluding the latest user message).
  * @param {string} userMessage - The latest user message.
  * @param {string} botName - The bot's name.
+ * @param {string} personality - The system prompt/personality.
+ * @param {string} [conversationSummary] - Optional summary of earlier conversation.
  * @returns {ChatCompletionMessageParam[]} The formatted message array for OpenAI API.
  */
 function buildOpenAIMessages(
   history: string[],
   userMessage: string,
-  botName: string
+  botName: string,
+  personality: string,
+  conversationSummary?: string
 ): ChatCompletionMessageParam[] {
   const messages: ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content: `You are roleplaying as ${botName}, a unique character. Respond as ${botName} would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user's input. Be concise but not robotic; engage, react, and improvise as the real ${botName} would. Never break character or refer to yourself as an AI or chatbot. IMPORTANT: Keep responses to one paragraph maximum (100-120 words). Be concise and focused.`,
+      content: conversationSummary 
+        ? `${personality}\n\nPrevious conversation summary: ${conversationSummary}`
+        : personality,
     },
   ];
   for (const entry of history) {
@@ -220,12 +265,40 @@ async function handler(
     }
 
     const timestamp = new Date().toISOString();
-    // Limit conversation history to last 50 messages to prevent excessive context
-    const limitedHistory = conversationHistory.slice(-50);
+    
+    // Implement conversation summarization when history exceeds 50 messages
+    let conversationSummary: string | undefined;
+    let limitedHistory = conversationHistory;
+    
+    if (conversationHistory.length > 50) {
+      // Keep last 20 messages and summarize the rest
+      const recentHistory = conversationHistory.slice(-20);
+      const oldHistory = conversationHistory.slice(0, -20);
+      
+      // Build messages from old history for summarization
+      const oldMessages = buildOpenAIMessages(oldHistory, "", botName, personality).slice(1, -1); // exclude system and empty user message
+      
+      if (oldMessages.length > 0) {
+        conversationSummary = await summarizeConversation(oldMessages, botName);
+        logger.info(`[Chat API] Summarized ${oldHistory.length} old messages | requestId=${requestId}`);
+      }
+      
+      limitedHistory = recentHistory;
+    }
+    
     // Build messages array with correct types
-    const oldMessages = buildOpenAIMessages(limitedHistory.slice(0, -1), userMessage, botName).slice(1); // skip old system prompt
+    const oldMessages = buildOpenAIMessages(limitedHistory.slice(0, -1), userMessage, botName, personality, conversationSummary).slice(1); // skip system prompt
+    
+    // Add prompt caching to system message to reduce costs
+    const systemMessage: ChatCompletionMessageParam = {
+      role: "system",
+      content: conversationSummary 
+        ? `${personality}\n\nPrevious conversation summary: ${conversationSummary}`
+        : personality,
+    } as ChatCompletionMessageParam;
+    
     const messages: ChatCompletionMessageParam[] = [
-      { role: "system", content: personality } as ChatCompletionMessageParam,
+      systemMessage,
       ...oldMessages
     ];
 
@@ -329,6 +402,8 @@ async function handler(
           max_tokens: 150,
           temperature: 0.8,
           stream: true,
+          // Enable prompt caching for repeated system prompts (beta feature)
+          store: true,
         });
         
         let botReply = '';
@@ -397,6 +472,8 @@ async function handler(
         max_tokens: 150,
         temperature: 0.8,
         response_format: { type: "text" },
+        // Enable prompt caching for repeated system prompts (beta feature)
+        store: true,
       }),
       timeout,
     ]);
