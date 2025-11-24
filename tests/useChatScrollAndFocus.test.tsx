@@ -204,7 +204,7 @@ describe("useChatScrollAndFocus", () => {
   it("handles null chatBoxRef gracefully", () => {
     jest.useFakeTimers();
     const TestComponent = () => {
-      const chatBoxRef = React.useRef<HTMLDivElement>(null);
+      const chatBoxRef = React.useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
       const inputRef = React.useRef<HTMLInputElement>(null);
       useChatScrollAndFocus({
         chatBoxRef,
@@ -228,7 +228,7 @@ describe("useChatScrollAndFocus", () => {
 
   it("handles null inputRef gracefully", () => {
     const TestComponent = () => {
-      const chatBoxRef = React.useRef<HTMLDivElement>(null);
+      const chatBoxRef = React.useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
       const inputRef = React.useRef<HTMLInputElement>(null);
       useChatScrollAndFocus({
         chatBoxRef,

@@ -1,12 +1,12 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import type { Bot } from "../../app/components/BotCreator";
 
-// Mock logger
+// Mock logger - define mocks first
 const mockLogEvent = jest.fn();
-const mockSanitizeLogMeta = jest.fn((meta) => meta);
+const mockSanitizeLogMeta = jest.fn((meta: any) => meta);
 jest.mock("../../src/utils/logger", () => ({
-    logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
-    sanitizeLogMeta: (...args: unknown[]) => mockSanitizeLogMeta(...(args as unknown[])),
+    logEvent: (...args: any[]) => mockLogEvent(...args),
+    sanitizeLogMeta: (meta: any) => mockSanitizeLogMeta(meta),
 }));
 
 // Mock authenticatedFetch instead of axios

@@ -60,7 +60,6 @@ describe('BotCreator URL parameter functionality', () => {
     });
 
     it('handles config fetch error gracefully', async () => {
-        // @ts-expect-error test-mock
         global.fetch = jest.fn(() => Promise.reject(new Error('Network error')));
         
         render(<BotCreator onBotCreated={() => {}} />);
@@ -91,8 +90,9 @@ describe('BotCreator URL parameter functionality', () => {
                 return new Promise(resolve => {
                     setTimeout(() => {
                         resolve({
+                            ok: true,
                             json: () => Promise.resolve({ avatarUrl: '/test.png' })
-                        });
+                        } as Response);
                     }, 10000);
                 });
             }

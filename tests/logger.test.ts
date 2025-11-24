@@ -1,6 +1,10 @@
-import { log, generateRequestId, logEvent, truncate, sanitizeLogMeta } from '../src/utils/logger';
+import { log, generateRequestId, logEvent, truncate, sanitizeLogMeta, logger } from '../src/utils/logger';
 
 describe('logger utility', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
     it('should generate a unique request ID', () => {
         const id1 = generateRequestId();
         const id2 = generateRequestId();
@@ -17,11 +21,104 @@ describe('logger utility', () => {
         spy.mockRestore();
     });
 
+    it('should log info messages with console.log', () => {
+        const logSpy = jest.spyOn(console, 'log').mockImplementation(() => { });
+        log('info', 'Info message', { data: 'test' });
+        expect(logSpy).toHaveBeenCalled();
+        logSpy.mockRestore();
+    });
+
+    it('should log error messages with console.error', () => {
+        const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => { });
+        log('error', 'Error message', { error: 'test' });
+        expect(errorSpy).toHaveBeenCalled();
+        errorSpy.mockRestore();
+    });
+
+    it('should log warning messages with console.warn', () => {
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+        log('warn', 'Warning message', { warning: 'test' });
+        expect(warnSpy).toHaveBeenCalled();
+        warnSpy.mockRestore();
+    });
+
     it('should log events with metadata', () => {
         const spy = jest.spyOn(console, 'log').mockImplementation(() => { });
         logEvent('info', 'test_event', 'Event message', { foo: 'bar' });
         logEvent('error', 'error_event', 'Error occurred');
         spy.mockRestore();
+    });
+
+    it('should log events without metadata', () => {
+        const spy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+        logEvent('warn', 'warning_event', 'Warning occurred');
+        expect(spy).toHaveBeenCalled();
+        spy.mockRestore();
+    });
+
+    describe('logger convenience methods', () => {
+        it('should log info with logger.info', () => {
+            const spy = jest.spyOn(console, 'log').mockImplementation(() => { });
+            logger.info('Info message', { key: 'value' });
+            expect(spy).toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        it('should log info with logger.info and non-object meta', () => {
+            const spy = jest.spyOn(console, 'log').mockImplementation(() => { });
+            logger.info('Info message', 'string meta');
+            expect(spy).toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        it('should log info with logger.info and null meta', () => {
+            const spy = jest.spyOn(console, 'log').mockImplementation(() => { });
+            logger.info('Info message', null);
+            expect(spy).toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        it('should log warn with logger.warn', () => {
+            const spy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+            logger.warn('Warning message', { key: 'value' });
+            expect(spy).toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        it('should log warn with logger.warn and non-object meta', () => {
+            const spy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+            logger.warn('Warning message', 'string meta');
+            expect(spy).toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        it('should log error with logger.error', () => {
+            const spy = jest.spyOn(console, 'error').mockImplementation(() => { });
+            logger.error('Error message', { error: 'details' });
+            expect(spy).toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        it('should log error with logger.error and non-object meta', () => {
+            const spy = jest.spyOn(console, 'error').mockImplementation(() => { });
+            logger.error('Error message', 42);
+            expect(spy).toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        it('should log with logger.log', () => {
+            const spy = jest.spyOn(console, 'log').mockImplementation(() => { });
+            logger.log('debug', 'Debug message', { debug: true });
+            expect(spy).toHaveBeenCalled();
+            spy.mockRestore();
+        });
+
+        it('should log without metadata', () => {
+            const spy = jest.spyOn(console, 'log').mockImplementation(() => { });
+            logger.info('Info message without meta');
+            expect(spy).toHaveBeenCalled();
+            spy.mockRestore();
+        });
     });
 
     describe('truncate', () => {
@@ -30,6 +127,12 @@ describe('logger utility', () => {
         });
         it('truncates long string and adds ellipsis', () => {
             expect(truncate('a'.repeat(150), 100)).toBe('a'.repeat(100) + '…');
+        });
+        it('uses default max when not provided', () => {
+            const longString = 'a'.repeat(150);
+            const result = truncate(longString);
+            expect(result).toBe('a'.repeat(100) + '…');
+            expect(result.length).toBe(101);
         });
         it('returns input unchanged if not a string', () => {
     // Pass a non-string via unknown cast to test non-string behavior without using `any`
@@ -49,6 +152,11 @@ describe('logger utility', () => {
             const result = sanitizeLogMeta(meta);
             expect(result.obj).toBe('[Object]');
         });
+        it('handles null values', () => {
+            const meta = { nullValue: null };
+            const result = sanitizeLogMeta(meta);
+            expect(result.nullValue).toBeNull();
+        });
         it('summarizes long arrays', () => {
             const meta = { arr: [1, 2, 3, 4, 5, 6, 7] };
             const result = sanitizeLogMeta(meta);
@@ -60,6 +168,17 @@ describe('logger utility', () => {
             expect(result.arr).toEqual([1, 2]);
             expect(result.num).toBe(5);
             expect(result.str).toBe('ok');
+        });
+        it('keeps short strings unchanged', () => {
+            const meta = { short: 'test string' };
+            const result = sanitizeLogMeta(meta);
+            expect(result.short).toBe('test string');
+        });
+        it('keeps boolean values unchanged', () => {
+            const meta = { flag: true, disabled: false };
+            const result = sanitizeLogMeta(meta);
+            expect(result.flag).toBe(true);
+            expect(result.disabled).toBe(false);
         });
     });
 
