@@ -2,12 +2,12 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 
 const mockAuthFetch = jest.fn();
 jest.mock('../../src/utils/api', () => ({
-  authenticatedFetch: (...args: any[]) => mockAuthFetch(...args),
+  authenticatedFetch: (...args: unknown[]) => mockAuthFetch(...(args as unknown[])),
 }));
 
 const mockGetVoiceConfig = jest.fn();
 jest.mock('../../app/components/api_getVoiceConfigForCharacter', () => ({
-  api_getVoiceConfigForCharacter: (...args: any[]) => mockGetVoiceConfig(...args),
+  api_getVoiceConfigForCharacter: (...args: unknown[]) => mockGetVoiceConfig(...(args as unknown[])),
 }));
 
 import { useBotCreation } from '../../app/components/useBotCreation';
@@ -110,7 +110,8 @@ describe('useBotCreation tests', () => {
       if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png', gender: 'female' }) });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
-    const voiceCfg = { name: 'en-US-custom', languageCodes: ['en-US'] } as any;
+    type VoiceCfg = { name: string; languageCodes: string[] };
+    const voiceCfg: VoiceCfg = { name: 'en-US-custom', languageCodes: ['en-US'] };
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
@@ -134,7 +135,7 @@ describe('useBotCreation tests', () => {
       if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png', gender: 'male' }) });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
-    const voiceCfg = { name: 'en-US-custom', languageCodes: ['en-US'] } as any;
+    const voiceCfg: VoiceCfg = { name: 'en-US-custom', languageCodes: ['en-US'] };
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
@@ -158,7 +159,7 @@ describe('useBotCreation tests', () => {
       if (url === '/api/generate-avatar') return Promise.resolve({ ok: false, json: async () => ({}) });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
-    const voiceCfg = { name: 'en-US-custom', languageCodes: ['en-US'] } as any;
+    const voiceCfg: VoiceCfg = { name: 'en-US-custom', languageCodes: ['en-US'] };
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
@@ -182,7 +183,7 @@ describe('useBotCreation tests', () => {
       if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/silhouette.svg', gender: 'female' }) });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
-    const voiceCfg = { name: 'en-US-custom', languageCodes: ['en-US'] } as any;
+    const voiceCfg: VoiceCfg = { name: 'en-US-custom', languageCodes: ['en-US'] };
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();

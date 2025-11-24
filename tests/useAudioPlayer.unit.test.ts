@@ -9,8 +9,9 @@ describe('useAudioPlayer', () => {
 
   it('returns null early when audio is disabled and clears refs', async () => {
     const audioEnabledRef = { current: false } as React.MutableRefObject<boolean>;
-    const sourceRef = { current: { stop: jest.fn(), disconnect: jest.fn() } } as any;
-    const audioRef = { current: { pause: jest.fn(), currentTime: 123 } } as any;
+    type SourceMock = { stop: jest.Mock; disconnect: jest.Mock };
+    const sourceRef = { current: { stop: jest.fn(), disconnect: jest.fn() } } as unknown as React.MutableRefObject<SourceMock | null>;
+    const audioRef = { current: { pause: jest.fn(), currentTime: 123 } } as unknown as React.MutableRefObject<HTMLAudioElement | null>;
 
     const { result } = renderHook(() => useAudioPlayer(audioEnabledRef, audioRef, sourceRef));
 
@@ -23,14 +24,14 @@ describe('useAudioPlayer', () => {
 
   it('creates an Audio and calls play when enabled', async () => {
     const audioEnabledRef = { current: true } as React.MutableRefObject<boolean>;
-    const audioRef = { current: null } as any;
-    const sourceRef = { current: null } as any;
+    const audioRef = { current: null } as unknown as React.MutableRefObject<HTMLAudioElement | null>;
+    const sourceRef = { current: null } as unknown as React.MutableRefObject<AudioBufferSourceNode | null>;
 
     // Mock window.Audio
     const playFn = jest.fn(() => Promise.resolve());
-    const dummy = { play: playFn, pause: jest.fn(), currentTime: 0, onended: undefined } as any;
-    const OrigAudio = (global as any).Audio;
-    (global as any).Audio = jest.fn(() => dummy);
+    const dummy: Partial<HTMLAudioElement> & { play: jest.Mock } = { play: playFn, pause: jest.fn(), currentTime: 0, onended: undefined };
+    const OrigAudio = (globalThis as unknown as { Audio?: unknown }).Audio as unknown as typeof Audio | undefined;
+    Object.defineProperty(globalThis, 'Audio', { value: jest.fn(() => dummy), configurable: true });
 
     const { result } = renderHook(() => useAudioPlayer(audioEnabledRef, audioRef, sourceRef));
 
@@ -39,18 +40,19 @@ describe('useAudioPlayer', () => {
     expect(playFn).toHaveBeenCalled();
 
     // restore
-    (global as any).Audio = OrigAudio;
+    if (typeof OrigAudio === 'undefined') delete (globalThis as unknown as { Audio?: unknown }).Audio;
+    else Object.defineProperty(globalThis, 'Audio', { value: OrigAudio, configurable: true });
   });
 
   it('handles aborted signal by clearing the audioRef', async () => {
     const audioEnabledRef = { current: true } as React.MutableRefObject<boolean>;
-    const audioRef = { current: null } as any;
-    const sourceRef = { current: null } as any;
+    const audioRef = { current: null } as unknown as React.MutableRefObject<HTMLAudioElement | null>;
+    const sourceRef = { current: null } as unknown as React.MutableRefObject<AudioBufferSourceNode | null>;
 
     const playFn = jest.fn(() => Promise.resolve());
-    const dummy = { play: playFn, pause: jest.fn(), currentTime: 0, onended: undefined } as any;
-    const OrigAudio = (global as any).Audio;
-    (global as any).Audio = jest.fn(() => dummy);
+    const dummy: Partial<HTMLAudioElement> & { play: jest.Mock } = { play: playFn, pause: jest.fn(), currentTime: 0, onended: undefined };
+    const OrigAudio = (globalThis as unknown as { Audio?: unknown }).Audio as unknown as typeof Audio | undefined;
+    Object.defineProperty(globalThis, 'Audio', { value: jest.fn(() => dummy), configurable: true });
 
     const controller = new AbortController();
     controller.abort(); // already aborted
@@ -63,14 +65,15 @@ describe('useAudioPlayer', () => {
     // audioRef will be set afterwards; ensure it ends up populated with our dummy
     expect(audioRef.current).toBe(dummy);
 
-    (global as any).Audio = OrigAudio;
+    if (typeof OrigAudio === 'undefined') delete (globalThis as unknown as { Audio?: unknown }).Audio;
+    else Object.defineProperty(globalThis, 'Audio', { value: OrigAudio, configurable: true });
   });
 
   it('stopAudio clears refs and pauses audio', () => {
     const audioEnabledRef = { current: true } as React.MutableRefObject<boolean>;
-    const dummyAudio = { pause: jest.fn(), currentTime: 5 } as any;
-    const audioRef = { current: dummyAudio } as any;
-    const sourceRef = { current: { stop: jest.fn(), disconnect: jest.fn() } } as any;
+    const dummyAudio = { pause: jest.fn(), currentTime: 5 } as unknown as HTMLAudioElement;
+    const audioRef = { current: dummyAudio } as unknown as React.MutableRefObject<HTMLAudioElement | null>;
+    const sourceRef = { current: { stop: jest.fn(), disconnect: jest.fn() } } as unknown as React.MutableRefObject<AudioBufferSourceNode | null>;
 
     const { result } = renderHook(() => useAudioPlayer(audioEnabledRef, audioRef, sourceRef));
 
@@ -83,17 +86,18 @@ describe('useAudioPlayer', () => {
 
   it('playAudio throws when Audio constructor throws', async () => {
     const audioEnabledRef = { current: true } as React.MutableRefObject<boolean>;
-    const audioRef = { current: null } as any;
-    const sourceRef = { current: null } as any;
+    const audioRef = { current: null } as unknown as React.MutableRefObject<HTMLAudioElement | null>;
+    const sourceRef = { current: null } as unknown as React.MutableRefObject<AudioBufferSourceNode | null>;
 
     // Mock window.Audio to throw when constructed
-    const OrigAudio = (global as any).Audio;
-    (global as any).Audio = jest.fn(() => { throw new Error('ctor-fail'); });
+    const OrigAudio = (globalThis as unknown as { Audio?: unknown }).Audio as unknown as typeof Audio | undefined;
+    Object.defineProperty(globalThis, 'Audio', { value: jest.fn(() => { throw new Error('ctor-fail'); }), configurable: true });
 
     const { result } = renderHook(() => useAudioPlayer(audioEnabledRef, audioRef, sourceRef));
 
     await expect(result.current.playAudio('https://example.test/fail.mp3')).rejects.toThrow('ctor-fail');
 
-    (global as any).Audio = OrigAudio;
+    if (typeof OrigAudio === 'undefined') delete (globalThis as unknown as { Audio?: unknown }).Audio;
+    else Object.defineProperty(globalThis, 'Audio', { value: OrigAudio, configurable: true });
   });
 });

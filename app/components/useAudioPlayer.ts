@@ -5,7 +5,6 @@
 // =============================
 
 import { useRef, useCallback } from "react";
-import { authenticatedFetch } from "../../src/utils/api";
 
 /**
  * Custom hook to handle audio playback for chat messages.
@@ -27,7 +26,7 @@ export function useAudioPlayer(
   // Keep AudioContext available for future specialized usage but avoid heavy
   // synchronous decoding/copying in the common path. Using HTMLAudioElement
   // playback is far cheaper on the main thread and avoids large array copies.
-  const audioContextRef = useRef<AudioContext | null>(null);
+  
 
   // Update useCallback dependencies
   const playAudio = useCallback(async (src: string, signal?: AbortSignal) => {
@@ -45,8 +44,8 @@ export function useAudioPlayer(
     }
     // Stop previous Web Audio playback
     if (sourceRef.current) {
-      try { (sourceRef.current as any)?.stop?.(); } catch { }
-      try { (sourceRef.current as any)?.disconnect?.(); } catch { }
+      try { (sourceRef.current as AudioBufferSourceNode | null)?.stop?.(); } catch { }
+      try { (sourceRef.current as AudioBufferSourceNode | null)?.disconnect?.(); } catch { }
       sourceRef.current = null;
     }
     if (audioRef.current) {
@@ -67,8 +66,8 @@ export function useAudioPlayer(
     // decoding to the user-agent and is more efficient for typical TTS blobs.
     // Stop previous Web Audio playback
     if (sourceRef.current) {
-      try { (sourceRef.current as any)?.stop?.(); } catch { }
-      try { (sourceRef.current as any)?.disconnect?.(); } catch { }
+      try { (sourceRef.current as AudioBufferSourceNode | null)?.stop?.(); } catch { }
+      try { (sourceRef.current as AudioBufferSourceNode | null)?.disconnect?.(); } catch { }
       sourceRef.current = null;
     }
     // Pause/reset previous HTMLAudioElement if present
@@ -134,8 +133,8 @@ export function useAudioPlayer(
   // Expose a stop function for toggling audio off or unmount
   const stopAudio = useCallback(() => {
     if (sourceRef.current) {
-      try { (sourceRef.current as any)?.stop?.(); } catch { }
-      try { (sourceRef.current as any)?.disconnect?.(); } catch { }
+      try { (sourceRef.current as AudioBufferSourceNode | null)?.stop?.(); } catch { }
+      try { (sourceRef.current as AudioBufferSourceNode | null)?.disconnect?.(); } catch { }
       sourceRef.current = null;
     }
     if (audioRef.current) {

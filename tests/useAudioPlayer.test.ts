@@ -397,7 +397,7 @@ describe('useAudioPlayer', () => {
     await act(async () => {
       try {
         await ref.current!.playAudio('fail.mp3');
-      } catch (e) {
+      } catch {
         threw = true;
       }
     });
