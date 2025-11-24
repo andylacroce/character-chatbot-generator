@@ -145,6 +145,105 @@ describe("useChatScrollAndFocus", () => {
     Object.defineProperty(window.navigator, "userAgent", { value: origUA, configurable: true });
     jest.useRealTimers();
   });
+
+  it("handles mobile (non-Firefox) focus event", () => {
+    jest.useFakeTimers();
+    const origUA = window.navigator.userAgent;
+    Object.defineProperty(window.navigator, "userAgent", {
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15",
+      configurable: true
+    });
+    
+    const { TestComponent, inputRef, chatBoxRef } = setup();
+    render(<TestComponent messages={[]} loading={false} />);
+    
+    const input = inputRef.current!;
+    if (chatBoxRef.current) {
+      setScrollProps(chatBoxRef.current, { scrollHeight: 1000, scrollTop: 0 });
+    }
+    
+    input.scrollIntoView = jest.fn();
+    window.scrollTo = jest.fn();
+    
+    act(() => {
+      input.dispatchEvent(new FocusEvent("focus"));
+      jest.advanceTimersByTime(120);
+    });
+    
+    expect(input.scrollIntoView).toHaveBeenCalled();
+    expect(window.scrollTo).toHaveBeenCalled();
+    
+    Object.defineProperty(window.navigator, "userAgent", { value: origUA, configurable: true });
+    jest.useRealTimers();
+  });
+
+  it("handles scrollTo fallback when scrollTo with options throws", () => {
+    jest.useFakeTimers();
+    const { TestComponent, chatBoxRef } = setup();
+    const { rerender } = render(<TestComponent messages={[]} loading={false} />);
+    
+    if (chatBoxRef.current) {
+      setScrollProps(chatBoxRef.current, { scrollHeight: 500, scrollTop: 0 });
+      // Mock scrollTo to throw error
+      chatBoxRef.current.scrollTo = jest.fn(() => {
+        throw new Error('scrollTo not supported');
+      });
+    }
+    
+    rerender(<TestComponent messages={[{ id: 1, text: "test" }]} loading={false} />);
+    
+    act(() => {
+      jest.runAllTimers();
+    });
+    
+    // Should fall back to setting scrollTop directly
+    expect(chatBoxRef.current?.scrollTop).toBe(500);
+    jest.useRealTimers();
+  });
+
+  it("handles null chatBoxRef gracefully", () => {
+    jest.useFakeTimers();
+    const TestComponent = () => {
+      const chatBoxRef = React.useRef<HTMLDivElement>(null);
+      const inputRef = React.useRef<HTMLInputElement>(null);
+      useChatScrollAndFocus({
+        chatBoxRef,
+        inputRef,
+        messages: [{ id: 1 }],
+        loading: false,
+      });
+      return <input ref={inputRef} />;
+    };
+    
+    // Should not throw even without chatBox element
+    expect(() => {
+      render(<TestComponent />);
+      act(() => {
+        jest.runAllTimers();
+      });
+    }).not.toThrow();
+    
+    jest.useRealTimers();
+  });
+
+  it("handles null inputRef gracefully", () => {
+    const TestComponent = () => {
+      const chatBoxRef = React.useRef<HTMLDivElement>(null);
+      const inputRef = React.useRef<HTMLInputElement>(null);
+      useChatScrollAndFocus({
+        chatBoxRef,
+        inputRef,
+        messages: [],
+        loading: false,
+      });
+      return <div ref={chatBoxRef} />;
+    };
+    
+    // Should not throw even without input element
+    expect(() => {
+      render(<TestComponent />);
+    }).not.toThrow();
+  });
 });
 
 beforeAll(() => {
