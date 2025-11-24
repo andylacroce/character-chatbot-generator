@@ -63,7 +63,7 @@ export default async function handler(
   }
 
   // Expect messages directly from JSON body (sent by downloadTranscript utility)
-  const { messages, bot } = req.body;
+  const { messages, bot, exportedAt } = req.body;
 
   if (!Array.isArray(messages)) {
     logger.info(`[Transcript API] 400 Bad Request: Messages array required`);
@@ -110,6 +110,21 @@ export default async function handler(
   }
 
   logger.info(`[Transcript API] Received messages for download: ${messages.length}`);
+
+  // Use the friendly exportedAt timestamp if provided, otherwise generate a machine-readable one
+  const displayTimestamp = exportedAt && typeof exportedAt === 'string' ? exportedAt : (() => {
+    const now = new Date();
+    return now.toLocaleString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      timeZoneName: "short"
+    });
+  })();
 
   // Generate filename for the HTML document title
   const now = new Date();
@@ -194,7 +209,7 @@ export default async function handler(
       <div class="container">
         <h1>Character Chatbot Generator Transcript</h1>
         <div class="header-info">
-          <p><strong>Exported:</strong> ${datetime}</p>
+          <p><strong>Exported:</strong> ${escapeHtml(displayTimestamp)}</p>
         </div>
         ${bot ? `
           <div style="text-align: center; margin-bottom: 30px;">
