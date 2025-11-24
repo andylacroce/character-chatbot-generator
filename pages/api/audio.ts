@@ -18,7 +18,7 @@ import rateLimit from "express-rate-limit";
 // Note: deterministic serialization is implemented in pages/api/chat.ts where it's used for audio URL encoding.
 
 // SYSTEM_PROMPT: Generalize to a Character Chatbot Generator persona
-const SYSTEM_PROMPT = `You are a helpful character chatbot. Respond concisely, helpfully, and in a friendly tone. Use the style, knowledge, and quirks of the selected character. Stay in character at all times.`;
+const SYSTEM_PROMPT = `You are a helpful character chatbot. Respond concisely, helpfully, and in a friendly tone. Use the style, knowledge, and quirks of the selected character. Stay in character at all times. Keep responses to one paragraph maximum (100-120 words). Be concise and focused.`;
 
 // Rate limiter: 30 requests per minute per IP (higher than chat since audio files may be replayed)
 const audioRateLimit = rateLimit({
@@ -296,7 +296,7 @@ async function handler(
                 const result = await openai.chat.completions.create({
                   model: "gpt-4o",
                   messages,
-                  max_tokens: 200,
+                  max_tokens: 150,
                   temperature: 0.8,
                   response_format: { type: "text" },
                 });

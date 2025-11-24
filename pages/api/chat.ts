@@ -136,7 +136,7 @@ function buildOpenAIMessages(
   const messages: ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content: `You are roleplaying as ${botName}, a unique character. Respond as ${botName} would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user's input. Be concise but not robotic; engage, react, and improvise as the real ${botName} would. Never break character or refer to yourself as an AI or chatbot.`,
+      content: `You are roleplaying as ${botName}, a unique character. Respond as ${botName} would: use their worldview, emotional state, knowledge, quirks, and conversational style. Stay deeply in character at all times. Make your replies emotionally rich, context-aware, and natural—like real conversation. Adapt your tone and content to the situation and the user's input. Be concise but not robotic; engage, react, and improvise as the real ${botName} would. Never break character or refer to yourself as an AI or chatbot. IMPORTANT: Keep responses to one paragraph maximum (100-120 words). Be concise and focused.`,
     },
   ];
   for (const entry of history) {
@@ -194,7 +194,7 @@ async function handler(
     }
     
     const userMessage = req.body.message;
-    const personality = req.body.personality || `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Respond in no more than 50 words.`;
+    const personality = req.body.personality || `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Keep responses to one paragraph maximum (100-120 words). Be concise and focused.`;
     const botName = req.body.botName || "Character";
     const gender = req.body.gender;
     const conversationHistory = req.body.conversationHistory || [];
@@ -317,7 +317,7 @@ async function handler(
       openai.chat.completions.create({
         model: getOpenAIModel("text"),
         messages,
-        max_tokens: 200,
+        max_tokens: 150,
         temperature: 0.8,
         response_format: { type: "text" },
       }),

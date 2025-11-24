@@ -1,4 +1,4 @@
-// This middleware restricts API access to only allowed origins (local dev and Vercel prod)
+// This proxy restricts API access to only allowed origins (local dev and Vercel prod)
 // and requires a valid API key for API routes from external origins.
 import { NextRequest, NextResponse } from 'next/server';
 import { logEvent, sanitizeLogMeta } from './src/utils/logger';
@@ -16,12 +16,13 @@ if (!apiSecret) {
     throw new Error('Missing API_SECRET environment variable');
 }
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
+    // Since the matcher is set to /api/:path*, this proxy only runs for API routes
     const origin = req.headers.get('origin') || req.headers.get('referer') || '';
     const host = req.headers.get('host') || '';
 
-    // Allow requests without origin if they come from our own domain
-    if (origin === '' && host.includes('vercel.app')) {
+    // Allow requests without origin if they come from our own domain or localhost
+    if (origin === '' && (host.includes('localhost') || host.includes('127.0.0.1') || host.includes('vercel.app'))) {
         return NextResponse.next();
     }
 
@@ -33,38 +34,23 @@ export function middleware(req: NextRequest) {
         }
     });
 
-    // For API routes from allowed origins, skip API key validation (our app's own requests)
-    if (req.nextUrl.pathname.startsWith('/api/') && isAllowedOrigin) {
+    // For API routes from allowed origins, allow the request
+    if (isAllowedOrigin) {
         return NextResponse.next();
     }
 
     // For API routes from external origins, require API key
-    if (req.nextUrl.pathname.startsWith('/api/') && !isAllowedOrigin) {
-        const apiKey = req.headers.get('x-api-key');
-        if (!apiKey || apiKey !== apiSecret) {
-            logEvent('warn', 'api_key_invalid', 'API request blocked due to invalid or missing API key', sanitizeLogMeta({
-                apiKey: apiKey ? '[PRESENT]' : '[MISSING]',
-                origin,
-                host,
-                userAgent: req.headers.get('user-agent'),
-                url: req.url,
-                ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
-            }));
-            return new NextResponse('Unauthorized', { status: 401 });
-        }
-        return NextResponse.next();
-    }
-
-    // For non-API routes, check origin
-    if (!isAllowedOrigin) {
-        logEvent('warn', 'origin_blocked', 'Request blocked due to disallowed origin', sanitizeLogMeta({
+    const apiKey = req.headers.get('x-api-key');
+    if (!apiKey || apiKey !== apiSecret) {
+        logEvent('warn', 'api_key_invalid', 'API request blocked due to invalid or missing API key', sanitizeLogMeta({
+            apiKey: apiKey ? '[PRESENT]' : '[MISSING]',
             origin,
             host,
             userAgent: req.headers.get('user-agent'),
             url: req.url,
             ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
         }));
-        return new NextResponse('Forbidden', { status: 403 });
+        return new NextResponse('Unauthorized', { status: 401 });
     }
 
     return NextResponse.next();
@@ -72,5 +58,4 @@ export function middleware(req: NextRequest) {
 
 export const config = {
     matcher: ['/api/:path*'],
-    runtime: 'nodejs',
 };

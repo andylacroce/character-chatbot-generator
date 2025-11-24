@@ -90,6 +90,7 @@ export function unescapeString(str: string): string {
 
 /**
  * Sanitizes a string for safe display by unescaping, decoding HTML entities, and escaping HTML
+ * Use this for HTML generation (like transcripts) where you need HTML escaping.
  * @param {string} str - The string to sanitize
  * @returns {string} The sanitized string
  */
@@ -104,6 +105,26 @@ export function sanitizeForDisplay(str: string): string {
   
   // Finally escape dangerous HTML characters
   return escapeHtml(str);
+}
+
+/**
+ * Sanitizes a string for display in React components.
+ * Unescapes JavaScript sequences and decodes HTML entities, but does NOT escape HTML
+ * since React automatically handles XSS protection.
+ * @param {string} str - The string to sanitize
+ * @returns {string} The sanitized string ready for React display
+ */
+export function sanitizeForReact(str: string): string {
+  if (typeof str !== 'string') return '';
+  
+  // First unescape JavaScript escape sequences
+  str = unescapeString(str);
+  
+  // Then decode HTML entities (like &quot; to ")
+  str = decodeHtmlEntities(str);
+  
+  // Do NOT escape HTML - React handles XSS protection automatically
+  return str;
 }
 
 /**

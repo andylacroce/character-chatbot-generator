@@ -7,7 +7,7 @@ import React from "react";
 import styles from "./styles/ChatMessage.module.css";
 import Image from "next/image";
 import { Bot } from "./BotCreator";
-import { sanitizeForDisplay } from "../../src/utils/security";
+import { sanitizeForReact } from "../../src/utils/security";
 
 /**
  * Interface representing a chat message's structure.
@@ -55,7 +55,7 @@ const ChatMessage = React.memo(
       <div
         className={`${styles.message} ${messageClass} my-2`}
         role="article"
-        aria-label={isUser ? `Message from you: ${sanitizeForDisplay(message.text)}` : `Message from ${bot.name}: ${sanitizeForDisplay(message.text)}`}
+        aria-label={isUser ? `Message from you: ${sanitizeForReact(message.text)}` : `Message from ${bot.name}: ${sanitizeForReact(message.text)}`}
       >
         <div className="rounded p-2 text-sm" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           {!isUser && (
@@ -73,7 +73,7 @@ const ChatMessage = React.memo(
               {isUser ? "Me" : bot.name}
             </div>
             <div className="text-left" style={{ fontSize: 'var(--chat-message-font-size)' }}>
-              {sanitizeForDisplay(message.text)}
+              {sanitizeForReact(message.text)}
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import {
   escapeHtml,
   unescapeString,
   sanitizeForDisplay,
+  sanitizeForReact,
   sanitizeCharacterName,
 } from '../src/utils/security';
 
@@ -126,6 +127,31 @@ describe('Security Utils', () => {
 
     it('should handle complex cases', () => {
       expect(sanitizeForDisplay('Tom &amp; Jerry&#39;s &lt;script&gt;')).toBe("Tom &amp; Jerry's &lt;script&gt;");
+    });
+  });
+
+  describe('sanitizeForReact', () => {
+    it('should return empty string for non-string input', () => {
+      expect(sanitizeForReact(null as unknown as string)).toBe('');
+      expect(sanitizeForReact(undefined as unknown as string)).toBe('');
+      expect(sanitizeForReact(123 as unknown as string)).toBe('');
+    });
+
+    it('should decode HTML entities without re-escaping', () => {
+      expect(sanitizeForReact('&quot;Hello&quot;')).toBe('"Hello"');
+      expect(sanitizeForReact('&amp;')).toBe('&');
+      expect(sanitizeForReact('&lt;')).toBe('<');
+      expect(sanitizeForReact('&gt;')).toBe('>');
+    });
+
+    it('should unescape JavaScript sequences', () => {
+      expect(sanitizeForReact('Hello\\nWorld')).toBe('Hello\nWorld');
+      expect(sanitizeForReact('Tab\\there')).toBe('Tab\there');
+    });
+
+    it('should handle mixed HTML entities and escape sequences', () => {
+      expect(sanitizeForReact('&quot;Hello\\nWorld&quot;')).toBe('"Hello\nWorld"');
+      expect(sanitizeForReact('Tom &amp; Jerry&#39;s')).toBe("Tom & Jerry's");
     });
   });
 
