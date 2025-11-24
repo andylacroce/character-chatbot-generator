@@ -9,8 +9,7 @@ describe('useAudioPlayer', () => {
 
   it('returns null early when audio is disabled and clears refs', async () => {
     const audioEnabledRef = { current: false } as React.MutableRefObject<boolean>;
-    type SourceMock = { stop: jest.Mock; disconnect: jest.Mock };
-    const sourceRef = { current: { stop: jest.fn(), disconnect: jest.fn() } } as unknown as React.MutableRefObject<SourceMock | null>;
+    const sourceRef = { current: { stop: jest.fn(), disconnect: jest.fn() } } as unknown as React.MutableRefObject<AudioBufferSourceNode | null>;
     const audioRef = { current: { pause: jest.fn(), currentTime: 123 } } as unknown as React.MutableRefObject<HTMLAudioElement | null>;
 
     const { result } = renderHook(() => useAudioPlayer(audioEnabledRef, audioRef, sourceRef));

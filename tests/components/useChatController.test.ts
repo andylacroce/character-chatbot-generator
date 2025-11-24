@@ -17,8 +17,6 @@ jest.mock("../../src/utils/api", () => ({
 
 import { useChatController } from "../../app/components/useChatController";
 
-import { useChatController } from "../../app/components/useChatController";
-
 const mockResponse = (data: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,
     status,

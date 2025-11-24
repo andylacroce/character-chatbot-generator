@@ -8,7 +8,6 @@ describe('logger utility', () => {
     it('loads server-side (winston) logger when window is undefined', () => {
         const origWindow = (globalThis as unknown as { window?: Window }).window;
         // Simulate server-side environment
-        // @ts-expect-error test: temporarily remove window
         delete (globalThis as unknown as { window?: Window }).window;
         // Clear modules so the logger module reinitializes in server context
         jest.resetModules();

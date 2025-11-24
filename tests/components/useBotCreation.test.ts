@@ -12,6 +12,9 @@ jest.mock('../../app/components/api_getVoiceConfigForCharacter', () => ({
 
 import { useBotCreation } from '../../app/components/useBotCreation';
 
+// Shared test type used across multiple cases
+type VoiceCfg = { name: string; languageCodes: string[] };
+
 describe('useBotCreation tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
