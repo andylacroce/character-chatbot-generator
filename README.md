@@ -202,4 +202,5 @@ Educational/portfolio project. Not affiliated with OpenAI or Google. Use public 
 
 ## Agent Instructions
 
-Agent-focused instructions are available at `AGENT_INSTRUCTIONS.md` at the repository root. This file is a concise, repo-specific guide for AI coding agents and contains setup, security, testing, and file-level guidance. Please consult it when making API, TTS, or storage-related changes.
+Agent-focused instructions are now maintained in the repository's GitHub location: `./.github/copilot-instructions.md`.
+This single file contains the concise, repo-specific guidance for AI coding agents (setup, security, testing, SSE/TTS patterns, and where to look before editing core behavior).
