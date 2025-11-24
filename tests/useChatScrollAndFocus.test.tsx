@@ -81,6 +81,40 @@ describe("useChatScrollAndFocus", () => {
     expect(chatBoxRef.current?.scrollTop).toBe(chatBoxRef.current?.scrollHeight);
   });
 
+  it("on mobile resize with focused input also scrolls page", () => {
+    jest.useFakeTimers();
+    const origUA = window.navigator.userAgent;
+    Object.defineProperty(window.navigator, "userAgent", {
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15",
+      configurable: true
+    });
+    const { TestComponent, inputRef, chatBoxRef } = setup();
+    render(<TestComponent messages={[]} loading={false} />);
+    const input = inputRef.current!;
+    // Prepare chatBox scroll values
+    if (chatBoxRef.current) {
+      setScrollProps(chatBoxRef.current, { scrollHeight: 2000, scrollTop: 0 });
+    }
+    // Mock window.scrollTo to observe calls
+    const originalScrollTo = window.scrollTo;
+    window.scrollTo = jest.fn();
+    // Focus input to activate mobile path
+    act(() => {
+      input.dispatchEvent(new FocusEvent("focus"));
+      // advance timers for delayed focus logic
+      jest.advanceTimersByTime(130);
+    });
+    const initialCalls = (window.scrollTo as jest.Mock).mock.calls.length;
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+    expect((window.scrollTo as jest.Mock).mock.calls.length).toBeGreaterThan(initialCalls);
+    // Clean up
+    window.scrollTo = originalScrollTo;
+    Object.defineProperty(window.navigator, "userAgent", { value: origUA, configurable: true });
+    jest.useRealTimers();
+  });
+
   it("handles focus/blur events on input (non-Firefox Android)", () => {
     const { TestComponent, inputRef } = setup();
     render(<TestComponent messages={[]} loading={false} />);

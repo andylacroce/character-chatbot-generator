@@ -71,7 +71,22 @@ export function useChatScrollAndFocus({
   // Scroll to bottom on window resize (e.g., mobile keyboard appears)
   useEffect(() => {
     const handleResize = () => {
+      // Always keep chat container at bottom
       scrollToBottom();
+
+      // If on mobile and the input is focused, also ensure the page itself
+      // scrolls to the bottom so the input is visible above the keyboard.
+      try {
+        const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+        const isMobile = /Android|iP(ad|hone|od)/i.test(ua);
+        const input = inputRef.current;
+        if (isMobile && input && document.activeElement === input) {
+          // Use scrollIntoView first (helps some browsers adjust viewport)
+          try { input.scrollIntoView({ block: "end", behavior: "auto" }); } catch {}
+          // Then force page scroll to bottom as a fallback
+          try { window.scrollTo(0, document.body.scrollHeight); } catch {}
+        }
+      } catch {}
     };
     window.addEventListener("resize", handleResize);
 
@@ -90,7 +105,7 @@ export function useChatScrollAndFocus({
         window.visualViewport.removeEventListener("resize", vvHandler);
       }
     };
-  }, [scrollToBottom]);
+  }, [scrollToBottom, inputRef]);
 
   // Focus input field on mount (deferred)
   useEffect(() => {
