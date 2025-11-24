@@ -41,6 +41,7 @@ if (typeof window === 'undefined') {
   // Server-side: use Winston
   try {
     // Dynamic import to avoid bundling Winston in client code
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const winston = require('winston');
     
     if (typeof globalThis.setImmediate === "undefined") {
@@ -60,7 +61,7 @@ if (typeof window === 'undefined') {
     });
     
     loggerInstance = logger as unknown as LoggerInstance;
-  } catch (error) {
+  } catch {
     // Fallback if Winston fails to load
     loggerInstance = createBrowserLogger();
   }
