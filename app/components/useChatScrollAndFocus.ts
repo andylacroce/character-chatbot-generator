@@ -43,13 +43,29 @@ export function useChatScrollAndFocus({
 }) {
   // Scroll to bottom utility
   const scrollToBottom = useCallback(() => {
-    if (chatBoxRef.current) {
-      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+    const el = chatBoxRef.current;
+    if (el) {
+      // For mobile browsers, use scrollTo with options for better compatibility
+      try {
+        el.scrollTo({
+          top: el.scrollHeight,
+          behavior: 'auto' // Use 'auto' instead of 'smooth' for immediate scroll
+        });
+      } catch {
+        // Fallback for older browsers
+        el.scrollTop = el.scrollHeight;
+      }
     }
   }, [chatBoxRef]);  // Scroll to bottom when NEW messages are added (not when loading older messages)
   useEffect(() => {
     // Always auto-scroll when new messages are added to stay at the bottom of conversation
-    scrollToBottom();
+    // Use setTimeout to ensure the DOM has been updated before scrolling
+    // This is especially important on mobile where rendering can be slower
+    const timeoutId = setTimeout(() => {
+      scrollToBottom();
+    }, 0);
+    
+    return () => clearTimeout(timeoutId);
   }, [messages.length, scrollToBottom]); // Use messages.length instead of messages array
 
   // Scroll to bottom on window resize (e.g., mobile keyboard appears)

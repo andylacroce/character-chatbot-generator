@@ -39,13 +39,21 @@ describe("useChatScrollAndFocus", () => {
   }
 
   it("scrolls to bottom when messages change", () => {
+    jest.useFakeTimers();
     const { TestComponent, chatBoxRef } = setup();
     const { rerender } = render(<TestComponent messages={[]} loading={false} />);
     if (chatBoxRef.current) {
       setScrollProps(chatBoxRef.current, { scrollHeight: 500, scrollTop: 0 });
     }
     rerender(<TestComponent messages={[{ id: 1, text: "hi" }]} loading={false} />);
+    
+    // Fast-forward timers to trigger the setTimeout
+    act(() => {
+      jest.runAllTimers();
+    });
+    
     expect(chatBoxRef.current?.scrollTop).toBe(chatBoxRef.current?.scrollHeight);
+    jest.useRealTimers();
   });
 
   it("focuses input on mount", () => {
