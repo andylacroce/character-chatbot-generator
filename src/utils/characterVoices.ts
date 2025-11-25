@@ -337,7 +337,9 @@ function getPersistentVoiceConfig(name: string): CharacterVoiceConfig | null {
   // Only use on server-side
   if (typeof process === 'undefined' || typeof require === 'undefined') return null;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require('path');
     const cacheDir = path.join(process.cwd(), '.voice-cache');
     const cacheFile = path.join(cacheDir, `${name.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
@@ -358,7 +360,9 @@ function setPersistentVoiceConfig(name: string, config: CharacterVoiceConfig): v
   // Only use on server-side
   if (typeof process === 'undefined' || typeof require === 'undefined') return;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require('path');
     const cacheDir = path.join(process.cwd(), '.voice-cache');
     if (!fs.existsSync(cacheDir)) {

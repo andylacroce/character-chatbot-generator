@@ -51,6 +51,31 @@ describe('useSession', () => {
         render(<TestComponent onResult={handleResult} />);
     });
 
+    it('exercises storage error catch block via spy', async () => {
+        // Spy on storage and make it throw to exercise catch block
+        const storage = require('../../../src/utils/storage').default;
+        const setItemSpy = jest.spyOn(storage, 'setItem').mockImplementationOnce(() => {
+            throw new Error('Storage error');
+        });
+
+        // Render hook in proper component
+        function TestWrapper() {
+            const [sessionId] = useSession();
+            return <div>{sessionId}</div>;
+        }
+
+        const { unmount } = render(<TestWrapper />);
+
+        // Wait for effect to run
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Verify setItem was attempted (and threw, exercising catch block)
+        expect(setItemSpy).toHaveBeenCalled();
+
+        setItemSpy.mockRestore();
+        unmount();
+    });
+
     // SSR-specific behavior is tested indirectly elsewhere; attempting to simulate a full SSR
     // environment within the JSDOM-based test runner proved flaky so we avoid a dedicated test here.
 
