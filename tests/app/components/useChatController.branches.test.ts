@@ -56,6 +56,39 @@ describe('useChatController branch coverage', () => {
         mockStorage.getVersionedJSON.mockReturnValue(null);
     });
 
+    it('retries once in non-test env and succeeds on second attempt', async () => {
+        const originalEnv = process.env.NODE_ENV;
+        process.env.NODE_ENV = 'production';
+        try {
+            let callCount = 0;
+            mockAuthenticatedFetch.mockImplementation(() => {
+                callCount += 1;
+                if (callCount === 1) {
+                    return Promise.reject(new Error('First attempt failed'));
+                }
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ reply: 'success on retry', done: true }),
+                });
+            });
+
+            const { result } = renderHook(() => useChatController(mockBot));
+
+            await act(async () => {
+                result.current.setInput('test message');
+            });
+
+            await act(async () => {
+                await result.current.sendMessage();
+            });
+
+            expect(callCount).toBeGreaterThan(1);
+            expect(result.current.error).toBeFalsy();
+        } finally {
+            process.env.NODE_ENV = originalEnv;
+        }
+    });
+
     it('covers voiceConfig retrieval from storage.getItem(chatbot-bot)', async () => {
         // Simulate saved bot with voiceConfig in localStorage
         const savedBot = {

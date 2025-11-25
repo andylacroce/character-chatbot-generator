@@ -93,4 +93,59 @@ describe('useChatController visualViewport keyboard handling', () => {
   expect(['', '0px']).toContain(clearedPad);
     expect(document.documentElement.classList.contains('mobile-keyboard-open')).toBe(false);
   });
+
+  it('renders safely when visualViewport is undefined', () => {
+    (global as unknown as { visualViewport?: VisualViewport }).visualViewport = undefined;
+    (global as unknown as { innerHeight?: number }).innerHeight = 800;
+
+    function Harness() {
+      const ctrl = useChatController(mockBot as unknown as Bot);
+      return (
+        <div>
+          <div data-testid="chat" ref={ctrl.chatBoxRef as unknown as React.Ref<HTMLDivElement>} />
+          <input data-testid="input" ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>} />
+        </div>
+      );
+    }
+
+    const { getByTestId } = render(<Harness />);
+    expect(getByTestId('chat')).toBeTruthy();
+  });
+
+  it('does not add keyboard padding when heightDiff is zero', async () => {
+    const listeners: Record<string, EventListener[]> = {};
+    (global as unknown as { visualViewport?: VisualViewport }).visualViewport = {
+      height: 800,
+      addEventListener: (ev: string, cb: EventListener) => {
+        listeners[ev] = listeners[ev] || [];
+        listeners[ev].push(cb);
+      },
+      removeEventListener: (ev: string, cb: EventListener) => {
+        listeners[ev] = (listeners[ev] || []).filter(f => f !== cb);
+      }
+    } as unknown as VisualViewport;
+    (global as unknown as { innerHeight?: number }).innerHeight = 800;
+
+    function Harness() {
+      const ctrl = useChatController(mockBot as unknown as Bot);
+      return (
+        <div>
+          <div data-testid="chat" ref={ctrl.chatBoxRef as unknown as React.Ref<HTMLDivElement>} />
+          <input data-testid="input" ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>} />
+        </div>
+      );
+    }
+
+    const { getByTestId } = render(<Harness />);
+    const inputEl = getByTestId('input') as HTMLInputElement;
+
+    act(() => {
+      inputEl.dispatchEvent(new Event('focus'));
+    });
+
+    await new Promise(res => setTimeout(res, 80));
+
+    const pad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
+    expect(['', '0px']).toContain(pad);
+  });
 });

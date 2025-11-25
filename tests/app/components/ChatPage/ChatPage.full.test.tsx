@@ -82,6 +82,40 @@ describe("ChatPage full feature coverage", () => {
     await waitFor(() => expect(downloadTranscript).toHaveBeenCalled(), { timeout: 1000 });
   });
 
+  it("plays audio when bot reply has audioFileUrl and audio enabled", async () => {
+    const playSpy = jest.fn();
+    (mockUseAudioPlayer as jest.Mock).mockImplementation(() => ({
+      playAudio: playSpy,
+      stopAudio: jest.fn(),
+      audioRef: { current: null },
+    }));
+    mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: "audio.mp3" }));
+    render(<ChatPage bot={mockBot} />);
+    const input = await screen.findByRole("textbox");
+    await userEvent.type(input, "Hi{Enter}");
+    await waitFor(() => {
+      expect(playSpy).toHaveBeenCalledWith("audio.mp3", expect.any(AbortSignal));
+    });
+  });
+
+  it("does not play audio when disabled via preference", async () => {
+    const playSpy = jest.fn();
+    (mockUseAudioPlayer as jest.Mock).mockImplementation(() => ({
+      playAudio: playSpy,
+      stopAudio: jest.fn(),
+      audioRef: { current: null },
+    }));
+    localStorage.setItem("audioEnabled", "false");
+    mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: "audio.mp3" }));
+    render(<ChatPage bot={mockBot} />);
+    const input = await screen.findByRole("textbox");
+    await userEvent.type(input, "Hi{Enter}");
+    await waitFor(() => {
+      expect(playSpy).not.toHaveBeenCalled();
+    });
+    localStorage.removeItem("audioEnabled");
+  });
+
   it("shows alert if transcript download fails", async () => {
     (downloadTranscript as jest.Mock).mockImplementationOnce(() => { throw new Error("fail"); });
     const originalAlert = window.alert;
