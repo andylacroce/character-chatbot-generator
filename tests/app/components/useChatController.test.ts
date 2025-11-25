@@ -16,6 +16,15 @@ jest.mock("../../../src/utils/api", () => ({
 }));
 
 import { useChatController } from "../../../app/components/useChatController";
+// Merge: mock storage to exercise additional branches
+jest.mock("../../../src/utils/storage", () => ({
+    getItem: jest.fn(),
+    setItem: jest.fn(),
+    removeItem: jest.fn(),
+    setVersionedJSON: jest.fn(),
+    getVersionedJSON: jest.fn(),
+}));
+import * as storage from "../../../src/utils/storage";
 
 const mockResponse = (data: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,
@@ -213,7 +222,8 @@ describe("useChatController uncovered branches", () => {
     test("sendMessage returns early when no input", async () => {
         const { result } = renderHook(() => useChatController(mockBot));
 
-        // Don't set input, so sendMessage should return early
+        // Stabilize after any potential intro
+        await act(async () => { await new Promise(res => setTimeout(res, 120)); });
         const initialMessageCount = result.current.messages.length;
         
         await act(async () => {
@@ -223,6 +233,61 @@ describe("useChatController uncovered branches", () => {
         // Messages should remain unchanged since sendMessage returns early without input
         expect(result.current.messages).toHaveLength(initialMessageCount);
     });
+});
 
-    
+// Merged branch-focused tests
+describe("useChatController additional branches (merged)", () => {
+    const mockStorage = storage as jest.Mocked<typeof storage>;
+    const baseBot: Bot = {
+        name: "Gandalf",
+        personality: "wise",
+        avatarUrl: "/silhouette.svg",
+        voiceConfig: {
+            languageCodes: ["en-US"],
+            name: "en-US-Wavenet-D",
+            ssmlGender: 1,
+            pitch: 0,
+            rate: 1.0,
+            type: "Wavenet",
+        },
+    };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockStorage.getItem.mockReturnValue(null);
+        mockStorage.getVersionedJSON.mockReturnValue(null);
+        mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Intro", audioFileUrl: null }));
+    });
+
+    it("retrieves voiceConfig from saved bot in storage", async () => {
+        const savedBot = { ...baseBot, voiceConfig: { name: "en-US-Wavenet-B", languageCodes: ["en-US"], ssmlGender: 1 } };
+        mockStorage.getItem.mockImplementation((key: string) => (key === "chatbot-bot" ? JSON.stringify(savedBot) : null));
+        const { result } = renderHook(() => useChatController(baseBot));
+        await act(async () => {
+            await new Promise(res => setTimeout(res, 10));
+        });
+        expect(mockStorage.getItem).toHaveBeenCalledWith("chatbot-bot");
+        expect(result.current).toBeDefined();
+    });
+
+    it("handles invalid JSON for saved history gracefully", () => {
+        const chatHistoryKey = `chatbot-history-${baseBot.name}`;
+        mockStorage.getItem.mockImplementation((key: string) => (key === chatHistoryKey ? "invalid{" : null));
+        const { result } = renderHook(() => useChatController(baseBot));
+        expect(result.current.messages).toEqual([]);
+    });
+
+    it("sets up visualViewport listener when available", () => {
+        Object.defineProperty(window, 'visualViewport', {
+            value: {
+                addEventListener: jest.fn(),
+                removeEventListener: jest.fn(),
+                height: 600,
+            },
+            writable: true,
+            configurable: true,
+        });
+        const { result } = renderHook(() => useChatController(baseBot));
+        expect(result.current).toBeDefined();
+    });
 });

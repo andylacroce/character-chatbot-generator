@@ -245,4 +245,42 @@ describe('useBotCreation tests', () => {
     expect(result.current.loading).toBe(false);
     expect(result.current.progress).toBeNull();
   });
+
+  // Merged from branches: SSR/window undefined paths
+  it('SSR: handleCreate works when window is undefined at start', async () => {
+    const originalWindow = (global as unknown as { window?: Window }).window;
+    delete (global as unknown as { window?: Window }).window;
+
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ personality: 'brave warrior' }) });
+    mockGetVoiceConfig.mockResolvedValue({ name: 'en-US-Wavenet-A', languageCodes: ['en-US'] } as VoiceCfg);
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    act(() => { result.current.setInput('TestChar'); });
+    await act(async () => { await result.current.handleCreate(); });
+    (global as unknown as { window?: Window }).window = originalWindow;
+    expect(onBotCreated).toHaveBeenCalled();
+  });
+
+  it('SSR: handleRandomCharacter sets input when window is undefined', async () => {
+    const originalWindow = (global as unknown as { window?: Window }).window;
+    delete (global as unknown as { window?: Window }).window;
+
+    mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ name: 'Random Hero' }) });
+    const { result } = renderHook(() => useBotCreation(() => {}));
+    await act(async () => { await result.current.handleRandomCharacter(); });
+    (global as unknown as { window?: Window }).window = originalWindow;
+    expect(result.current.input).toBe('Random Hero');
+  });
+
+  it('SSR: handleRandomCharacter handles error with window undefined', async () => {
+    const originalWindow = (global as unknown as { window?: Window }).window;
+    delete (global as unknown as { window?: Window }).window;
+
+    mockAuthFetch.mockRejectedValue(new Error('API error'));
+    const { result } = renderHook(() => useBotCreation(() => {}));
+    await act(async () => { await result.current.handleRandomCharacter(); });
+    (global as unknown as { window?: Window }).window = originalWindow;
+    expect(result.current.randomizing).toBe(false);
+  });
 });
