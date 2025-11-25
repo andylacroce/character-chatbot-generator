@@ -37,6 +37,9 @@ coverage/
 # Test keys and local test artifacts
 /tests/api/fake-gcp-key.json
 
+# Voice cache (persistent storage for dynamic voice configs)
+.voice-cache/
+
 # TypeScript build info
 *.tsbuildinfo
 tsconfig.tsbuildinfo

@@ -115,7 +115,8 @@ export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
 };
 
 function normalizeCharacterName(name: string): string {
-  return name.trim().replace(/ +/g, ' ').replace(/(^| )\w/g, c => c.toUpperCase());
+  // Trim, normalize spaces, and capitalize each word (lowercase the rest for consistency)
+  return name.trim().toLowerCase().replace(/ +/g, ' ').replace(/(^| )\w/g, c => c.toUpperCase());
 }
 
 /**
@@ -329,6 +330,51 @@ const GOOGLE_TTS_VOICES = [
 const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
 
 /**
+ * Persistent storage helper for voice configs (server-side).
+ * Uses filesystem for Vercel persistence across cold starts.
+ */
+function getPersistentVoiceConfig(name: string): CharacterVoiceConfig | null {
+  // Only use on server-side
+  if (typeof process === 'undefined' || typeof require === 'undefined') return null;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const cacheDir = path.join(process.cwd(), '.voice-cache');
+    const cacheFile = path.join(cacheDir, `${name.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
+    if (fs.existsSync(cacheFile)) {
+      const data = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+      // Validate cache age (7 days max)
+      if (data.timestamp && Date.now() - new Date(data.timestamp).getTime() < 7 * 24 * 60 * 60 * 1000) {
+        return data.config;
+      }
+    }
+  } catch {
+    // Ignore filesystem errors
+  }
+  return null;
+}
+
+function setPersistentVoiceConfig(name: string, config: CharacterVoiceConfig): void {
+  // Only use on server-side
+  if (typeof process === 'undefined' || typeof require === 'undefined') return;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const cacheDir = path.join(process.cwd(), '.voice-cache');
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+    const cacheFile = path.join(cacheDir, `${name.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
+    fs.writeFileSync(cacheFile, JSON.stringify({
+      config,
+      timestamp: new Date().toISOString()
+    }));
+  } catch {
+    // Ignore filesystem errors
+  }
+}
+
+/**
  * Fetches a description of the character's likely voice from OpenAI.
  * Uses GPT-4o to generate a short, detailed description for TTS matching.
  *
@@ -385,11 +431,12 @@ function findClosestTTSVoice(description: string, genderOverride?: number): Char
   else if (desc.match(/mandarin|chinese|china/)) lang = 'zh-CN';
   else if (desc.match(/cantonese|taiwan/)) lang = 'zh-TW';
 
-  // Gender detection
+  // Gender detection with improved patterns
   let gender = SSML_GENDER.MALE;
-  if (desc.match(/female|woman|girl|lady/)) gender = SSML_GENDER.FEMALE;
-  if (desc.match(/neutral|child|kid|boy|girl/)) gender = SSML_GENDER.NEUTRAL;
-  // If genderOverride is provided, use it
+  if (desc.match(/\bfemale\b|\bwoman\b|\bgirl\b|\blady\b|\bshe\b|\bher\b|feminine/)) gender = SSML_GENDER.FEMALE;
+  else if (desc.match(/\bmale\b|\bman\b|\bguy\b|\bhe\b|\bhim\b|masculine/) && !desc.match(/female/)) gender = SSML_GENDER.MALE;
+  if (desc.match(/neutral|\bchild\b|\bkid\b|androgynous/)) gender = SSML_GENDER.NEUTRAL;
+  // If genderOverride is provided, use it (this takes precedence)
   if (typeof genderOverride === 'number') {
     gender = genderOverride;
   }
@@ -457,6 +504,12 @@ function findClosestTTSVoice(description: string, genderOverride?: number): Char
     if (!match) {
       match = GOOGLE_TTS_VOICES[0];
     }
+    // Validate: if genderOverride was specified, ensure match has correct gender
+    if (typeof genderOverride === 'number' && match.ssmlGender !== genderOverride) {
+      // Try to find ANY voice with the correct gender as last resort
+      const genderMatch = GOOGLE_TTS_VOICES.find(v => v.ssmlGender === genderOverride);
+      if (genderMatch) match = genderMatch;
+    }
     // Always set ssmlGender to match the actual voice
     gender = match.ssmlGender;
   } else {
@@ -502,16 +555,30 @@ function findClosestTTSVoice(description: string, genderOverride?: number): Char
 export async function getVoiceConfigForCharacter(name: string, genderOverride?: string | null): Promise<CharacterVoiceConfig> {
   // Normalize name for lookup (capitalize each word, trim)
   const normalized = normalizeCharacterName(name);
+  
+  // Create cache key that includes gender override to prevent cross-gender cache hits
+  const cacheKey = genderOverride ? `${normalized}_${genderOverride}` : normalized;
+  
   if (CHARACTER_VOICE_MAP[normalized]) {
     // Ensure type is present by matching to GOOGLE_TTS_VOICES
     const staticCfg = CHARACTER_VOICE_MAP[normalized];
     const match = GOOGLE_TTS_VOICES.find(v => v.name === staticCfg.name);
     return match ? { ...staticCfg, type: match.type } : staticCfg;
   }
-  if (dynamicVoiceCache[normalized]) {
-    const cached = dynamicVoiceCache[normalized];
+  
+  // Check in-memory cache first
+  if (dynamicVoiceCache[cacheKey]) {
+    const cached = dynamicVoiceCache[cacheKey];
     const match = GOOGLE_TTS_VOICES.find(v => v.name === cached.name);
     return match ? { ...cached, type: match.type } : cached;
+  }
+  
+  // Check persistent storage (for Vercel cold starts)
+  const persistentConfig = getPersistentVoiceConfig(cacheKey);
+  if (persistentConfig) {
+    dynamicVoiceCache[cacheKey] = persistentConfig;
+    const match = GOOGLE_TTS_VOICES.find(v => v.name === persistentConfig.name);
+    return match ? { ...persistentConfig, type: match.type } : persistentConfig;
   }
   // Dynamically determine voice using OpenAI
   let description = '';
@@ -529,14 +596,20 @@ export async function getVoiceConfigForCharacter(name: string, genderOverride?: 
     else if (genderOverride === 'neutral') genderNum = SSML_GENDER.NEUTRAL;
   }
   const config: CharacterVoiceConfig = findClosestTTSVoice(description, genderNum);
-  dynamicVoiceCache[normalized] = config;
+  
+  // Store in both in-memory and persistent caches (use existing cacheKey from above)
+  dynamicVoiceCache[cacheKey] = config;
+  setPersistentVoiceConfig(cacheKey, config);
+  
   if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
     logger.info("TTS dynamic voice selected", sanitizeLogMeta({
       event: "tts_dynamic_voice",
       requested: name,
       normalized,
+      genderOverride: genderOverride || 'none',
       description,
-      using: config.name
+      using: config.name,
+      gender: config.ssmlGender
     }));
   }
   // Ensure type is present
