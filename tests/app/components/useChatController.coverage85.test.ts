@@ -33,7 +33,6 @@ const mockStorage = storage as jest.Mocked<typeof storage>;
 
 describe('useChatController 85% coverage targets', () => {
     let mockBot: Bot;
-    let mockChatBoxRef: React.RefObject<HTMLDivElement>;
     let originalEnv: string | undefined;
 
     beforeEach(() => {
@@ -55,19 +54,18 @@ describe('useChatController 85% coverage targets', () => {
                 rate: 1,
             },
         };
-        mockChatBoxRef = { current: document.createElement('div') };
         
         mockStorage.getItem.mockReturnValue(null);
         mockStorage.getVersionedJSON.mockReturnValue(null);
     });
 
     afterEach(() => {
-        (process.env as any).NODE_ENV = originalEnv;
+        process.env.NODE_ENV = originalEnv;
     });
 
     it('covers non-test environment retry branch (process.env.NODE_ENV !== test)', async () => {
         // Change to production environment
-        (process.env as any).NODE_ENV = 'production';
+        process.env.NODE_ENV = 'production';
         
         let callCount = 0;
         mockAuthenticatedFetch.mockImplementation(() => {
