@@ -33,10 +33,10 @@ jobs:
       - name: Lint (fail on warnings)
         run: npm run lint -- --max-warnings=0
 
-      - name: Run tests
-        run: npm test -- --runInBand
+      - name: Type check
+        run: npm run type-check
 
-      - name: Run coverage (must pass threshold)
+      - name: Run tests with coverage
         run: npm run test:coverage
 
       - name: Build production bundle
