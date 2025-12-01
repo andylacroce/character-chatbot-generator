@@ -8,6 +8,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from "next";
+import sanitizeFilename from "sanitize-filename";
 import OpenAI from "openai";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import fs from "fs";
@@ -382,7 +383,7 @@ async function handler(
       }
       // --- Audio cache logic ---
       const audioCacheKey = getAudioCacheKey(cachedReply, selectedVoice);
-      const audioFileName = `${audioCacheKey}.mp3`;
+      const audioFileName = sanitizeFilename(`${audioCacheKey}.mp3`);
       const audioFilePath = path.join(tmpDir, audioFileName);
       if (!fs.existsSync(audioFilePath)) {
         try {
@@ -557,7 +558,7 @@ async function handler(
           }
         }
         
-        const audioFileName = `${botName.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.mp3`;
+        const audioFileName = sanitizeFilename(`${botName}_${Date.now()}.mp3`);
         const audioDir = process.env.TTS_TMP_DIR || path.join(process.cwd(), "public", "audio");
         if (!fs.existsSync(audioDir)) {
           fs.mkdirSync(audioDir, { recursive: true });
@@ -719,7 +720,7 @@ async function handler(
     // --- Utility: top-level getAudioCacheKey is defined above and used for caching ---
     // --- Audio cache logic for OpenAI response (cache miss path) ---
     const audioCacheKey = getAudioCacheKey(botReply, selectedVoice);
-    const audioFileName = `${audioCacheKey}.mp3`;
+    const audioFileName = sanitizeFilename(`${audioCacheKey}.mp3`);
     const audioFilePath = path.join(tmpDir, audioFileName);
     if (!fs.existsSync(audioFilePath)) {
       try {

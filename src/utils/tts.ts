@@ -17,6 +17,7 @@ import { GoogleAuth } from 'google-auth-library';
 import fs from "fs";
 import path from "path";
 import logger, { sanitizeLogMeta } from "./logger";
+import sanitizeFilename from "sanitize-filename";
 
 /**
  * Google Cloud service account credentials interface
@@ -160,7 +161,8 @@ export async function synthesizeSpeechToFile({
     throw new Error('Invalid output directory: must reside under system temp');
   }
   // Prevent directory traversal by rejoining basename
-  const safeFile = path.join(outDir, path.basename(resolvedPath));
+  // Additionally sanitize the filename component to remove unsafe characters
+  const safeFile = path.join(outDir, sanitizeFilename(path.basename(resolvedPath)));
   // The API expects languageCode, not languageCodes
   const apiVoice = {
     ...voice,
