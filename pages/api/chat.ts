@@ -144,6 +144,44 @@ function isResponseIncomplete(text: string): boolean {
 }
 
 /**
+ * Checks if a user message is an affirmative response to continue.
+ * @param {string} message - The user's message
+ * @returns {boolean} True if the message is affirmative
+ */
+function isAffirmativeResponse(message: string): boolean {
+  // Remove punctuation and normalize
+  const trimmed = message.trim().toLowerCase().replace(/[!.?,;]+$/g, '');
+  const affirmatives = [
+    'yes', 'yeah', 'yep', 'yup', 'sure', 'ok', 'okay', 'continue', 
+    'go on', 'go ahead', 'please', 'please continue', 'yes please',
+    'yeah please', 'keep going', 'more', 'tell me more'
+  ];
+  
+  return affirmatives.some(aff => trimmed === aff || trimmed.startsWith(aff + ' ') || trimmed.endsWith(' ' + aff));
+}
+
+/**
+ * Checks if a bot response ended with a continuation prompt.
+ * @param {string} text - The bot's response text
+ * @returns {boolean} True if it ends with a continuation prompt
+ */
+function hasContinuationPrompt(text: string): boolean {
+  return text.includes('*Would you like me to continue?*');
+}
+
+/**
+ * Removes the continuation prompt from text.
+ * @param {string} text - The text with continuation prompt
+ * @returns {string} Text without the continuation prompt
+ */
+function removeContinuationPrompt(text: string): string {
+  return text
+    .replace(/\.\.\.\s*\n\n\*Would you like me to continue\?\*\s*$/i, '')
+    .replace(/\n\n\*Would you like me to continue\?\*\s*$/i, '')
+    .trim();
+}
+
+/**
  * Attempts to find a natural stopping point in the text and wrap it gracefully.
  * Looks for the last complete sentence within a reasonable distance from the end.
  * @param {string} text - The text to wrap
@@ -346,9 +384,31 @@ async function handler(
 
     const timestamp = new Date().toISOString();
     
+    // Check if user is requesting continuation of a previous truncated response
+    let isContinuationRequest = false;
+    let modifiedHistory = conversationHistory;
+    
+    if (conversationHistory.length >= 2) {
+      const lastBotMessage = conversationHistory[conversationHistory.length - 1];
+      if (lastBotMessage && lastBotMessage.startsWith('Bot: ')) {
+        const lastBotText = lastBotMessage.replace(/^Bot: /, '');
+        if (hasContinuationPrompt(lastBotText) && isAffirmativeResponse(userMessage)) {
+          isContinuationRequest = true;
+          logger.info(`[Chat API] Detected continuation request | requestId=${requestId}`);
+          
+          // Remove the continuation prompt from the last bot message in history
+          const cleanedBotText = removeContinuationPrompt(lastBotText);
+          modifiedHistory = [
+            ...conversationHistory.slice(0, -1),
+            `Bot: ${cleanedBotText}`
+          ];
+        }
+      }
+    }
+    
     // Implement conversation summarization when history exceeds 50 messages
     let conversationSummary: string | undefined;
-    let limitedHistory = conversationHistory;
+    let limitedHistory = modifiedHistory;
     
     if (conversationHistory.length > 50) {
       // Keep last 20 messages and summarize the rest
@@ -366,8 +426,13 @@ async function handler(
       limitedHistory = recentHistory;
     }
     
+    // Modify the user message for continuation requests
+    const effectiveUserMessage = isContinuationRequest 
+      ? "Please continue from where you left off."
+      : userMessage;
+    
     // Build messages array with correct types
-    const oldMessages = buildOpenAIMessages(limitedHistory.slice(0, -1), userMessage, botName, personality, conversationSummary).slice(1); // skip system prompt
+    const oldMessages = buildOpenAIMessages(limitedHistory.slice(0, -1), effectiveUserMessage, botName, personality, conversationSummary).slice(1); // skip system prompt
     
     // Add prompt caching to system message to reduce costs
     const systemMessage: ChatCompletionMessageParam = {

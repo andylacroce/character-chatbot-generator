@@ -12,9 +12,9 @@ export function getOpenAIModel(type: "text" | "image"): string | { primary: stri
     const vercelEnv = process.env.VERCEL_ENV;
     const isProd = env === "production" || vercelEnv === "production";
     if (type === "text") {
-        // Use gpt-4o-mini everywhere - it's faster, much cheaper per token, and has 128K context
-        // Perfect for short conversational responses and character roleplay
-        return "gpt-4o-mini";
+        // Use gpt-4o in production for best quality and fluency
+        // Use gpt-4o-mini in dev for cost savings during testing
+        return isProd ? "gpt-4o" : "gpt-4o-mini";
     }
     if (type === "image") {
         // Use gpt-image-1/dall-e-3 in prod, dall-e-2/dall-e-3 in dev (cheaper first)

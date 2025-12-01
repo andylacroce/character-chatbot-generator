@@ -21,9 +21,9 @@ describe('getOpenAIModel', () => {
         }
     }
 
-    it('returns gpt-4o-mini for text in production', () => {
+    it('returns gpt-4o for text in production', () => {
         setEnv({ NODE_ENV: 'production', VERCEL_ENV: undefined });
-        expect(getOpenAIModel('text')).toBe('gpt-4o-mini');
+        expect(getOpenAIModel('text')).toBe('gpt-4o');
     });
 
     it('returns gpt-4o-mini for text in development', () => {
@@ -31,9 +31,9 @@ describe('getOpenAIModel', () => {
         expect(getOpenAIModel('text')).toBe('gpt-4o-mini');
     });
 
-    it('returns gpt-4o-mini for text if VERCEL_ENV is production', () => {
+    it('returns gpt-4o for text if VERCEL_ENV is production', () => {
         setEnv({ NODE_ENV: 'development', VERCEL_ENV: 'production' });
-        expect(getOpenAIModel('text')).toBe('gpt-4o-mini');
+        expect(getOpenAIModel('text')).toBe('gpt-4o');
     });
 
     it('returns correct image models in production', () => {
