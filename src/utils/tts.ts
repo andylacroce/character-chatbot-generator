@@ -147,6 +147,20 @@ export async function synthesizeSpeechToFile({
   audioConfig?: protos.google.cloud.texttospeech.v1.IAudioConfig;
 }): Promise<void> {
   const input = ssml ? { ssml: text } : { text };
+  // Sanitize and constrain output path
+  const resolvedPath = path.resolve(filePath);
+  const outDir = path.dirname(resolvedPath);
+  const systemTmp = path.resolve('/tmp');
+  const isMp3 = resolvedPath.toLowerCase().endsWith('.mp3');
+  if (!isMp3) {
+    throw new Error('Output file must have .mp3 extension');
+  }
+  // Ensure output directory is within system temp
+  if (!(outDir.startsWith(systemTmp + path.sep) || outDir === systemTmp)) {
+    throw new Error('Invalid output directory: must reside under system temp');
+  }
+  // Prevent directory traversal by rejoining basename
+  const safeFile = path.join(outDir, path.basename(resolvedPath));
   // The API expects languageCode, not languageCodes
   const apiVoice = {
     ...voice,
@@ -168,14 +182,14 @@ export async function synthesizeSpeechToFile({
       if (!response || !response.audioContent) {
         throw new Error("TTS API response is missing audioContent");
       }
-      fs.writeFileSync(filePath, response.audioContent, "binary");
+      fs.writeFileSync(safeFile, response.audioContent, "binary");
       logger.info("Audio file created", sanitizeLogMeta({
         event: "audio_create",
-        filePath
+        filePath: safeFile
       }));
       // Clean up other .mp3 files in the same temp dir, with strict guards
       try {
-        const tmpDirRaw = path.dirname(filePath);
+        const tmpDirRaw = path.dirname(safeFile);
         const tmpDir = path.resolve(tmpDirRaw);
         const systemTmp = path.resolve('/tmp');
         // Only perform cleanup inside system temp to avoid unsafe deletions
