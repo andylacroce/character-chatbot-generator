@@ -120,10 +120,20 @@ function isResponseIncomplete(text: string): boolean {
   
   // Check for incomplete patterns
   const incompletePatterns = [
-    /\s(and|but|or|so|because|when|where|who|what|how|the|a|an|to|from|with|in|on|at)$/i,
+    // Conjunctions and articles
+    /\s(and|but|or|so|because|when|where|who|what|how|the|a|an|to|from|with|in|on|at|as|if|that|which|while|after|before|since|until|unless|than|though|although)$/i,
+    // Adjectives and determiners that suggest more is coming
+    /\s(most|least|best|worst|first|last|next|only|very|more|less|such|each|every|some|any|all|both|either|neither|my|your|his|her|its|our|their|this|that|these|those)$/i,
+    // Verbs that typically need objects or complements
+    /\s(is|are|was|were|be|been|being|have|has|had|do|does|did|will|would|shall|should|may|might|must|can|could|need|needs|say|says|said|think|thinks|thought|know|knows|knew|see|sees|saw|get|gets|got|make|makes|made|take|takes|took|give|gives|gave|seem|seems|seemed|become|becomes|became)$/i,
+    // Prepositions that need objects
+    /\s(of|for|by|about|like|through|over|between|among|during|without|within|regarding|concerning|including|following|considering|despite)$/i,
+    // Punctuation indicating continuation
     /,\s*$/,  // Ends with comma
     /:\s*$/,  // Ends with colon
+    /;\s*$/,  // Ends with semicolon
     /\s-+\s*$/,  // Ends with dash
+    // Unclosed symbols
     /\([^)]*$/,  // Unclosed parenthesis
     /\[[^\]]*$/,  // Unclosed bracket
     /["'][^"']*$/,  // Unclosed quote
@@ -426,7 +436,7 @@ async function handler(
         const streamResponse = await openai.chat.completions.create({
           model: getOpenAIModel("text"),
           messages,
-          max_tokens: 300,
+          max_tokens: 80,
           temperature: 0.8,
           stream: true,
           // Enable prompt caching for repeated system prompts (beta feature)
@@ -435,6 +445,10 @@ async function handler(
         
         let botReply = '';
         let finishReason = '';
+        let continueAttempts = 0;
+        const MAX_CONTINUE_ATTEMPTS = 3;
+        
+        // Initial stream
         for await (const chunk of streamResponse) {
           const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
@@ -454,33 +468,46 @@ async function handler(
           return;
         }
         
-        // Check if response was cut off and attempt to complete
-        if (finishReason === 'length' || isResponseIncomplete(botReply)) {
-          logger.info(`[Chat API] Streaming response may be incomplete (finish_reason: ${finishReason}), attempting to complete | requestId=${requestId}`);
+        // Loop to continue incomplete streaming responses (max 3 attempts)
+        while (continueAttempts < MAX_CONTINUE_ATTEMPTS && (finishReason === 'length' || isResponseIncomplete(botReply))) {
+          continueAttempts++;
+          logger.info(`[Chat API] Streaming response incomplete (finish_reason: ${finishReason}, attempt ${continueAttempts}/${MAX_CONTINUE_ATTEMPTS}) | requestId=${requestId}`);
           
           try {
+            // On the last attempt, ask to wrap up gracefully instead of continuing
+            const isLastAttempt = continueAttempts === MAX_CONTINUE_ATTEMPTS;
+            const continuePrompt = isLastAttempt 
+              ? "Please complete your thought and bring the story to a satisfying conclusion in 1-2 sentences."
+              : "Please continue your previous response and complete your thought.";
+            
             const continueMessages: ChatCompletionMessageParam[] = [
               ...messages,
               { role: "assistant", content: botReply },
-              { role: "user", content: "Please continue your previous response and complete your thought." }
+              { role: "user", content: continuePrompt }
             ];
             
             const continueStream = await openai.chat.completions.create({
               model: getOpenAIModel("text"),
               messages: continueMessages,
-              max_tokens: 150,
+              max_tokens: 60,
               temperature: 0.8,
               stream: true,
               store: true,
             });
             
             let continuation = '';
+            let continueFinishReason = '';
+            
+            // Stream continuation chunks to client in real-time
             for await (const chunk of continueStream) {
               const content = chunk.choices[0]?.delta?.content || '';
               if (content) {
                 continuation += content;
-                // Send continuation chunks to client
+                // Send continuation chunks to client IMMEDIATELY
                 res.write(`data: ${JSON.stringify({ chunk: content, done: false })}\n\n`);
+              }
+              if (chunk.choices[0]?.finish_reason) {
+                continueFinishReason = chunk.choices[0].finish_reason;
               }
             }
             
@@ -491,11 +518,27 @@ async function handler(
               } else {
                 botReply += ' ' + continuation;
               }
-              logger.info(`[Chat API] Successfully completed streaming response | requestId=${requestId}`);
+              finishReason = continueFinishReason;
+              logger.info(`[Chat API] Appended streaming continuation (finish_reason: ${finishReason}) | requestId=${requestId}`);
+            } else {
+              // No continuation received, break loop
+              logger.info(`[Chat API] No continuation content, breaking loop | requestId=${requestId}`);
+              break;
             }
           } catch (err) {
-            logger.warn(`[Chat API] Failed to complete streaming response, using original | requestId=${requestId}`, { error: err });
+            logger.warn(`[Chat API] Failed to continue streaming response at attempt ${continueAttempts} | requestId=${requestId}`, { error: err });
+            break;
           }
+        }
+        
+        // If still incomplete after all attempts, add a graceful ending
+        if (continueAttempts >= MAX_CONTINUE_ATTEMPTS && (finishReason === 'length' || isResponseIncomplete(botReply))) {
+          const gracefulEnding = "... and so the tale continues, woven into the very fabric of the forest itself!";
+          botReply += gracefulEnding;
+          res.write(`data: ${JSON.stringify({ chunk: gracefulEnding, done: false })}\n\n`);
+          logger.info(`[Chat API] Added graceful ending after ${continueAttempts} attempts | requestId=${requestId}`);
+        } else if (continueAttempts > 0) {
+          logger.info(`[Chat API] Completed streaming response after ${continueAttempts} continuation(s), final length: ${botReply.length} chars | requestId=${requestId}`);
         }
         
         // Generate audio after streaming is complete
@@ -550,7 +593,7 @@ async function handler(
       openai.chat.completions.create({
         model: getOpenAIModel("text"),
         messages,
-        max_tokens: 300,
+        max_tokens: 80,
         temperature: 0.8,
         response_format: { type: "text" },
         // Enable prompt caching for repeated system prompts (beta feature)
@@ -568,25 +611,34 @@ async function handler(
       throw new Error("Invalid response from OpenAI");
     }
     let botReply = result.choices[0]?.message?.content?.trim() ?? "";
-    const finishReason = result.choices[0]?.finish_reason;
+    let finishReason = result.choices[0]?.finish_reason;
     
-    // Check if response was cut off due to length or appears incomplete
-    if (finishReason === 'length' || isResponseIncomplete(botReply)) {
-      logger.info(`[Chat API] Response may be incomplete (finish_reason: ${finishReason}), attempting to complete | requestId=${requestId}`);
+    // Loop to continue incomplete responses (max 3 attempts)
+    let continueAttempts = 0;
+    const MAX_CONTINUE_ATTEMPTS = 3;
+    
+    while (continueAttempts < MAX_CONTINUE_ATTEMPTS && (finishReason === 'length' || isResponseIncomplete(botReply))) {
+      continueAttempts++;
+      logger.info(`[Chat API] Response incomplete (finish_reason: ${finishReason}, attempt ${continueAttempts}/${MAX_CONTINUE_ATTEMPTS}) | requestId=${requestId}`);
       
-      // Try to get a completion by asking the model to continue
       try {
+        // On the last attempt, ask to wrap up gracefully instead of continuing
+        const isLastAttempt = continueAttempts === MAX_CONTINUE_ATTEMPTS;
+        const continuePrompt = isLastAttempt 
+          ? "Please complete your thought and bring the story to a satisfying conclusion in 1-2 sentences."
+          : "Please continue your previous response and complete your thought.";
+        
         const continueMessages: ChatCompletionMessageParam[] = [
           ...messages,
           { role: "assistant", content: botReply },
-          { role: "user", content: "Please continue your previous response and complete your thought." }
+          { role: "user", content: continuePrompt }
         ];
         
         const continueResult = await Promise.race([
           openai.chat.completions.create({
             model: getOpenAIModel("text"),
             messages: continueMessages,
-            max_tokens: 150,  // Smaller limit for continuation
+            max_tokens: 60,
             temperature: 0.8,
             store: true,
           }),
@@ -595,20 +647,36 @@ async function handler(
         
         if (continueResult && typeof continueResult === "object" && !("timeout" in continueResult) && isOpenAIResponse(continueResult)) {
           const continuation = continueResult.choices[0]?.message?.content?.trim() ?? "";
+          finishReason = continueResult.choices[0]?.finish_reason;
+          
           if (continuation) {
-            // Append continuation, but try to be smart about it
+            // Append continuation intelligently
             if (botReply.endsWith(',') || botReply.endsWith(' ')) {
               botReply += continuation;
             } else {
               botReply += ' ' + continuation;
             }
-            logger.info(`[Chat API] Successfully completed response | requestId=${requestId}`);
+            logger.info(`[Chat API] Appended continuation (finish_reason: ${finishReason}) | requestId=${requestId}`);
+          } else {
+            // No continuation received, break loop
+            break;
           }
+        } else {
+          // Timeout or invalid response, break loop
+          break;
         }
       } catch (err) {
-        logger.warn(`[Chat API] Failed to complete response, using original | requestId=${requestId}`, { error: err });
-        // Continue with the original response
+        logger.warn(`[Chat API] Failed to continue response at attempt ${continueAttempts} | requestId=${requestId}`, { error: err });
+        break;
       }
+    }
+    
+    // If still incomplete after all attempts, add a graceful ending
+    if (continueAttempts >= MAX_CONTINUE_ATTEMPTS && (finishReason === 'length' || isResponseIncomplete(botReply))) {
+      botReply += "... and so the tale continues, woven into the very fabric of the forest itself!";
+      logger.info(`[Chat API] Added graceful ending after ${continueAttempts} attempts | requestId=${requestId}`);
+    } else if (continueAttempts > 0) {
+      logger.info(`[Chat API] Completed response after ${continueAttempts} continuation(s) | requestId=${requestId}`);
     }
     
     if (!botReply || botReply.trim() === "") {
