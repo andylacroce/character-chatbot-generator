@@ -149,8 +149,14 @@ function isResponseIncomplete(text: string): boolean {
  * @returns {boolean} True if the message is affirmative
  */
 function isAffirmativeResponse(message: string): boolean {
-  // Remove punctuation and normalize
-  const trimmed = message.trim().toLowerCase().replace(/[!.?,;]+$/g, '');
+  // Remove trailing punctuation and normalize
+  // Use a simple loop instead of regex to avoid ReDoS vulnerability
+  let cleaned = message.trim().toLowerCase();
+  while (cleaned.length > 0 && '!.?,;'.includes(cleaned[cleaned.length - 1])) {
+    cleaned = cleaned.slice(0, -1);
+  }
+  const trimmed = cleaned.trim();
+  
   const affirmatives = [
     'yes', 'yeah', 'yep', 'yup', 'sure', 'ok', 'okay', 'continue', 
     'go on', 'go ahead', 'please', 'please continue', 'yes please',
