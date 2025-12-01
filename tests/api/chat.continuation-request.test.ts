@@ -72,7 +72,7 @@ describe('Chat API Continuation Request Detection', () => {
         'User: Tell me a story',
         'Bot: Once upon a time...\n\n*Would you like me to continue?*'
       ];
-      const userMessage = 'yes';
+      const _userMessage = 'yes';
       
       const lastBotMessage = history[history.length - 1];
       const lastBotText = lastBotMessage.replace(/^Bot: /, '');
@@ -86,7 +86,7 @@ describe('Chat API Continuation Request Detection', () => {
         'User: Tell me a story',
         'Bot: Once upon a time...\n\n*Would you like me to continue?*'
       ];
-      const userMessage = 'tell me about cats instead';
+      const _userMessage = 'tell me about cats instead';
       
       const lastBotMessage = history[history.length - 1];
       const lastBotText = lastBotMessage.replace(/^Bot: /, '');
