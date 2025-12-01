@@ -144,26 +144,52 @@ function isResponseIncomplete(text: string): boolean {
 }
 
 /**
- * Checks if a user message is an affirmative response to continue.
- * @param {string} message - The user's message
- * @returns {boolean} True if the message is affirmative
+ * Uses OpenAI to determine if the user wants to continue the story or has a different instruction.
+ * @param {string} userMessage - The user's message
+ * @param {string} lastBotMessage - The last message from the bot
+ * @returns {Promise<'continue'|'new_instruction'>} The user's intent
  */
-function isAffirmativeResponse(message: string): boolean {
-  // Remove trailing punctuation and normalize
-  // Use a simple loop instead of regex to avoid ReDoS vulnerability
-  let cleaned = message.trim().toLowerCase();
-  while (cleaned.length > 0 && '!.?,;'.includes(cleaned[cleaned.length - 1])) {
-    cleaned = cleaned.slice(0, -1);
+async function interpretUserIntent(userMessage: string, lastBotMessage: string): Promise<'continue' | 'new_instruction'> {
+  try {
+    const interpretation = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // Use mini for fast, cheap intent classification
+      messages: [
+        {
+          role: "system",
+          content: `You are analyzing user intent in a chatbot conversation. The bot just asked "Would you like me to continue?" after telling a story.
+
+Your job: Determine if the user wants to continue the story OR if they have a different instruction.
+
+Respond with ONLY one word:
+- "continue" if the user wants the story to continue (e.g., "yes", "sure", "go on", "more", "keep going", "please continue")
+- "new_instruction" if the user wants something else (e.g., "wrap it up", "end it", "tell me about X instead", "no", "stop")
+
+Examples:
+User: "yes" → continue
+User: "sure" → continue
+User: "more" → continue
+User: "wrap it up" → new_instruction
+User: "yes but wrap it up" → new_instruction
+User: "tell me something else" → new_instruction
+User: "end the story" → new_instruction
+User: "no" → new_instruction`
+        },
+        {
+          role: "user",
+          content: `Bot's last message: "${lastBotMessage.slice(-200)}"\n\nUser's response: "${userMessage}"\n\nWhat is the user's intent?`
+        }
+      ],
+      temperature: 0, // Deterministic
+      max_tokens: 10
+    });
+
+    const intent = interpretation.choices[0]?.message?.content?.trim().toLowerCase();
+    return intent === 'continue' ? 'continue' : 'new_instruction';
+  } catch (error) {
+    logger.error('[Chat API] Error interpreting user intent, defaulting to new_instruction', { error });
+    // On error, treat as new instruction (safer default)
+    return 'new_instruction';
   }
-  const trimmed = cleaned.trim();
-  
-  const affirmatives = [
-    'yes', 'yeah', 'yep', 'yup', 'sure', 'ok', 'okay', 'continue', 
-    'go on', 'go ahead', 'please', 'please continue', 'yes please',
-    'yeah please', 'keep going', 'more', 'tell me more'
-  ];
-  
-  return affirmatives.some(aff => trimmed === aff || trimmed.startsWith(aff + ' ') || trimmed.endsWith(' ' + aff));
 }
 
 /**
@@ -398,16 +424,23 @@ async function handler(
       const lastBotMessage = conversationHistory[conversationHistory.length - 1];
       if (lastBotMessage && lastBotMessage.startsWith('Bot: ')) {
         const lastBotText = lastBotMessage.replace(/^Bot: /, '');
-        if (hasContinuationPrompt(lastBotText) && isAffirmativeResponse(userMessage)) {
-          isContinuationRequest = true;
-          logger.info(`[Chat API] Detected continuation request | requestId=${requestId}`);
-          
-          // Remove the continuation prompt from the last bot message in history
+        if (hasContinuationPrompt(lastBotText)) {
+          // Always clean the continuation prompt from history
           const cleanedBotText = removeContinuationPrompt(lastBotText);
           modifiedHistory = [
             ...conversationHistory.slice(0, -1),
             `Bot: ${cleanedBotText}`
           ];
+          
+          // Use OpenAI to interpret user intent
+          const intent = await interpretUserIntent(userMessage, lastBotText);
+          
+          if (intent === 'continue') {
+            isContinuationRequest = true;
+            logger.info(`[Chat API] Detected continuation request via AI interpretation | requestId=${requestId}`);
+          } else {
+            logger.info(`[Chat API] User provided different instruction after continuation prompt, processing as new request | requestId=${requestId}`);
+          }
         }
       }
     }
@@ -416,10 +449,10 @@ async function handler(
     let conversationSummary: string | undefined;
     let limitedHistory = modifiedHistory;
     
-    if (conversationHistory.length > 50) {
+    if (modifiedHistory.length > 50) {
       // Keep last 20 messages and summarize the rest
-      const recentHistory = conversationHistory.slice(-20);
-      const oldHistory = conversationHistory.slice(0, -20);
+      const recentHistory = modifiedHistory.slice(-20);
+      const oldHistory = modifiedHistory.slice(0, -20);
       
       // Build messages from old history for summarization
       const oldMessages = buildOpenAIMessages(oldHistory, "", botName, personality).slice(1, -1); // exclude system and empty user message
