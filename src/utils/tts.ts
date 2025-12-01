@@ -226,10 +226,16 @@ async function tts(text: string, lang: string): Promise<string> {
     throw new Error('Invalid language code');
   }
   // Generate a temp file path
-  const tmpDir = path.resolve(process.env.TTS_TMP_DIR || '/tmp/test-tts');
+  const baseTmp = process.env.TTS_TMP_DIR || '/tmp/test-tts';
+  const tmpDir = path.resolve(baseTmp);
+  const systemTmp = path.resolve('/tmp');
+  // Ensure tmpDir is within system temp or an allowed directory
+  if (!(tmpDir.startsWith(systemTmp + path.sep) || tmpDir === systemTmp)) {
+    throw new Error('Invalid TTS_TMP_DIR: must reside under system temp');
+  }
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
   const fileName = `test-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`;
-  const filePath = path.join(tmpDir, fileName);
+  const filePath = path.join(tmpDir, path.basename(fileName));
   await synthesizeSpeechToFile({ text, filePath, voice: { languageCodes: [lang] } });
   return filePath;
 }
@@ -239,21 +245,25 @@ async function tts(text: string, lang: string): Promise<string> {
  * @param {string[]} files - Array of file paths.
  */
 function cleanupTempFiles(files: string[]): void {
+  const baseTmp = process.env.TTS_TMP_DIR || '/tmp/test-tts';
+  const allowedDir = path.resolve(baseTmp);
   for (const file of files) {
-    if (file.endsWith('.mp3')) {
-      try {
-        fs.unlinkSync(file);
-        logger.info("Audio file deleted", sanitizeLogMeta({
-          event: "audio_cleanup_deleted",
-          file
-        }));
-      } catch (err) {
-        logger.warn("Audio file delete failed", sanitizeLogMeta({
-          event: "audio_cleanup_failed",
-          file,
-          error: err instanceof Error ? err.message : String(err)
-        }));
-      }
+    // Only allow deletion of .mp3 files inside the allowed temp directory
+    const resolved = path.resolve(file);
+    if (!file.toLowerCase().endsWith('.mp3')) continue;
+    if (!(resolved.startsWith(allowedDir + path.sep) || resolved === allowedDir)) continue;
+    try {
+      fs.unlinkSync(resolved);
+      logger.info("Audio file deleted", sanitizeLogMeta({
+        event: "audio_cleanup_deleted",
+        file: resolved
+      }));
+    } catch (err) {
+      logger.warn("Audio file delete failed", sanitizeLogMeta({
+        event: "audio_cleanup_failed",
+        file: resolved,
+        error: err instanceof Error ? err.message : String(err)
+      }));
     }
   }
 }

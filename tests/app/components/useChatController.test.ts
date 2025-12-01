@@ -233,6 +233,20 @@ describe("useChatController uncovered branches", () => {
         // Messages should remain unchanged since sendMessage returns early without input
         expect(result.current.messages).toHaveLength(initialMessageCount);
     });
+
+    it("health check failure sets apiAvailable=false", async () => {
+        // Route all /api/health calls to failure
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === "/api/health") return Promise.reject(new Error("down"));
+            return Promise.resolve(mockResponse({ ok: true }));
+        });
+        const { result } = renderHook(() => useChatController({ ...mockBot }));
+        await act(async () => {
+            await new Promise(res => setTimeout(res, 50));
+        });
+        expect(result.current.apiAvailable).toBe(false);
+    });
+    // Stream SSE handling and visualViewport cleanup are covered by other tests; focus here on core branches.
 });
 
 // Merged branch-focused tests

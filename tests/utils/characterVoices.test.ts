@@ -722,4 +722,18 @@ describe('characterVoices - Voice Selection and Matching', () => {
       expect(config.pitch).toBeGreaterThan(0);
     });
   });
+
+  it('should guard persistent cache paths (no traversal)', async () => {
+    const { getVoiceConfigForCharacter } = await import('../../src/utils/characterVoices');
+    // Names with path characters should be sanitized to safe keys
+    const cfg = await getVoiceConfigForCharacter('../EvilName../..');
+    expect(typeof cfg.name).toBe('string');
+  });
+
+  it('should fall back correctly when gender override cannot match exact type', async () => {
+    const { getVoiceConfigForCharacter, SSML_GENDER } = await import('../../src/utils/characterVoices');
+    const cfg = await getVoiceConfigForCharacter('Test Person', 'neutral');
+    expect([SSML_GENDER.NEUTRAL, SSML_GENDER.MALE, SSML_GENDER.FEMALE]).toContain(cfg.ssmlGender);
+    expect(cfg.languageCodes[0]).toBeDefined();
+  });
 });

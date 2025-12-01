@@ -342,9 +342,15 @@ function getPersistentVoiceConfig(name: string): CharacterVoiceConfig | null {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require('path');
     const cacheDir = path.join(process.cwd(), '.voice-cache');
-    const cacheFile = path.join(cacheDir, `${name.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
-    if (fs.existsSync(cacheFile)) {
-      const data = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+    const safeKey = name.replace(/[^a-zA-Z0-9]/g, '_');
+    const cacheFile = path.join(cacheDir, `${safeKey}.json`);
+    const resolvedDir = path.resolve(cacheDir);
+    const resolvedFile = path.resolve(cacheFile);
+    if (!resolvedFile.startsWith(resolvedDir + path.sep)) {
+      return null;
+    }
+    if (fs.existsSync(resolvedFile)) {
+      const data = JSON.parse(fs.readFileSync(resolvedFile, 'utf8'));
       // Validate cache age (7 days max)
       if (data.timestamp && Date.now() - new Date(data.timestamp).getTime() < 7 * 24 * 60 * 60 * 1000) {
         return data.config;
@@ -365,11 +371,17 @@ function setPersistentVoiceConfig(name: string, config: CharacterVoiceConfig): v
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const path = require('path');
     const cacheDir = path.join(process.cwd(), '.voice-cache');
-    if (!fs.existsSync(cacheDir)) {
-      fs.mkdirSync(cacheDir, { recursive: true });
+    const resolvedDir = path.resolve(cacheDir);
+    if (!fs.existsSync(resolvedDir)) {
+      fs.mkdirSync(resolvedDir, { recursive: true });
     }
-    const cacheFile = path.join(cacheDir, `${name.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
-    fs.writeFileSync(cacheFile, JSON.stringify({
+    const safeKey = name.replace(/[^a-zA-Z0-9]/g, '_');
+    const cacheFile = path.join(resolvedDir, `${safeKey}.json`);
+    const resolvedFile = path.resolve(cacheFile);
+    if (!resolvedFile.startsWith(resolvedDir + path.sep)) {
+      return;
+    }
+    fs.writeFileSync(resolvedFile, JSON.stringify({
       config,
       timestamp: new Date().toISOString()
     }));
