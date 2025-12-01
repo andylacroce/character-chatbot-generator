@@ -4,7 +4,7 @@ A Next.js + TypeScript app that provides a character-driven chat UI with OpenAI-
 
 ## Key Features
 
-- **Advanced OpenAI Integration**: Uses gpt-4o with streaming responses, conversation summarization, and prompt caching
+- **Advanced OpenAI Integration**: Uses gpt-4o (production) / gpt-4o-mini (dev) with streaming responses, conversation summarization, and prompt caching
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
 - **Structured Outputs**: JSON Schema validation for reliable avatar generation
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 50 messages
@@ -18,11 +18,13 @@ A Next.js + TypeScript app that provides a character-driven chat UI with OpenAI-
 
 This app leverages the latest OpenAI API capabilities:
 
-- **gpt-4o Model**: 128K context window, faster responses, more cost-effective
+- **gpt-4o Model**: Production uses OpenAI's flagship model for best conversational quality and fluency (128K context window)
+- **gpt-4o-mini Model**: Development uses the faster, cheaper variant for cost-effective testing
 - **Streaming Responses**: Real-time message delivery via Server-Sent Events
 - **Structured Outputs**: JSON Schema with strict mode for avatar generation
 - **Prompt Caching**: Reduces costs by caching repeated system prompts
 - **Conversation Summarization**: Maintains context beyond 50 messages automatically
+- **Smart Continuation**: Detects truncated responses and allows seamless story continuation
 
 ## Prerequisites
 
@@ -94,7 +96,7 @@ npm run ci
 
 ### Required
 
-- `OPENAI_API_KEY` — OpenAI API key for chat generation (gpt-4o)
+- `OPENAI_API_KEY` — OpenAI API key for chat generation (gpt-4o in production, gpt-4o-mini in dev)
 - `API_SECRET` — Server-side API secret for request authorization
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON` — Path to GCP JSON key or full JSON content
 
@@ -140,8 +142,10 @@ proxy.ts             # API authentication middleware (Next.js 16)
 2. **Chat Interface**:
    - Real-time streaming responses via Server-Sent Events
    - Automatic conversation summarization for long chats (>50 messages)
+   - Smart continuation detection: when responses are truncated, bot prompts "Would you like me to continue?" and seamlessly resumes when user says "yes"
    - Prompt caching reduces API costs for repeated prompts
    - Character-specific voice synthesis with Google TTS
+   - Production uses gpt-4o for superior conversation quality and natural fluency
 
 3. **Transcripts**: 
    - Clean HTML format with character avatars

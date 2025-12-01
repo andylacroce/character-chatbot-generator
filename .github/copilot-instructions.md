@@ -12,13 +12,15 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
 - **Big picture (files to inspect first)**
   - UI: `app/` — Next.js 16+ app router and React components live in `app/components/`.
   - Server/API: `pages/api/` — server handlers are authoritative (not serverless edge functions).
-    - `pages/api/chat.ts` is the main complex endpoint (OpenAI calls, summarization, prompt caching, SSE streaming, TTS).
+    - `pages/api/chat.ts` is the main complex endpoint (OpenAI calls, summarization, prompt caching, SSE streaming, TTS, continuation detection).
   - Auth/Zones: `proxy.ts` — origin validation and `x-api-key` (`API_SECRET`) enforcement for external requests.
   - Utilities: `src/utils/` — `api.ts`, `tts.ts`, `storage.ts`, `cache.ts`, `logger.ts`, `openaiModelSelector.ts`.
+  - Model Selection: `src/utils/openaiModelSelector.ts` — **Production uses gpt-4o, development uses gpt-4o-mini**.
 
 - **Client → Server flow (common change path)**
   - Client code (e.g. `app/components/useChatController.ts`) calls `authenticatedFetch('/api/chat', ...)` from `src/utils/api.ts`.
-  - `pages/api/chat.ts` performs OpenAI chat, may summarize when history > 50 messages, and can stream via SSE when `{ stream: true }` is passed.
+  - `pages/api/chat.ts` performs OpenAI chat using gpt-4o (prod) or gpt-4o-mini (dev), may summarize when history > 50 messages, and can stream via SSE when `{ stream: true }` is passed.
+  - Smart continuation: detects truncated responses, wraps gracefully with "Would you like me to continue?" prompt, and resumes seamlessly when user says "yes".
   - If TTS is requested, server uses `src/utils/tts.ts` and a stable audio cache key (`getAudioCacheKey`) to avoid re-synthesis.
 
 - **API contract & streaming**
