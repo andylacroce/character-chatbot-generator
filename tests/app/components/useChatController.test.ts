@@ -25,6 +25,24 @@ jest.mock("../../../src/utils/storage", () => ({
     getVersionedJSON: jest.fn(),
 }));
 import * as storage from "../../../src/utils/storage";
+// Helper: create a minimal ReadableStream-like body for SSE parsing
+function makeMockSSEBody(frames: Array<Record<string, unknown>>) {
+    const encoder = new TextEncoder();
+    const chunks = frames.map(f => encoder.encode(`data: ${JSON.stringify(f)}\n\n`));
+    return {
+        getReader() {
+            return {
+                async read(): Promise<{ value?: Uint8Array; done: boolean }> {
+                    if (chunks.length > 0) {
+                        const value = chunks.shift();
+                        return { value, done: false };
+                    }
+                    return { done: true } as { done: boolean };
+                }
+            };
+        }
+    } as unknown as ReadableStream<Uint8Array>;
+}
 
 const mockResponse = (data: unknown, status = 200) => ({
     ok: status >= 200 && status < 300,
@@ -303,5 +321,49 @@ describe("useChatController additional branches (merged)", () => {
         });
         const { result } = renderHook(() => useChatController(baseBot));
         expect(result.current).toBeDefined();
+    });
+
+    it("SSE parsing: accumulates chunks and handles final done frame", async () => {
+        const { result } = renderHook(() => useChatController(baseBot));
+        const frames = [
+            { reply: 'Hello', done: false },
+            { reply: ' world', done: false },
+            { reply: '', audioFileUrl: '/audio/1.mp3', done: true }
+        ];
+        mockAuthenticatedFetch.mockResolvedValueOnce({ ok: true, body: makeMockSSEBody(frames) });
+        await act(async () => {
+            await result.current.sendMessage('hi');
+        });
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+        });
+    });
+
+    it("SSE parsing: handles error frame and sets error state", async () => {
+        const { result } = renderHook(() => useChatController(baseBot));
+        const errorFrame = { error: 'something went wrong', done: true };
+        mockAuthenticatedFetch.mockResolvedValueOnce({ ok: true, body: makeMockSSEBody([errorFrame]) });
+        await act(async () => {
+            await result.current.sendMessage('hi');
+        });
+        expect(result.current.error).toBeTruthy();
+    });
+
+    it("SSE parsing: no audio frame does not set audioFileUrl", async () => {
+        const { result } = renderHook(() => useChatController(baseBot));
+        const frames = [
+            { reply: 'Hello', done: false },
+            { reply: ' there', done: false },
+            { reply: '', done: true }
+        ];
+        mockAuthenticatedFetch.mockResolvedValueOnce({ ok: true, body: makeMockSSEBody(frames) });
+        await act(async () => {
+            await result.current.sendMessage('hi');
+        });
+        await waitFor(() => {
+            const messages = result.current.messages;
+            const anyWithAudio = messages.some(m => !!m.audioFileUrl);
+            expect(anyWithAudio).toBe(false);
+        });
     });
 });

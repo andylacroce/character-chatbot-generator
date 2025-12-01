@@ -173,18 +173,26 @@ export async function synthesizeSpeechToFile({
         event: "audio_create",
         filePath
       }));
-      // Clean up all other .mp3 files in /tmp except the one just created
+      // Clean up other .mp3 files in the same temp dir, with strict guards
       try {
-        const tmpDir = path.dirname(filePath);
-        const newFile = path.basename(filePath);
-        const files = fs.readdirSync(tmpDir);
-        for (const file of files) {
-          if (file.endsWith('.mp3') && file !== newFile) {
+        const tmpDirRaw = path.dirname(filePath);
+        const tmpDir = path.resolve(tmpDirRaw);
+        const systemTmp = path.resolve('/tmp');
+        // Only perform cleanup inside system temp to avoid unsafe deletions
+        if (tmpDir.startsWith(systemTmp + path.sep) || tmpDir === systemTmp) {
+          const newFile = path.basename(filePath);
+          const files = fs.readdirSync(tmpDir);
+          for (const file of files) {
+            // Only target .mp3 files and skip the newly created one
+            if (!file.toLowerCase().endsWith('.mp3') || file === newFile) continue;
             try {
-              fs.unlinkSync(path.join(tmpDir, file));
+              const candidate = path.resolve(path.join(tmpDir, file));
+              // Ensure the resolved candidate remains within the tmpDir boundary
+              if (!(candidate.startsWith(tmpDir + path.sep) || candidate === tmpDir)) continue;
+              fs.unlinkSync(candidate);
               logger.info("Audio file deleted", sanitizeLogMeta({
                 event: "audio_cleanup_deleted",
-                file
+                file: candidate
               }));
             } catch (err) {
               logger.warn("Audio file delete failed", sanitizeLogMeta({
