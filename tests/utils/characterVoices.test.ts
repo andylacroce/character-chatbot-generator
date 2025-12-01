@@ -51,21 +51,46 @@ describe('characterVoices - Voice Selection and Matching', () => {
   beforeEach(() => {
     // Clean up cache directory before each test
     if (fs.existsSync(cacheDir)) {
-      const files = fs.readdirSync(cacheDir);
-      files.forEach(file => {
-        fs.unlinkSync(path.join(cacheDir, file));
-      });
+      try {
+        const files = fs.readdirSync(cacheDir);
+        files.forEach(file => {
+          try {
+            fs.unlinkSync(path.join(cacheDir, file));
+          } catch (err) {
+            // Ignore errors on Windows where files may be locked
+            console.warn(`Could not delete ${file}:`, err);
+          }
+        });
+      } catch (err) {
+        // Ignore if directory doesn't exist or can't be read
+        console.warn('Could not clean cache directory:', err);
+      }
     }
   });
 
   afterAll(() => {
     // Clean up cache directory after all tests
     if (fs.existsSync(cacheDir)) {
-      const files = fs.readdirSync(cacheDir);
-      files.forEach(file => {
-        fs.unlinkSync(path.join(cacheDir, file));
-      });
-      fs.rmdirSync(cacheDir);
+      try {
+        const files = fs.readdirSync(cacheDir);
+        files.forEach(file => {
+          try {
+            fs.unlinkSync(path.join(cacheDir, file));
+          } catch (err) {
+            // Ignore errors on Windows where files may be locked
+            console.warn(`Could not delete ${file}:`, err);
+          }
+        });
+        try {
+          fs.rmdirSync(cacheDir);
+        } catch (err) {
+          // Ignore if directory is not empty or locked
+          console.warn('Could not remove cache directory:', err);
+        }
+      } catch (err) {
+        // Ignore if directory doesn't exist or can't be read
+        console.warn('Could not clean cache directory:', err);
+      }
     }
   });
 

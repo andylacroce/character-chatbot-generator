@@ -21,19 +21,19 @@ describe('getOpenAIModel', () => {
         }
     }
 
-    it('returns gpt-4o for text in production', () => {
+    it('returns gpt-4o-mini for text in production', () => {
         setEnv({ NODE_ENV: 'production', VERCEL_ENV: undefined });
-        expect(getOpenAIModel('text')).toBe('gpt-4o');
+        expect(getOpenAIModel('text')).toBe('gpt-4o-mini');
     });
 
-    it('returns gpt-4o for text in development', () => {
+    it('returns gpt-4o-mini for text in development', () => {
         setEnv({ NODE_ENV: 'development', VERCEL_ENV: undefined });
-        expect(getOpenAIModel('text')).toBe('gpt-4o');
+        expect(getOpenAIModel('text')).toBe('gpt-4o-mini');
     });
 
-    it('returns gpt-4o for text if VERCEL_ENV is production', () => {
+    it('returns gpt-4o-mini for text if VERCEL_ENV is production', () => {
         setEnv({ NODE_ENV: 'development', VERCEL_ENV: 'production' });
-        expect(getOpenAIModel('text')).toBe('gpt-4o');
+        expect(getOpenAIModel('text')).toBe('gpt-4o-mini');
     });
 
     it('returns correct image models in production', () => {

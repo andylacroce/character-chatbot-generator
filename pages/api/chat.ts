@@ -106,6 +106,33 @@ function getAudioCacheKey(text: string, voiceConfig: Record<string, unknown>) {
 }
 
 /**
+ * Checks if a response appears to be incomplete or cut off mid-sentence.
+ * @param {string} text - The text to check
+ * @returns {boolean} True if the response appears incomplete
+ */
+function isResponseIncomplete(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+  
+  // Check if ends with sentence-ending punctuation
+  const endsWithPunctuation = /[.!?。！？][\s"'»]*$/.test(trimmed);
+  if (endsWithPunctuation) return false;
+  
+  // Check for incomplete patterns
+  const incompletePatterns = [
+    /\s(and|but|or|so|because|when|where|who|what|how|the|a|an|to|from|with|in|on|at)$/i,
+    /,\s*$/,  // Ends with comma
+    /:\s*$/,  // Ends with colon
+    /\s-+\s*$/,  // Ends with dash
+    /\([^)]*$/,  // Unclosed parenthesis
+    /\[[^\]]*$/,  // Unclosed bracket
+    /["'][^"']*$/,  // Unclosed quote
+  ];
+  
+  return incompletePatterns.some(pattern => pattern.test(trimmed));
+}
+
+/**
  * Summarizes conversation history when it exceeds the limit.
  * Uses OpenAI to create a concise summary of older messages.
  * @param {ChatCompletionMessageParam[]} messages - The messages to summarize (excluding system prompt)
@@ -151,7 +178,7 @@ async function summarizeConversation(
  */
 function isOpenAIResponse(
   obj: unknown,
-): obj is { choices: { message: { content: string } }[] } {
+): obj is { choices: { message: { content: string }; finish_reason?: string }[] } {
   return (
     obj !== null &&
     typeof obj === "object" &&
@@ -239,7 +266,7 @@ async function handler(
     }
     
     const userMessage = req.body.message;
-    const personality = req.body.personality || `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Keep responses to one paragraph maximum (100-120 words). Be concise and focused.`;
+    const personality = req.body.personality || `You are a character chatbot. Respond as the selected character would, using their style, knowledge, and quirks. Stay in character at all times. Keep responses conversational and engaging (aim for 100-200 words). Be concise but complete your thoughts.`;
     const botName = req.body.botName || "Character";
     const gender = req.body.gender;
     const conversationHistory = req.body.conversationHistory || [];
@@ -399,7 +426,7 @@ async function handler(
         const streamResponse = await openai.chat.completions.create({
           model: getOpenAIModel("text"),
           messages,
-          max_tokens: 150,
+          max_tokens: 300,
           temperature: 0.8,
           stream: true,
           // Enable prompt caching for repeated system prompts (beta feature)
@@ -407,6 +434,7 @@ async function handler(
         });
         
         let botReply = '';
+        let finishReason = '';
         for await (const chunk of streamResponse) {
           const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
@@ -414,12 +442,60 @@ async function handler(
             // Send chunk to client
             res.write(`data: ${JSON.stringify({ chunk: content, done: false })}\n\n`);
           }
+          // Capture finish reason
+          if (chunk.choices[0]?.finish_reason) {
+            finishReason = chunk.choices[0].finish_reason;
+          }
         }
         
         if (!botReply || botReply.trim() === "") {
           res.write(`data: ${JSON.stringify({ error: "Empty response", done: true })}\n\n`);
           res.end();
           return;
+        }
+        
+        // Check if response was cut off and attempt to complete
+        if (finishReason === 'length' || isResponseIncomplete(botReply)) {
+          logger.info(`[Chat API] Streaming response may be incomplete (finish_reason: ${finishReason}), attempting to complete | requestId=${requestId}`);
+          
+          try {
+            const continueMessages: ChatCompletionMessageParam[] = [
+              ...messages,
+              { role: "assistant", content: botReply },
+              { role: "user", content: "Please continue your previous response and complete your thought." }
+            ];
+            
+            const continueStream = await openai.chat.completions.create({
+              model: getOpenAIModel("text"),
+              messages: continueMessages,
+              max_tokens: 150,
+              temperature: 0.8,
+              stream: true,
+              store: true,
+            });
+            
+            let continuation = '';
+            for await (const chunk of continueStream) {
+              const content = chunk.choices[0]?.delta?.content || '';
+              if (content) {
+                continuation += content;
+                // Send continuation chunks to client
+                res.write(`data: ${JSON.stringify({ chunk: content, done: false })}\n\n`);
+              }
+            }
+            
+            if (continuation) {
+              // Append continuation to botReply for audio generation
+              if (botReply.endsWith(',') || botReply.endsWith(' ')) {
+                botReply += continuation;
+              } else {
+                botReply += ' ' + continuation;
+              }
+              logger.info(`[Chat API] Successfully completed streaming response | requestId=${requestId}`);
+            }
+          } catch (err) {
+            logger.warn(`[Chat API] Failed to complete streaming response, using original | requestId=${requestId}`, { error: err });
+          }
         }
         
         // Generate audio after streaming is complete
@@ -474,7 +550,7 @@ async function handler(
       openai.chat.completions.create({
         model: getOpenAIModel("text"),
         messages,
-        max_tokens: 150,
+        max_tokens: 300,
         temperature: 0.8,
         response_format: { type: "text" },
         // Enable prompt caching for repeated system prompts (beta feature)
@@ -491,7 +567,50 @@ async function handler(
       logger.info(`[Chat API] 500 Internal Server Error: Invalid OpenAI response | requestId=${requestId}`);
       throw new Error("Invalid response from OpenAI");
     }
-    const botReply = result.choices[0]?.message?.content?.trim() ?? "";
+    let botReply = result.choices[0]?.message?.content?.trim() ?? "";
+    const finishReason = result.choices[0]?.finish_reason;
+    
+    // Check if response was cut off due to length or appears incomplete
+    if (finishReason === 'length' || isResponseIncomplete(botReply)) {
+      logger.info(`[Chat API] Response may be incomplete (finish_reason: ${finishReason}), attempting to complete | requestId=${requestId}`);
+      
+      // Try to get a completion by asking the model to continue
+      try {
+        const continueMessages: ChatCompletionMessageParam[] = [
+          ...messages,
+          { role: "assistant", content: botReply },
+          { role: "user", content: "Please continue your previous response and complete your thought." }
+        ];
+        
+        const continueResult = await Promise.race([
+          openai.chat.completions.create({
+            model: getOpenAIModel("text"),
+            messages: continueMessages,
+            max_tokens: 150,  // Smaller limit for continuation
+            temperature: 0.8,
+            store: true,
+          }),
+          timeout,
+        ]);
+        
+        if (continueResult && typeof continueResult === "object" && !("timeout" in continueResult) && isOpenAIResponse(continueResult)) {
+          const continuation = continueResult.choices[0]?.message?.content?.trim() ?? "";
+          if (continuation) {
+            // Append continuation, but try to be smart about it
+            if (botReply.endsWith(',') || botReply.endsWith(' ')) {
+              botReply += continuation;
+            } else {
+              botReply += ' ' + continuation;
+            }
+            logger.info(`[Chat API] Successfully completed response | requestId=${requestId}`);
+          }
+        }
+      } catch (err) {
+        logger.warn(`[Chat API] Failed to complete response, using original | requestId=${requestId}`, { error: err });
+        // Continue with the original response
+      }
+    }
+    
     if (!botReply || botReply.trim() === "") {
       logger.info(`[Chat API] 500 Internal Server Error: Empty bot response | requestId=${requestId}`);
       throw new Error("Generated bot response is empty.");
