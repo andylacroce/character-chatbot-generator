@@ -144,6 +144,48 @@ function isResponseIncomplete(text: string): boolean {
 }
 
 /**
+ * Attempts to find a natural stopping point in the text and wrap it gracefully.
+ * Looks for the last complete sentence within a reasonable distance from the end.
+ * @param {string} text - The text to wrap
+ * @param {number} lookbackChars - How many characters from the end to search for a stopping point (default: 200)
+ * @returns {string} The text wrapped at a natural point with a continuation prompt, or original text if no good point found
+ */
+function wrapTextGracefully(text: string, lookbackChars: number = 200): string {
+  const trimmed = text.trim();
+  if (!trimmed) return text;
+  
+  // If text already ends well, no need to wrap
+  if (/[.!?。！？][\s"'»]*$/.test(trimmed)) {
+    return text;
+  }
+  
+  // Look for the last sentence-ending punctuation within lookback range
+  const lookbackStart = Math.max(0, trimmed.length - lookbackChars);
+  const searchSection = trimmed.substring(lookbackStart);
+  
+  // Find all sentence endings in the search section
+  const sentenceEndMatches = [...searchSection.matchAll(/[.!?。！？][\s"'»]*/g)];
+  
+  if (sentenceEndMatches.length > 0) {
+    // Get the last match
+    const lastMatch = sentenceEndMatches[sentenceEndMatches.length - 1];
+    if (lastMatch.index !== undefined) {
+      const cutPoint = lookbackStart + lastMatch.index + lastMatch[0].length;
+      const wrappedText = trimmed.substring(0, cutPoint).trim();
+      
+      // Only use this if we're not cutting off too much (more than 30% of lookback)
+      const cutAmount = trimmed.length - cutPoint;
+      if (cutAmount < lookbackChars * 0.3) {
+        return wrappedText + "\n\n*Would you like me to continue?*";
+      }
+    }
+  }
+  
+  // If no good stopping point found, add continuation prompt to existing text
+  return text.trim() + "...\n\n*Would you like me to continue?*";
+}
+
+/**
  * Summarizes conversation history when it exceeds the limit.
  * Uses OpenAI to create a concise summary of older messages.
  * @param {ChatCompletionMessageParam[]} messages - The messages to summarize (excluding system prompt)
@@ -532,12 +574,17 @@ async function handler(
           }
         }
         
-        // If still incomplete after all attempts, add a graceful ending
+        // If still incomplete after all attempts, wrap gracefully at a natural stopping point
         if (continueAttempts >= MAX_CONTINUE_ATTEMPTS && (finishReason === 'length' || isResponseIncomplete(botReply))) {
-          const gracefulEnding = "... and so the tale continues, woven into the very fabric of the forest itself!";
-          botReply += gracefulEnding;
-          res.write(`data: ${JSON.stringify({ chunk: gracefulEnding, done: false })}\n\n`);
-          logger.info(`[Chat API] Added graceful ending after ${continueAttempts} attempts | requestId=${requestId}`);
+          const originalLength = botReply.length;
+          const wrappedReply = wrapTextGracefully(botReply);
+          const addedText = wrappedReply.substring(originalLength);
+          
+          botReply = wrappedReply;
+          if (addedText) {
+            res.write(`data: ${JSON.stringify({ chunk: addedText, done: false })}\n\n`);
+          }
+          logger.info(`[Chat API] Response wrapped gracefully after ${continueAttempts} attempts | requestId=${requestId}`);
         } else if (continueAttempts > 0) {
           logger.info(`[Chat API] Completed streaming response after ${continueAttempts} continuation(s), final length: ${botReply.length} chars | requestId=${requestId}`);
         }
@@ -672,10 +719,10 @@ async function handler(
       }
     }
     
-    // If still incomplete after all attempts, add a graceful ending
+    // If still incomplete after all attempts, wrap gracefully at a natural stopping point
     if (continueAttempts >= MAX_CONTINUE_ATTEMPTS && (finishReason === 'length' || isResponseIncomplete(botReply))) {
-      botReply += "... and so the tale continues, woven into the very fabric of the forest itself!";
-      logger.info(`[Chat API] Added graceful ending after ${continueAttempts} attempts | requestId=${requestId}`);
+      botReply = wrapTextGracefully(botReply);
+      logger.info(`[Chat API] Response wrapped gracefully after ${continueAttempts} attempts | requestId=${requestId}`);
     } else if (continueAttempts > 0) {
       logger.info(`[Chat API] Completed response after ${continueAttempts} continuation(s) | requestId=${requestId}`);
     }
