@@ -332,11 +332,12 @@ describe("useChatController additional branches (merged)", () => {
         ];
         mockAuthenticatedFetch.mockResolvedValueOnce({ ok: true, body: makeMockSSEBody(frames) });
         await act(async () => {
-            await result.current.sendMessage('hi');
+            result.current.setInput('hi');
+            await result.current.sendMessage();
         });
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        // Allow state to settle after streaming frames
+        await act(async () => {});
+        expect(result.current.loading).toBe(false);
     });
 
     it("SSE parsing: handles error frame and sets error state", async () => {
@@ -344,7 +345,8 @@ describe("useChatController additional branches (merged)", () => {
         const errorFrame = { error: 'something went wrong', done: true };
         mockAuthenticatedFetch.mockResolvedValueOnce({ ok: true, body: makeMockSSEBody([errorFrame]) });
         await act(async () => {
-            await result.current.sendMessage('hi');
+            result.current.setInput('hi');
+            await result.current.sendMessage();
         });
         expect(result.current.error).toBeTruthy();
     });
@@ -358,12 +360,13 @@ describe("useChatController additional branches (merged)", () => {
         ];
         mockAuthenticatedFetch.mockResolvedValueOnce({ ok: true, body: makeMockSSEBody(frames) });
         await act(async () => {
-            await result.current.sendMessage('hi');
+            result.current.setInput('hi');
+            await result.current.sendMessage();
         });
-        await waitFor(() => {
-            const messages = result.current.messages;
-            const anyWithAudio = messages.some(m => !!m.audioFileUrl);
-            expect(anyWithAudio).toBe(false);
-        });
+        // Allow state to settle after streaming frames
+        await act(async () => {});
+        const messages = result.current.messages;
+        const anyWithAudio = messages.some(m => !!m.audioFileUrl);
+        expect(anyWithAudio).toBe(false);
     });
 });

@@ -82,6 +82,14 @@ Run linting:
 npm run lint
 ```
 
+## CI-Style Local Validation
+
+Use a single command to run lint, TypeScript type-check, tests with coverage, and a production build:
+
+```powershell
+npm run ci
+```
+
 ## Environment Variables
 
 ### Required
