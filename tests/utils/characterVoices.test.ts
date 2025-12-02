@@ -20,6 +20,15 @@ jest.mock('../../src/utils/logger', () => ({
   sanitizeLogMeta: (meta: unknown) => meta,
 }));
 
+// Mock TTS client for validation
+const mockSynthesizeSpeech = jest.fn();
+jest.mock('../../src/utils/tts', () => ({
+  getTTSClient: jest.fn(() => ({
+    synthesizeSpeech: mockSynthesizeSpeech
+  })),
+  synthesizeSpeechToFile: jest.fn(),
+}));
+
 // Mock OpenAI to return structured JSON
 const mockOpenAICreate = jest.fn();
 jest.mock('openai', () => {
@@ -58,6 +67,9 @@ describe('characterVoices - Simplified OpenAI → Google TTS Pipeline', () => {
         }
       }]
     });
+
+    // Default TTS validation: accept all voices as valid
+    mockSynthesizeSpeech.mockResolvedValue([{ audioContent: Buffer.from('test') }]);
   });
 
   describe('Basic Voice Selection', () => {
@@ -401,6 +413,117 @@ describe('characterVoices - Simplified OpenAI → Google TTS Pipeline', () => {
       
       // Should fall back to Default
       expect(config.name).toBe(CHARACTER_VOICE_MAP['Default'].name);
+    });
+
+    it('should fix invalid Chinese Wavenet-B voice to Wavenet-C', async () => {
+      // First attempt: return invalid zh-CN-Wavenet-B
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'male',
+              languageCode: 'zh-CN',
+              voiceName: 'zh-CN-Wavenet-B',
+              pitch: 0,
+              rate: 1.0
+            })
+          }
+        }]
+      });
+      
+      // First validation fails (invalid voice)
+      mockSynthesizeSpeech.mockRejectedValueOnce(new Error('Voice does not exist'));
+      
+      // Second attempt: OpenAI corrects to Wavenet-C
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'male',
+              languageCode: 'zh-CN',
+              voiceName: 'zh-CN-Wavenet-C',
+              pitch: 0,
+              rate: 1.0
+            })
+          }
+        }]
+      });
+      
+      // Second validation succeeds
+      mockSynthesizeSpeech.mockResolvedValueOnce([{ audioContent: Buffer.from('test') }]);
+
+      const config = await getVoiceConfigForCharacter('Chinese Character');
+      
+      // Should use the corrected voice
+      expect(config.name).toBe('zh-CN-Wavenet-C');
+      expect(config.languageCodes).toContain('zh-CN');
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(2);
+    });
+
+    it('should reject malformed voice names and retry', async () => {
+      // First attempt: malformed name
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'female',
+              languageCode: 'en-US',
+              voiceName: 'InvalidVoiceName123',
+              pitch: 5,
+              rate: 1.1
+            })
+          }
+        }]
+      });
+      
+      // Second attempt: valid name
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'female',
+              languageCode: 'en-US',
+              voiceName: 'en-US-Wavenet-A',
+              pitch: 5,
+              rate: 1.1
+            })
+          }
+        }]
+      });
+      
+      mockSynthesizeSpeech.mockResolvedValue([{ audioContent: Buffer.from('test') }]);
+
+      const config = await getVoiceConfigForCharacter('Invalid Voice Character');
+      
+      // Should use the corrected voice from retry
+      expect(config.name).toBe('en-US-Wavenet-A');
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(2);
+    });
+
+    it('should retry up to 3 times before falling back to default', async () => {
+      // All attempts return invalid voices
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'male',
+              languageCode: 'en-US',
+              voiceName: 'en-US-Wavenet-Z', // Invalid letter
+              pitch: 0,
+              rate: 1.0
+            })
+          }
+        }]
+      });
+      
+      // All validations fail
+      mockSynthesizeSpeech.mockRejectedValue(new Error('Voice does not exist'));
+
+      const config = await getVoiceConfigForCharacter('Retry Test Character');
+      
+      // Should fall back to Default after 3 attempts
+      expect(config.name).toBe(CHARACTER_VOICE_MAP['Default'].name);
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(3);
     });
   });
 });

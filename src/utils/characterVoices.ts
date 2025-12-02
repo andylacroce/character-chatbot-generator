@@ -65,10 +65,45 @@ interface VoiceConfig {
 }
 
 /**
- * Fetches complete voice configuration from OpenAI.
- * OpenAI returns exact Google TTS voice name, pitch, and rate - no mapping needed.
+ * Validates a voice name by attempting to use it with Google TTS.
+ * Returns true if valid, false if invalid.
  */
-async function fetchVoiceConfigFromOpenAI(name: string): Promise<VoiceConfig> {
+async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): Promise<boolean> {
+  try {
+    const { getTTSClient } = await import('./tts');
+    
+    const client = getTTSClient();
+    
+    // Try to synthesize a very short test phrase
+    const [response] = await client.synthesizeSpeech({
+      input: { text: 'test' },
+      voice: {
+        languageCode,
+        name: voiceName,
+      },
+      audioConfig: {
+        audioEncoding: 'MP3' as const,
+      },
+    });
+    
+    // If we got audio content back, the voice is valid
+    return !!response.audioContent;
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    // Voice doesn't exist or other error
+    logger.info("Voice validation failed", sanitizeLogMeta({
+      voiceName,
+      error: errMsg.substring(0, 100)
+    }));
+    return false;
+  }
+}
+
+/**
+ * Fetches complete voice configuration from OpenAI with retry logic.
+ * If OpenAI returns an invalid voice name, it will retry with error feedback.
+ */
+async function fetchVoiceConfigFromOpenAI(name: string, maxRetries = 3): Promise<VoiceConfig> {
   const OpenAI = (await import('openai')).default;
   const { getOpenAIModel } = await import('./openaiModelSelector');
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -78,45 +113,98 @@ async function fetchVoiceConfigFromOpenAI(name: string): Promise<VoiceConfig> {
 Return ONLY valid JSON with this exact schema:
 {
   "gender": "male" | "female" | "neutral",
-  "languageCode": "<locale>",  // e.g., "en-GB", "en-US", "de-DE", "fr-FR", "ja-JP", etc.
-  "voiceName": "<voice>",      // Full Google TTS voice name, e.g., "en-GB-Wavenet-D", "en-US-Studio-M"
-  "pitch": <number>,            // -20 to +20 semitones (0 = normal, negative = deeper, positive = higher)
+  "languageCode": "<locale>",  // e.g., "en-GB", "en-US", "de-DE", "fr-FR", "ja-JP"
+  "voiceName": "<voice>",      // Full Google TTS voice name, e.g., "en-GB-Wavenet-D"
+  "pitch": <number>,            // -20 to +20 semitones (0 = normal)
   "rate": <number>              // 0.25 to 4.0 (1.0 = normal speed)
 }
 
-Guidelines:
-- gender: Character's presentation
-- languageCode: Match character's cultural/linguistic background
-- voiceName: Choose from Google TTS voices (Studio/Wavenet/Neural2/Standard): https://cloud.google.com/text-to-speech/docs/voices
-  Examples: "en-GB-Wavenet-D", "en-US-Studio-M", "de-DE-Wavenet-B", "fr-FR-Wavenet-A", "ja-JP-Wavenet-B"
-- pitch: Age/depth (-15 to -20 very deep, -8 to -12 deep, -3 to -5 slightly low, 0 normal, 3-6 higher, 8-15 high/youthful, 15-20 child)
-- rate: Speaking style (0.7-0.85 slow/deliberate, 0.9-1.0 measured, 1.0 normal, 1.05-1.2 quick, 1.2-1.4 fast)`;
+Voice naming pattern: <locale>-<type>-<letter>
+Types: Wavenet, Neural2, Studio (US only), Standard
+Examples: en-US-Wavenet-D, en-GB-Wavenet-A, de-DE-Wavenet-B, ja-JP-Wavenet-C
 
-  const userPrompt = `Character: "${name}"
-Provide Google TTS voice configuration as JSON. Consider canonical depiction, cultural context, age, personality.`;
+CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error feedback about an invalid voice, try a different variant.`;
 
-  const completion = await openai.chat.completions.create({
-    model: getOpenAIModel("text"),
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    max_tokens: 150,
-    temperature: 0.3,
-    response_format: { type: "json_object" }
-  });
+  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: `Character: "${name}"\nProvide Google TTS voice configuration as JSON.` }
+  ];
 
-  const content = completion.choices[0]?.message?.content?.trim() || '{}';
-  const config = JSON.parse(content) as VoiceConfig;
-  
-  // Validate and clamp values
-  return {
-    gender: config.gender || 'male',
-    languageCode: config.languageCode || 'en-US',
-    voiceName: config.voiceName || 'en-US-Wavenet-D',
-    pitch: typeof config.pitch === 'number' ? Math.max(-20, Math.min(20, config.pitch)) : 0,
-    rate: typeof config.rate === 'number' ? Math.max(0.25, Math.min(4.0, config.rate)) : 1.0,
-  };
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const completion = await openai.chat.completions.create({
+        model: getOpenAIModel("text"),
+        messages,
+        max_tokens: 150,
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      });
+
+      const content = completion.choices[0]?.message?.content?.trim() || '{}';
+      const config = JSON.parse(content) as VoiceConfig;
+      
+      // Basic validation
+      const voiceNamePattern = /^[a-z]{2}-[A-Z]{2}-(Wavenet|Neural2|Studio|Standard|Journey|News|Polyglot)-[A-Z]$/;
+      if (!config.voiceName || !voiceNamePattern.test(config.voiceName)) {
+        if (attempt < maxRetries) {
+          logger.warn(`Voice name format invalid on attempt ${attempt}, retrying`, sanitizeLogMeta({
+            attempt,
+            providedVoice: config.voiceName
+          }));
+          messages.push(
+            { role: "assistant", content },
+            { role: "user", content: `ERROR: Voice name "${config.voiceName}" is malformed. Use format: <locale>-<type>-<letter> (e.g., en-US-Wavenet-D). Try again with a valid voice.` }
+          );
+          continue;
+        }
+        throw new Error(`Invalid voice name format after ${maxRetries} attempts`);
+      }
+
+      // Validate with actual Google TTS API
+      const isValid = await isValidGoogleTTSVoice(config.voiceName, config.languageCode || 'en-US');
+      
+      if (!isValid) {
+        if (attempt < maxRetries) {
+          logger.warn(`Voice validation failed on attempt ${attempt}, asking OpenAI to try another`, sanitizeLogMeta({
+            attempt,
+            voiceName: config.voiceName,
+            languageCode: config.languageCode
+          }));
+          messages.push(
+            { role: "assistant", content },
+            { role: "user", content: `ERROR: Voice "${config.voiceName}" does not exist in Google TTS. Try a different voice variant (different letter: A, B, C, D, etc.) or type (Wavenet, Neural2, Standard).` }
+          );
+          continue;
+        }
+        throw new Error(`No valid voice found after ${maxRetries} attempts`);
+      }
+
+      // Success! Voice is valid
+      logger.info("Valid voice configuration from OpenAI", sanitizeLogMeta({
+        attempt,
+        voiceName: config.voiceName,
+        languageCode: config.languageCode
+      }));
+
+      return {
+        gender: config.gender || 'male',
+        languageCode: config.languageCode || 'en-US',
+        voiceName: config.voiceName,
+        pitch: typeof config.pitch === 'number' ? Math.max(-20, Math.min(20, config.pitch)) : 0,
+        rate: typeof config.rate === 'number' ? Math.max(0.25, Math.min(4.0, config.rate)) : 1.0,
+      };
+
+    } catch (err) {
+      if (attempt === maxRetries) {
+        throw err;
+      }
+      logger.warn(`Attempt ${attempt} failed, retrying`, sanitizeLogMeta({
+        error: err instanceof Error ? err.message : String(err)
+      }));
+    }
+  }
+
+  throw new Error('Failed to get valid voice config from OpenAI');
 }
 
 /**

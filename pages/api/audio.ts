@@ -140,7 +140,9 @@ async function handler(
         if (isStudio) {
           ssmlText = `<speak>${expectedText}</speak>`;
         } else {
-          ssmlText = `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`;
+          const pitchValue = selectedVoice.pitch || 0;
+          const rateValue = selectedVoice.rate || 1.0;
+          ssmlText = `<speak><prosody pitch=\"${pitchValue}st\" rate=\"${Math.round(rateValue * 100)}%\"> ${expectedText} </prosody></speak>`;
         }
         await synthesizeSpeechToFile({
           text: ssmlText,
@@ -208,7 +210,9 @@ async function handler(
           if (isStudio) {
             ssmlText = `<speak>${expectedText}</speak>`;
           } else {
-            ssmlText = `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${expectedText} </prosody></speak>`;
+            const pitchValue = selectedVoice.pitch || 0;
+            const rateValue = selectedVoice.rate || 1.0;
+            ssmlText = `<speak><prosody pitch=\"${pitchValue}st\" rate=\"${Math.round(rateValue * 100)}%\"> ${expectedText} </prosody></speak>`;
           }
           await synthesizeSpeechToFile({
             text: ssmlText,
@@ -253,7 +257,9 @@ async function handler(
             if (isStudio) {
               ssmlText = `<speak>${originalText}</speak>`;
             } else {
-              ssmlText = `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${originalText} </prosody></speak>`;
+              const pitchValue = voiceConfig.pitch || 0;
+              const rateValue = voiceConfig.rate || 1.0;
+              ssmlText = `<speak><prosody pitch=\"${pitchValue}st\" rate=\"${Math.round(rateValue * 100)}%\"> ${originalText} </prosody></speak>`;
             }
             await synthesizeSpeechToFile({
               text: ssmlText,
@@ -329,7 +335,9 @@ async function handler(
                 if (isStudio) {
                   ssmlText = `<speak>${aiReply}</speak>`;
                 } else {
-                  ssmlText = `<speak><prosody pitch=\"-13st\" rate=\"80%\"> ${aiReply} </prosody></speak>`;
+                  const pitchValue = selectedVoice.pitch || 0;
+                  const rateValue = selectedVoice.rate || 1.0;
+                  ssmlText = `<speak><prosody pitch=\"${pitchValue}st\" rate=\"${Math.round(rateValue * 100)}%\"> ${aiReply} </prosody></speak>`;
                 }
                 await synthesizeSpeechToFile({
                   text: ssmlText,

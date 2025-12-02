@@ -99,7 +99,7 @@ let ttsClient:
  * Returns a singleton instance of the Google Text-to-Speech client.
  * @returns {import("@google-cloud/text-to-speech").TextToSpeechClient}
  */
-function getTTSClient() {
+export function getTTSClient() {
   if (!ttsClient) {
     const authClient = getGoogleAuthClient();
     if (authClient) {
@@ -237,34 +237,6 @@ export async function synthesizeSpeechToFile({
 }
 
 /**
- * Wrapper for TTS synthesis with input validation, as expected by tests.
- * @param {string} text - The text to synthesize.
- * @param {string} lang - The language code (e.g., 'en').
- * @returns {Promise<string>} The path to the generated audio file.
- */
-async function tts(text: string, lang: string): Promise<string> {
-  if (!text || typeof text !== 'string' || !text.trim()) {
-    throw new Error('Invalid or empty text input');
-  }
-  if (!lang || typeof lang !== 'string') {
-    throw new Error('Invalid language code');
-  }
-  // Generate a temp file path
-  const baseTmp = process.env.TTS_TMP_DIR || '/tmp/test-tts';
-  const tmpDir = path.resolve(baseTmp);
-  const systemTmp = path.resolve('/tmp');
-  // Ensure tmpDir is within system temp or an allowed directory
-  if (!(tmpDir.startsWith(systemTmp + path.sep) || tmpDir === systemTmp)) {
-    throw new Error('Invalid TTS_TMP_DIR: must reside under system temp');
-  }
-  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-  const fileName = `test-${Date.now()}-${Math.random().toString(36).slice(2)}.mp3`;
-  const filePath = path.join(tmpDir, path.basename(fileName));
-  await synthesizeSpeechToFile({ text, filePath, voice: { languageCodes: [lang] } });
-  return filePath;
-}
-
-/**
  * Deletes the given list of files if they are .mp3 files.
  * @param {string[]} files - Array of file paths.
  */
@@ -306,4 +278,4 @@ export function __resetSingletonsForTest(overrideCredsFn?: (() => GoogleCredenti
   }
 }
 
-export { getGoogleAuthCredentials, getTTSClient, tts, cleanupTempFiles };
+export { getGoogleAuthCredentials, cleanupTempFiles };
