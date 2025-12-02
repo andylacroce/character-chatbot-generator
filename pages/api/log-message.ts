@@ -8,24 +8,7 @@ import { put, head } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
 import logger, { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
-
-/**
- * Escapes HTML special characters to prevent XSS in logs.
- * @param {string} str - The string to escape.
- * @returns {string} The escaped string.
- */
-function escapeHtml(str: string): string {
-  return str.replace(/[&<>"']/g, function (tag) {
-    const chars: { [key: string]: string } = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    };
-    return chars[tag] || tag;
-  });
-}
+import { escapeHtml } from "../../src/utils/security";
 
 /**
  * Checks if an IP is a valid public IPv4 or IPv6 address.

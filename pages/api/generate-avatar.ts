@@ -67,140 +67,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const OpenAI = (await import("openai")).default;
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
     logEvent("info", "avatar_generate_start", "Avatar generation started", sanitizeLogMeta({ name: sanitizedName }));
-    // Use OpenAI GPT to get a detailed, attribute-rich description with structured outputs
-    let race = null;
-    let gender = null;
-    let other = null;
+    
+    // Build dynamic DALL-E prompt using OpenAI with character analysis
+    let prompt: string;
     try {
+      logEvent("info", "avatar_dalle_prompt_start", "Generating DALL-E prompt via OpenAI");
+      
       const textModel = getOpenAIModel("text");
-      logEvent("info", "avatar_gpt_model", "GPT model selected for avatar", sanitizeLogMeta({ model: textModel }));
-      const gptResponse = await openai.chat.completions.create({
+      const promptGeneration = await openai.chat.completions.create({
         model: textModel,
         messages: [
           {
             role: "system",
-            content: "You are an assistant that provides concise, factual, and explicit physical descriptions of people or fictional characters. Respond with a JSON object with keys: race, gender, other. 'other' should be a brief, distinguishing description (e.g. hair, style, notable features, profession, etc). If unknown, use 'unknown'."
+            content: `You are an expert at creating DALL-E image prompts. Generate a detailed, single-character portrait prompt that avoids multiple people or duplicates. 
+
+CRITICAL: If the character is a well-known person or fictional character, the description MUST accurately match their canonical/real appearance as closely as possible. Do not create generic descriptions - capture their actual likeness, distinctive features, and iconic appearance.`
           },
           {
             role: "user",
-            content: `Describe ${sanitizedName} with keys: race, gender, other.`
+            content: `Create a DALL-E prompt for ${sanitizedName}.
+
+${sanitizedName.toLowerCase().includes('original character') || sanitizedName.toLowerCase().includes('oc ') ? 'This is an original character - create a unique appearance.' : 'If this is a known character or real person, describe their canonical/actual appearance with specific distinctive features. Match their real likeness as closely as possible.'}
+
+Return JSON with these fields:
+- subject: detailed physical description matching their canonical/real appearance (200 chars max)
+- artStyle: appropriate visual style for this character (50 chars max)
+- composition: framing and pose guidance (100 chars max)
+- iconicElements: signature props, clothing, or background elements specific to this character (100 chars max)
+- negativePrompts: what to exclude to ensure single subject (150 chars max)
+- gender: character's gender (for voice matching)`
           }
         ],
-        max_tokens: 100,
-        temperature: 0.2,
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "character_description",
-            strict: true,
-            schema: {
-              type: "object",
-              properties: {
-                race: {
-                  type: "string",
-                  description: "The racial or ethnic background of the character"
-                },
-                gender: {
-                  type: "string",
-                  description: "The gender of the character"
-                },
-                other: {
-                  type: "string",
-                  description: "Brief distinguishing physical features, style, or profession"
-                }
-              },
-              required: ["race", "gender", "other"],
-              additionalProperties: false
-            }
-          }
-        }
+        temperature: 0.3,
+        max_tokens: 300,
+        response_format: { type: "json_object" }
       });
-      const content = gptResponse.choices?.[0]?.message?.content?.trim() || null;
-      if (content) {
-        logEvent("info", "avatar_gpt_response", "GPT response for avatar", sanitizeLogMeta({ content }));
-        try {
-          const parsed = JSON.parse(content);
-          race = parsed.race || null;
-          gender = parsed.gender || null;
-          other = parsed.other || null;
-          logEvent("info", "avatar_gpt_parsed", "Avatar description parsed", sanitizeLogMeta({ race, gender, other }));
-          genderOut = gender;
-        } catch (jsonErr) {
-          logger.warn("Failed to parse GPT JSON:", { error: jsonErr, content });
-        }
-      } else {
-        logEvent("info", "avatar_gpt_response_empty", "GPT response for avatar is empty");
-      }
-    } catch (descErr) {
-      logger.warn("Failed to get description from OpenAI:", { error: descErr });
-    }
-    // Build the likenessRef for DALL-E
-    let likenessRef = null;
-    if (race && gender && other && race !== "unknown" && gender !== "unknown" && other !== "unknown") {
-      likenessRef = `Depict: ${sanitizedName}, a ${race} ${gender}. ${other}.`;
-    } else {
-      likenessRef = `Accurately depict the real or canonical appearance of ${sanitizedName} as seen in reference images.`;
-    }
-    // Stronger negative and positive modifiers to avoid multiple depictions
-    const soloModifiers = "single, solo, alone, isolated, only one subject, no background distractions, centered, close-up portrait, no other people, no duplicates, no reflections, no shadows, no group shots, no collage, no split frames, no multiple versions, no background elements that resemble other characters.";
-    const styleInstruction = `If ${sanitizedName} is a cartoon, animated, or illustrated character, use a matching art style. Otherwise, use a photorealistic style.`;
-    const singleInstruction = `Create a single, centered, close-up portrait of only ${sanitizedName}. ${soloModifiers}`;
-    const negativePrompt = `Exclude: multiple people, extra faces, group shots, duplicate figures, reflections, shadows of other people, collage, split frames, or any representation of more than one version of ${sanitizedName}.`;
 
-    // Assemble prompt in order of importance
-    const maxPromptLength = 1000;
-    const base = `Ultra-detailed portrait of ${sanitizedName}. `;
-    let prompt = base;
-    // Add likenessRef (subject description) first, up to 350 chars
-    const likenessMax = 350;
-    const likeness = likenessRef.slice(0, likenessMax);
-    prompt += likeness + ' ';
-    // Add styleInstruction, up to 120 chars
-    const styleMax = 120;
-    const style = styleInstruction.slice(0, styleMax);
-    prompt += style + ' ';
-    // Add singleInstruction, up to 200 chars
-    const singleMax = 200;
-    const single = singleInstruction.slice(0, singleMax);
-    prompt += single + ' ';
-    // Add negativePrompt, up to 250 chars
-    const negativeMax = 250;
-    const negative = negativePrompt.slice(0, negativeMax);
-    prompt += negative;
-    // If still too long, trim from the end (modifiers/negatives first)
-    if (prompt.length > maxPromptLength) {
-      // Remove negativePrompt first
-      prompt = prompt.replace(negative, '');
-      if (prompt.length > maxPromptLength) {
-        // Remove singleInstruction next
-        prompt = prompt.replace(single, '');
-        if (prompt.length > maxPromptLength) {
-          // Remove styleInstruction next
-          prompt = prompt.replace(style, '');
-          if (prompt.length > maxPromptLength) {
-            // Finally, trim likenessRef as last resort
-            prompt = base + likenessRef.slice(0, maxPromptLength - base.length);
-          }
-        }
+      const promptData = JSON.parse(promptGeneration.choices[0].message.content || "{}");
+      
+      // Extract gender for voice matching
+      genderOut = promptData.gender || null;
+      
+      // Build prompt from structured data with emphasis on canonical likeness
+      prompt = `Accurate likeness of ${sanitizedName}. ${promptData.subject || ""}. ${promptData.iconicElements || ""}. ${promptData.composition || ""}. Style: ${promptData.artStyle || "photorealistic"}. Match canonical appearance exactly. single, solo, alone, centered, close-up portrait, no other people. Exclude: ${promptData.negativePrompts || "multiple people, extra faces, duplicates"}`.trim();
+      
+      // Enforce max length
+      if (prompt.length > 1000) {
+        prompt = prompt.slice(0, 1000);
       }
+      
+      logEvent("info", "avatar_dalle_prompt_generated", "Generated DALL-E prompt", sanitizeLogMeta({ prompt, gender: genderOut }));
+    } catch (promptErr) {
+      logger.warn("Failed to generate dynamic DALL-E prompt, using fallback:", { error: promptErr });
+      // Fallback to simple template with canonical likeness emphasis
+      prompt = `Accurate likeness of ${sanitizedName}. Match their canonical/real appearance exactly. single, solo, alone, centered, close-up portrait, no other people, no duplicates.`;
+      logEvent("info", "avatar_dalle_prompt_fallback", "Using fallback DALL-E prompt", sanitizeLogMeta({ prompt }));
     }
-    prompt = prompt.trim();
-    logEvent("info", "avatar_dalle_prompt", "Avatar prompt for DALL-E", sanitizeLogMeta({ prompt }));
 
     const imageModels = getOpenAIModel("image");
     logEvent("info", "avatar_image_models", "Avatar image models selected", sanitizeLogMeta({
-      nodeEnv: process.env.NODE_ENV,
-      vercelEnv: process.env.VERCEL_ENV,
       primary: imageModels.primary,
       fallback: imageModels.fallback
     }));
-    logEvent("info", "avatar_model_selection", "Avatar model selection", sanitizeLogMeta({
-      text: getOpenAIModel("text"),
-      imagePrimary: imageModels.primary,
-      imageFallback: imageModels.fallback,
-      nodeEnv: process.env.NODE_ENV,
-      vercelEnv: process.env.VERCEL_ENV
-    }));
+    
     // Helper to get image from OpenAI, handling both URL and base64 (data URL) responses
     async function getOpenAIImage(model: string) {
       // gpt-image-1 only supports base64 (b64_json), not URL, but does NOT accept response_format param at all

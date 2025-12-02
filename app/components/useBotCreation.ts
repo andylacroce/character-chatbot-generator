@@ -3,7 +3,6 @@ import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter
 import { authenticatedFetch } from "../../src/utils/api";
 import type { Bot } from "./BotCreator";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
-import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 
 type ProgressStep = "personality" | "avatar" | "voice" | null;
 
@@ -118,7 +117,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         setLoadingMessage: (msg: string | null) => void,
         cancelRequested: MutableRefObject<boolean>
     ): Promise<Bot> {
-        let personality = generatePersonalityPrompt(originalInputName);
+        let personality = `You are ${originalInputName}. Stay in character.`;
         let correctedName = originalInputName;
         onProgress("personality");
         setLoadingMessage("Creating personality");

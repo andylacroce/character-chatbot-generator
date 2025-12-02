@@ -7,7 +7,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
 import rateLimit from "express-rate-limit";
-import { sanitizeForDisplay } from "../../src/utils/security";
+import { sanitizeForDisplay, escapeHtml } from "../../src/utils/security";
 
 export const config = {
   api: {
@@ -239,20 +239,6 @@ export default async function handler(
   // CodeQL [js/reflected-xss] - All user inputs are validated and properly HTML-escaped before insertion into the HTML template
   res.status(200).send(htmlTranscript);
   logger.info(`[Transcript API] 200 OK: Transcript sent for display, messages=${messages.length}`);
-}
-
-// Helper for HTML escaping
-export function escapeHtml(str: string): string {
-  return str.replace(/[&<>"']/g, function (tag) {
-    const chars: { [key: string]: string } = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    };
-    return chars[tag] || tag;
-  });
 }
 
 // Helper for validating avatar URL
