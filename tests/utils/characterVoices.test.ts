@@ -1,6 +1,6 @@
 /**
- * Tests for character voice configuration and selection logic.
- * Ensures gender/accent matching, caching, and persistence work correctly.
+ * Tests for character voice configuration with OpenAI structured output.
+ * Tests the simplified OpenAI → Google TTS pipeline.
  */
 
 import { 
@@ -8,10 +8,8 @@ import {
   CHARACTER_VOICE_MAP, 
   SSML_GENDER
 } from '../../src/utils/characterVoices';
-import fs from 'fs';
-import path from 'path';
 
-// Mock dependencies
+// Mock logger
 jest.mock('../../src/utils/logger', () => ({
   __esModule: true,
   default: {
@@ -22,19 +20,15 @@ jest.mock('../../src/utils/logger', () => ({
   sanitizeLogMeta: (meta: unknown) => meta,
 }));
 
+// Mock OpenAI to return structured JSON
+const mockOpenAICreate = jest.fn();
 jest.mock('openai', () => {
   return {
     __esModule: true,
     default: jest.fn().mockImplementation(() => ({
       chat: {
         completions: {
-          create: jest.fn().mockResolvedValue({
-            choices: [{
-              message: {
-                content: 'A deep, authoritative American male voice.',
-              }
-            }]
-          })
+          create: mockOpenAICreate
         }
       }
     }))
@@ -45,695 +39,368 @@ jest.mock('../../src/utils/openaiModelSelector', () => ({
   getOpenAIModel: jest.fn(() => 'gpt-4o-mini'),
 }));
 
-describe('characterVoices - Voice Selection and Matching', () => {
-  const cacheDir = path.join(process.cwd(), '.voice-cache');
+describe('characterVoices - Simplified OpenAI → Google TTS Pipeline', () => {
 
   beforeEach(() => {
-    // Clean up cache directory before each test
-    if (fs.existsSync(cacheDir)) {
-      try {
-        const files = fs.readdirSync(cacheDir);
-        files.forEach(file => {
-          try {
-            fs.unlinkSync(path.join(cacheDir, file));
-          } catch (err) {
-            // Ignore errors on Windows where files may be locked
-            console.warn(`Could not delete ${file}:`, err);
-          }
-        });
-      } catch (err) {
-        // Ignore if directory doesn't exist or can't be read
-        console.warn('Could not clean cache directory:', err);
-      }
-    }
-  });
-
-  afterAll(() => {
-    // Clean up cache directory after all tests
-    if (fs.existsSync(cacheDir)) {
-      try {
-        const files = fs.readdirSync(cacheDir);
-        files.forEach(file => {
-          try {
-            fs.unlinkSync(path.join(cacheDir, file));
-          } catch (err) {
-            // Ignore errors on Windows where files may be locked
-            console.warn(`Could not delete ${file}:`, err);
-          }
-        });
-        try {
-          fs.rmdirSync(cacheDir);
-        } catch (err) {
-          // Ignore if directory is not empty or locked
-          console.warn('Could not remove cache directory:', err);
+    jest.clearAllMocks();
+    
+    // Default mock: return a valid American male voice config
+    mockOpenAICreate.mockResolvedValue({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            gender: 'male',
+            languageCode: 'en-US',
+            voiceName: 'en-US-Wavenet-D',
+            pitch: 0,
+            rate: 1.0
+          })
         }
-      } catch (err) {
-        // Ignore if directory doesn't exist or can't be read
-        console.warn('Could not clean cache directory:', err);
-      }
-    }
+      }]
+    });
   });
 
-  describe('Static Voice Mapping', () => {
-    it('should return correct voice config for known characters', async () => {
-      const config = await getVoiceConfigForCharacter('Einstein');
-      expect(config.name).toBe('de-DE-Wavenet-B');
-      expect(config.languageCodes).toContain('de-DE');
-      expect(config.ssmlGender).toBe(SSML_GENDER.MALE);
-      expect(config.type).toBe('Wavenet');
+  describe('Basic Voice Selection', () => {
+    it('should return default voice from CHARACTER_VOICE_MAP', () => {
+      const defaultVoice = CHARACTER_VOICE_MAP['Default'];
+      expect(defaultVoice).toBeDefined();
+      expect(defaultVoice.name).toBe('en-GB-Wavenet-D');
+      expect(defaultVoice.ssmlGender).toBe(SSML_GENDER.MALE);
     });
 
-    it('should handle character name case insensitivity', async () => {
-      // Static characters should return the same config regardless of case
-      const config1 = await getVoiceConfigForCharacter('shakespeare');
-      const config2 = await getVoiceConfigForCharacter('SHAKESPEARE');
-      const config3 = await getVoiceConfigForCharacter('Shakespeare');
+    it('should get voice config from OpenAI for unknown character', async () => {
+      const config = await getVoiceConfigForCharacter('Test Character');
       
-      expect(config1.name).toBe(config2.name);
-      expect(config2.name).toBe(config3.name);
-      expect(config1.name).toBe('en-GB-Wavenet-B'); // Shakespeare's voice
-    });
-
-    it('should return voice config for Yoda with correct pitch', async () => {
-      const config = await getVoiceConfigForCharacter('Yoda');
-      expect(config.name).toBe('en-US-Wavenet-B');
-      expect(config.pitch).toBe(5);
-      expect(config.rate).toBe(0.85);
-    });
-
-    it('should return voice config for Ada Lovelace (female)', async () => {
-      const config = await getVoiceConfigForCharacter('Ada Lovelace');
-      expect(config.ssmlGender).toBe(SSML_GENDER.FEMALE);
-      expect(config.languageCodes).toContain('en-GB');
-    });
-  });
-
-  describe('Dynamic Voice Selection', () => {
-    it('should generate voice config for unknown character', async () => {
-      const config = await getVoiceConfigForCharacter('Unknown Character');
+      expect(mockOpenAICreate).toHaveBeenCalled();
       expect(config).toBeDefined();
-      expect(config.name).toBeDefined();
-      expect(config.ssmlGender).toBeDefined();
-      expect(config.languageCodes).toBeDefined();
+      expect(config.name).toBe('en-US-Wavenet-D');
+      expect(config.ssmlGender).toBe(SSML_GENDER.MALE);
+      expect(config.pitch).toBe(0);
+      expect(config.rate).toBe(1.0);
     });
 
-    it('should cache dynamically generated voice config', async () => {
-      const config1 = await getVoiceConfigForCharacter('Test Character');
-      const config2 = await getVoiceConfigForCharacter('Test Character');
+    it('should cache voice config to avoid duplicate OpenAI calls', async () => {
+      await getVoiceConfigForCharacter('Cached Character');
+      await getVoiceConfigForCharacter('Cached Character');
       
-      expect(config1.name).toBe(config2.name);
-      expect(config1.ssmlGender).toBe(config2.ssmlGender);
+      // OpenAI should only be called once
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
     });
 
-    it('should persist voice config to filesystem for Vercel cold starts', async () => {
-      const characterName = 'Persistent Character';
-      const config = await getVoiceConfigForCharacter(characterName);
+    it('should fall back to Default voice on OpenAI error', async () => {
+      mockOpenAICreate.mockRejectedValue(new Error('OpenAI API error'));
       
-      // Check that cache file was created
-      const cacheFile = path.join(cacheDir, `${characterName.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
-      expect(fs.existsSync(cacheFile)).toBe(true);
+      const config = await getVoiceConfigForCharacter('Error Character');
       
-      // Verify cache content
-      const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-      expect(cached.config.name).toBe(config.name);
-      expect(cached.timestamp).toBeDefined();
+      expect(config.name).toBe(CHARACTER_VOICE_MAP['Default'].name);
+      expect(config.ssmlGender).toBe(SSML_GENDER.MALE);
     });
   });
 
-  describe('Gender Override Functionality', () => {
-    it('should respect gender override for male voice', async () => {
-      const config = await getVoiceConfigForCharacter('Test Person', 'male');
-      expect(config.ssmlGender).toBe(SSML_GENDER.MALE);
-    });
-
+  describe('Gender Override', () => {
     it('should respect gender override for female voice', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'male', // OpenAI returns male
+              languageCode: 'en-US',
+              voiceName: 'en-US-Wavenet-D',
+              pitch: 0,
+              rate: 1.0
+            })
+          }
+        }]
+      });
+
       const config = await getVoiceConfigForCharacter('Test Person', 'female');
+      
+      // Gender override should change the ssmlGender
       expect(config.ssmlGender).toBe(SSML_GENDER.FEMALE);
     });
 
-    it('should respect gender override for neutral voice', async () => {
-      const config = await getVoiceConfigForCharacter('Test Person Neutral', 'neutral');
-      // Note: Neutral voices are rare, so we validate that the request was made
-      // The actual voice may fall back to male/female if no neutral voice is available
-      expect(config.ssmlGender).toBeDefined();
-      expect([SSML_GENDER.NEUTRAL, SSML_GENDER.MALE, SSML_GENDER.FEMALE]).toContain(config.ssmlGender);
-    });
+    it('should cache different configs for different genders', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'male',
+              languageCode: 'en-US',
+              voiceName: 'en-US-Wavenet-D',
+              pitch: 0,
+              rate: 1.0
+            })
+          }
+        }]
+      });
 
-    it('should cache different configs for same character with different genders', async () => {
-      const configMale = await getVoiceConfigForCharacter('Ambiguous Name', 'male');
-      const configFemale = await getVoiceConfigForCharacter('Ambiguous Name', 'female');
+      await getVoiceConfigForCharacter('Ambiguous Name', 'male');
+      await getVoiceConfigForCharacter('Ambiguous Name', 'female');
       
-      expect(configMale.ssmlGender).toBe(SSML_GENDER.MALE);
-      expect(configFemale.ssmlGender).toBe(SSML_GENDER.FEMALE);
-      expect(configMale.name).not.toBe(configFemale.name);
-    });
-
-    it('should create separate persistent cache files for gender overrides', async () => {
-      await getVoiceConfigForCharacter('Cache Test', 'male');
-      await getVoiceConfigForCharacter('Cache Test', 'female');
-      
-      const maleCacheFile = path.join(cacheDir, 'Cache_Test_male.json');
-      const femaleCacheFile = path.join(cacheDir, 'Cache_Test_female.json');
-      
-      expect(fs.existsSync(maleCacheFile)).toBe(true);
-      expect(fs.existsSync(femaleCacheFile)).toBe(true);
+      // Should call OpenAI twice for different cache keys
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('Voice Type Detection', () => {
-    it('should include type field in returned config', async () => {
-      const config = await getVoiceConfigForCharacter('Default');
-      expect(config.type).toBeDefined();
-      expect(['Wavenet', 'Studio', 'Neural2', 'Standard']).toContain(config.type);
-    });
-
-    it('should detect Studio voices correctly', async () => {
-      // Mock OpenAI to return description suggesting high-quality voice
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A professional, expressive American male voice with high quality.',
-                }
-              }]
+    it('should detect Studio voice type', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'female',
+              languageCode: 'en-US',
+              voiceName: 'en-US-Studio-M',
+              pitch: 2,
+              rate: 1.1
             })
           }
-        }
-      }));
-
-      const config = await getVoiceConfigForCharacter('Professional Speaker');
-      expect(config.type).toBeDefined();
-    });
-  });
-
-  describe('Persistent Cache Behavior', () => {
-    it('should load voice config from persistent cache on subsequent calls', async () => {
-      const characterName = 'Persistent Test';
-      
-      // First call - generates and caches
-      const config1 = await getVoiceConfigForCharacter(characterName);
-      
-      // Manually verify cache file exists
-      const cacheFile = path.join(cacheDir, `${characterName.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
-      expect(fs.existsSync(cacheFile)).toBe(true);
-      
-      // Second call - should load from persistent cache
-      // Clear in-memory cache to force loading from filesystem
-      const _characterVoices = require('../../src/utils/characterVoices');
-      const config2 = await getVoiceConfigForCharacter(characterName);
-      
-      expect(config1.name).toBe(config2.name);
-    });
-
-    it('should invalidate cache older than 7 days', async () => {
-      const characterName = 'Old Cache Test';
-      const cacheFile = path.join(cacheDir, `${characterName.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
-      
-      // Create cache directory if it doesn't exist
-      if (!fs.existsSync(cacheDir)) {
-        fs.mkdirSync(cacheDir, { recursive: true });
-      }
-      
-      // Create old cache file (8 days old)
-      const oldTimestamp = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
-      fs.writeFileSync(cacheFile, JSON.stringify({
-        config: {
-          languageCodes: ['en-US'],
-          name: 'en-US-Old-Voice',
-          ssmlGender: SSML_GENDER.MALE,
-        },
-        timestamp: oldTimestamp
-      }));
-      
-      // Should generate new config since cache is too old
-      const config = await getVoiceConfigForCharacter(characterName);
-      expect(config.name).not.toBe('en-US-Old-Voice');
-    });
-
-    it('should handle missing cache directory gracefully', async () => {
-      // Remove cache directory
-      if (fs.existsSync(cacheDir)) {
-        const files = fs.readdirSync(cacheDir);
-        files.forEach(file => fs.unlinkSync(path.join(cacheDir, file)));
-        fs.rmdirSync(cacheDir);
-      }
-      
-      // Should still work and recreate directory
-      const config = await getVoiceConfigForCharacter('No Cache Dir Test');
-      expect(config).toBeDefined();
-      expect(fs.existsSync(cacheDir)).toBe(true);
-    });
-  });
-
-  describe('Edge Cases and Error Handling', () => {
-    it('should handle empty character name', async () => {
-      const config = await getVoiceConfigForCharacter('');
-      expect(config).toBeDefined();
-      expect(config.name).toBeDefined();
-    });
-
-    it('should handle special characters in character name', async () => {
-      const config = await getVoiceConfigForCharacter('Test@Character#123!');
-      expect(config).toBeDefined();
-    });
-
-    it('should handle very long character names', async () => {
-      const longName = 'A'.repeat(500);
-      const config = await getVoiceConfigForCharacter(longName);
-      expect(config).toBeDefined();
-    });
-
-    it('should fallback gracefully if OpenAI fails', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockRejectedValue(new Error('OpenAI API error'))
-          }
-        }
-      }));
-
-      const config = await getVoiceConfigForCharacter('Fallback Test');
-      expect(config).toBeDefined();
-      expect(config.name).toBeDefined();
-    });
-
-    it('should handle null gender override', async () => {
-      const config = await getVoiceConfigForCharacter('Test Character', null);
-      expect(config).toBeDefined();
-    });
-
-    it('should handle undefined gender override', async () => {
-      const config = await getVoiceConfigForCharacter('Test Character', undefined);
-      expect(config).toBeDefined();
-    });
-  });
-
-  describe('Name Normalization', () => {
-    it('should normalize character names consistently', async () => {
-      const config1 = await getVoiceConfigForCharacter('  sherlock  holmes  ');
-      const config2 = await getVoiceConfigForCharacter('sherlock holmes');
-      const config3 = await getVoiceConfigForCharacter('SHERLOCK HOLMES');
-      
-      // All should resolve to same config (from cache)
-      expect(config1.name).toBe(config2.name);
-      expect(config2.name).toBe(config3.name);
-    });
-  });
-
-  describe('Language and Accent Detection', () => {
-    it('should select appropriate accent based on character description', async () => {
-      const OpenAI = require('openai').default;
-      
-      // Test British accent
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A distinguished British male voice with a London accent.',
-                }
-              }]
-            })
-          }
-        }
-      }));
-      
-      const britishConfig = await getVoiceConfigForCharacter('British Person');
-      expect(britishConfig.languageCodes[0]).toMatch(/^en-GB/);
-    });
-
-    it('should handle German accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A German male voice with strong German accent.',
-                }
-              }]
-            })
-          }
-        }
-      }));
-      
-      const germanConfig = await getVoiceConfigForCharacter('German Person');
-      expect(germanConfig.languageCodes[0]).toMatch(/^de-/);
-    });
-
-    it('should handle French accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A French female voice with Parisian accent.',
-                }
-              }]
-            })
-          }
-        }
-      }));
-      
-      const frenchConfig = await getVoiceConfigForCharacter('French Person');
-      expect(frenchConfig.languageCodes[0]).toMatch(/^fr-/);
-    });
-  });
-
-  describe('SSML Gender Constants', () => {
-    it('should have correct SSML_GENDER values', () => {
-      expect(SSML_GENDER.NEUTRAL).toBe(0);
-      expect(SSML_GENDER.MALE).toBe(1);
-      expect(SSML_GENDER.FEMALE).toBe(2);
-      expect(SSML_GENDER.UNSPECIFIED).toBe(3);
-    });
-  });
-
-  describe('CHARACTER_VOICE_MAP Coverage', () => {
-    it('should have voice configs for common characters', () => {
-      expect(CHARACTER_VOICE_MAP['Default']).toBeDefined();
-      expect(CHARACTER_VOICE_MAP['Einstein']).toBeDefined();
-      expect(CHARACTER_VOICE_MAP['Yoda']).toBeDefined();
-      expect(CHARACTER_VOICE_MAP['Shakespeare']).toBeDefined();
-    });
-
-    it('should have type field in all static configs', () => {
-      Object.values(CHARACTER_VOICE_MAP).forEach(config => {
-        expect(config.type).toBeDefined();
+        }]
       });
+
+      const config = await getVoiceConfigForCharacter('Studio Character');
+      
+      expect(config.type).toBe('Studio');
+      expect(config.name).toBe('en-US-Studio-M');
+    });
+
+    it('should detect Wavenet voice type', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'male',
+              languageCode: 'en-GB',
+              voiceName: 'en-GB-Wavenet-B',
+              pitch: -3,
+              rate: 0.95
+            })
+          }
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('British Character');
+      
+      expect(config.type).toBe('Wavenet');
+      expect(config.name).toBe('en-GB-Wavenet-B');
+    });
+
+    it('should detect Neural2 voice type', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'female',
+              languageCode: 'en-US',
+              voiceName: 'en-US-Neural2-F',
+              pitch: 5,
+              rate: 1.2
+            })
+          }
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Neural Character');
+      
+      expect(config.type).toBe('Neural2');
+      expect(config.name).toBe('en-US-Neural2-F');
     });
   });
 
-  describe('Advanced Voice Matching Logic', () => {
-    it('should handle pitch modifications for old/deep/high voices', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A deep, elderly male voice.',
-                }
-              }]
+  describe('Language Support', () => {
+    it('should support German voices', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'male',
+              languageCode: 'de-DE',
+              voiceName: 'de-DE-Wavenet-B',
+              pitch: -2,
+              rate: 1.0
             })
           }
-        }
-      }));
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Helmut Schmidt');
       
-      const config = await getVoiceConfigForCharacter('Deep Old Voice');
-      expect(config.pitch).toBeLessThan(0);
+      expect(config.languageCodes[0]).toBe('de-DE');
+      expect(config.name).toBe('de-DE-Wavenet-B');
     });
 
-    it('should handle Chirp/HD/expressive voice types', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A highly expressive and emotional American voice.',
-                }
-              }]
+    it('should support French voices', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'female',
+              languageCode: 'fr-FR',
+              voiceName: 'fr-FR-Wavenet-A',
+              pitch: 3,
+              rate: 1.05
             })
           }
-        }
-      }));
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Marie Curie');
       
-      const config = await getVoiceConfigForCharacter('Expressive Voice');
-      expect(config).toBeDefined();
-      // Chirp voices should be prioritized for expressive descriptions
+      expect(config.languageCodes[0]).toBe('fr-FR');
+      expect(config.name).toBe('fr-FR-Wavenet-A');
     });
 
-    it('should select Neural2 voices for natural descriptions', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A natural, neural sounding American male voice.',
-                }
-              }]
+    it('should support Japanese voices', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'female',
+              languageCode: 'ja-JP',
+              voiceName: 'ja-JP-Wavenet-A',
+              pitch: 4,
+              rate: 1.0
             })
           }
-        }
-      }));
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Yuki Tanaka');
       
-      const config = await getVoiceConfigForCharacter('Natural Voice');
-      expect(config).toBeDefined();
+      expect(config.languageCodes[0]).toBe('ja-JP');
+      expect(config.name).toBe('ja-JP-Wavenet-A');
+    });
+  });
+
+  describe('Pitch and Rate Parameters', () => {
+    it('should pass through pitch from OpenAI', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'male',
+              languageCode: 'en-US',
+              voiceName: 'en-US-Wavenet-D',
+              pitch: -10, // Deep voice
+              rate: 1.0
+            })
+          }
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Deep Voice Character');
+      
+      expect(config.pitch).toBe(-10);
     });
 
-    it('should handle regional accents (Australian, Indian, Scottish, Irish, Canadian)', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'An Australian male voice with distinct accent.',
-                }
-              }]
+    it('should pass through rate from OpenAI', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'female',
+              languageCode: 'en-US',
+              voiceName: 'en-US-Wavenet-F',
+              pitch: 2,
+              rate: 1.3 // Fast speaker
             })
           }
-        }
-      }));
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Fast Speaker');
       
-      const config = await getVoiceConfigForCharacter('Australian Voice');
-      // Should select an English variant (en-AU preferred, but en-US/en-GB acceptable as fallback)
-      expect(config.languageCodes[0]).toMatch(/^en-/);
-      expect(config).toBeDefined();
+      expect(config.rate).toBe(1.3);
     });
 
-    it('should handle Spanish accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A Spanish male voice from Spain.',
-                }
-              }]
+    it('should clamp pitch to valid range (-20 to 20)', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'male',
+              languageCode: 'en-US',
+              voiceName: 'en-US-Wavenet-D',
+              pitch: 50, // Invalid: too high
+              rate: 1.0
             })
           }
-        }
-      }));
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Invalid Pitch Character');
       
-      const config = await getVoiceConfigForCharacter('Spanish Voice');
-      expect(config.languageCodes[0]).toMatch(/^es-/);
+      // Should be clamped to 20
+      expect(config.pitch).toBeLessThanOrEqual(20);
+      expect(config.pitch).toBeGreaterThanOrEqual(-20);
     });
 
-    it('should handle Italian accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'An Italian female voice from Italy.',
-                }
-              }]
+    it('should clamp rate to valid range (0.25 to 4.0)', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              gender: 'female',
+              languageCode: 'en-US',
+              voiceName: 'en-US-Wavenet-F',
+              pitch: 0,
+              rate: 10.0 // Invalid: too fast
             })
           }
-        }
-      }));
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Invalid Rate Character');
       
-      const config = await getVoiceConfigForCharacter('Italian Voice');
-      expect(config.languageCodes[0]).toMatch(/^it-/);
+      // Should be clamped to 4.0
+      expect(config.rate).toBeLessThanOrEqual(4.0);
+      expect(config.rate).toBeGreaterThanOrEqual(0.25);
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle invalid JSON from OpenAI', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: 'This is not valid JSON'
+          }
+        }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Invalid JSON Character');
+      
+      // Should fall back to Default
+      expect(config.name).toBe(CHARACTER_VOICE_MAP['Default'].name);
     });
 
-    it('should handle Portuguese accents (Portugal vs Brazil)', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A Brazilian Portuguese female voice.',
-                }
-              }]
+    it('should handle missing fields in OpenAI response', async () => {
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              // Missing required fields
+              gender: 'male'
             })
           }
-        }
-      }));
-      
-      const config = await getVoiceConfigForCharacter('Brazilian Voice');
-      // Should select Portuguese variant (pt-BR preferred, pt-PT acceptable)
-      expect(config.languageCodes[0]).toMatch(/^pt-/);
-      expect(config).toBeDefined();
-    });
+        }]
+      });
 
-    it('should handle Dutch accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A Dutch male voice from the Netherlands.',
-                }
-              }]
-            })
-          }
-        }
-      }));
+      const config = await getVoiceConfigForCharacter('Missing Fields Character');
       
-      const config = await getVoiceConfigForCharacter('Dutch Voice');
-      expect(config.languageCodes[0]).toBe('nl-NL');
-    });
-
-    it('should handle Russian accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A Russian male voice from Russia.',
-                }
-              }]
-            })
-          }
-        }
-      }));
-      
-      const config = await getVoiceConfigForCharacter('Russian Voice');
-      // Should ideally select ru-RU, but may fall back to English if not available
+      // Should still return a valid config with defaults
       expect(config).toBeDefined();
       expect(config.name).toBeDefined();
-      expect(['ru-RU', 'en-US', 'en-GB']).toContain(config.languageCodes[0]);
+      expect(config.ssmlGender).toBeDefined();
     });
 
-    it('should handle Japanese accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A Japanese female voice from Japan.',
-                }
-              }]
-            })
-          }
-        }
-      }));
+    it('should handle empty OpenAI response', async () => {
+      mockOpenAICreate.mockRejectedValue(new Error('Empty content'));
+
+      const config = await getVoiceConfigForCharacter('Empty Response Character XYZ123');
       
-      const config = await getVoiceConfigForCharacter('Japanese Voice');
-      expect(config.languageCodes[0]).toBe('ja-JP');
+      // Should fall back to Default
+      expect(config.name).toBe(CHARACTER_VOICE_MAP['Default'].name);
     });
-
-    it('should handle Korean accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A Korean male voice from Korea.',
-                }
-              }]
-            })
-          }
-        }
-      }));
-      
-      const config = await getVoiceConfigForCharacter('Korean Voice');
-      expect(config.languageCodes[0]).toBe('ko-KR');
-    });
-
-    it('should handle Mandarin Chinese accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A Mandarin Chinese male voice from China.',
-                }
-              }]
-            })
-          }
-        }
-      }));
-      
-      const config = await getVoiceConfigForCharacter('Chinese Voice');
-      expect(config.languageCodes[0]).toBe('zh-CN');
-    });
-
-    it('should handle Cantonese accent', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A Cantonese voice from Taiwan.',
-                }
-              }]
-            })
-          }
-        }
-      }));
-      
-      const config = await getVoiceConfigForCharacter('Cantonese Voice');
-      expect(config.languageCodes[0]).toBe('zh-TW');
-    });
-
-    it('should fall back through type preference hierarchy', async () => {
-      const OpenAI = require('openai').default;
-      OpenAI.mockImplementation(() => ({
-        chat: {
-          completions: {
-            create: jest.fn().mockResolvedValue({
-              choices: [{
-                message: {
-                  content: 'A young, high-pitched American male voice.',
-                }
-              }]
-            })
-          }
-        }
-      }));
-      
-      const config = await getVoiceConfigForCharacter('Young High Voice');
-      expect(config).toBeDefined();
-      expect(config.pitch).toBeGreaterThan(0);
-    });
-  });
-
-  it('should guard persistent cache paths (no traversal)', async () => {
-    const { getVoiceConfigForCharacter } = await import('../../src/utils/characterVoices');
-    // Names with path characters should be sanitized to safe keys
-    const cfg = await getVoiceConfigForCharacter('../EvilName../..');
-    expect(typeof cfg.name).toBe('string');
-  });
-
-  it('should fall back correctly when gender override cannot match exact type', async () => {
-    const { getVoiceConfigForCharacter, SSML_GENDER } = await import('../../src/utils/characterVoices');
-    const cfg = await getVoiceConfigForCharacter('Test Person', 'neutral');
-    expect([SSML_GENDER.NEUTRAL, SSML_GENDER.MALE, SSML_GENDER.FEMALE]).toContain(cfg.ssmlGender);
-    expect(cfg.languageCodes[0]).toBeDefined();
   });
 });

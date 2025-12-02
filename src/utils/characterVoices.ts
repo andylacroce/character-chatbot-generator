@@ -1,34 +1,26 @@
 import logger, { sanitizeLogMeta } from "./logger";
 
 /**
- * Mapping from character/bot name to Google TTS voice settings.
- *
- * Provides static voice configurations for well-known characters and a default.
+ * Character voice configuration using OpenAI structured output → Google TTS pipeline.
+ * Minimal code - OpenAI provides exact values, we pass them directly to Google TTS.
  *
  * @module characterVoices
  */
 
 /**
- * Interface for Google TTS voice configuration for a character.
- * @property {string[]} languageCodes - Supported language codes.
- * @property {string} name - Google TTS voice name.
- * @property {number} ssmlGender - SSML gender enum value.
- * @property {number} [pitch] - Optional pitch adjustment.
- * @property {number} [rate] - Optional speaking rate.
- * @property {string} [type] - Voice type (e.g., 'Wavenet', 'Studio').
+ * Interface for Google TTS voice configuration.
  */
 export interface CharacterVoiceConfig {
   languageCodes: string[];
   name: string;
-  ssmlGender: number; // protos.google.cloud.texttospeech.v1.SsmlVoiceGender
+  ssmlGender: number;
   pitch?: number;
   rate?: number;
-  type?: string; // Add type for robust Studio detection
+  type?: string;
 }
 
 /**
- * Google TTS gender enum for reference.
- * @enum {number}
+ * Google TTS gender enum.
  */
 export const SSML_GENDER = {
   NEUTRAL: 0,
@@ -37,6 +29,9 @@ export const SSML_GENDER = {
   UNSPECIFIED: 3,
 };
 
+/**
+ * Default voice for fallback only.
+ */
 export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
   'Default': {
     languageCodes: ['en-GB'],
@@ -44,591 +39,146 @@ export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
     ssmlGender: SSML_GENDER.MALE,
     pitch: 0,
     rate: 1.0,
-    type: 'Wavenet', // Add type to all static configs
-  },
-  'Einstein': {
-    languageCodes: ['de-DE'],
-    name: 'de-DE-Wavenet-B',
-    ssmlGender: SSML_GENDER.MALE,
-    pitch: 0,
-    rate: 1.0,
     type: 'Wavenet',
   },
-  'Yoda': {
-    languageCodes: ['en-US'],
-    name: 'en-US-Wavenet-B',
-    ssmlGender: SSML_GENDER.MALE,
-    pitch: 5,
-    rate: 0.85,
-    type: 'Wavenet',
-  },
-  'Shakespeare': {
-    languageCodes: ['en-GB'],
-    name: 'en-GB-Wavenet-B',
-    ssmlGender: SSML_GENDER.MALE,
-    pitch: 0,
-    rate: 1.0,
-    type: 'Wavenet',
-  },
-  // Expanded static fallback list for more diversity
-  'Cleopatra': {
-    languageCodes: ['en-GB'],
-    name: 'en-GB-Wavenet-F',
-    ssmlGender: SSML_GENDER.FEMALE,
-    pitch: 2,
-    rate: 1.0,
-    type: 'Wavenet',
-  },
-  'Nikola Tesla': {
-    languageCodes: ['en-US'],
-    name: 'en-US-Wavenet-D',
-    ssmlGender: SSML_GENDER.MALE,
-    pitch: 0,
-    rate: 1.0,
-    type: 'Wavenet',
-  },
-  'Harriet Tubman': {
-    languageCodes: ['en-US'],
-    name: 'en-US-Wavenet-F',
-    ssmlGender: SSML_GENDER.FEMALE,
-    pitch: 0,
-    rate: 1.0,
-    type: 'Wavenet',
-  },
-  'Bruce Lee': {
-    languageCodes: ['en-US'],
-    name: 'en-US-Wavenet-D',
-    ssmlGender: SSML_GENDER.MALE,
-    pitch: 2,
-    rate: 1.1,
-    type: 'Wavenet',
-  },
-  'Ada Lovelace': {
-    languageCodes: ['en-GB'],
-    name: 'en-GB-Wavenet-F',
-    ssmlGender: SSML_GENDER.FEMALE,
-    pitch: 1,
-    rate: 1.0,
-    type: 'Wavenet',
-  },
-  // ...add more as needed for diversity...
 };
 
 function normalizeCharacterName(name: string): string {
-  // Trim, normalize spaces, and capitalize each word (lowercase the rest for consistency)
   return name.trim().toLowerCase().replace(/ +/g, ' ').replace(/(^| )\w/g, c => c.toUpperCase());
 }
 
-/**
- * =============================
- * GOOGLE_TTS_VOICES
- * -----------------------------
- * List of available Google TTS voices, including Wavenet, Studio, Neural2, and Standard types.
- * Each entry includes language, name, gender, display label, and type for matching.
- *
- * - Use this list to match dynamic or static character voice requests.
- * - If adding new voices, ensure the 'type' and 'display' fields are descriptive.
- * - For dynamic matching, see findClosestTTSVoice().
- * =============================
- */
-// List of available Google TTS voices (expanded with more variants)
-const GOOGLE_TTS_VOICES = [
-  // Wavenet voices
-  { languageCodes: ['en-GB'], name: 'en-GB-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'British Male', type: 'Wavenet' },
-  { languageCodes: ['en-GB'], name: 'en-GB-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'British Male 2', type: 'Wavenet' },
-  { languageCodes: ['en-GB'], name: 'en-GB-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'British Female', type: 'Wavenet' },
-  { languageCodes: ['en-US'], name: 'en-US-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'American Male', type: 'Wavenet' },
-  { languageCodes: ['en-US'], name: 'en-US-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female', type: 'Wavenet' },
-  { languageCodes: ['en-US'], name: 'en-US-Wavenet-C', ssmlGender: SSML_GENDER.MALE, display: 'American Male 2', type: 'Wavenet' },
-  { languageCodes: ['en-US'], name: 'en-US-Wavenet-E', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female 2', type: 'Wavenet' },
-  // Studio voices
-  { languageCodes: ['en-US'], name: 'en-US-Studio-M', ssmlGender: SSML_GENDER.MALE, display: 'American Male (Studio)', type: 'Studio' },
-  { languageCodes: ['en-US'], name: 'en-US-Studio-O', ssmlGender: SSML_GENDER.MALE, display: 'American Male 2 (Studio)', type: 'Studio' },
-  // Neural2 voices
-  { languageCodes: ['en-US'], name: 'en-US-Neural2-M', ssmlGender: SSML_GENDER.MALE, display: 'American Male (Neural2)', type: 'Neural2' },
-  { languageCodes: ['en-US'], name: 'en-US-Neural2-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female (Neural2)', type: 'Neural2' },
-  // Regional/age/gender variants
-  { languageCodes: ['en-AU'], name: 'en-AU-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'Australian Male', type: 'Wavenet' },
-  { languageCodes: ['en-AU'], name: 'en-AU-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'Australian Female', type: 'Wavenet' },
-  { languageCodes: ['en-IN'], name: 'en-IN-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'Indian Male', type: 'Wavenet' },
-  { languageCodes: ['en-IN'], name: 'en-IN-Wavenet-F', ssmlGender: SSML_GENDER.FEMALE, display: 'Indian Female', type: 'Wavenet' },
-  {
-    languageCodes: ['de-DE'], name: 'de-DE-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'German Male', type: 'Wavenet'
-  },
-  {
-    languageCodes: ['fr-FR'], name: 'fr-FR-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'French Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['fr-FR'], name: 'fr-FR-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'French Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['es-ES'], name: 'es-ES-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Spanish Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['es-ES'], name: 'es-ES-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'Spanish Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['it-IT'], name: 'it-IT-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Italian Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['it-IT'], name: 'it-IT-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'Italian Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['pt-PT'], name: 'pt-PT-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'Portuguese Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['pt-BR'], name: 'pt-BR-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Brazilian Portuguese Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['pt-BR'], name: 'pt-BR-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'Brazilian Portuguese Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['nl-NL'], name: 'nl-NL-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Dutch Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['nl-NL'], name: 'nl-NL-Wavenet-D', ssmlGender: SSML_GENDER.MALE, display: 'Dutch Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['ru-RU'], name: 'ru-RU-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'Russian Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['ru-RU'], name: 'ru-RU-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Russian Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['ja-JP'], name: 'ja-JP-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'Japanese Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['ja-JP'], name: 'ja-JP-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Japanese Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['ko-KR'], name: 'ko-KR-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'Korean Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['ko-KR'], name: 'ko-KR-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Korean Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['zh-CN'], name: 'zh-CN-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'Mandarin Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['zh-CN'], name: 'zh-CN-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Mandarin Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['zh-TW'], name: 'zh-TW-Wavenet-B', ssmlGender: SSML_GENDER.MALE, display: 'Cantonese Male', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['zh-TW'], name: 'zh-TW-Wavenet-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Cantonese Female', type: 'Wavenet',
-  },
-  {
-    languageCodes: ['en-GB'], name: 'en-GB-Standard-D', ssmlGender: SSML_GENDER.MALE, display: 'British Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['en-GB'], name: 'en-GB-Standard-B', ssmlGender: SSML_GENDER.MALE, display: 'British Male 2 (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['en-GB'], name: 'en-GB-Standard-F', ssmlGender: SSML_GENDER.FEMALE, display: 'British Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['en-US'], name: 'en-US-Standard-D', ssmlGender: SSML_GENDER.MALE, display: 'American Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['en-US'], name: 'en-US-Standard-F', ssmlGender: SSML_GENDER.FEMALE, display: 'American Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['de-DE'], name: 'de-DE-Standard-B', ssmlGender: SSML_GENDER.MALE, display: 'German Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['fr-FR'], name: 'fr-FR-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'French Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['fr-FR'], name: 'fr-FR-Standard-D', ssmlGender: SSML_GENDER.MALE, display: 'French Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['es-ES'], name: 'es-ES-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Spanish Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['es-ES'], name: 'es-ES-Standard-D', ssmlGender: SSML_GENDER.MALE, display: 'Spanish Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['it-IT'], name: 'it-IT-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Italian Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['it-IT'], name: 'it-IT-Standard-D', ssmlGender: SSML_GENDER.MALE, display: 'Italian Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['pt-PT'], name: 'pt-PT-Standard-B', ssmlGender: SSML_GENDER.MALE, display: 'Portuguese Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['pt-BR'], name: 'pt-BR-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Brazilian Portuguese Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['pt-BR'], name: 'pt-BR-Standard-D', ssmlGender: SSML_GENDER.MALE, display: 'Brazilian Portuguese Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['nl-NL'], name: 'nl-NL-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Dutch Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['nl-NL'], name: 'nl-NL-Standard-D', ssmlGender: SSML_GENDER.MALE, display: 'Dutch Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['ru-RU'], name: 'ru-RU-Standard-B', ssmlGender: SSML_GENDER.MALE, display: 'Russian Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['ru-RU'], name: 'ru-RU-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Russian Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['ja-JP'], name: 'ja-JP-Standard-B', ssmlGender: SSML_GENDER.MALE, display: 'Japanese Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['ja-JP'], name: 'ja-JP-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Japanese Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['ko-KR'], name: 'ko-KR-Standard-B', ssmlGender: SSML_GENDER.MALE, display: 'Korean Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['ko-KR'], name: 'ko-KR-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Korean Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['zh-CN'], name: 'zh-CN-Standard-B', ssmlGender: SSML_GENDER.MALE, display: 'Mandarin Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['zh-CN'], name: 'zh-CN-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Mandarin Female (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['zh-TW'], name: 'zh-TW-Standard-B', ssmlGender: SSML_GENDER.MALE, display: 'Cantonese Male (Standard)', type: 'Standard',
-  },
-  {
-    languageCodes: ['zh-TW'], name: 'zh-TW-Standard-A', ssmlGender: SSML_GENDER.FEMALE, display: 'Cantonese Female (Standard)', type: 'Standard',
-  },
-  // ...add more as needed...
-];
 
 /**
- * =============================
- * DYNAMIC VOICE MATCHING LOGIC
- * -----------------------------
- * - fetchVoiceDescriptionFromOpenAI: Uses OpenAI to generate a natural language description of a character's likely voice.
- * - findClosestTTSVoice: Heuristically matches a description to the best available TTS voice, considering language, gender, style, and quality.
- * - getVoiceConfigForCharacter: Main entry point; returns static config if available, otherwise uses dynamic detection and caches the result.
- *
- * All dynamic results are cached in-memory for the process lifetime.
- * =============================
- */
-
-/**
- * @typedef {Object} GOOGLE_TTS_VOICE_ENTRY
- * @property {string[]} languageCodes - Supported language codes.
- * @property {string} name - Google TTS voice name.
- * @property {number} ssmlGender - SSML gender enum value.
- * @property {string} display - Human-readable label for UI.
- * @property {string} type - Voice type (e.g., 'Wavenet', 'Studio', 'Neural2', 'Standard').
- */
-
-/**
- * In-memory cache for dynamic voice selection (per process).
- * Keyed by normalized character name.
+ * In-memory cache for voice configs (per process).
  */
 const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
 
 /**
- * Persistent storage helper for voice configs (server-side).
- * Uses filesystem for Vercel persistence across cold starts.
+ * Voice configuration from OpenAI (maps directly to Google TTS parameters).
  */
-function getPersistentVoiceConfig(name: string): CharacterVoiceConfig | null {
-  // Only use on server-side
-  if (typeof process === 'undefined' || typeof require === 'undefined') return null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require('fs');
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const path = require('path');
-    const cacheDir = path.join(process.cwd(), '.voice-cache');
-    const safeKey = name.replace(/[^a-zA-Z0-9]/g, '_');
-    const cacheFile = path.join(cacheDir, `${safeKey}.json`);
-    const resolvedDir = path.resolve(cacheDir);
-    const resolvedFile = path.resolve(cacheFile);
-    if (!resolvedFile.startsWith(resolvedDir + path.sep)) {
-      return null;
-    }
-    if (fs.existsSync(resolvedFile)) {
-      const data = JSON.parse(fs.readFileSync(resolvedFile, 'utf8'));
-      // Validate cache age (7 days max)
-      if (data.timestamp && Date.now() - new Date(data.timestamp).getTime() < 7 * 24 * 60 * 60 * 1000) {
-        return data.config;
-      }
-    }
-  } catch {
-    // Ignore filesystem errors
-  }
-  return null;
-}
-
-function setPersistentVoiceConfig(name: string, config: CharacterVoiceConfig): void {
-  // Only use on server-side
-  if (typeof process === 'undefined' || typeof require === 'undefined') return;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require('fs');
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const path = require('path');
-    const cacheDir = path.join(process.cwd(), '.voice-cache');
-    const resolvedDir = path.resolve(cacheDir);
-    if (!fs.existsSync(resolvedDir)) {
-      fs.mkdirSync(resolvedDir, { recursive: true });
-    }
-    const safeKey = name.replace(/[^a-zA-Z0-9]/g, '_');
-    const cacheFile = path.join(resolvedDir, `${safeKey}.json`);
-    const resolvedFile = path.resolve(cacheFile);
-    if (!resolvedFile.startsWith(resolvedDir + path.sep)) {
-      return;
-    }
-    fs.writeFileSync(resolvedFile, JSON.stringify({
-      config,
-      timestamp: new Date().toISOString()
-    }));
-  } catch {
-    // Ignore filesystem errors
-  }
+interface VoiceConfig {
+  gender: 'male' | 'female' | 'neutral';
+  languageCode: string; // e.g., 'en-GB', 'en-US', 'de-DE'
+  voiceName: string; // e.g., 'en-GB-Wavenet-D', 'en-US-Studio-M'
+  pitch: number; // -20 to +20 semitones
+  rate: number; // 0.25 to 4.0 (1.0 = normal)
 }
 
 /**
- * Fetches a description of the character's likely voice from OpenAI.
- * Uses GPT-4o to generate a short, detailed description for TTS matching.
- *
- * Example output: "A deep, gravelly British male voice, mid-60s, slow and wise."
- *
- * @param {string} name - The name of the character.
- * @returns {Promise<string>} - A promise that resolves to the voice description.
+ * Fetches complete voice configuration from OpenAI.
+ * OpenAI returns exact Google TTS voice name, pitch, and rate - no mapping needed.
  */
-async function fetchVoiceDescriptionFromOpenAI(name: string): Promise<string> {
-  // Use OpenAI to describe the character's likely voice
+async function fetchVoiceConfigFromOpenAI(name: string): Promise<VoiceConfig> {
   const OpenAI = (await import('openai')).default;
   const { getOpenAIModel } = await import('./openaiModelSelector');
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-  const prompt = `Describe the speaking voice of ${name} in 1-2 sentences, including accent, tone, pitch, speed, age, and any unique vocal traits.`;
+  
+  const systemPrompt = `You are a voice casting expert for Google Text-to-Speech.
+
+Return ONLY valid JSON with this exact schema:
+{
+  "gender": "male" | "female" | "neutral",
+  "languageCode": "<locale>",  // e.g., "en-GB", "en-US", "de-DE", "fr-FR", "ja-JP", etc.
+  "voiceName": "<voice>",      // Full Google TTS voice name, e.g., "en-GB-Wavenet-D", "en-US-Studio-M"
+  "pitch": <number>,            // -20 to +20 semitones (0 = normal, negative = deeper, positive = higher)
+  "rate": <number>              // 0.25 to 4.0 (1.0 = normal speed)
+}
+
+Guidelines:
+- gender: Character's presentation
+- languageCode: Match character's cultural/linguistic background
+- voiceName: Choose from Google TTS voices (Studio/Wavenet/Neural2/Standard): https://cloud.google.com/text-to-speech/docs/voices
+  Examples: "en-GB-Wavenet-D", "en-US-Studio-M", "de-DE-Wavenet-B", "fr-FR-Wavenet-A", "ja-JP-Wavenet-B"
+- pitch: Age/depth (-15 to -20 very deep, -8 to -12 deep, -3 to -5 slightly low, 0 normal, 3-6 higher, 8-15 high/youthful, 15-20 child)
+- rate: Speaking style (0.7-0.85 slow/deliberate, 0.9-1.0 measured, 1.0 normal, 1.05-1.2 quick, 1.2-1.4 fast)`;
+
+  const userPrompt = `Character: "${name}"
+Provide Google TTS voice configuration as JSON. Consider canonical depiction, cultural context, age, personality.`;
+
   const completion = await openai.chat.completions.create({
     model: getOpenAIModel("text"),
     messages: [
-      { role: "system", content: "You are a helpful assistant." },
-      { role: "user", content: prompt },
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
     ],
-    max_tokens: 120,
-    temperature: 0.2,
+    max_tokens: 150,
+    temperature: 0.3,
+    response_format: { type: "json_object" }
   });
-  return completion.choices[0]?.message?.content?.trim() || '';
-}
 
-/**
- * Finds the closest matching TTS voice configuration based on a description.
- * Uses heuristics for language, gender, style, and quality.
- *
- * @param {string} description - The voice description.
- * @returns {CharacterVoiceConfig} - The closest matching voice configuration.
- */
-function findClosestTTSVoice(description: string, genderOverride?: number): CharacterVoiceConfig {
-  // Enhanced matching: parse for accent, language, gender, style, tone, expressive, regional, age, and prefer higher-quality voices
-  const desc = description.toLowerCase();
-
-  // Language/accent/region detection
-  let lang = 'en-GB';
-  if (desc.match(/german|deutsch|germany/)) lang = 'de-DE';
-  else if (desc.match(/american|us|usa|california|new york|midwest/)) lang = 'en-US';
-  else if (desc.match(/british|england|uk|london|scottish/)) lang = 'en-GB';
-  else if (desc.match(/australian|aussie|australia/)) lang = 'en-AU';
-  else if (desc.match(/indian|india/)) lang = 'en-IN';
-  else if (desc.match(/french|france|paris/)) lang = 'fr-FR';
-  else if (desc.match(/spanish|espanol|spain/)) lang = 'es-ES';
-  else if (desc.match(/italian|italy/)) lang = 'it-IT';
-  else if (desc.match(/portuguese|portugal/)) lang = 'pt-PT';
-  else if (desc.match(/brazil|brazilian/)) lang = 'pt-BR';
-  else if (desc.match(/dutch|netherlands/)) lang = 'nl-NL';
-  else if (desc.match(/russian|russia/)) lang = 'ru-RU';
-  else if (desc.match(/japanese|japan/)) lang = 'ja-JP';
-  else if (desc.match(/korean|korea/)) lang = 'ko-KR';
-  else if (desc.match(/mandarin|chinese|china/)) lang = 'zh-CN';
-  else if (desc.match(/cantonese|taiwan/)) lang = 'zh-TW';
-
-  // Gender detection with improved patterns
-  let gender = SSML_GENDER.MALE;
-  if (desc.match(/\bfemale\b|\bwoman\b|\bgirl\b|\blady\b|\bshe\b|\bher\b|feminine/)) gender = SSML_GENDER.FEMALE;
-  else if (desc.match(/\bmale\b|\bman\b|\bguy\b|\bhe\b|\bhim\b|masculine/) && !desc.match(/female/)) gender = SSML_GENDER.MALE;
-  if (desc.match(/neutral|\bchild\b|\bkid\b|androgynous/)) gender = SSML_GENDER.NEUTRAL;
-  // If genderOverride is provided, use it (this takes precedence)
-  if (typeof genderOverride === 'number') {
-    gender = genderOverride;
-  }
-
-  // Style/tone/age/characteristic/expressive detection
-  const styleHints = [
-    { key: 'old', match: /old|elderly|aged|wise/, pitch: -4 },
-    { key: 'deep', match: /deep|bass|low/, pitch: -6 },
-    { key: 'child', match: /child|kid|boy|girl/, pitch: 6, gender: SSML_GENDER.NEUTRAL },
-    { key: 'young', match: /young|teen|youth/, pitch: 3 },
-    { key: 'high', match: /high|soprano/, pitch: 6 },
-    { key: 'robot', match: /robot|synthetic|android/, type: 'Standard' },
-    { key: 'news', match: /news|anchor|reporter/, type: 'Wavenet' },
-    { key: 'narrator', match: /narrator|storyteller/, type: 'Wavenet' },
-    { key: 'casual', match: /casual|friendly|conversational/, type: 'Wavenet' },
-    { key: 'studio', match: /studio|premium|realistic/, type: 'Studio' },
-    { key: 'chirp', match: /chirp|hd|ultra|expressive|emotional|dynamic/, type: 'Chirp' },
-    { key: 'neural2', match: /neural2|natural|expressive|neural/, type: 'Neural2' },
-    { key: 'expressive', match: /expressive|emotional|dynamic/, type: 'Chirp' },
-    { key: 'regional', match: /australian|indian|scottish|irish|canadian/, type: 'Wavenet' },
-    { key: 'studio', match: /studio|premium/, type: 'Studio' },
-  ];
-
-  let pitch = 0;
-  let preferredType: string | undefined = undefined;
-  for (const hint of styleHints) {
-    if (desc.match(hint.match)) {
-      if (typeof hint.pitch === 'number') pitch = hint.pitch;
-      if (hint.gender !== undefined) gender = hint.gender;
-      if (hint.type) preferredType = hint.type;
-    }
-  }
-
-  // Prefer higher-quality voices: Chirp > Studio > Neural2 > Wavenet > Standard
-  const typePreference = preferredType
-    ? [preferredType, 'Chirp', 'Studio', 'Neural2', 'Wavenet', 'Standard']
-    : ['Chirp', 'Studio', 'Neural2', 'Wavenet', 'Standard'];
-
-  // Try to find the best match by type, language, and gender
-  let match = undefined;
-  if (typeof genderOverride === 'number') {
-    // Strict gender match: only pick voices with the override gender
-    for (const type of typePreference) {
-      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender && v.type === type);
-      if (match) break;
-    }
-    if (!match) {
-      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender);
-    }
-    // If still no match, try neutral
-    if (!match && gender !== SSML_GENDER.NEUTRAL) {
-      for (const type of typePreference) {
-        match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === SSML_GENDER.NEUTRAL && v.type === type);
-        if (match) break;
-      }
-      if (!match) {
-        match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === SSML_GENDER.NEUTRAL);
-      }
-    }
-    // If still no match, fallback to any voice for the language
-    if (!match) {
-      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang);
-    }
-    // If still no match, fallback to first available
-    if (!match) {
-      match = GOOGLE_TTS_VOICES[0];
-    }
-    // Validate: if genderOverride was specified, ensure match has correct gender
-    if (typeof genderOverride === 'number' && match.ssmlGender !== genderOverride) {
-      // Try to find ANY voice with the correct gender as last resort
-      const genderMatch = GOOGLE_TTS_VOICES.find(v => v.ssmlGender === genderOverride);
-      if (genderMatch) match = genderMatch;
-    }
-    // Always set ssmlGender to match the actual voice
-    gender = match.ssmlGender;
-  } else {
-    // No gender override: use best match by type, language, and gender
-    for (const type of typePreference) {
-      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender && v.type === type);
-      if (match) break;
-    }
-    if (!match) {
-      for (const type of typePreference) {
-        match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.type === type && v.ssmlGender === gender);
-        if (match) break;
-      }
-    }
-    if (!match) {
-      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang && v.ssmlGender === gender);
-    }
-    if (!match) {
-      match = GOOGLE_TTS_VOICES.find(v => v.languageCodes[0] === lang);
-    }
-    if (!match) {
-      match = GOOGLE_TTS_VOICES[0];
-    }
-    gender = match.ssmlGender;
-  }
+  const content = completion.choices[0]?.message?.content?.trim() || '{}';
+  const config = JSON.parse(content) as VoiceConfig;
+  
+  // Validate and clamp values
   return {
-    languageCodes: match.languageCodes,
-    name: match.name,
-    ssmlGender: gender,
-    pitch,
-    rate: 1.0,
+    gender: config.gender || 'male',
+    languageCode: config.languageCode || 'en-US',
+    voiceName: config.voiceName || 'en-US-Wavenet-D',
+    pitch: typeof config.pitch === 'number' ? Math.max(-20, Math.min(20, config.pitch)) : 0,
+    rate: typeof config.rate === 'number' ? Math.max(0.25, Math.min(4.0, config.rate)) : 1.0,
   };
 }
 
 /**
-* Gets the voice configuration for a character, either from static map or dynamic detection.
-* Returns a config with all required fields for Google TTS.
-*
-* @param {string} name - The name of the character.
-* @param {string | null} [genderOverride] - Optional gender override ("male" | "female" | "neutral").
-* @returns {Promise<CharacterVoiceConfig>} - A promise that resolves to the voice configuration.
-*/
-export async function getVoiceConfigForCharacter(name: string, genderOverride?: string | null): Promise<CharacterVoiceConfig> {
-  // Normalize name for lookup (capitalize each word, trim)
+ * Gets voice configuration for a character.
+ * Uses OpenAI to get exact Google TTS parameters, then passes them directly.
+ */
+export async function getVoiceConfigForCharacter(
+  name: string,
+  genderOverride?: string | null
+): Promise<CharacterVoiceConfig> {
   const normalized = normalizeCharacterName(name);
-  
-  // Create cache key that includes gender override to prevent cross-gender cache hits
   const cacheKey = genderOverride ? `${normalized}_${genderOverride}` : normalized;
   
-  if (CHARACTER_VOICE_MAP[normalized]) {
-    // Ensure type is present by matching to GOOGLE_TTS_VOICES
-    const staticCfg = CHARACTER_VOICE_MAP[normalized];
-    const match = GOOGLE_TTS_VOICES.find(v => v.name === staticCfg.name);
-    return match ? { ...staticCfg, type: match.type } : staticCfg;
-  }
-  
-  // Check in-memory cache first
+  // Check cache
   if (dynamicVoiceCache[cacheKey]) {
-    const cached = dynamicVoiceCache[cacheKey];
-    const match = GOOGLE_TTS_VOICES.find(v => v.name === cached.name);
-    return match ? { ...cached, type: match.type } : cached;
+    return dynamicVoiceCache[cacheKey];
   }
   
-  // Check persistent storage (for Vercel cold starts)
-  const persistentConfig = getPersistentVoiceConfig(cacheKey);
-  if (persistentConfig) {
-    dynamicVoiceCache[cacheKey] = persistentConfig;
-    const match = GOOGLE_TTS_VOICES.find(v => v.name === persistentConfig.name);
-    return match ? { ...persistentConfig, type: match.type } : persistentConfig;
-  }
-  // Dynamically determine voice using OpenAI
-  let description = '';
+  let config: CharacterVoiceConfig;
+  
   try {
-    description = await fetchVoiceDescriptionFromOpenAI(normalized);
-  } catch {
-    // fallback to deterministic voice based on name if OpenAI fails
-    description = `A character named ${normalized}`;
-  }
-  // If genderOverride is provided, convert to SSML_GENDER
-  let genderNum: number | undefined = undefined;
-  if (genderOverride) {
-    if (genderOverride === 'female') genderNum = SSML_GENDER.FEMALE;
-    else if (genderOverride === 'male') genderNum = SSML_GENDER.MALE;
-    else if (genderOverride === 'neutral') genderNum = SSML_GENDER.NEUTRAL;
-  }
-  const config: CharacterVoiceConfig = findClosestTTSVoice(description, genderNum);
-  
-  // Store in both in-memory and persistent caches (use existing cacheKey from above)
-  dynamicVoiceCache[cacheKey] = config;
-  setPersistentVoiceConfig(cacheKey, config);
-  
-  if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
-    logger.info("TTS dynamic voice selected", sanitizeLogMeta({
-      event: "tts_dynamic_voice",
-      requested: name,
-      normalized,
+    // Get voice config from OpenAI
+    const voiceConfig = await fetchVoiceConfigFromOpenAI(normalized);
+    
+    // Map gender string to SSML enum (apply override if provided)
+    let ssmlGender = SSML_GENDER.MALE;
+    const effectiveGender = genderOverride || voiceConfig.gender;
+    if (effectiveGender === 'female') ssmlGender = SSML_GENDER.FEMALE;
+    else if (effectiveGender === 'neutral') ssmlGender = SSML_GENDER.NEUTRAL;
+    
+    // Create config directly from OpenAI response
+    config = {
+      languageCodes: [voiceConfig.languageCode],
+      name: voiceConfig.voiceName,
+      ssmlGender,
+      pitch: voiceConfig.pitch,
+      rate: voiceConfig.rate,
+      type: voiceConfig.voiceName.includes('Studio') ? 'Studio' :
+            voiceConfig.voiceName.includes('Wavenet') ? 'Wavenet' :
+            voiceConfig.voiceName.includes('Neural2') ? 'Neural2' : 'Standard',
+    };
+    
+    logger.info("Voice config from OpenAI", sanitizeLogMeta({
+      event: "tts_openai_voice",
+      character: normalized,
       genderOverride: genderOverride || 'none',
-      description,
-      using: config.name,
-      gender: config.ssmlGender
+      voice: config.name,
+      pitch: config.pitch,
+      rate: config.rate,
+      type: config.type
     }));
+  } catch (err) {
+    // Fallback to Default
+    logger.warn("Falling back to Default voice", sanitizeLogMeta({
+      event: "tts_fallback_default",
+      error: err instanceof Error ? err.message : String(err)
+    }));
+    
+    config = CHARACTER_VOICE_MAP['Default'];
   }
-  // Ensure type is present
-  const match = GOOGLE_TTS_VOICES.find(v => v.name === config.name);
-  return match ? { ...config, type: match.type } : config;
+  
+  // Cache and return
+  dynamicVoiceCache[cacheKey] = config;
+  return config;
 }
