@@ -8,6 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { sanitizeCharacterName } from "../../src/utils/security";
 import rateLimit from "express-rate-limit";
+import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 
 // Rate limiter: 20 requests per minute per IP (personality generation is lightweight)
 const personalityRateLimit = rateLimit({
@@ -62,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   logEvent("info", "personality_prompt_generated", "Personality prompt generated", sanitizeLogMeta({
     name: sanitizedName
   }));
-  const concisePrompt = `You are ${sanitizedName}. Always respond in character, using your unique style, knowledge, and quirks. Use your internal knowledge. Never break character or mention being an AI.`;
+  const concisePrompt = generatePersonalityPrompt(sanitizedName);
   res.status(200).json({ personality: concisePrompt, correctedName: sanitizedName });
   return;
 }
