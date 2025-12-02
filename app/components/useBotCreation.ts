@@ -16,37 +16,18 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
     const cancelRequested = useRef<boolean>(false);
     const lastRandomNameRef = useRef<string>("");
-    const recentRandomNames = useRef<string[]>([]);
-    const RECENT_HISTORY_LIMIT = 10;
 
-    async function getRandomCharacterNameAvoidRepeat(lastName: string, maxTries = 3): Promise<{ name: string }> {
-        let tries = 0;
-        let name = lastName;
-        while (tries < maxTries) {
-            try {
-                const exclude = [...recentRandomNames.current, lastName].filter(Boolean).join(",");
-                const res = await authenticatedFetch(`/api/random-character?cb=${Date.now()}-${Math.random()}&exclude=${encodeURIComponent(exclude)}`);
-                const data = await res.json();
-                if (res.ok && data && typeof data.name === "string" && data.name.trim() && !recentRandomNames.current.includes(data.name.trim())) {
-                    name = data.name.replace(/^\[STATIC\]\s*/, '').trim();
-                    recentRandomNames.current.push(name);
-                    if (recentRandomNames.current.length > RECENT_HISTORY_LIMIT) recentRandomNames.current.shift();
-                    return { name };
-                }
-                if (data && typeof data.name === "string" && data.name.trim()) {
-                    name = data.name.trim();
-                }
-            } catch {
-                name = 'Dracula';
-                if (name.toLowerCase() !== lastName.toLowerCase() && !recentRandomNames.current.map((n: string) => n.toLowerCase()).includes(name.toLowerCase())) {
-                    recentRandomNames.current.push(name);
-                    if (recentRandomNames.current.length > RECENT_HISTORY_LIMIT) recentRandomNames.current.shift();
-                    return { name };
-                }
+    async function getRandomCharacterName(): Promise<string> {
+        try {
+            const res = await authenticatedFetch(`/api/random-character`);
+            const data = await res.json();
+            if (res.ok && data && typeof data.name === "string" && data.name.trim()) {
+                return data.name.trim();
             }
-            tries++;
+            return 'Sherlock Holmes';
+        } catch {
+            return 'Sherlock Holmes';
         }
-        return { name };
     }
 
     const handleCreate = async (e?: React.FormEvent) => {
@@ -111,7 +92,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         setRandomizing(true);
         setError("");
         try {
-            const { name } = await getRandomCharacterNameAvoidRepeat(lastRandomNameRef.current);
+            const name = await getRandomCharacterName();
             setInput(name);
             lastRandomNameRef.current = name;
             if (typeof window !== 'undefined') {

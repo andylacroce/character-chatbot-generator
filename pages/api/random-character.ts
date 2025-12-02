@@ -1,48 +1,28 @@
 // =============================
 // pages/api/random-character.ts
-// Next.js API route for generating or selecting a random character name.
-// Uses OpenAI or static list for suggestions, logs results for analytics.
+// Next.js API route for generating a random character name using OpenAI.
 // =============================
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
+import { getOpenAIModel } from "../../src/utils/openaiModelSelector";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-async function logRandomCharacter(name: string) {
-  try {
-    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/log-message`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sender: '[Randomizer]',
-        text: `Random character: ${name}`,
-        sessionId: 'randomizer',
-        sessionDatetime: new Date().toISOString(),
-      })
-    });
-  } catch {
-    // Ignore logging errors
-  }
-}
+// In-memory cache to track recently generated names (resets on server restart)
+const recentNames: string[] = [];
+const MAX_RECENT_NAMES = 50;
 
 /**
- * Next.js API route handler for generating or selecting a random character name.
- * Uses OpenAI for suggestions, falls back to 'gandalf' if OpenAI fails.
+ * Next.js API route handler for generating a random character name using OpenAI.
+ * Tracks recently generated names to improve variety.
  *
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Aggressive anti-caching headers
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.setHeader('Surrogate-Control', 'no-store');
-  res.setHeader('ETag', Math.random().toString(36).slice(2)); // Random ETag to defeat cache
-
   if (req.method !== "GET") {
     logEvent("warn", "random_character_method_not_allowed", "RandomCharacter API method not allowed", sanitizeLogMeta({
       method: req.method
@@ -51,82 +31,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  // Accept exclusions from query param (future extensibility)
-  let exclude: string[] = [];
-  if (typeof req.query.exclude === "string") {
-    exclude = req.query.exclude.split(",").map(s => s.trim()).filter(Boolean);
-  } else if (Array.isArray(req.query.exclude)) {
-    exclude = req.query.exclude.flatMap(s => s.split(",").map(x => x.trim())).filter(Boolean);
-  }
+  try {
+    const model = getOpenAIModel("text");
+    
+    // Build exclusion list from recent names
+    const exclusionList = recentNames.length > 0 
+      ? `Do NOT suggest any of these recently used names: ${recentNames.join(", ")}. `
+      : "";
+    
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: "You are a creative name generator for chatbots. Suggest diverse public domain characters from classic literature, mythology, folklore, and historical figures from various cultures and time periods. Always provide just the character's name, nothing else."
+        },
+        {
+          role: "user",
+          content: `${exclusionList}Suggest one unique character name for a chatbot. Choose from classic literature, mythology, folklore, or historical figures from any culture (e.g., Odysseus, Joan of Arc, Mulan, Scheherazade, Leonardo da Vinci, Don Quixote, Gilgamesh). Prioritize variety and lesser-known but interesting characters. Reply ONLY with the name, no explanation.`
+        }
+      ],
+      max_tokens: 20,
+      temperature: 1.5,
+    });
 
-  let tries = 0;
-  let name: string | undefined = undefined;
-  let lastError: unknown = null;
-  while (tries < 3) {
-    try {
-      const exclusionStr = exclude.map(n => `"${n}"`).join(", ");
-      const prompt = `### INSTRUCTIONS
-You are a creative name generator. Your task is to suggest a character name that could be used for a chatbot. Follow these rules:
-- Reply ONLY with the character's name. Do not include any description, explanation, or extra text.
-- Do NOT pick any of the following: ${exclusionStr}.
-- Do NOT pick any character that is too similar to those listed above, or that you have suggested recently.
-- Prioritize public domain characters from classic literature, mythology, folklore, and historical figures (e.g., Sherlock Holmes, Dracula, Alice, Robin Hood, King Arthur, Cleopatra, Leonardo da Vinci).
-- You may also suggest famous historical figures who are not copyrighted or trademarked.
-- Avoid repeats, near-duplicates, or generic names.
-- Output format: Only the character's name, nothing else.
-### END INSTRUCTIONS`;
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: "You are a creative name generator for chatbots. Suggest public domain characters from literature, mythology, folklore, and historical figures. You may also suggest famous historical figures who are not copyrighted or trademarked. Always provide just the name, nothing else." },
-          { role: "user", content: prompt },
-        ],
-        max_tokens: 32,
-        temperature: 1.7,
-      });
-      name = completion.choices[0]?.message?.content?.trim().replace(/^"|"$/g, "");
-      // Validate the name: must be 2+ chars, not just numbers, not contain forbidden chars, not look like junk
-      const isValidName = (n: string | undefined) => {
-        if (!n) return false;
-        if (n.length < 2) return false;
-        // Restrict to printable ASCII, letters, numbers, spaces, hyphens, apostrophes, and periods
-        if (/[^A-Za-z0-9\s\-'.]/.test(n)) return false; // no weird symbols or non-latin
-        if (/\d{3,}/.test(n)) return false; // not just numbers
-        if (/^[A-Za-z]{1,2}$/.test(n)) return false; // not just a single letter or two
-        if (/(unknown|n[\\/]?a|none|null|character|random|test)/i.test(n.trim())) return false;
-        if (exclude.some(e => n.toLowerCase() === e.toLowerCase())) return false;
-        // Avoid near-duplicates (case-insensitive, ignore spaces)
-        if (exclude.some(e => n.replace(/\s+/g, '').toLowerCase() === e.replace(/\s+/g, '').toLowerCase())) return false;
-        return true;
-      };
-      if (!isValidName(name)) {
-        logEvent("warn", "random_character_openai_fallback", "OpenAI fallback reason", sanitizeLogMeta({
-          name
-        }));
-        throw new Error("Invalid or junk character name returned");
+    const name = completion.choices[0]?.message?.content?.trim().replace(/^"|"$/g, "") || "Sherlock Holmes";
+    
+    // Add to recent names tracking
+    if (!recentNames.includes(name)) {
+      recentNames.push(name);
+      if (recentNames.length > MAX_RECENT_NAMES) {
+        recentNames.shift(); // Remove oldest
       }
-      logEvent("info", "random_character_openai_selected", "OpenAI random character selected", sanitizeLogMeta({
-        name
-      }));
-      await logRandomCharacter(`[OPENAI] ${name}`);
-      res.status(200).json({ name });
-      return;
-    } catch (err) {
-      lastError = err;
-      tries++;
-      logEvent("warn", "random_character_openai_retry", "OpenAI retry", sanitizeLogMeta({
-        tries,
-        error: err instanceof Error ? err.message : String(err)
-      }));
-      // Wait a bit before retrying
-      if (tries < 3) await new Promise(res => setTimeout(res, 400 * tries));
     }
+    
+    logEvent("info", "random_character_generated", "Random character generated", sanitizeLogMeta({ 
+      name,
+      recentNamesCount: recentNames.length
+    }));
+    res.status(200).json({ name });
+  } catch (err) {
+    logEvent("error", "random_character_failed", "Failed to generate random character", sanitizeLogMeta({
+      error: err instanceof Error ? err.message : String(err)
+    }));
+    // Return fallback on error
+    res.status(200).json({ name: "Sherlock Holmes" });
   }
-  // Fallback after 3 failed attempts
-  logEvent("warn", "random_character_fallback", "RandomCharacter fallback", sanitizeLogMeta({
-    error: lastError instanceof Error ? lastError.message : String(lastError)
-  }));
-  const fallback = 'Sherlock Holmes';
-  await logRandomCharacter(`[FALLBACK] ${fallback}`);
-  res.status(200).json({ name: fallback, fallback: true, error: "Failed to get random character after 3 attempts, using fallback." });
 }

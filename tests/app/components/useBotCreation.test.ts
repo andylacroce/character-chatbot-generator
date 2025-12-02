@@ -33,45 +33,25 @@ describe('useBotCreation tests', () => {
     expect(result.current.lastRandomNameRef.current).toBe('Alice');
   });
 
-  it('handleRandomCharacter strips [STATIC] prefix from API response', async () => {
-    mockAuthFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ name: '[STATIC]  Bobster  ' }) });
-
-    const { result } = renderHook(() => useBotCreation(() => {}));
-
-    await act(async () => {
-      await result.current.handleRandomCharacter();
-    });
-
-    expect(result.current.input).toBe('Bobster');
-    expect(result.current.lastRandomNameRef.current).toBe('Bobster');
-  });
-
-  it('handleRandomCharacter handles repeated names and exercises retry/duplicate branch', async () => {
-    // Simulate API returning the same name repeatedly so the function exercises the "data present but duplicated" branch
+  it('handleRandomCharacter can be called multiple times', async () => {
     mockAuthFetch
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'Repeat' }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'Repeat' }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'Repeat' }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'Alice' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'Bob' }) });
 
     const { result } = renderHook(() => useBotCreation(() => {}));
 
-    // First call should set input and lastRandomNameRef
     await act(async () => {
       await result.current.handleRandomCharacter();
     });
+    expect(result.current.input).toBe('Alice');
 
-    expect(result.current.input).toBe('Repeat');
-
-    // Call again - the function will now hit the branch where a data.name is present but it's a duplicate and must try again
     await act(async () => {
       await result.current.handleRandomCharacter();
     });
-
-    // After retries the function should have attempted multiple fetches (exercise duplicate-branch)
-    expect(mockAuthFetch.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(result.current.input).toBe('Bob');
   });
 
-  it('handleRandomCharacter falls back to Dracula on fetch error', async () => {
+  it('handleRandomCharacter falls back to Sherlock Holmes on fetch error', async () => {
     mockAuthFetch.mockRejectedValueOnce(new Error('network'));
 
     const { result } = renderHook(() => useBotCreation(() => {}));
@@ -80,7 +60,7 @@ describe('useBotCreation tests', () => {
       await result.current.handleRandomCharacter();
     });
 
-    expect(result.current.input).toBe('Dracula');
+    expect(result.current.input).toBe('Sherlock Holmes');
   });
 
   it('handleCreate reports failure when voice config generation fails', async () => {
