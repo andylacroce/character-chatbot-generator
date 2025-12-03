@@ -21,7 +21,7 @@
     "@typescript-eslint/type-utils": "^8.48.1",
     "@typescript-eslint/typescript-estree": "^8.47.0",
     "@typescript-eslint/utils": "^8.47.0",
-    "@vercel/analytics": "^1.5.0",
+    "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^2.0.0",
     "@vercel/speed-insights": "^1.2.0",
     "axios": "^1.13.2",
