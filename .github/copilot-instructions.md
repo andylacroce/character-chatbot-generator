@@ -5,7 +5,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
 - **Quick commands**
   - Install: `npm install`
   - Dev: `npm run dev` (runs `next dev --turbopack`)
-  - Build: `npm run build` (CI: `npm run build:ci` runs tests then build)
+  - Build: `npm run build` (CI: `npm run ci` runs lint, type-check, coverage, then build)
   - Tests: `npm run test` ; Coverage: `npm run test:coverage`
   - Lint: `npm run lint` ; Type-check: `npm run type-check`
 
