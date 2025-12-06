@@ -2,7 +2,7 @@ import { runStartupMigrations } from '../../app/index';
 
 describe('startup migrations', () => {
   beforeEach(() => {
-    // clear and setup
+    // Clear storage and setup fresh state
     localStorage.clear();
   });
 
@@ -11,7 +11,7 @@ describe('startup migrations', () => {
     const legacy = { voice: 'test-voice' };
     localStorage.setItem(key, JSON.stringify(legacy));
 
-  // run migrations
+  // Execute all registered startup migrations
   runStartupMigrations();
 
     const raw = localStorage.getItem(key);

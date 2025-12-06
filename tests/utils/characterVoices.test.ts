@@ -9,7 +9,7 @@ import {
   SSML_GENDER
 } from '../../src/utils/characterVoices';
 
-// Mock logger
+// Mock logger for testing
 jest.mock('../../src/utils/logger', () => ({
   __esModule: true,
   default: {
@@ -20,7 +20,7 @@ jest.mock('../../src/utils/logger', () => ({
   sanitizeLogMeta: (meta: unknown) => meta,
 }));
 
-// Mock TTS client for validation
+// Mock TTS client for voice validation testing
 const mockSynthesizeSpeech = jest.fn();
 jest.mock('../../src/utils/tts', () => ({
   getTTSClient: jest.fn(() => ({
@@ -29,7 +29,7 @@ jest.mock('../../src/utils/tts', () => ({
   synthesizeSpeechToFile: jest.fn(),
 }));
 
-// Mock OpenAI to return structured JSON
+// Mock OpenAI to return structured voice configuration JSON
 const mockOpenAICreate = jest.fn();
 jest.mock('openai', () => {
   return {
@@ -53,7 +53,7 @@ describe('characterVoices - Simplified OpenAI → Google TTS Pipeline', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Default mock: return a valid American male voice config
+    // Returns valid American male voice by default
     mockOpenAICreate.mockResolvedValue({
       choices: [{
         message: {
@@ -68,7 +68,7 @@ describe('characterVoices - Simplified OpenAI → Google TTS Pipeline', () => {
       }]
     });
 
-    // Default TTS validation: accept all voices as valid
+    // Accepts all voices as valid by default
     mockSynthesizeSpeech.mockResolvedValue([{ audioContent: Buffer.from('test') }]);
   });
 
@@ -95,7 +95,7 @@ describe('characterVoices - Simplified OpenAI → Google TTS Pipeline', () => {
       await getVoiceConfigForCharacter('Cached Character');
       await getVoiceConfigForCharacter('Cached Character');
       
-      // OpenAI should only be called once
+      // OpenAI should only be called once (result is cached)
       expect(mockOpenAICreate).toHaveBeenCalledTimes(1);
     });
 
@@ -115,7 +115,7 @@ describe('characterVoices - Simplified OpenAI → Google TTS Pipeline', () => {
         choices: [{
           message: {
             content: JSON.stringify({
-              gender: 'male', // OpenAI returns male
+              gender: 'male', // OpenAI returns male voice gender
               languageCode: 'en-US',
               voiceName: 'en-US-Wavenet-D',
               pitch: 0,

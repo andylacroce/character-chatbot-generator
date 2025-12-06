@@ -1,8 +1,7 @@
-// =============================
-// tts.ts
-// Google Text-to-Speech (TTS) utility functions for synthesizing audio from text.
-// Handles credential loading, TTS client instantiation, speech synthesis, and audio file cleanup.
-// =============================
+/**
+ * Google Text-to-Speech (TTS) utility for synthesizing audio from text.
+ * Handles credential loading, TTS client instantiation, speech synthesis, and audio file cleanup.
+ */
 
 /**
  * Google Text-to-Speech (TTS) utility functions.
@@ -78,15 +77,15 @@ function getGoogleAuthClient(): GoogleAuth | undefined {
     if (!creds || typeof creds !== 'object') return undefined;
     const c = creds as GoogleCredentials;
     if (!c.client_email || !c.private_key) return undefined;
-    // Create a GoogleAuth instance using the explicit credentials so the underlying
-    // Google client receives an auth object with the expected API.
+    // Create GoogleAuth instance with explicit credentials to ensure the Google client
+    // receives an auth object matching its expected API interface
     const auth = new GoogleAuth({
       credentials: c as Record<string, unknown>,
       scopes: ['https://www.googleapis.com/auth/cloud-platform'],
     });
     return auth;
   } catch {
-    // If credentials aren't available or invalid, fall back to ADC by returning undefined
+    // Credentials unavailable or invalid; fall back to Application Default Credentials
     return undefined;
   }
 }
@@ -103,11 +102,11 @@ export function getTTSClient() {
   if (!ttsClient) {
     const authClient = getGoogleAuthClient();
     if (authClient) {
-      // Pass the GoogleAuth instance directly; this provides the methods expected by
-      // the @google-cloud client (avoids runtime errors such as getUniverseDomain missing).
+      // Pass GoogleAuth instance to provide required methods (e.g., getUniverseDomain)
+      // that the @google-cloud client depends on
       ttsClient = new textToSpeech.TextToSpeechClient({ auth: authClient });
     } else {
-      // Let the client discover credentials via ADC and log this for debugging
+      // Credentials not provided; client will use Application Default Credentials (ADC)
       logger.info('No explicit Google credentials found; falling back to Application Default Credentials (ADC)');
       ttsClient = new textToSpeech.TextToSpeechClient();
     }
@@ -148,7 +147,7 @@ export async function synthesizeSpeechToFile({
   audioConfig?: protos.google.cloud.texttospeech.v1.IAudioConfig;
 }): Promise<void> {
   const input = ssml ? { ssml: text } : { text };
-  // Sanitize and constrain output path
+  // Sanitize output path to prevent path traversal attacks
   const resolvedPath = path.resolve(filePath);
   const outDir = path.dirname(resolvedPath);
   const systemTmp = path.resolve('/tmp');
@@ -156,14 +155,14 @@ export async function synthesizeSpeechToFile({
   if (!isMp3) {
     throw new Error('Output file must have .mp3 extension');
   }
-  // Ensure output directory is within system temp
+  // Ensure output directory is within system temp directory boundaries
   if (!(outDir.startsWith(systemTmp + path.sep) || outDir === systemTmp)) {
     throw new Error('Invalid output directory: must reside under system temp');
   }
-  // Prevent directory traversal by rejoining basename
-  // Additionally sanitize the filename component to remove unsafe characters
+  // Prevent directory traversal by using only the filename component
+  // Sanitize filename to remove unsafe characters
   const safeFile = path.join(outDir, sanitizeFilename(path.basename(resolvedPath)));
-  // The API expects languageCode, not languageCodes
+  // Note: Google TTS API expects 'languageCode' (singular), not 'languageCodes'
   const apiVoice = {
     ...voice,
     languageCode: (voice.languageCodes && voice.languageCodes[0]) || "en-GB",
@@ -176,7 +175,7 @@ export async function synthesizeSpeechToFile({
   };
   const client = getTTSClient();
 
-  // Retry logic for TTS
+  // Retry synthesis with exponential backoff on transient failures
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -189,21 +188,21 @@ export async function synthesizeSpeechToFile({
         event: "audio_create",
         filePath: safeFile
       }));
-      // Clean up other .mp3 files in the same temp dir, with strict guards
+      // Clean up older .mp3 files in temp directory with strict safety checks
       try {
         const tmpDirRaw = path.dirname(safeFile);
         const tmpDir = path.resolve(tmpDirRaw);
         const systemTmp = path.resolve('/tmp');
-        // Only perform cleanup inside system temp to avoid unsafe deletions
+        // Restrict cleanup to system temp directory to prevent unsafe deletions
         if (tmpDir.startsWith(systemTmp + path.sep) || tmpDir === systemTmp) {
           const newFile = path.basename(filePath);
           const files = fs.readdirSync(tmpDir);
           for (const file of files) {
-            // Only target .mp3 files and skip the newly created one
+            // Target .mp3 files only; skip the newly created audio file
             if (!file.toLowerCase().endsWith('.mp3') || file === newFile) continue;
             try {
               const candidate = path.resolve(path.join(tmpDir, file));
-              // Ensure the resolved candidate remains within the tmpDir boundary
+              // Verify resolved path stays within temp directory boundary
               if (!(candidate.startsWith(tmpDir + path.sep) || candidate === tmpDir)) continue;
               fs.unlinkSync(candidate);
               logger.info("Audio file deleted", sanitizeLogMeta({
@@ -244,7 +243,7 @@ function cleanupTempFiles(files: string[]): void {
   const baseTmp = process.env.TTS_TMP_DIR || '/tmp/test-tts';
   const allowedDir = path.resolve(baseTmp);
   for (const file of files) {
-    // Only allow deletion of .mp3 files inside the allowed temp directory
+    // Only allow deletion of .mp3 files within the designated temp directory
     const resolved = path.resolve(file);
     if (!file.toLowerCase().endsWith('.mp3')) continue;
     if (!(resolved.startsWith(allowedDir + path.sep) || resolved === allowedDir)) continue;

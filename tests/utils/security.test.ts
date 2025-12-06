@@ -28,20 +28,20 @@ describe('Security Utils', () => {
     });
 
     it('should decode decimal numeric entities', () => {
-      expect(decodeHtmlEntities('&#39;')).toBe("'"); // apostrophe
-      expect(decodeHtmlEntities('&#65;')).toBe('A'); // capital A
-      expect(decodeHtmlEntities('&#233;')).toBe('é'); // e with acute
+      expect(decodeHtmlEntities('&#39;')).toBe("'"); // Apostrophe character
+      expect(decodeHtmlEntities('&#65;')).toBe('A'); // Capital letter A
+      expect(decodeHtmlEntities('&#233;')).toBe('é'); // e with acute accent
     });
 
     it('should decode hexadecimal numeric entities', () => {
-      expect(decodeHtmlEntities('&#x27;')).toBe("'"); // apostrophe
-      expect(decodeHtmlEntities('&#x41;')).toBe('A'); // capital A
-      expect(decodeHtmlEntities('&#xE9;')).toBe('é'); // e with acute
+      expect(decodeHtmlEntities('&#x27;')).toBe("'"); // Hex: apostrophe character
+      expect(decodeHtmlEntities('&#x41;')).toBe('A'); // Hex: capital letter A
+      expect(decodeHtmlEntities('&#xE9;')).toBe('é'); // Hex: e with acute accent
     });
 
     it('should leave unknown entities unchanged', () => {
       expect(decodeHtmlEntities('&unknown;')).toBe('&unknown;');
-      expect(decodeHtmlEntities('&#1114112;')).toBe('&#1114112;'); // Code point > 0x10FFFF
+      expect(decodeHtmlEntities('&#1114112;')).toBe('&#1114112;'); // Code point exceeds max Unicode (0x10FFFF)
     });
 
     it('should decode multiple entities in a string', () => {
@@ -69,7 +69,7 @@ describe('Security Utils', () => {
     });
 
     it('should not escape safe characters', () => {
-      expect(escapeHtml("'")).toBe("'"); // apostrophe is safe
+      expect(escapeHtml("'")).toBe("'"); // Apostrophe is safe and should not be escaped
       expect(escapeHtml('a')).toBe('a');
       expect(escapeHtml('1')).toBe('1');
     });

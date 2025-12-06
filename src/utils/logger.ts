@@ -9,12 +9,12 @@ import { v4 as uuidv4 } from "uuid";
  * @module logger
  */
 
-// Type definitions for logger interface
+/** Logger interface definition */
 interface LoggerInstance {
   log: (level: string, message: string, meta?: Record<string, unknown>) => void;
 }
 
-// Browser-compatible logger implementation
+/** Browser-compatible logger implementation for client-side logging */
 const createBrowserLogger = (): LoggerInstance => {
   return {
     log: (level: string, message: string, meta?: Record<string, unknown>) => {
@@ -22,7 +22,7 @@ const createBrowserLogger = (): LoggerInstance => {
       const metaString = meta && Object.keys(meta).length ? JSON.stringify(meta) : "";
       const logMessage = `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
       
-      // Use appropriate console method based on level
+      // Select appropriate console method based on log level
       if (level === 'error') {
         console.error(logMessage);
       } else if (level === 'warn') {
@@ -34,14 +34,14 @@ const createBrowserLogger = (): LoggerInstance => {
   };
 };
 
-// Server-side Winston logger (only imported on server)
+/** Winston-based server-side logger (only imported on server) */
 let loggerInstance: LoggerInstance;
 
 if (typeof window === 'undefined') {
-  // Server-side: use Winston
+  // Use Winston logger on server side
   try {
-    // Dynamic import to avoid bundling Winston in client code
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // Dynamically import Winston to avoid bundling it in client code
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Server-side only
     const winston = require('winston');
     
     if (typeof globalThis.setImmediate === "undefined") {
@@ -62,11 +62,11 @@ if (typeof window === 'undefined') {
     
     loggerInstance = logger as unknown as LoggerInstance;
   } catch {
-    // Fallback if Winston fails to load
+    // Fallback if Winston fails to import or initialize
     loggerInstance = createBrowserLogger();
   }
 } else {
-  // Client-side: use browser-compatible logger
+  // Use browser-compatible logger on client side
   loggerInstance = createBrowserLogger();
 }
 
@@ -136,7 +136,7 @@ export function sanitizeLogMeta(meta: Record<string, unknown>): Record<string, u
     if (typeof value === 'string' && value.length > 120) {
       result[key] = truncate(value, 120);
     } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      // For objects, only keep shallow keys or a summary
+      // For objects, extract only shallow keys or create a summary
       result[key] = '[Object]';
     } else if (Array.isArray(value) && value.length > 5) {
       result[key] = `[Array(${value.length})]`;

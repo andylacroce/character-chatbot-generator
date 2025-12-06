@@ -7,15 +7,15 @@ describe('logger utility', () => {
 
     it('loads server-side (winston) logger when window is undefined', () => {
         const origWindow = (globalThis as unknown as { window?: Window }).window;
-        // Simulate server-side environment
+        // Simulate server-side environment by removing window object
         delete (globalThis as unknown as { window?: Window }).window;
-        // Clear modules so the logger module reinitializes in server context
+        // Clear cached modules so the logger reinitializes in server context
         jest.resetModules();
         const serverLogger = require('../../src/utils/logger');
         expect(typeof serverLogger.logger.info).toBe('function');
-        // Should not throw when used
+        // Verify logger initializes without errors in server context
         expect(() => serverLogger.logger.info('server test')).not.toThrow();
-        // restore window and modules
+        // Restore window object and clear module cache
         (globalThis as unknown as { window?: Window }).window = origWindow;
         jest.resetModules();
     });
@@ -29,7 +29,7 @@ describe('logger utility', () => {
     });
 
     it('should log messages at different levels', () => {
-        // Mock loggerInstance.log
+        // Mock the internal loggerInstance.log method
         const spy = jest.spyOn(console, 'log').mockImplementation(() => { });
         log('info', 'Test info log', { foo: 'bar' });
         log('error', 'Test error log');
@@ -150,7 +150,7 @@ describe('logger utility', () => {
             expect(result.length).toBe(101);
         });
         it('returns input unchanged if not a string', () => {
-    // Pass a non-string via unknown cast to test non-string behavior without using `any`
+    // Use unknown cast to pass non-string value without TypeScript errors
     expect(truncate((123 as unknown) as string, 10)).toBe(123);
         });
     });
@@ -198,7 +198,7 @@ describe('logger utility', () => {
     });
 
     it('should work in browser and server environments', () => {
-        // Logger is now browser-compatible and works in both environments
+        // Verify logger works correctly in both server and browser environments
         expect(typeof log).toBe('function');
         expect(typeof logEvent).toBe('function');
         expect(typeof generateRequestId).toBe('function');

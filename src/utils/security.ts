@@ -10,7 +10,7 @@
  */
 export function decodeHtmlEntities(str: string): string {
   if (typeof str !== 'string') return '';
-  // Handle common named entities
+  // Decode named HTML entities (e.g., &lt; to <)
   const entityMap: { [key: string]: string } = {
     '&amp;': '&',
     '&lt;': '<',
@@ -26,22 +26,22 @@ export function decodeHtmlEntities(str: string): string {
   return str.replace(/&[a-zA-Z0-9#]+;/g, (entity) => {
     if (entityMap[entity]) return entityMap[entity];
     
-    // Handle numeric entities
+    // Parse numeric character references (decimal or hexadecimal)
     if (entity.startsWith('&#x')) {
-      // Hexadecimal
+      // Hexadecimal numeric reference (&#x...;)
       const code = parseInt(entity.slice(3, -1), 16);
       if (code >= 0 && code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF)) {
         return String.fromCodePoint(code);
       }
     } else if (entity.startsWith('&#')) {
-      // Decimal
+      // Decimal numeric reference (&#...;)
       const code = parseInt(entity.slice(2, -1), 10);
       if (code >= 0 && code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF)) {
         return String.fromCodePoint(code);
       }
     }
     
-    return entity; // Unknown or invalid entity, leave as is
+    return entity; // Unknown entity; return as-is without decoding
   });
 }
 
@@ -100,10 +100,10 @@ export function sanitizeForDisplay(str: string): string {
   // First unescape JavaScript escape sequences
   str = unescapeString(str);
   
-  // Then decode HTML entities
+  // Step 2: Decode HTML entities (e.g., &lt; to <)
   str = decodeHtmlEntities(str);
   
-  // Finally escape dangerous HTML characters
+  // Step 3: Escape dangerous HTML characters for display safety
   return escapeHtml(str);
 }
 
@@ -117,13 +117,11 @@ export function sanitizeForDisplay(str: string): string {
 export function sanitizeForReact(str: string): string {
   if (typeof str !== 'string') return '';
   
-  // First unescape JavaScript escape sequences
+  // Step 1: Unescape JavaScript escape sequences
   str = unescapeString(str);
-  
-  // Then decode HTML entities (like &quot; to ")
   str = decodeHtmlEntities(str);
   
-  // Do NOT escape HTML - React handles XSS protection automatically
+  // Step 3: Do NOT escape - React's JSX automatically prevents XSS attacks
   return str;
 }
 
@@ -134,7 +132,7 @@ export function sanitizeForReact(str: string): string {
  */
 export function sanitizeCharacterName(name: string): string {
   if (typeof name !== 'string') return '';
-  // Remove potentially dangerous characters and limit length
+  // Remove dangerous characters, trim whitespace, and limit length for safety
   const sanitized = name.replace(/[<>'"&]/g, '').trim();
   return sanitized.length > 100 ? sanitized.substring(0, 100) : sanitized;
 }

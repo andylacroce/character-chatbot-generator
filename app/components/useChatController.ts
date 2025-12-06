@@ -1,3 +1,7 @@
+/**
+ * Chat controller hook that orchestrates chat state, API calls, audio, and logging for the chat UI.
+ * Handles message history, retries, intro generation, transcript export, and audio playback toggling.
+ */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { downloadTranscript } from "../../src/utils/downloadTranscript";
 import { authenticatedFetch } from "../../src/utils/api";

@@ -1,6 +1,6 @@
 # Character Chatbot Generator
 
-A Next.js + TypeScript app that provides a character-driven chat UI with OpenAI-powered responses and Google Text-to-Speech audio replies.
+A Next.js 16 + TypeScript app that provides a character-driven chat UI with OpenAI-powered responses and Google Text-to-Speech audio replies.
 
 ## Key Features
 
@@ -10,7 +10,7 @@ A Next.js + TypeScript app that provides a character-driven chat UI with OpenAI-
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 50 messages
 - **Cost Optimization**: Prompt caching reduces API costs for repeated system prompts
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
-- **Comprehensive Testing**: Jest test suite with 91%+ code coverage
+- **Comprehensive Testing**: Jest test suite with 92%+ code coverage
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
 
@@ -70,6 +70,15 @@ npm run dev
 
 Visit `http://localhost:3000`
 
+### Helpful Scripts
+
+- `npm run dev` — Next dev with Turbopack
+- `npm run lint` / `npm run lint:fix`
+- `npm run test` / `npm run test:watch` / `npm run test:coverage`
+- `npm run type-check` / `npm run type-check:watch`
+- `npm run analyze` — bundle analysis
+- `npm run ci` — lint + type-check + coverage + build
+
 ## Testing
 
 Run the full test suite with coverage:
@@ -82,6 +91,12 @@ Run linting:
 
 ```powershell
 npm run lint
+```
+
+Run type-check only:
+
+```powershell
+npm run type-check
 ```
 
 ## CI-Style Local Validation
@@ -121,11 +136,11 @@ Multi-layered protection for all API endpoints:
 ```
 app/                  # Next.js app & UI components
 pages/api/           # API routes (chat, audio, health, transcript)
-  chat.ts            # Main chat endpoint with streaming & summarization
+   chat.ts            # Main chat endpoint with streaming & summarization
   audio.ts           # TTS audio generation
-  generate-avatar.ts # Avatar generation with structured outputs
+   generate-avatar.ts # Avatar generation with structured outputs
 src/
-  utils/             # Utilities (TTS, logger, cache, security)
+   utils/             # Utilities (TTS, logger, cache, security)
   types/             # TypeScript type definitions
   config/            # Configuration files
 tests/               # Jest test suite
@@ -166,7 +181,7 @@ proxy.ts             # API authentication middleware (Next.js 16)
 
    - Use Node.js runtime (not Edge) for API routes
    - Node version ≥18 recommended
-   - Next.js 16.0.0+ with Turbopack support
+   - Next.js 16.0.0+ with Turbopack support (experimental `optimizeCss` enabled)
 
 3. **Custom Domains**
 
@@ -214,5 +229,4 @@ Educational/portfolio project. Not affiliated with OpenAI or Google. Use public 
 
 ## Agent Instructions
 
-Agent-focused instructions are now maintained in the repository's GitHub location: `./.github/copilot-instructions.md`.
-This single file contains the concise, repo-specific guidance for AI coding agents (setup, security, testing, SSE/TTS patterns, and where to look before editing core behavior).
+Agent-focused instructions live at `./.github/copilot-instructions.md` and cover setup, security, streaming/TTS patterns, and critical files to read before changing core behavior.

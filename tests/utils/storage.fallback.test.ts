@@ -4,7 +4,7 @@ describe('storage fallback (no localStorage)', () => {
   let originalLocalStorage: unknown;
 
   beforeEach(() => {
-    // Save existing localStorage and remove it to simulate environments without it
+    // Save existing localStorage and delete it to simulate environments without it
     const g = global as unknown as Record<string, unknown>;
     originalLocalStorage = g.localStorage;
     try {
@@ -14,7 +14,7 @@ describe('storage fallback (no localStorage)', () => {
   });
 
   afterEach(() => {
-    // Restore original localStorage
+    // Restore original localStorage after test
     try {
       const g = global as unknown as Record<string, unknown>;
       g.localStorage = originalLocalStorage;
@@ -32,7 +32,7 @@ describe('storage fallback (no localStorage)', () => {
   it('handles JSON helpers using fallback', () => {
     storage.setJSON('obj', { a: 1 });
     expect(getJSON<{ a: number }>('obj')).toEqual({ a: 1 });
-    // invalid JSON path returns null
+    // Invalid JSON path should return null
     expect(getJSON('missing')).toBeNull();
   });
 

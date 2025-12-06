@@ -1,8 +1,7 @@
-// =============================
-// downloadTranscript.ts
-// Utility for opening the chat transcript as HTML in a new browser tab via the /api/transcript endpoint.
-// Handles browser compatibility, error handling, and content display.
-// =============================
+/**
+ * Utility for displaying chat transcripts in a browser tab via /api/transcript endpoint.
+ * Handles browser compatibility, error handling, and content display.
+ */
 
 import type { Message } from "../types/message";
 import { authenticatedFetch } from "./api";
@@ -21,7 +20,7 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
   if (!Array.isArray(messages)) {
     throw new Error("Transcript must be an array");
   }
-  // If messages are Message[], convert to Record<string, unknown>[]
+  // Convert Message[] to Record<string, unknown>[] if needed (type coercion)
   const safeMessages: Record<string, unknown>[] = messages.map((msg) => ({ ...msg }));
   const now = new Date();
   const friendlyTime = now.toLocaleString(undefined, {
@@ -42,7 +41,7 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
       body: JSON.stringify({ messages: safeMessages, exportedAt: friendlyTime, bot }),
     });
   } catch (err) {
-    // Network error
+    // Network request failed
     throw new Error(`Network error: ${err instanceof Error ? err.message : String(err)}`);
   }
   if (!response.ok) {
@@ -62,7 +61,7 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
   const url = window.URL.createObjectURL(blob);
   const newWindow = window.open(url, "_blank");
   if (!newWindow) {
-    // Clean up the blob URL since we can't use it
+    // Cleanup unused blob URL since window.open failed
     window.URL.revokeObjectURL(url);
     throw new Error("Failed to open new tab - popup blocker may be active or browser security settings prevent it");
   }

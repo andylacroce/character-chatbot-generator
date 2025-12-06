@@ -10,9 +10,13 @@
     "vercel-build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "test": "jest",
+    "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --silent --coverageReporters=text --coverageReporters=text-summary",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "type-check:watch": "tsc --noEmit --watch",
+    "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
     "sanitize-filename": "^1.6.3",

@@ -1,5 +1,8 @@
 import type { Bot } from "../../app/components/BotCreator";
-// Utility to get a valid bot from localStorage, expiring after 6 hours
+/**
+ * Utility to retrieve a valid bot from localStorage with 6-hour expiration.
+ * Automatically removes expired entries and validates bot structure.
+ */
 export function getValidBotFromStorage(): Bot | null {
     try {
         const saved = localStorage.getItem("chatbot-bot");

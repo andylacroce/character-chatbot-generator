@@ -3,10 +3,9 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
   },
-  // Avoid running ESLint during production builds to prevent circular-structure
-  // Let Next.js run ESLint during builds so we can reproduce and fix the
-  // circular-structure serialization issue. If necessary we will re-enable
-  // ignoreDuringBuilds after fixing the root cause.
+  // Disable ESLint ignoreDuringBuilds while debugging circular-structure serialization issue.
+  // Production builds currently run ESLint to help reproduce and fix the root cause.
+  // If the issue is resolved, re-enable ignoreDuringBuilds for faster build times.
   serverExternalPackages: ['winston'],
   images: {
     remotePatterns: [

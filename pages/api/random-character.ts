@@ -1,7 +1,7 @@
-// =============================
-// pages/api/random-character.ts
-// Next.js API route for generating a random character name using OpenAI.
-// =============================
+/**
+ * API endpoint for generating random character names using OpenAI.
+ * Maintains in-memory cache of recent names to avoid repetition.
+ */
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
@@ -10,7 +10,7 @@ import { getOpenAIModel } from "../../src/utils/openaiModelSelector";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// In-memory cache to track recently generated names (resets on server restart)
+// Track recently generated names in memory to avoid repetition (resets on server restart)
 const recentNames: string[] = [];
 const MAX_RECENT_NAMES = 50;
 
@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const model = getOpenAIModel("text");
     
-    // Build exclusion list from recent names
+    // Build exclusion list from recent names for better name variety
     const exclusionList = recentNames.length > 0 
       ? `Do NOT suggest any of these recently used names: ${recentNames.join(", ")}. `
       : "";
@@ -57,11 +57,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const name = completion.choices[0]?.message?.content?.trim().replace(/^"|"$/g, "") || "Sherlock Holmes";
     
-    // Add to recent names tracking
+    // Track generated name and maintain max recent names list
     if (!recentNames.includes(name)) {
       recentNames.push(name);
       if (recentNames.length > MAX_RECENT_NAMES) {
-        recentNames.shift(); // Remove oldest
+        recentNames.shift(); // Remove oldest name when list reaches max size
       }
     }
     
@@ -74,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     logEvent("error", "random_character_failed", "Failed to generate random character", sanitizeLogMeta({
       error: err instanceof Error ? err.message : String(err)
     }));
-    // Return fallback on error
+    // Return default fallback on any error
     res.status(200).json({ name: "Sherlock Holmes" });
   }
 }

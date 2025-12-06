@@ -1,6 +1,6 @@
 import { downloadTranscript } from '../../src/utils/downloadTranscript';
 
-// Mock browser APIs
+// Mock browser APIs for testing download functionality
 const createObjectURL = jest.fn(() => 'blob:url');
 const revokeObjectURL = jest.fn();
 const open = jest.fn(() => ({} as Window));
@@ -9,7 +9,7 @@ global.URL.createObjectURL = createObjectURL;
 global.URL.revokeObjectURL = revokeObjectURL;
 global.window.open = open;
 
-// Use correct type for fetch mock
+// Use correct type annotation for the fetch mock
 const fetchMock = jest.fn();
 global.fetch = fetchMock;
 
@@ -19,7 +19,7 @@ describe('downloadTranscript', () => {
   });
 
   it('throws if messages is not an array', async () => {
-  // Call the function via an unknown-typed reference to intentionally pass a non-array value
+  // Intentionally pass non-array value to exercise error handling
   const fn = downloadTranscript as unknown as (m: unknown) => Promise<void>;
   await expect(fn(null)).rejects.toThrow('Transcript must be an array');
   });
@@ -33,7 +33,7 @@ describe('downloadTranscript', () => {
     const messages = [{ sender: 'User', text: 'Hello' }];
     const bot = { name: 'TestBot', avatarUrl: '/test-avatar.jpg' };
     await downloadTranscript(messages, bot);
-    // Wait for the setTimeout to flush
+    // Allow setTimeout in test to complete
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(global.fetch).toHaveBeenCalledWith(
       '/api/transcript',

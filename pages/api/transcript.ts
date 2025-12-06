@@ -1,8 +1,7 @@
-// =============================
-// pages/api/transcript.ts
-// Next.js API route for generating and returning a downloadable chat transcript.
-// Accepts POST requests with messages (up to 10MB) and returns HTML.
-// =============================
+/**
+ * API endpoint for generating downloadable chat transcripts.
+ * Accepts POST requests with messages (up to 10MB) and returns HTML document.
+ */
 
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
@@ -17,17 +16,17 @@ export const config = {
   },
 };
 
-// Rate limiter: 10 requests per minute per IP (transcript generation)
+// Rate limiter: 10 requests per minute per IP to prevent transcript generation abuse
 const transcriptRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 requests per windowMs
+  windowMs: 60 * 1000, // Rate limit window: 1 minute
+  max: 10, // Limit each IP to 10 requests per window
   message: {
     error: "Too many transcript requests from this IP, please try again later.",
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true, // Include rate limit info in RateLimit-* response headers
+  legacyHeaders: false, // Disable deprecated X-RateLimit-* headers
   keyGenerator: (req) => {
-    // Handle IP extraction for Next.js API routes
+    // Handle client IP extraction for Next.js API routes
     return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
            (req.headers['x-real-ip'] as string) ||
            (req.connection?.remoteAddress) ||
@@ -54,7 +53,7 @@ export default async function handler(
     return;
   }
 
-  // Apply rate limiting
+  // Apply rate limiting middleware to this request
   await new Promise<void>((resolve) => {
     transcriptRateLimit(req, res, () => resolve());
   });
@@ -62,7 +61,7 @@ export default async function handler(
     return;
   }
 
-  // Expect messages directly from JSON body (sent by downloadTranscript utility)
+  // Extract messages from request body (sent by downloadTranscript utility)
   const { messages, bot, exportedAt } = req.body;
 
   if (!Array.isArray(messages)) {
@@ -74,7 +73,7 @@ export default async function handler(
     return;
   }
 
-  // Validate inputs
+  // Validate required fields and types
   if (bot !== undefined && (typeof bot !== 'object' || bot === null)) {
     res.status(400).json({ error: "bot must be an object" });
     return;
@@ -94,16 +93,16 @@ export default async function handler(
     }
   }
 
-  // Validate message count to prevent abuse
+  // Ensure message count is reasonable to prevent resource exhaustion
   if (messages.length > 10000) {
     logger.info(`[Transcript API] 400 Bad Request: Too many messages (${messages.length})`);
     res.status(400).json({ error: "Too many messages (max 10000)" });
     return;
   }
 
-  // Validate total content size to prevent extremely large payloads
+  // Ensure total payload size stays within limits to prevent abuse
   const totalSize = JSON.stringify(messages).length;
-  if (totalSize > 5 * 1024 * 1024) { // 5MB limit
+  if (totalSize > 5 * 1024 * 1024) { // 5MB size limit
     logger.info(`[Transcript API] 400 Bad Request: Transcript too large (${totalSize} bytes)`);
     res.status(400).json({ error: "Transcript too large (max 5MB)" });
     return;
@@ -111,7 +110,7 @@ export default async function handler(
 
   logger.info(`[Transcript API] Received messages for download: ${messages.length}`);
 
-  // Use the friendly exportedAt timestamp if provided, otherwise generate a machine-readable one
+  // Use friendly timestamp if provided, otherwise generate machine-readable one
   const displayTimestamp = exportedAt && typeof exportedAt === 'string' ? exportedAt : (() => {
     const now = new Date();
     return now.toLocaleString(undefined, {
@@ -126,7 +125,7 @@ export default async function handler(
     });
   })();
 
-  // Generate filename for the HTML document title
+  // Generate descriptive filename for the HTML document
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
   const datetime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
@@ -134,7 +133,7 @@ export default async function handler(
 
   logger.info(`[Transcript API] Generated filename: ${filename}`);
 
-  // Generate HTML transcript
+  // Generate formatted HTML transcript with styling and safety measures
   const htmlTranscript = `
     <!DOCTYPE html>
     <html lang="en">
@@ -241,14 +240,14 @@ export default async function handler(
   logger.info(`[Transcript API] 200 OK: Transcript sent for display, messages=${messages.length}`);
 }
 
-// Helper for validating avatar URL
+/** Helper function to validate avatar URL format for security */
 export function isValidAvatarUrl(url: string): boolean {
   if (typeof url !== 'string') return false;
-  // Allow relative URLs or absolute paths starting with /
+  // Allow absolute paths starting with /
   if (url.startsWith('/')) return true;
-  // Allow relative URLs without / (like 'silhouette.svg')
+  // Allow relative URLs without protocol (e.g., 'silhouette.svg')
   if (!url.includes('://')) return true;
-  // For full URLs, check protocol
+  // For full URLs, validate protocol is safe (https only)
   try {
     const parsed = new URL(url);
     return parsed.protocol === 'http:' || parsed.protocol === 'https:';

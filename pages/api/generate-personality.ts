@@ -1,8 +1,7 @@
-// =============================
-// pages/api/generate-personality.ts
-// Next.js API route for generating a character personality prompt using OpenAI.
-// Accepts POST requests with a character name and returns a personality string.
-// =============================
+/**
+ * API endpoint for generating a character personality prompt via OpenAI.
+ * Accepts POST requests with a character name and returns a personality string.
+ */
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
@@ -12,15 +11,15 @@ import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 
 // Rate limiter: 20 requests per minute per IP (personality generation is lightweight)
 const personalityRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 20, // limit each IP to 20 requests per windowMs
+  windowMs: 60 * 1000, // Rate limit window: 1 minute
+  max: 20, // Limit each IP to 20 requests per window
   message: {
     error: "Too many personality generation requests from this IP, please try again later.",
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true, // Include rate limit info in RateLimit-* response headers
+  legacyHeaders: false, // Disable deprecated X-RateLimit-* headers
   keyGenerator: (req) => {
-    // Handle IP extraction for Next.js API routes
+    // Extract client IP across proxies/load balancers for accurate limiting
     return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
            (req.headers['x-real-ip'] as string) ||
            (req.connection?.remoteAddress) ||

@@ -1,8 +1,7 @@
-// =============================
-// useAudioPlayer.ts
-// Custom React hook for managing audio playback (TTS responses, etc.).
-// Returns playAudio function and audioRef for controlling playback in chat UI.
-// =============================
+/**
+ * Audio playback hook for chat responses.
+ * Ensures single playback at a time, respects audioEnabled ref, and exposes play/stop helpers.
+ */
 
 import { useRef, useCallback } from "react";
 
@@ -23,10 +22,7 @@ export function useAudioPlayer(
   const audioRef = audioRefParam ?? internalAudioRef;
   const sourceRef = sourceRefParam ?? internalSourceRef;
 
-  // Keep AudioContext available for future specialized usage but avoid heavy
-  // synchronous decoding/copying in the common path. Using HTMLAudioElement
-  // playback is far cheaper on the main thread and avoids large array copies.
-  
+  // Keep AudioContext available for specialized cases; default to lightweight HTMLAudioElement playback.
 
   // Update useCallback dependencies
   const playAudio = useCallback(async (src: string, signal?: AbortSignal) => {
@@ -42,35 +38,13 @@ export function useAudioPlayer(
       }
       return null;
     }
-    // Stop previous Web Audio playback
+    // Stop prior playback before starting a new clip
     if (sourceRef.current) {
       try { (sourceRef.current as AudioBufferSourceNode | null)?.stop?.(); } catch { }
       try { (sourceRef.current as AudioBufferSourceNode | null)?.disconnect?.(); } catch { }
       sourceRef.current = null;
     }
-    if (audioRef.current) {
-      if (typeof audioRef.current.pause === 'function') {
-        audioRef.current.pause();
-      }
-      if (typeof audioRef.current.currentTime === 'number') {
-        try {
-          audioRef.current.currentTime = 0;
-        } catch { }
-      }
-      if ('_paused' in audioRef.current) {
-        (audioRef.current as HTMLAudioElement & { _paused?: boolean })._paused = true;
-      }
-    }
-    // Favor a simple HTMLAudioElement-based playback flow instead of fetching
-    // and decoding audio on the main thread. HTMLAudioElement playback delegates
-    // decoding to the user-agent and is more efficient for typical TTS blobs.
-    // Stop previous Web Audio playback
-    if (sourceRef.current) {
-      try { (sourceRef.current as AudioBufferSourceNode | null)?.stop?.(); } catch { }
-      try { (sourceRef.current as AudioBufferSourceNode | null)?.disconnect?.(); } catch { }
-      sourceRef.current = null;
-    }
-    // Pause/reset previous HTMLAudioElement if present
+    // Favor lightweight HTMLAudioElement playback; pause/reset any prior element
     if (audioRef.current) {
       if (typeof audioRef.current.pause === 'function') {
         try { audioRef.current.pause(); } catch {}

@@ -1,8 +1,7 @@
-// =============================
-// pages/api/health.ts
-// Next.js API route for health checks of OpenAI and Google TTS services.
-// Returns status for monitoring and uptime checks.
-// =============================
+/**
+ * Health check endpoint for OpenAI and Google TTS.
+ * Returns service status for monitoring/uptime probes.
+ */
 
 import OpenAI from "openai";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
@@ -63,9 +62,8 @@ export default async function handler(
       creds = fs.readFileSync(creds, "utf8");
     }
     const credentials = JSON.parse(creds);
-  // Build a GoogleAuth instance when explicit credentials provided, otherwise let ADC take over
-  // Note: construct a GoogleAuth instance (not pass a raw credentials/JWT object)
-  // so the @google-cloud client receives the full auth API it expects at runtime.
+    // Build GoogleAuth when explicit credentials exist; otherwise allow ADC discovery.
+    // Using GoogleAuth (instead of raw JWT) ensures the client gets the runtime methods it expects.
     let ttsClient: import('@google-cloud/text-to-speech').TextToSpeechClient;
     if (credentials && credentials.client_email && credentials.private_key) {
       // Build a GoogleAuth instance from the credentials so the client receives

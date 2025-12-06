@@ -1,5 +1,7 @@
-// Safe storage helpers with in-memory fallback for environments where localStorage is unavailable.
-// Provides simple get/set/remove and JSON helpers with try/catch handling to keep callers clean.
+/**
+ * Safe storage wrapper with in-memory fallback for environments without localStorage.
+ * Provides get/set/remove and JSON helpers with try/catch error handling.
+ */
 
 const memoryFallback = new Map<string, string>();
 
@@ -18,7 +20,7 @@ export function setItem(key: string, value: string) {
       return;
     }
   } catch {
-    // fall through to memory fallback
+    // Fall back to in-memory storage if localStorage unavailable
   }
   memoryFallback.set(key, value);
 }
@@ -27,7 +29,7 @@ export function getItem(key: string): string | null {
   try {
     if (storageAvailable()) return localStorage.getItem(key);
   } catch {
-    // fall through
+    // Fall back to in-memory storage
   }
   return memoryFallback.has(key) ? (memoryFallback.get(key) as string) : null;
 }
@@ -39,7 +41,7 @@ export function removeItem(key: string) {
       return;
     }
   } catch {
-    // fall through
+    // Fall back to in-memory storage
   }
   memoryFallback.delete(key);
 }
@@ -48,7 +50,7 @@ export function setJSON(key: string, obj: unknown) {
   try {
     setItem(key, JSON.stringify(obj));
   } catch {
-    // ignore
+    // Silently ignore stringify errors
   }
 }
 
@@ -66,7 +68,7 @@ export function clearMemoryFallback() {
   memoryFallback.clear();
 }
 
-// Versioned JSON helpers
+/** Versioned JSON storage with migration support */
 export type VersionedRecord<T = unknown> = { v: number; createdAt: string; payload: T };
 
 /**
@@ -78,7 +80,7 @@ export function setVersionedJSON<T = unknown>(key: string, payload: T, version =
     const wrapper: VersionedRecord<T> = { v: version, createdAt: new Date().toISOString(), payload };
     setItem(key, JSON.stringify(wrapper));
   } catch {
-    // ignore
+    // Silently ignore stringify or storage errors
   }
 }
 
@@ -122,7 +124,7 @@ export function migrateToVersioned<T = unknown>(key: string, targetVersion = 1, 
     try {
       setItem(key, JSON.stringify(wrapper));
     } catch {
-      // ignore storage write errors
+      // Silently ignore storage write errors
     }
     return wrapper;
   } catch {

@@ -1,4 +1,7 @@
-// src/utils/openaiModelSelector.ts
+/**
+ * Model selection utility for OpenAI API calls.
+ * Uses gpt-4o in production for best quality and gpt-4o-mini in development for cost efficiency.
+ */
 
 /**
  * Returns the appropriate OpenAI model(s) for text or image based on environment.
@@ -12,12 +15,13 @@ export function getOpenAIModel(type: "text" | "image"): string | { primary: stri
     const vercelEnv = process.env.VERCEL_ENV;
     const isProd = env === "production" || vercelEnv === "production";
     if (type === "text") {
-        // Use gpt-4o in production for best quality and fluency
-        // Use gpt-4o-mini in dev for cost savings during testing
+        // Production: gpt-4o for best quality and fluency
+        // Development: gpt-4o-mini for cost-effective testing
         return isProd ? "gpt-4o" : "gpt-4o-mini";
     }
     if (type === "image") {
-        // Use gpt-image-1/dall-e-3 in prod, dall-e-2/dall-e-3 in dev (cheaper first)
+        // Production: dall-e-3 for highest quality images
+        // Development: dall-e-2 for cost savings
         if (isProd) {
             return { primary: "gpt-image-1", fallback: "dall-e-3" };
         } else {

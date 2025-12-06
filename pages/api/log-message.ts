@@ -1,8 +1,7 @@
-// =============================
-// pages/api/log-message.ts
-// Next.js API route for logging chat messages and events to storage (Vercel Blob or local).
-// Includes XSS-safe HTML escaping for logs.
-// =============================
+/**
+ * API endpoint for logging chat messages and events.
+ * Stores logs using Vercel Blob or local file storage with XSS-safe HTML escaping.
+ */
 
 import { put, head } from "@vercel/blob";
 import fs from "fs";
@@ -16,16 +15,16 @@ import { escapeHtml } from "../../src/utils/security";
  * @returns {boolean} True if the IP is public.
  */
 function isValidPublicIp(ip: string): boolean {
-  // Remove port if present (only for IPv4)
+  // Strip port number if present (only applicable to IPv4 addresses)
   if (/^\d+\.\d+\.\d+\.\d+:\d+$/.test(ip)) {
     ip = ip.split(":")[0];
   }
-  // IPv4 regex
+  // IPv4 address pattern
   const ipv4 =
     /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-  // IPv6 regex (permissive, matches :: and full addresses)
+  // IPv6 address pattern (permissive to match :: and full addresses)
   const ipv6 = /^([\da-fA-F]{1,4}:){1,7}[\da-fA-F]{1,4}$|^::1$|^::$|^([\da-fA-F]{1,4}:){1,7}:$/;
-  // Private IPv4 ranges
+  // List of private IPv4 address ranges
   const privateRanges = [
     /^10\./,
     /^127\./,
@@ -38,7 +37,7 @@ function isValidPublicIp(ip: string): boolean {
     return true;
   }
   if (ipv6.test(ip)) {
-    // Exclude loopback and link-local
+    // Exclude IPv6 loopback and link-local addresses
     if (ip === "::1" || ip.startsWith("fe80:")) return false;
     return true;
   }
@@ -88,7 +87,7 @@ export default async function handler(
       return;
     }
 
-    // Validate input types and lengths BEFORE sanitizing
+    // Validate input types and lengths BEFORE any transformations
     if (typeof sender !== "string" || sender.length > 100) {
       logEvent("warn", "log_api_invalid_sender", "Invalid sender", sanitizeLogMeta({
         sender,
@@ -122,15 +121,15 @@ export default async function handler(
       return;
     }
 
-    // Sanitize sender and text to prevent XSS in logs
+    // Sanitize sender and text to prevent XSS in stored logs
     const safeSender = escapeHtml(sender);
     const safeText = escapeHtml(text);
 
-    // Prevent log injection by removing newlines and control characters
+    // Remove newlines and control characters to prevent log injection
     const cleanSender = safeSender.replace(/[\r\n\t\0\x0B\f]/g, "");
     const cleanText = safeText.replace(/[\r\n\t\0\x0B\f]/g, "");
 
-    // --- Get IP (no geolocation for security) ---
+    // Extract and validate client IP (no geolocation for privacy)
     const ip =
       (
         (req.headers["x-forwarded-for"] as string) ||
@@ -139,8 +138,8 @@ export default async function handler(
       )
         .split(",")[0]
         .trim() || "UnknownIP";
-    const safeIp = ip.replace(/[^a-zA-Z0-9\.:_-]/g, ""); // Basic sanitization
-    // --- End IP ---
+    const safeIp = ip.replace(/[^a-zA-Z0-9\.:_-]/g, ""); // Remove potentially dangerous characters
+    // End IP extraction
 
     const timestamp = new Date().toISOString();
     const logEntry = `[${timestamp}] [${safeIp}] ${cleanSender}: ${cleanText}\n`;

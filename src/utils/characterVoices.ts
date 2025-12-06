@@ -58,10 +58,10 @@ const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
  */
 interface VoiceConfig {
   gender: 'male' | 'female' | 'neutral';
-  languageCode: string; // e.g., 'en-GB', 'en-US', 'de-DE'
-  voiceName: string; // e.g., 'en-GB-Wavenet-D', 'en-US-Studio-M'
-  pitch: number; // -20 to +20 semitones
-  rate: number; // 0.25 to 4.0 (1.0 = normal)
+  languageCode: string; // Language code (e.g., 'en-GB', 'en-US', 'de-DE')
+  voiceName: string; // Google TTS voice name (e.g., 'en-GB-Wavenet-D')
+  pitch: number; // Pitch adjustment in semitones (-20 to +20)
+  rate: number; // Speech rate multiplier (0.25 to 4.0, where 1.0 is normal)
 }
 
 /**
@@ -74,7 +74,7 @@ async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): P
     
     const client = getTTSClient();
     
-    // Try to synthesize a very short test phrase
+    // Attempt test synthesis to validate voice is available and functional
     const [response] = await client.synthesizeSpeech({
       input: { text: 'test' },
       voice: {
@@ -86,11 +86,11 @@ async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): P
       },
     });
     
-    // If we got audio content back, the voice is valid
+    // Audio content returned; voice is valid and usable
     return !!response.audioContent;
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    // Voice doesn't exist or other error
+    // Voice not found or synthesis failed
     logger.info("Voice validation failed", sanitizeLogMeta({
       voiceName,
       error: errMsg.substring(0, 100)
@@ -113,10 +113,10 @@ async function fetchVoiceConfigFromOpenAI(name: string, maxRetries = 3): Promise
 Return ONLY valid JSON with this exact schema:
 {
   "gender": "male" | "female" | "neutral",
-  "languageCode": "<locale>",  // e.g., "en-GB", "en-US", "de-DE", "fr-FR", "ja-JP"
-  "voiceName": "<voice>",      // Full Google TTS voice name, e.g., "en-GB-Wavenet-D"
-  "pitch": <number>,            // -20 to +20 semitones (0 = normal)
-  "rate": <number>              // 0.25 to 4.0 (1.0 = normal speed)
+  "languageCode": "<locale>",  // BCP-47 locale code (e.g., 'en-GB', 'en-US', 'de-DE', 'fr-FR', 'ja-JP')
+  "voiceName": "<voice>",      // Full Google TTS voice name (e.g., 'en-GB-Wavenet-D')
+  "pitch": <number>,            // Pitch adjustment (-20 to +20 semitones; 0 = normal)
+  "rate": <number>              // Speech rate multiplier (0.25 to 4.0; 1.0 = normal)
 }
 
 Voice naming pattern: <locale>-<type>-<letter>
@@ -143,7 +143,7 @@ CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error f
       const content = completion.choices[0]?.message?.content?.trim() || '{}';
       const config = JSON.parse(content) as VoiceConfig;
       
-      // Basic validation
+      // Perform basic schema validation before API call
       const voiceNamePattern = /^[a-z]{2}-[A-Z]{2}-(Wavenet|Neural2|Studio|Standard|Journey|News|Polyglot)-[A-Z]$/;
       if (!config.voiceName || !voiceNamePattern.test(config.voiceName)) {
         if (attempt < maxRetries) {
@@ -160,7 +160,7 @@ CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error f
         throw new Error(`Invalid voice name format after ${maxRetries} attempts`);
       }
 
-      // Validate with actual Google TTS API
+      // Validate using actual Google TTS API (true validation)
       const isValid = await isValidGoogleTTSVoice(config.voiceName, config.languageCode || 'en-US');
       
       if (!isValid) {
@@ -179,7 +179,7 @@ CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error f
         throw new Error(`No valid voice found after ${maxRetries} attempts`);
       }
 
-      // Success! Voice is valid
+      // Voice validation succeeded; configuration is ready
       logger.info("Valid voice configuration from OpenAI", sanitizeLogMeta({
         attempt,
         voiceName: config.voiceName,
@@ -218,7 +218,7 @@ export async function getVoiceConfigForCharacter(
   const normalized = normalizeCharacterName(name);
   const cacheKey = genderOverride ? `${normalized}_${genderOverride}` : normalized;
   
-  // Check cache
+  // Check if voice config is already cached
   if (dynamicVoiceCache[cacheKey]) {
     return dynamicVoiceCache[cacheKey];
   }
@@ -226,16 +226,16 @@ export async function getVoiceConfigForCharacter(
   let config: CharacterVoiceConfig;
   
   try {
-    // Get voice config from OpenAI
+    // Fetch voice configuration from OpenAI API
     const voiceConfig = await fetchVoiceConfigFromOpenAI(normalized);
     
-    // Map gender string to SSML enum (apply override if provided)
+    // Map gender string to SSML gender enum (apply override if provided)
     let ssmlGender = SSML_GENDER.MALE;
     const effectiveGender = genderOverride || voiceConfig.gender;
     if (effectiveGender === 'female') ssmlGender = SSML_GENDER.FEMALE;
     else if (effectiveGender === 'neutral') ssmlGender = SSML_GENDER.NEUTRAL;
     
-    // Create config directly from OpenAI response
+    // Create voice configuration directly from OpenAI response
     config = {
       languageCodes: [voiceConfig.languageCode],
       name: voiceConfig.voiceName,
@@ -257,7 +257,7 @@ export async function getVoiceConfigForCharacter(
       type: config.type
     }));
   } catch (err) {
-    // Fallback to Default
+    // Use Default voice on error or cache miss
     logger.warn("Falling back to Default voice", sanitizeLogMeta({
       event: "tts_fallback_default",
       error: err instanceof Error ? err.message : String(err)
@@ -266,7 +266,7 @@ export async function getVoiceConfigForCharacter(
     config = CHARACTER_VOICE_MAP['Default'];
   }
   
-  // Cache and return
+  // Cache the configuration and return
   dynamicVoiceCache[cacheKey] = config;
   return config;
 }

@@ -6,8 +6,10 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
   - Install: `npm install`
   - Dev: `npm run dev` (runs `next dev --turbopack`)
   - Build: `npm run build` (CI: `npm run ci` runs lint, type-check, coverage, then build)
-  - Tests: `npm run test` ; Coverage: `npm run test:coverage`
-  - Lint: `npm run lint` ; Type-check: `npm run type-check`
+  - Tests: `npm run test` ; Coverage: `npm run test:coverage` ; Watch: `npm run test:watch`
+  - Lint: `npm run lint` ; Auto-fix: `npm run lint:fix`
+  - Type-check: `npm run type-check` ; Watch: `npm run type-check:watch`
+  - Bundle analysis: `npm run analyze`
 
 - **Big picture (files to inspect first)**
   - UI: `app/` — Next.js 16+ app router and React components live in `app/components/`.
@@ -27,6 +29,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
   - Streaming SSE frames are sent as `data: JSON\n\n`.
   - Typical final server payload fields consumed by the client: `{ reply: string, audioFileUrl?: string, done: true }`.
   - If you change those fields, update `useChatController` and all client tests that parse stream frames.
+  - Experimental `optimizeCss` is enabled (Next.js 16). Avoid disabling unless debugging CSS regressions.
 
 - **Security & env**
   - Required env vars: `OPENAI_API_KEY`, `API_SECRET`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` (or `config/gcp-key.json`).

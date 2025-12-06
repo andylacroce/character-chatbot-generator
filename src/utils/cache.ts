@@ -1,8 +1,7 @@
-// =============================
-// cache.ts
-// Simple in-memory cache utilities for API and TTS response caching.
-// Used for reply caching and audio file caching.
-// =============================
+/**
+ * Simple in-memory cache utility for API and TTS response caching.
+ * Supports LRU eviction, TTL expiration, and both Vercel and local file persistence.
+ */
 
 import fs from "fs";
 
@@ -11,8 +10,8 @@ function isVercelEnv() {
 }
 
 const CACHE_FILE = "/tmp/bot-reply-cache.json";
-const MAX_CACHE_SIZE = 1000; // Maximum number of entries
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const MAX_CACHE_SIZE = 1000; // Maximum concurrent cache entries
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hour time-to-live in milliseconds
 
 interface CacheEntry {
   value: string;
@@ -26,7 +25,7 @@ function loadCacheFromFile(): Map<string, CacheEntry> {
     try {
       const data = fs.readFileSync(CACHE_FILE, "utf8");
       const parsed = JSON.parse(data);
-      // Convert plain object back to Map
+      // Reconstruct Map from persisted plain object
       const cache = new Map<string, CacheEntry>();
       Object.entries(parsed).forEach(([key, entry]) => {
         cache.set(key, entry as CacheEntry);
@@ -41,7 +40,7 @@ function loadCacheFromFile(): Map<string, CacheEntry> {
 
 function saveCacheToFile(cache: Map<string, CacheEntry>) {
   try {
-    // Convert Map to plain object for JSON serialization
+    // Serialize Map to plain object for JSON persistence
     const obj: Record<string, CacheEntry> = {};
     cache.forEach((value, key) => {
       obj[key] = value;
@@ -54,7 +53,7 @@ function cleanupExpiredEntries(cache: Map<string, CacheEntry>): Map<string, Cach
   const now = Date.now();
   const cleaned = new Map<string, CacheEntry>();
   
-  // Keep only non-expired entries, up to MAX_CACHE_SIZE
+  // Remove expired entries and enforce size limits
   const validEntries: Array<[string, CacheEntry]> = [];
   cache.forEach((entry, key) => {
     if (now - entry.timestamp < CACHE_TTL) {
@@ -62,7 +61,7 @@ function cleanupExpiredEntries(cache: Map<string, CacheEntry>): Map<string, Cach
     }
   });
   
-  // Sort by timestamp (LRU) and keep only the most recent MAX_CACHE_SIZE entries
+  // Sort by access time (LRU) and keep only most recent entries
   validEntries
     .sort((a, b) => b[1].timestamp - a[1].timestamp)
     .slice(0, MAX_CACHE_SIZE)
@@ -86,7 +85,7 @@ export function setReplyCache(key: string, value: string) {
   
   if (isVercelEnv()) {
     memoryCache.set(key, entry);
-    // Cleanup if cache is too large
+    // Trigger cleanup if cache grows too large
     if (memoryCache.size > MAX_CACHE_SIZE) {
       const cleaned = cleanupExpiredEntries(memoryCache);
       memoryCache.clear();
@@ -109,7 +108,7 @@ export function getReplyCache(key: string): string | null {
   if (isVercelEnv()) {
     const entry = memoryCache.get(key);
     if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
-      // Update timestamp for LRU
+      // Update timestamp for LRU eviction tracking
       entry.timestamp = Date.now();
       return entry.value;
     } else if (entry) {

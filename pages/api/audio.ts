@@ -1,8 +1,7 @@
-// =============================
-// pages/api/audio.ts
-// Next.js API route for generating audio responses for chat messages.
-// Uses Google TTS and character persona logic for synthesis.
-// =============================
+/**
+ * API endpoint for generating audio responses for chat messages.
+ * Uses Google TTS with character persona settings and cached text for regeneration.
+ */
 
 import fs from "fs";
 import path from "path";
@@ -22,15 +21,15 @@ const SYSTEM_PROMPT = `You are a helpful character chatbot. Respond concisely, h
 
 // Rate limiter: 30 requests per minute per IP (higher than chat since audio files may be replayed)
 const audioRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 30, // limit each IP to 30 requests per windowMs
+  windowMs: 60 * 1000, // Rate limit window: 1 minute
+  max: 30, // Limit each IP to 30 requests per window
   message: {
     error: "Too many audio requests from this IP, please try again later.",
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true, // Include rate limit info in RateLimit-* response headers
+  legacyHeaders: false, // Disable deprecated X-RateLimit-* headers
   keyGenerator: (req) => {
-    // Handle IP extraction for Next.js API routes
+    // Extract client IP across proxies/load balancers for accurate limiting
     return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
            (req.headers['x-real-ip'] as string) ||
            (req.connection?.remoteAddress) ||

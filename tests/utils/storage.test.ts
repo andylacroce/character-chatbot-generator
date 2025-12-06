@@ -2,9 +2,9 @@ import storage, { getVersionedJSON, migrateToVersioned, setVersionedJSON, setJSO
 
 describe('storage migration helper', () => {
   beforeEach(() => {
-    // Clear in-memory fallback
+    // Clear in-memory fallback before each test
     storage.clearMemoryFallback();
-    // Ensure global localStorage is clean for tests
+    // Ensure localStorage is clean before each test
     try { localStorage.clear(); } catch {}
   });
 
@@ -30,7 +30,7 @@ describe('storage migration helper', () => {
     storage.setItem(key, JSON.stringify(wrapper));
     const migrated = migrateToVersioned(key, 2);
     expect(migrated).not.toBeNull();
-    expect(migrated!.v).toBe(1); // unchanged
+    expect(migrated!.v).toBe(1); // Version should remain unchanged
   });
 
   it('returns null for invalid JSON', () => {
@@ -72,8 +72,8 @@ describe('storage migration helper', () => {
 
   it('handles malformed versioned JSON gracefully', () => {
     const key = 'test-malformed';
-    // Set malformed versioned JSON (missing required fields)
-    storage.setItem(key, JSON.stringify({ v: 1 })); // missing createdAt and payload
+    // Set malformed versioned JSON (missing required fields like createdAt and payload)
+    storage.setItem(key, JSON.stringify({ v: 1 })); // Missing createdAt and payload fields
     
     const retrieved = getVersionedJSON(key);
     expect(retrieved).toBeNull();

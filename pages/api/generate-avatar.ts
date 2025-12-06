@@ -1,8 +1,7 @@
-// =============================
-// pages/api/generate-avatar.ts
-// Next.js API route for generating a character avatar image using OpenAI.
-// Accepts POST requests with a character name and returns an image URL or data URL.
-// =============================
+/**
+ * API endpoint for generating character avatar images via OpenAI.
+ * Accepts POST requests with a character name and returns an image URL or data URL.
+ */
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import logger, { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
@@ -13,15 +12,15 @@ import rateLimit from "express-rate-limit";
 
 // Rate limiter: 5 requests per minute per IP (avatar generation is expensive)
 const avatarRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 5, // limit each IP to 5 requests per windowMs
+  windowMs: 60 * 1000, // Rate limit window: 1 minute
+  max: 5, // Limit each IP to 5 requests per window
   message: {
     error: "Too many avatar generation requests from this IP, please try again later.",
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true, // Include rate limit info in RateLimit-* response headers
+  legacyHeaders: false, // Disable deprecated X-RateLimit-* headers
   keyGenerator: (req) => {
-    // Handle IP extraction for Next.js API routes
+    // Extract client IP across proxies/load balancers for fair limiting
     return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
            (req.headers['x-real-ip'] as string) ||
            (req.connection?.remoteAddress) ||

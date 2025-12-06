@@ -36,17 +36,20 @@ if (!apiKey) {
 }
 const openai = new OpenAI({ apiKey });
 
-// Rate limiter: 10 requests per minute per IP
+/**
+ * Rate limiter for chat endpoint: 10 requests per minute per IP.
+ * Prevents abuse and ensures fair resource allocation.
+ */
 const chatRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 requests per windowMs
+  windowMs: 60 * 1000, // Window duration: 1 minute
+  max: 10, // Maximum requests per window per IP
   message: {
     error: "Too many chat requests from this IP, please try again later.",
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true, // Include RateLimit-* headers in response
+  legacyHeaders: false, // Exclude deprecated X-RateLimit-* headers
   keyGenerator: (req) => {
-    // Handle IP extraction for Next.js API routes
+    // Extract client IP from headers (works with proxies and load balancers)
     return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
            (req.headers['x-real-ip'] as string) ||
            (req.connection?.remoteAddress) ||
@@ -55,10 +58,13 @@ const chatRateLimit = rateLimit({
   },
 });
 
-// Cleanup old audio files periodically (every 100 requests)
+/**
+ * Periodic cleanup of audio files from /tmp to prevent disk bloat.
+ * Runs every CLEANUP_INTERVAL requests.
+ */
 let requestCount = 0;
-const CLEANUP_INTERVAL = 100;
-const AUDIO_FILE_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
+const AUDIO_FILE_MAX_AGE = 24 * 60 * 60 * 1000; // Delete audio files older than 24 hours
 
 function cleanupOldAudioFiles() {
   try {
@@ -79,7 +85,7 @@ function cleanupOldAudioFiles() {
             cleanedCount++;
           }
         } catch {
-          // Ignore errors for individual files
+          // Silently skip individual files that fail to delete (may be in use)
         }
       }
     }
@@ -92,7 +98,12 @@ function cleanupOldAudioFiles() {
   }
 }
 
-// Deterministic serializer for objects to ensure identical cache keys across nodes
+/**
+ * Deterministic JSON serializer for cache key generation.
+ * - Sorts object keys alphabetically
+ * - Recurses through arrays and objects
+ * - Preserves types for consistent keys across nodes
+ */
 function stableStringify(obj: unknown): string {
   if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
   if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';
