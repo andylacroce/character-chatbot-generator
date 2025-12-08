@@ -43,7 +43,7 @@
     "react-icons": "^5.5.0",
     "react-window": "^2.2.3",
     "uuid": "^13.0.0",
-    "winston": "^3.18.3"
+    "winston": "^3.19.0"
   },
   "devDependencies": {
     "@babel/preset-typescript": "^7.28.5",
