@@ -37,7 +37,7 @@
   background-color: var(--input-bg);
   color: var(--input-text);
   font-family: var(--font-primary), sans-serif;
-  border: none;
+  border: 2px solid transparent;
   padding: 1rem;
   font-size: 1.25rem;
   outline: none;
@@ -45,6 +45,12 @@
   flex: 1 1 350px; /* Make input wider by default */
   min-width: 200px;
   max-width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.chatInput:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(45, 90, 61, 0.15);
 }
 
 .chatInput::placeholder {
@@ -67,15 +73,17 @@
 
 .chatSendButton:hover, .chatSendButton:focus {
   background: var(--send-button-hover-bg);
-  box-shadow: 0 4px 16px var(--button-shadow-hover, #bdbdbd);
+  box-shadow: 0 0 0 3px rgba(127, 179, 87, 0.2), 0 4px 16px var(--button-shadow-hover);
+  outline: none;
 }
 
 .chatSendButton.disabled {
   background-color: var(--disabled-bg);
   color: var(--disabled-text);
   cursor: not-allowed;
-  border: 1.5px solid var(--disabled-bg);
+  border: 2px solid transparent;
   box-shadow: none;
+  opacity: 0.7;
 }
 
 .audioToggleButton {
@@ -93,7 +101,9 @@
 }
 
 .audioToggleButton:focus, .audioToggleButton:hover {
-  background: var(--button-hover-bg);
+  background: var(--color-surface-variant);
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 
 .audioToggleButton svg {

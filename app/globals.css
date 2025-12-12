@@ -20,60 +20,76 @@
 
 :root {
   /* Material Design 3 inspired light palette with foresty earth tones */
-  /* Slightly duller off-white for light mode (less bright than pure white) */
-  --color-background: #cfcfcf;
-  /* misty forest light */
-  --color-surface: #e8f0ea;
+  /* Clean off-white background for better readability */
+  --color-background: #f5f7f5;
+  /* soft mist */
+  --color-surface: #ffffff;
+  /* clean white surface */
+  --color-surface-variant: #e8f0ea;
   /* pale moss surface */
-  --color-surface-variant: #d2e3d2;
-  /* muted green stone */
-  --color-outline: #8fa98f;
-  /* soft sage outline */
-  --color-text: #223127;
-  /* deep forest green */
-  --color-text-secondary: #5b6d5b;
-  /* muted pine */
-  --color-primary: #3a6b4b;
-  /* forest green */
-  --color-on-primary: #f3f7f3;
-  /* misty light on primary */
-  --color-primary-container: #b7d3b0;
-  /* light moss container */
-  --color-on-primary-container: #223127;
+  --color-outline: #6b8570;
+  /* sage outline with better contrast */
+  --color-text: #1a2420;
+  /* deeper forest text for better contrast */
+  --color-text-secondary: #3d4f3d;
+  /* darker muted pine */
+  --color-primary: #2d5a3d;
+  /* deeper forest green for better contrast */
+  --color-on-primary: #ffffff;
+  /* pure white on primary for WCAG AA */
+  --color-primary-container: #c8e0c2;
+  /* light moss container, slightly darker */
+  --color-on-primary-container: #1a2420;
   /* deep green on container */
-  --color-secondary: #6b8e6e;
-  /* muted fern */
-  --color-on-secondary: #f3f7f3;
-  --color-secondary-container: #dbe9db;
-  --color-on-secondary-container: #223127;
-  --color-accent: #a3c47c;
-  /* soft leaf accent */
-  --color-error: #b94a48;
-  --color-on-error: #f3f7f3;
-  --color-success: #4b8d6d;
-  --color-on-success: #f3f7f3;
-  --color-warning: #e1a95f;
-  --color-on-warning: #223127;
+  --color-secondary: #4d7550;
+  /* deeper muted fern for better contrast */
+  --color-on-secondary: #ffffff;
+  /* pure white on secondary */
+  --color-secondary-container: #e5f2e5;
+  /* lighter container for contrast */
+  --color-on-secondary-container: #1a2420;
+  /* deep text on secondary container */
+  --color-accent: #7fb357;
+  /* vibrant leaf accent with better visibility */
+  --color-error: #c44240;
+  /* slightly brighter for visibility */
+  --color-on-error: #ffffff;
+  /* pure white on error */
+  --color-success: #3d7a5a;
+  /* deeper success green */
+  --color-on-success: #ffffff;
+  --color-warning: #d69a4a;
+  /* warmer, more visible warning */
+  --color-on-warning: #1a2420;
+  /* dark text on warning */
   --color-sender: var(--color-primary);
-  --card-body-bg: var(--color-surface-variant);
-  --chatbox-background: var(--color-surface);
+  --card-body-bg: var(--color-surface);
+  --chatbox-background: var(--color-background);
   --user-message-bg: var(--color-primary-container);
   --bot-message-bg: var(--color-secondary-container);
   --bot-sender: var(--color-secondary);
   --button-bg: var(--color-primary);
-  --button-hover-bg: #29543a;
-  --disabled-bg: #d2e3d2;
-  --disabled-text: #8fa98f;
+  --button-hover-bg: #234a2f;
+  /* darker on hover */
+  --disabled-bg: #e0e6e0;
+  /* more visible disabled state */
+  --disabled-text: #6b8570;
+  /* better contrast for disabled text */
   --send-button-bg: var(--color-accent);
-  --send-button-hover-bg: #7ea05a;
-  --send-button-text: #223127;
+  --send-button-hover-bg: #6a9e47;
+  /* darker accent on hover */
+  --send-button-text: #1a2420;
   --input-bg: var(--color-surface-variant);
   --input-text: var(--color-text);
-  --input-placeholder: #8fa98f;
-  --scrollbar-bg: #d2e3d2;
-  --scrollbar-thumb: #3a6b4b;
-  --button-shadow: #d2e3d2;
-  --button-shadow-hover: #3a6b4b44;
+  --input-placeholder: #6b8570;
+  /* darker placeholder for readability */
+  --scrollbar-bg: #e8f0ea;
+  --scrollbar-thumb: #4d7550;
+  /* more visible scrollbar */
+  --button-shadow: rgba(29, 90, 61, 0.15);
+  /* subtle green shadow */
+  --button-shadow-hover: rgba(29, 90, 61, 0.25);
+  /* stronger shadow on hover */
   --chat-message-font-size: 1.2rem;
   --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif';
   --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif';
@@ -305,9 +321,9 @@ body,
 /* --- Dark mode button focus/hover fix --- */
 .dark button:hover,
 .dark button:focus {
-  background: var(--button-hover-bg, #2d3952) !important;
-  color: var(--send-button-text, #fff) !important;
-  border-color: var(--color-primary, #bfae7c) !important;
+  background: var(--button-hover-bg) !important;
+  color: var(--color-on-primary) !important;
+  outline: none;
 }
 
 @media (max-width: 600px) {

@@ -1,38 +1,47 @@
 .dark {
   /* Material Design 3 inspired dark palette with foresty earth tones */
-  --color-background: #1a2420 !important;
-  /* deep forest night */
-  --color-surface: #223127 !important;
+  --color-background: #131a16 !important;
+  /* deeper forest night for better contrast */
+  --color-surface: #1f2922 !important;
   /* dark pine surface */
-  --color-surface-variant: #2c3a2e !important;
+  --color-surface-variant: #293529 !important;
   /* muted forest stone */
-  --color-outline: #5b6d5b !important;
-  /* muted pine outline */
-  --color-text: #e8f0ea !important;
-  /* pale moss text */
-  --color-text-secondary: #8fa98f !important;
-  /* soft sage */
-  --color-primary: #6b8e6e !important;
-  /* muted fern */
-  --color-on-primary: #1a2420 !important;
+  --color-outline: #6b8570 !important;
+  /* visible sage outline */
+  --color-text: #f0f5f1 !important;
+  /* brighter pale moss text for readability */
+  --color-text-secondary: #a8b8a8 !important;
+  /* brighter soft sage */
+  --color-primary: #7fa885 !important;
+  /* brighter muted fern for better visibility */
+  --color-on-primary: #131a16 !important;
   /* deep forest on primary */
-  --color-primary-container: #3a6b4b !important;
+  --color-primary-container: #3d6b4b !important;
   /* forest green container */
-  --color-on-primary-container: #e8f0ea !important;
-  /* pale moss on container */
-  --color-secondary: #a3c47c !important;
-  /* soft leaf accent */
-  --color-on-secondary: #223127 !important;
-  --color-secondary-container: #4b8d6d !important;
-  --color-on-secondary-container: #e8f0ea !important;
-  --color-accent: #b7d3b0 !important;
-  /* light moss accent */
-  --color-error: #b94a48 !important;
-  --color-on-error: #e8f0ea !important;
-  --color-success: #7ea05a !important;
-  --color-on-success: #1a2420 !important;
-  --color-warning: #e1a95f !important;
-  --color-on-warning: #1a2420 !important;
+  --color-on-primary-container: #f0f5f1 !important;
+  /* bright text on container */
+  --color-secondary: #b5d39d !important;
+  /* brighter leaf accent for visibility */
+  --color-on-secondary: #1f2922 !important;
+  /* dark text on bright secondary */
+  --color-secondary-container: #4a7a5f !important;
+  /* deeper container for contrast */
+  --color-on-secondary-container: #f0f5f1 !important;
+  /* bright text on secondary container */
+  --color-accent: #c5e0bd !important;
+  /* brighter moss accent */
+  --color-error: #e57373 !important;
+  /* brighter error for visibility */
+  --color-on-error: #1f2922 !important;
+  /* dark text on error */
+  --color-success: #90c070 !important;
+  /* brighter success */
+  --color-on-success: #1f2922 !important;
+  /* dark text on success */
+  --color-warning: #f4c67a !important;
+  /* brighter warning */
+  --color-on-warning: #1f2922 !important;
+  /* dark text on warning */
   --color-sender: var(--color-primary) !important;
   --card-body-bg: var(--color-surface-variant) !important;
   --chatbox-background: var(--color-surface) !important;
@@ -40,19 +49,26 @@
   --bot-message-bg: var(--color-secondary-container) !important;
   --bot-sender: var(--color-secondary) !important;
   --button-bg: var(--color-primary) !important;
-  --button-hover-bg: #29543a !important;
-  --disabled-bg: #2c3a2e !important;
-  --disabled-text: #5b6d5b !important;
+  --button-hover-bg: #90b895 !important;
+  /* brighter on hover for visibility */
+  --disabled-bg: #293529 !important;
+  --disabled-text: #6b8570 !important;
+  /* better contrast for disabled */
   --send-button-bg: var(--color-accent) !important;
-  --send-button-hover-bg: #4b8d6d !important;
-  --send-button-text: #1a2420 !important;
+  --send-button-hover-bg: #a8c7a0 !important;
+  /* visible hover state */
+  --send-button-text: #1f2922 !important;
   --input-bg: var(--color-surface-variant) !important;
   --input-text: var(--color-text) !important;
-  --input-placeholder: #8fa98f !important;
-  --scrollbar-bg: #2c3a2e !important;
-  --scrollbar-thumb: #6b8e6e !important;
-  --button-shadow: #2c3a2e !important;
-  --button-shadow-hover: #6b8e6e44 !important;
+  --input-placeholder: #a8b8a8 !important;
+  /* brighter placeholder */
+  --scrollbar-bg: #293529 !important;
+  --scrollbar-thumb: #7fa885 !important;
+  /* more visible scrollbar */
+  --button-shadow: rgba(0, 0, 0, 0.3) !important;
+  /* subtle dark shadow */
+  --button-shadow-hover: rgba(127, 168, 133, 0.25) !important;
+  /* green tinted shadow on hover */
   --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
   --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
 }
