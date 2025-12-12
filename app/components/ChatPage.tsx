@@ -48,6 +48,8 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     sendMessage,
     handleKeyDown,
     handleAudioToggle,
+    stopAudio,
+    isAudioPlaying,
   } = useChatController(bot, onBackToCharacterCreation);
 
 
@@ -89,6 +91,8 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         inputRef={inputRef}
         audioEnabled={audioEnabled}
         onAudioToggle={handleAudioToggle}
+        onStopAudio={stopAudio}
+        isAudioPlaying={isAudioPlaying}
       />
       {/* Prefer introError if present, else error */}
       <ChatStatus error={introError ?? error ?? ""} retrying={retrying} />

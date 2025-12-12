@@ -98,12 +98,19 @@ describe("ChatPage full feature coverage", () => {
     });
   });
 
-  it("does not play audio when disabled via preference", async () => {
-    const playSpy = jest.fn();
+  it("plays audio muted when disabled via preference", async () => {
+    let capturedAudioElement: HTMLAudioElement | null = null;
+    const playSpy = jest.fn((src: string) => {
+      const audio = new Audio(src);
+      audio.muted = true; // This simulates what useAudioPlayer does when audioEnabledRef.current is false
+      capturedAudioElement = audio;
+      return audio;
+    });
     (mockUseAudioPlayer as jest.Mock).mockImplementation(() => ({
       playAudio: playSpy,
       stopAudio: jest.fn(),
       audioRef: { current: null },
+      isAudioPlaying: false,
     }));
     localStorage.setItem("audioEnabled", "false");
     mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: "audio.mp3" }));
@@ -111,7 +118,9 @@ describe("ChatPage full feature coverage", () => {
     const input = await screen.findByRole("textbox");
     await userEvent.type(input, "Hi{Enter}");
     await waitFor(() => {
-      expect(playSpy).not.toHaveBeenCalled();
+      expect(playSpy).toHaveBeenCalledWith("audio.mp3", expect.any(AbortSignal));
+      expect(capturedAudioElement).not.toBeNull();
+      expect(capturedAudioElement!.muted).toBe(true);
     });
     localStorage.removeItem("audioEnabled");
   });

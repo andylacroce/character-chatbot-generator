@@ -11,6 +11,8 @@ jest.mock('../../../app/components/useAudioPlayer', () => ({
   useAudioPlayer: () => ({
     playAudio: jest.fn(),
     stopAudio: jest.fn(),
+    isAudioPlaying: false,
+    audioRef: { current: null },
   }),
 }));
 

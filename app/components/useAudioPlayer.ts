@@ -3,7 +3,7 @@
  * Ensures single playback at a time, respects audioEnabled ref, and exposes play/stop helpers.
  */
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 
 /**
  * Custom hook to handle audio playback for chat messages.
@@ -21,23 +21,12 @@ export function useAudioPlayer(
   // Use external refs when provided, else fallback to internal refs
   const audioRef = audioRefParam ?? internalAudioRef;
   const sourceRef = sourceRefParam ?? internalSourceRef;
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
 
   // Keep AudioContext available for specialized cases; default to lightweight HTMLAudioElement playback.
 
   // Update useCallback dependencies
   const playAudio = useCallback(async (src: string, signal?: AbortSignal) => {
-    if (!audioEnabledRef.current) {
-      // Stop any previous Web Audio playback
-      if (sourceRef.current) {
-        try { sourceRef.current.stop(); } catch { }
-        try { sourceRef.current.disconnect(); } catch { }
-        sourceRef.current = null;
-      }
-      if (audioRef.current) {
-        audioRef.current = null;
-      }
-      return null;
-    }
     // Stop prior playback before starting a new clip
     if (sourceRef.current) {
       try { (sourceRef.current as AudioBufferSourceNode | null)?.stop?.(); } catch { }
@@ -65,6 +54,7 @@ export function useAudioPlayer(
         const onAbort = () => {
           try { dummyAudio.pause(); dummyAudio.currentTime = 0; } catch {}
           if (audioRef.current === dummyAudio) audioRef.current = null;
+          setIsAudioPlaying(false);
         };
         if (signal.aborted) onAbort();
         else signal.addEventListener('abort', onAbort, { once: true });
@@ -74,9 +64,14 @@ export function useAudioPlayer(
       // call onended immediately will still clear the ref.
       dummyAudio.onended = () => {
         if (audioRef.current === dummyAudio) audioRef.current = null;
+        setIsAudioPlaying(false);
       };
 
+      // Respect mute state without stopping playback
+      dummyAudio.muted = !audioEnabledRef.current;
+
       audioRef.current = dummyAudio;
+      setIsAudioPlaying(true);
       // Start playback. Play() returns a promise — if it rejects, the caller can
       // handle it. We don't block the main thread while the browser plays audio.
       // Note: we intentionally don't await play() here because we want the UI
@@ -100,6 +95,7 @@ export function useAudioPlayer(
         try { audioRef.current.pause(); audioRef.current.currentTime = 0; } catch {}
         audioRef.current = null;
       }
+      setIsAudioPlaying(false);
       throw err;
     }
   }, [audioEnabledRef, audioRef, sourceRef]);
@@ -115,7 +111,8 @@ export function useAudioPlayer(
       audioRef.current.pause?.();
       audioRef.current.currentTime = 0;
     }
+    setIsAudioPlaying(false);
   }, [audioRef, sourceRef]);
 
-  return { playAudio, audioRef, stopAudio };
+  return { playAudio, audioRef, stopAudio, isAudioPlaying };
 }

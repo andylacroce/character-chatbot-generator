@@ -153,15 +153,17 @@ describe('useAudioPlayer', () => {
   });
   TestComponentWithInternals.displayName = 'TestComponentWithInternals';
 
-  it('should not play audio if audioEnabledRef is false', async () => {
+  it('should play audio muted if audioEnabledRef is false', async () => {
     const audioEnabledRef = { current: false };
     const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
+    let audioInstance: HTMLAudioElement | null = null;
     await act(async () => {
-      await ref.current!.playAudio('test.mp3');
+      audioInstance = await ref.current!.playAudio('test.mp3');
     });
-    // Check the play method on the instance, not the prototype
-    expect(ref.current!.audioRef.current).toBeNull();
+    // Audio should be created but muted
+    expect(audioInstance).not.toBeNull();
+    expect(audioInstance!.muted).toBe(true);
   });
 
   it('should play audio if audioEnabledRef is true', async () => {
@@ -239,7 +241,7 @@ describe('useAudioPlayer', () => {
     expect(ref.current!.audioRef.current).not.toBe(dummy);
   });
 
-  it('should not change audioRef.current if audioEnabledRef is false and missing pause/currentTime', async () => {
+  it('should create new audio even if audioEnabledRef is false', async () => {
     const audioEnabledRef = { current: false };
     const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
@@ -247,16 +249,18 @@ describe('useAudioPlayer', () => {
     if (!ref.current) throw new Error('ref.current is null');
     ref.current.audioRef.current = dummy;
     let error: unknown = null;
+    let newAudio: HTMLAudioElement | null = null;
     try {
       await act(async () => {
-        await ref.current!.playAudio('test.mp3');
+        newAudio = await ref.current!.playAudio('test.mp3');
       });
     } catch (e) {
       error = e;
     }
     expect(error).toBeNull();
-    // The hook now always sets audioRef.current to null if audio is disabled
-    expect(ref.current!.audioRef.current).toBeNull();
+    // Should create new muted audio
+    expect(newAudio).not.toBeNull();
+    expect(newAudio!.muted).toBe(true);
   });
 
   it('should set _paused property if present', async () => {
@@ -278,15 +282,16 @@ describe('useAudioPlayer', () => {
     expect((dummy as { _paused: boolean })._paused).toBe(true);
   });
 
-  it('should not play if audioEnabledRef becomes false after instantiation', async () => {
-    let playCalled = false;
-    // Patch Audio to check play is not called if ref is false
+  it('should play muted if audioEnabledRef becomes false after instantiation', async () => {
+    let audioInstance: HTMLAudioElement | null = null;
+    // Patch Audio to track muted property
     class AudioMockPlayCheck {
       public src: string;
+      public muted = false;
       public onended: (() => void) | null = null;
       public addEventListener = jest.fn();
       public removeEventListener = jest.fn();
-      public play = jest.fn(() => { playCalled = true; });
+      public play = jest.fn();
       constructor(src: string) { this.src = src; }
     }
     global.Audio = AudioMockPlayCheck as unknown as typeof Audio;
@@ -295,9 +300,10 @@ describe('useAudioPlayer', () => {
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
     audioEnabledRef.current = false;
     await act(async () => {
-      await ref.current!.playAudio('test.mp3');
+      audioInstance = await ref.current!.playAudio('test.mp3');
     });
-    expect(playCalled).toBe(false);
+    expect(audioInstance).not.toBeNull();
+    expect(audioInstance!.muted).toBe(true);
   });
 
   it('should handle play() returning a Promise and attach catch', async () => {
@@ -488,7 +494,7 @@ describe('useAudioPlayer', () => {
   });
 
   // Add test for uncovered branch: audioRef.current exists, but neither pause nor currentTime are present, and audioEnabledRef.current is false
-  it('should leave audioRef.current unchanged if it has neither pause nor currentTime and audio is disabled', async () => {
+  it('should create new audio even if old ref has neither pause nor currentTime and audio is disabled', async () => {
     // This test is now redundant with the above, but we keep it for coverage
     const audioEnabledRef = { current: false };
     const ref = React.createRef<TestComponentHandles>();
@@ -498,39 +504,48 @@ describe('useAudioPlayer', () => {
     if (!ref.current) throw new Error('ref.current is null');
     ref.current.audioRef.current = dummy;
     let error: unknown = null;
+    let newAudio: HTMLAudioElement | null = null;
     try {
       await act(async () => {
-        await ref.current!.playAudio('test.mp3');
+        newAudio = await ref.current!.playAudio('test.mp3');
       });
     } catch (e) {
       error = e;
     }
     expect(error).toBeNull();
-    // The hook now always sets audioRef.current to null if audio is disabled
-    expect(ref.current!.audioRef.current).toBeNull();
+    // Should create new muted audio
+    expect(newAudio).not.toBeNull();
+    expect(newAudio!.muted).toBe(true);
   });
 
-  it('should clean up both sourceRef and audioRef when audio is disabled in playAudio', async () => {
+  it('should still play audio muted when audio is disabled', async () => {
     const audioEnabledRef = { current: false };
     const ref = React.createRef<TestComponentHandlesWithInternals>();
     render(React.createElement(TestComponentWithInternals, { ref, audioEnabledRef }));
-    // Set up dummy sourceRef and audioRef
+    // Set up dummy sourceRef and audioRef from previous playback
     const dummySource = {
       stop: jest.fn(),
       disconnect: jest.fn(),
     };
-    const dummyAudio = {} as HTMLAudioElement;
+    const oldDummyAudio = {
+      pause: jest.fn(),
+      currentTime: 0,
+    };
     // Set the internal refs directly
     ref.current!._sourceRef.current = dummySource;
-    ref.current!._audioRef.current = dummyAudio;
-    // Actually call playAudio
+    ref.current!._audioRef.current = oldDummyAudio;
+    // Call playAudio - should clean up old refs and create new muted audio
+    let newAudio: HTMLAudioElement | null = null;
     await act(async () => {
-      await ref.current!.playAudio('test.mp3');
+      newAudio = await ref.current!.playAudio('test.mp3');
     });
-    // Both should be cleaned up
+    // Old refs should be cleaned up
     expect(dummySource.stop).toHaveBeenCalled();
     expect(dummySource.disconnect).toHaveBeenCalled();
-    expect(ref.current!._audioRef.current).toBeNull();
+    expect(oldDummyAudio.pause).toHaveBeenCalled();
+    // New audio should be muted
+    expect(newAudio).not.toBeNull();
+    expect(newAudio!.muted).toBe(true);
   });
 
   it('should clean up both sourceRef and audioRef when stopAudio is called', async () => {

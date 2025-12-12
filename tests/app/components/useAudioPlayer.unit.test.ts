@@ -7,7 +7,7 @@ describe('useAudioPlayer', () => {
     jest.restoreAllMocks();
   });
 
-  it('returns null early when audio is disabled and clears refs', async () => {
+  it('plays audio muted when audio is disabled', async () => {
     const audioEnabledRef = { current: false } as React.MutableRefObject<boolean>;
     const sourceRef = { current: { stop: jest.fn(), disconnect: jest.fn() } } as unknown as React.MutableRefObject<AudioBufferSourceNode | null>;
     const audioRef = { current: { pause: jest.fn(), currentTime: 123 } } as unknown as React.MutableRefObject<HTMLAudioElement | null>;
@@ -16,9 +16,11 @@ describe('useAudioPlayer', () => {
 
     const res = await result.current.playAudio('https://example.test/audio.mp3');
 
-    expect(res).toBeNull();
+    // Should return audio element but muted
+    expect(res).not.toBeNull();
+    expect(res?.muted).toBe(true);
+    // Old refs should be cleaned up
     expect(sourceRef.current).toBeNull();
-    expect(audioRef.current).toBeNull();
   });
 
   it('creates an Audio and calls play when enabled', async () => {

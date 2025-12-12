@@ -18,6 +18,8 @@ jest.mock('../../../app/components/useAudioPlayer', () => ({
       throw err;
     }),
     stopAudio: jest.fn(),
+    isAudioPlaying: false,
+    audioRef: { current: null },
   }),
 }));
 

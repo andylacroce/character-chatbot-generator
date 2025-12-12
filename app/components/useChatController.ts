@@ -136,10 +136,6 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
 
     useChatScrollAndFocus({ chatBoxRef, inputRef, messages, loading });
 
-    useEffect(() => {
-        audioEnabledRef.current = audioEnabled;
-    }, [audioEnabled]);
-
     // Reset state when bot changes
     useEffect(() => {
         // Reset messages to load the new bot's chat history
@@ -201,7 +197,16 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         return () => { cancelled = true; };
     }, [bot.name, bot.voiceConfig, setAndPersistVoiceConfig, ensureVoiceConfig]);
 
-    const { playAudio, stopAudio } = useAudioPlayer(audioEnabledRef);
+    const { playAudio, stopAudio, isAudioPlaying, audioRef } = useAudioPlayer(audioEnabledRef);
+
+    // Sync audioEnabledRef with audioEnabled state and update muted property on active audio
+    useEffect(() => {
+        audioEnabledRef.current = audioEnabled;
+        // Also update muted state on any currently playing audio
+        if (audioRef.current) {
+            audioRef.current.muted = !audioEnabled;
+        }
+    }, [audioEnabled, audioRef]);
 
     // Fix TypeScript errors by explicitly typing parameters
     const profileApiCall = async <T>(label: string, fn: () => Promise<T>): Promise<T> => {
@@ -423,15 +428,15 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         setAudioEnabled((prev) => {
             const newEnabled = !prev;
             try { storage.setItem('audioEnabled', String(newEnabled)); } catch {}
-            if (!newEnabled) {
-                stopAudio();
+            if (audioRef.current) {
+                audioRef.current.muted = !newEnabled;
             }
             return newEnabled;
         });
         if (inputRef.current) {
             inputRef.current.focus();
         }
-    }, [stopAudio, inputRef]);
+    }, [audioRef, inputRef]);
 
     useEffect(() => {
         try { storage.setItem('audioEnabled', String(audioEnabled)); } catch {}
@@ -665,7 +670,6 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     useEffect(() => {
         let cancelled = false;
         const abortController = new AbortController();
-        if (!audioEnabledRef.current) return;
         if (messages.length === 0) return;
         const lastMsg = messages[messages.length - 1];
         const lastMsgHash = getMessageHash(lastMsg);
@@ -750,6 +754,8 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         sendMessage,
         handleKeyDown,
         handleAudioToggle,
+        stopAudio,
+        isAudioPlaying,
     };
 }
  
