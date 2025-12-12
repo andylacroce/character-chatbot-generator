@@ -118,6 +118,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
 
     const [input, setInput] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
+    const [introLoading, setIntroLoading] = useState<boolean>(false);
     const [audioEnabled, setAudioEnabled] = useState<boolean>(() => {
         try {
             const savedAudioPreference = storage.getItem('audioEnabled');
@@ -163,6 +164,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
 
         // Reset loading state
         setLoading(false);
+        setIntroLoading(false);
 
         // Reset visible count
         setVisibleCount(INITIAL_VISIBLE_COUNT);
@@ -249,17 +251,26 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     );
 
     const introSentRef = useRef(false);
+    const introRequestInProgressRef = useRef(false);
     useEffect(() => {
-        if (introSentRef.current) return;
+        // Prevent multiple concurrent requests (React Strict Mode protection)
+        if (introSentRef.current || introRequestInProgressRef.current) return;
         if (messages.length === 0 && apiAvailable) {
             introSentRef.current = true;
+            introRequestInProgressRef.current = true;
+            setIntroLoading(true);
+            let cancelled = false;
             const getIntro = async () => {
                 try {
                     const voiceConfig = await ensureVoiceConfig();
+                    if (cancelled) return;
                     if (!voiceConfig) {
                         const msg = "Voice configuration missing for this character. Please recreate the bot.";
-                        setIntroError(msg);
-                        setError(msg);
+                        if (!cancelled) {
+                            setIntroError(msg);
+                            setError(msg);
+                            setIntroLoading(false);
+                        }
                         if (typeof window !== 'undefined') {
                             logEvent('error', 'chat_intro_voice_config_missing', msg, sanitizeLogMeta({
                                 botName: bot.name,
@@ -280,6 +291,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                             conversationHistory: []
                         }),
                     }).then(res => res.json()));
+                    if (cancelled) return;
                     const introMsg: Message = {
                         sender: bot.name,
                         text: response.reply,
@@ -288,21 +300,33 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                     setMessages([introMsg]);
                     logMessage(introMsg);
                     setIntroError(null);
+                    setIntroLoading(false);
                 } catch (e) {
+                    if (cancelled) return;
                     const msg = "Failed to generate intro or voice config. Please recreate the bot.";
                     setIntroError(msg);
                     setError(msg);
+                    setIntroLoading(false);
                     if (typeof window !== 'undefined') {
                         logEvent('error', 'chat_intro_generation_failed', msg, sanitizeLogMeta({
                             botName: bot.name,
                             error: e instanceof Error ? e.message : String(e)
                         }));
                     }
+                } finally {
+                    if (!cancelled) {
+                        introRequestInProgressRef.current = false;
+                    }
                 }
             };
             getIntro();
+            return () => {
+                cancelled = true;
+                introSentRef.current = false;
+                introRequestInProgressRef.current = false;
+            };
         }
-    }, [messages.length, apiAvailable, bot, logMessage, playAudio, setError, ensureVoiceConfig]);
+    }, [messages.length, apiAvailable, bot, logMessage, setError, ensureVoiceConfig]);
 
     const sendMessage = useCallback(async () => {
         async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 2, initialDelay = 800): Promise<T> {
@@ -312,7 +336,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 if (attempt > 0) {
                     setRetrying(true);
                     if (process.env.NODE_ENV === 'test') {
-                        await new Promise(res => setTimeout(res, 1000));
+                        await new Promise(res => setTimeout(res, 10)); // Minimal delay in tests
                     } else {
                         await Promise.resolve();
                     }
@@ -321,7 +345,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 try {
                     const result = await fn();
                     if (process.env.NODE_ENV === 'test') {
-                        await new Promise(res => setTimeout(res, 200));
+                        await new Promise(res => setTimeout(res, 1)); // Minimal delay in tests
                     }
                     setRetrying(false);
                     return result;
@@ -329,12 +353,16 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                     lastError = err;
                     if (attempt === maxRetries) {
                         if (process.env.NODE_ENV === 'test') {
-                            await new Promise(res => setTimeout(res, 200));
+                            await new Promise(res => setTimeout(res, 1)); // Minimal delay in tests
                         }
                         setRetrying(false);
                         throw err;
                     }
-                    await new Promise((res) => setTimeout(res, delay));
+                    if (process.env.NODE_ENV === 'test') {
+                        await new Promise((res) => setTimeout(res, 10)); // Minimal delay in tests
+                    } else {
+                        await new Promise((res) => setTimeout(res, delay));
+                    }
                     delay *= 2;
                 }
             }
@@ -739,6 +767,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         input,
         setInput,
         loading,
+        introLoading,
         audioEnabled,
         apiAvailable,
         introError,

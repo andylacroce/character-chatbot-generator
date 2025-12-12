@@ -33,6 +33,7 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     input,
     setInput,
     loading,
+    introLoading,
     audioEnabled,
     apiAvailable,
     introError,
@@ -76,7 +77,7 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
           bot={bot}
         />
       </div>
-      {loading && (
+      {(loading || introLoading) && (
         <div data-testid="loading-indicator" className={styles.spinnerContainerFixed}>
           <span className={styles.genericSpinner} aria-label="Loading" />
         </div>
@@ -86,7 +87,7 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         setInput={setInput}
         onSend={sendMessage}
         onKeyDown={handleKeyDown}
-        loading={loading}
+        loading={loading || introLoading}
         apiAvailable={apiAvailable && !(!apiAvailable)}
         inputRef={inputRef}
         audioEnabled={audioEnabled}

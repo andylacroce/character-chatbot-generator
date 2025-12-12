@@ -100,7 +100,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 3.5rem;
+  width: 56px;
+  min-width: 56px;
   gap: 0;
 }
 
@@ -122,20 +123,29 @@
 
 .audioToggleButton {
   flex: 0 0 auto;
-  background: none;
-  border: none;
-  padding: 0.7rem 0.7rem 0.7rem 0.5rem;
+  background: var(--color-surface-variant);
+  border: 1.5px solid var(--button-bg);
+  padding: 0.7rem;
   margin-left: 0.1rem;
   display: flex;
   align-items: center;
+  justify-content: center;
   cursor: pointer;
   border-radius: 8px;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s;
   color: var(--button-bg);
+  width: 56px;
+  min-width: 56px;
+}
+
+.audioToggleButton[aria-pressed="false"] {
+  border-color: var(--disabled-bg);
+  color: var(--disabled-bg);
 }
 
 .audioToggleButton:focus, .audioToggleButton:hover {
   background: var(--color-surface-variant);
+  border-color: var(--color-primary);
   outline: 2px solid var(--color-primary);
   outline-offset: -2px;
 }
@@ -167,16 +177,15 @@
   .chatSendButton {
     padding: 0.5rem 1rem;
     font-size: 1rem;
-  }
-  .audioToggleButton {
-    padding: 0.5rem 0.5rem 0.5rem 0.3rem;
     margin-left: 0.1rem;
-    min-width: 0;
+    width: 48px;
+    min-width: 48px;
     flex: 0 0 auto;
   }
   .stopButton {
-    padding: 0.5rem 0.7rem;
+    padding: 0.5rem;
     font-size: 0.95rem;
-    min-width: 3rem;
+    width: 48px;
+    min-width: 48px;
   }
 }
