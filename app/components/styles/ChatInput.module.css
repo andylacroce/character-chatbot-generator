@@ -65,10 +65,14 @@
   box-shadow: 0 2px 8px var(--button-shadow, #e3e3e3);
   border: none;
   border-radius: 8px;
-  padding: 1rem 2rem;
+  padding: 0.8rem 1.2rem;
   font-size: 1.25rem;
   cursor: pointer;
   transition: background 0.2s, box-shadow 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .chatSendButton:hover, .chatSendButton:focus {
@@ -100,8 +104,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  min-width: 56px;
+  width: 44px;
+  min-width: 44px;
   gap: 0;
 }
 
@@ -134,8 +138,8 @@
   border-radius: 8px;
   transition: background 0.2s, border-color 0.2s;
   color: var(--button-bg);
-  width: 56px;
-  min-width: 56px;
+  width: 44px;
+  min-width: 44px;
 }
 
 .audioToggleButton[aria-pressed="false"] {
@@ -175,17 +179,26 @@
     max-width: 100%;
   }
   .chatSendButton {
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.95rem;
     margin-left: 0.1rem;
-    width: 48px;
-    min-width: 48px;
+    width: 44px;
+    min-width: 44px;
     flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
   }
   .stopButton {
-    padding: 0.5rem;
-    font-size: 0.95rem;
-    width: 48px;
-    min-width: 48px;
+    padding: 0.45rem;
+    font-size: 0.9rem;
+    width: 40px;
+    min-width: 40px;
+  }
+  .audioToggleButton {
+    width: 40px;
+    min-width: 40px;
+    padding: 0.45rem;
   }
 }
