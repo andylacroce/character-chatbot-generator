@@ -32,6 +32,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
     onAudioToggle();
   };
 
+  const handleStopAudio = () => {
+    onStopAudio();
+    // Return focus to the chat input after stopping audio
+    if (inputRef && inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   return (
     <div className={styles.chatInputArea} data-testid="chat-input-area">
       <div className={styles.chatInputContainer} data-testid="chat-input-container" role="group" aria-label="Chat input area">
@@ -65,7 +73,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         {isAudioPlaying && (
           <button
             type="button"
-            onClick={onStopAudio}
+            onClick={handleStopAudio}
             className={styles.stopButton}
             aria-label="Stop playback"
             data-testid="chat-audio-stop"
