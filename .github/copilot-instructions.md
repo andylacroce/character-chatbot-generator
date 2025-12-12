@@ -15,6 +15,8 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
   - UI: `app/` — Next.js 16+ app router and React components live in `app/components/`.
   - Server/API: `pages/api/` — server handlers are authoritative (not serverless edge functions).
     - `pages/api/chat.ts` is the main complex endpoint (OpenAI calls, summarization, prompt caching, SSE streaming, TTS, continuation detection).
+    - `pages/api/validate-character.ts` — copyright/trademark validation using OpenAI (returns warning/caution/none levels).
+    - `pages/api/random-character.ts` — generates public domain character suggestions with guardrails against modern copyrighted characters.
   - Auth/Zones: `proxy.ts` — origin validation and `x-api-key` (`API_SECRET`) enforcement for external requests.
   - Utilities: `src/utils/` — `api.ts`, `tts.ts`, `storage.ts`, `cache.ts`, `logger.ts`, `openaiModelSelector.ts`.
   - Model Selection: `src/utils/openaiModelSelector.ts` — **Production uses gpt-4o, development uses gpt-4o-mini**.
@@ -24,6 +26,19 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
   - `pages/api/chat.ts` performs OpenAI chat using gpt-4o (prod) or gpt-4o-mini (dev), may summarize when history > 50 messages, and can stream via SSE when `{ stream: true }` is passed.
   - Smart continuation: detects truncated responses, wraps gracefully with "Would you like me to continue?" prompt, and resumes seamlessly when user says "yes".
   - If TTS is requested, server uses `src/utils/tts.ts` and a stable audio cache key (`getAudioCacheKey`) to avoid re-synthesis.
+  - **Copyright validation flow**: `useBotCreation.ts` calls `/api/validate-character` before bot creation; if warning/caution level returned, shows `CopyrightWarningModal.tsx` with public domain alternatives from `/api/random-character`.
+
+- **Copyright protection system**
+  - `/api/validate-character` — POST endpoint accepting `{ characterName: string }`, returns `{ level: "warning" | "caution" | "none", message?: string, suggestions?: string[] }`.
+    - Uses OpenAI to detect copyrighted/trademarked characters (rate-limited to 30 req/min).
+    - "warning": Clear copyright/trademark violation (e.g., Mickey Mouse, Harry Potter).
+    - "caution": Possible trademark concern (e.g., Superman, Batman).
+    - "none": Safe to use (public domain or generic names).
+  - `/api/random-character` — GET endpoint returning `{ suggestions: string[] }` of public domain characters (pre-1928, mythology, historical figures).
+    - Excludes modern copyrighted characters via explicit OpenAI prompt guardrails.
+  - `CopyrightWarningModal.tsx` — Modal component integrated into `BotCreator.module.css`, displays warning/caution messages with clickable suggestions.
+  - Client integration: `useBotCreation.ts` hook handles `validateCharacterName()`, modal state, and suggestion selection via `handleValidationSuggestion()`.
+  - **When changing validation logic**: Update both validation API and modal UI, then update tests in `tests/api/validateCharacter.test.ts` and `tests/app/components/CopyrightWarningModal.test.tsx`. Maintain 80%+ branch coverage.
 
 - **API contract & streaming**
   - Streaming SSE frames are sent as `data: JSON\n\n`.
@@ -58,8 +73,10 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
 
 - **Files to read for context (always check these first on a PR)**
   - `pages/api/chat.ts`, `pages/api/audio.ts`, `pages/api/generate-avatar.ts`
+  - `pages/api/validate-character.ts`, `pages/api/random-character.ts` (copyright validation)
   - `proxy.ts`
   - `app/components/useChatController.ts`, `ChatInput.tsx`, `ChatMessage.tsx`, `ChatMessagesList.tsx`
+  - `app/components/useBotCreation.ts`, `BotCreator.tsx`, `CopyrightWarningModal.tsx` (bot creation + validation)
   - `src/utils/tts.ts`, `src/utils/storage.ts`, `src/utils/cache.ts`, `src/utils/api.ts`, `src/utils/logger.ts`
   - `tests/` (examples show mocking patterns and expectations)
 

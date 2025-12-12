@@ -44,15 +44,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       messages: [
         {
           role: "system",
-          content: "You are a creative name generator for chatbots. Suggest diverse public domain characters from classic literature, mythology, folklore, and historical figures from various cultures and time periods. Always provide just the character's name, nothing else."
+          content: `You are a creative name generator for chatbots. Suggest WELL-KNOWN public domain characters from classic literature, mythology, folklore, and historical figures.
+
+IMPORTANT GUARDRAILS:
+- Only suggest characters that are firmly in the public domain (typically pre-1928 for US works)
+- AVOID any character from modern media, movies, TV shows, video games, or comics created after 1928
+- AVOID characters that are trademarked (e.g., Mickey Mouse, Superman, Harry Potter, Mario, Spider-Man)
+- PREFER famous historical figures, classical mythology, ancient folklore, and classic literature
+- Examples of GOOD choices: Sherlock Holmes, Dracula, Cleopatra, Julius Caesar, Zeus, King Arthur, Robin Hood, Odysseus, Joan of Arc, Leonardo da Vinci, Benjamin Franklin, Marie Curie, Abraham Lincoln, Confucius, Buddha, Socrates, Jane Austen, Edgar Allan Poe
+
+Always provide just the character's name, nothing else.`
         },
         {
           role: "user",
-          content: `${exclusionList}Suggest one unique character name for a chatbot. Choose from classic literature, mythology, folklore, or historical figures from any culture (e.g., Odysseus, Joan of Arc, Mulan, Scheherazade, Leonardo da Vinci, Don Quixote, Gilgamesh). Prioritize variety and lesser-known but interesting characters. Reply ONLY with the name, no explanation.`
+          content: `${exclusionList}Suggest one well-known character name for a chatbot. Choose from:
+- Classical mythology (Greek, Roman, Norse, Egyptian, etc.)
+- Historical figures (scientists, leaders, philosophers, artists from any era before 1950)
+- Classic literature published before 1928 (e.g., Sherlock Holmes, Dracula, Alice, Don Quixote)
+- Folklore and fairy tales (e.g., Robin Hood, King Arthur, Aladdin)
+- Ancient religious/philosophical figures (e.g., Confucius, Buddha, Socrates)
+
+Prioritize famous, recognizable names that people will know. Reply ONLY with the name, no explanation.`
         }
       ],
       max_tokens: 20,
-      temperature: 1.5,
+      temperature: 1.2,
     });
 
     const name = completion.choices[0]?.message?.content?.trim().replace(/^"|"$/g, "") || "Sherlock Holmes";

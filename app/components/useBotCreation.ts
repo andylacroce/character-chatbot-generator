@@ -4,6 +4,7 @@ import { authenticatedFetch } from "../../src/utils/api";
 import type { Bot } from "./BotCreator";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { persistVoiceConfig } from "../../src/utils/voiceConfigPersistence";
+import type { CharacterValidationResult } from "../../pages/api/validate-character";
 
 type ProgressStep = "personality" | "avatar" | "voice" | null;
 
@@ -14,8 +15,12 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     const [progress, setProgress] = useState<ProgressStep>(null);
     const [randomizing, setRandomizing] = useState<boolean>(false);
     const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+    const [validationResult, setValidationResult] = useState<CharacterValidationResult | null>(null);
+    const [showValidationModal, setShowValidationModal] = useState<boolean>(false);
+    const [validating, setValidating] = useState<boolean>(false);
     const cancelRequested = useRef<boolean>(false);
     const lastRandomNameRef = useRef<string>("");
+    const proceedWithoutValidationRef = useRef<boolean>(false);
 
     async function getRandomCharacterName(): Promise<string> {
         try {
@@ -30,12 +35,81 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         }
     }
 
+    async function validateCharacterName(name: string): Promise<CharacterValidationResult> {
+        try {
+            const res = await authenticatedFetch('/api/validate-character', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            if (res.ok) {
+                return await res.json();
+            }
+            // Default to safe on error
+            return {
+                characterName: name,
+                isPublicDomain: true,
+                isSafe: true,
+                warningLevel: "none"
+            };
+        } catch {
+            return {
+                characterName: name,
+                isPublicDomain: true,
+                isSafe: true,
+                warningLevel: "none"
+            };
+        }
+    }
+
     const handleCreate = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!input.trim()) {
             setError("Please enter a name or character.");
             return;
         }
+
+        // If we haven't validated yet and not explicitly proceeding without validation
+        if (!proceedWithoutValidationRef.current) {
+            setValidating(true);
+            setError("");
+            
+            try {
+                const validation = await validateCharacterName(input.trim());
+                
+                // If character has warning or caution level, show modal
+                if (validation.warningLevel === "warning" || validation.warningLevel === "caution") {
+                    setValidationResult(validation);
+                    setShowValidationModal(true);
+                    setValidating(false);
+                    
+                    if (typeof window !== 'undefined') {
+                        logEvent('info', 'bot_validation_warning_shown', 'Validation warning displayed', sanitizeLogMeta({
+                            characterName: input.trim(),
+                            warningLevel: validation.warningLevel,
+                            isSafe: validation.isSafe
+                        }));
+                    }
+                    return; // Stop here and wait for user decision
+                }
+                
+                // If safe, proceed directly
+                setValidating(false);
+            } catch (err) {
+                // On validation error, proceed anyway
+                setValidating(false);
+                if (typeof window !== 'undefined') {
+                    logEvent('warn', 'bot_validation_failed', 'Validation failed, proceeding anyway', sanitizeLogMeta({
+                        characterName: input.trim(),
+                        error: err instanceof Error ? err.message : String(err)
+                    }));
+                }
+            }
+        }
+
+        // Reset the flag for next time
+        proceedWithoutValidationRef.current = false;
+
         if (typeof window !== 'undefined') {
             logEvent('info', 'bot_creation_started', 'User initiated bot creation', sanitizeLogMeta({
                 characterName: input.trim()
@@ -86,6 +160,45 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         cancelRequested.current = true;
         setLoading(false);
         setProgress(null);
+    };
+
+    const handleValidationContinue = () => {
+        setShowValidationModal(false);
+        proceedWithoutValidationRef.current = true;
+        
+        if (typeof window !== 'undefined') {
+            logEvent('info', 'bot_validation_override', 'User chose to proceed despite warning', sanitizeLogMeta({
+                characterName: input.trim(),
+                warningLevel: validationResult?.warningLevel
+            }));
+        }
+        
+        // Trigger creation flow
+        handleCreate();
+    };
+
+    const handleValidationCancel = () => {
+        setShowValidationModal(false);
+        setValidationResult(null);
+        
+        if (typeof window !== 'undefined') {
+            logEvent('info', 'bot_validation_cancelled', 'User cancelled after validation warning', sanitizeLogMeta({
+                characterName: input.trim(),
+                warningLevel: validationResult?.warningLevel
+            }));
+        }
+    };
+
+    const handleValidationSuggestion = (suggestion: string) => {
+        setInput(suggestion);
+        setValidationResult(null);
+        
+        if (typeof window !== 'undefined') {
+            logEvent('info', 'bot_validation_suggestion_selected', 'User selected suggested alternative', sanitizeLogMeta({
+                originalName: input.trim(),
+                selectedSuggestion: suggestion
+            }));
+        }
     };
 
     const handleRandomCharacter = async () => {
@@ -212,7 +325,10 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
 
     return {
         input, setInput, error, setError, loading, setLoading, progress, setProgress,
-        randomizing, setRandomizing, loadingMessage, setLoadingMessage, cancelRequested, lastRandomNameRef,
-        handleCreate, handleCancel, handleRandomCharacter
+        randomizing, setRandomizing, loadingMessage, setLoadingMessage, 
+        validating, validationResult, showValidationModal,
+        cancelRequested, lastRandomNameRef,
+        handleCreate, handleCancel, handleRandomCharacter,
+        handleValidationContinue, handleValidationCancel, handleValidationSuggestion
     };
 }

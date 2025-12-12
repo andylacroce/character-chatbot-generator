@@ -263,4 +263,374 @@ describe('useBotCreation tests', () => {
     (global as unknown as { window?: Window }).window = originalWindow;
     expect(result.current.randomizing).toBe(false);
   });
+
+  // Validation tests
+  it('handleCreate shows modal when character validation returns warning level', async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            characterName: 'Spider-Man',
+            isPublicDomain: false,
+            isSafe: false,
+            warningLevel: 'warning',
+            reason: 'This character is trademarked.',
+            suggestions: ['Hercules', 'Zeus']
+          })
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Spider-Man'));
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    expect(result.current.showValidationModal).toBe(true);
+    expect(result.current.validationResult).toBeTruthy();
+    expect(result.current.validationResult?.warningLevel).toBe('warning');
+    expect(onBotCreated).not.toHaveBeenCalled();
+    expect(result.current.validating).toBe(false);
+  });
+
+  it('handleCreate shows modal when character validation returns caution level', async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            characterName: 'Unknown',
+            isPublicDomain: true,
+            isSafe: true,
+            warningLevel: 'caution',
+            reason: 'Status uncertain.',
+            suggestions: ['Zeus', 'Athena']
+          })
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Unknown'));
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    expect(result.current.showValidationModal).toBe(true);
+    expect(result.current.validationResult?.warningLevel).toBe('caution');
+    expect(onBotCreated).not.toHaveBeenCalled();
+  });
+
+  it('handleCreate proceeds directly when validation returns none level', async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            characterName: 'Sherlock Holmes',
+            isPublicDomain: true,
+            isSafe: true,
+            warningLevel: 'none',
+            reason: 'Public domain character.',
+            suggestions: []
+          })
+        });
+      }
+      if (url === '/api/generate-personality') {
+        return Promise.resolve({ ok: true, json: async () => ({ personality: 'detective', correctedName: 'Sherlock Holmes' }) });
+      }
+      if (url === '/api/generate-avatar') {
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png', gender: 'male' }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const voiceCfg: VoiceCfg = { name: 'en-GB-Wavenet-B', languageCodes: ['en-GB'] };
+    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Sherlock Holmes'));
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    await waitFor(() => expect(onBotCreated).toHaveBeenCalled());
+    expect(result.current.showValidationModal).toBe(false);
+  });
+
+  it('handleCreate proceeds on validation error (graceful degradation)', async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.reject(new Error('Validation API failed'));
+      }
+      if (url === '/api/generate-personality') {
+        return Promise.resolve({ ok: true, json: async () => ({ personality: 'test', correctedName: 'Test' }) });
+      }
+      if (url === '/api/generate-avatar') {
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png', gender: 'male' }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const voiceCfg: VoiceCfg = { name: 'en-US-Wavenet-A', languageCodes: ['en-US'] };
+    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Test'));
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    await waitFor(() => expect(onBotCreated).toHaveBeenCalled());
+    expect(result.current.validating).toBe(false);
+  });
+
+  it('handleValidationContinue proceeds with bot creation after warning', async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            characterName: 'Mario',
+            isPublicDomain: false,
+            isSafe: false,
+            warningLevel: 'warning',
+            reason: 'Trademarked character.',
+            suggestions: ['Perseus', 'Achilles']
+          })
+        });
+      }
+      if (url === '/api/generate-personality') {
+        return Promise.resolve({ ok: true, json: async () => ({ personality: 'plumber', correctedName: 'Mario' }) });
+      }
+      if (url === '/api/generate-avatar') {
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png', gender: 'male' }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const voiceCfg: VoiceCfg = { name: 'it-IT-Wavenet-C', languageCodes: ['it-IT'] };
+    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Mario'));
+    
+    // First call shows modal
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+    expect(result.current.showValidationModal).toBe(true);
+
+    // User clicks continue
+    await act(async () => {
+      result.current.handleValidationContinue();
+    });
+
+    await waitFor(() => expect(onBotCreated).toHaveBeenCalled());
+    expect(result.current.showValidationModal).toBe(false);
+  });
+
+  it('handleValidationCancel closes modal without creating bot', async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            characterName: 'Pokemon',
+            isPublicDomain: false,
+            isSafe: false,
+            warningLevel: 'warning',
+            reason: 'Trademarked.',
+            suggestions: ['Dragon', 'Griffin']
+          })
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Pokemon'));
+    
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+    expect(result.current.showValidationModal).toBe(true);
+
+    // User clicks cancel
+    act(() => {
+      result.current.handleValidationCancel();
+    });
+
+    expect(result.current.showValidationModal).toBe(false);
+    expect(result.current.validationResult).toBeNull();
+    expect(onBotCreated).not.toHaveBeenCalled();
+  });
+
+  it('handleValidationSuggestion updates input with selected suggestion', async () => {
+    const { result } = renderHook(() => useBotCreation(() => {}));
+
+    act(() => result.current.setInput('Copyrighted'));
+    
+    // Simulate selecting a suggestion
+    act(() => {
+      result.current.handleValidationSuggestion('Zeus');
+    });
+
+    expect(result.current.input).toBe('Zeus');
+    expect(result.current.validationResult).toBeNull();
+  });
+
+  it('handleCreate with window undefined during validation', async () => {
+    const originalWindow = (global as unknown as { window?: Window }).window;
+    delete (global as unknown as { window?: Window }).window;
+
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            characterName: 'Test',
+            isPublicDomain: true,
+            isSafe: true,
+            warningLevel: 'none'
+          })
+        });
+      }
+      if (url === '/api/generate-personality') {
+        return Promise.resolve({ ok: true, json: async () => ({ personality: 'test', correctedName: 'Test' }) });
+      }
+      if (url === '/api/generate-avatar') {
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png' }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const voiceCfg: VoiceCfg = { name: 'en-US-Wavenet-A', languageCodes: ['en-US'] };
+    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Test'));
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    (global as unknown as { window?: Window }).window = originalWindow;
+    await waitFor(() => expect(onBotCreated).toHaveBeenCalled());
+  });
+
+  it('handleCreate proceeds when validation returns not ok response', async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({ error: 'Validation failed' })
+        });
+      }
+      if (url === '/api/generate-personality') {
+        return Promise.resolve({ ok: true, json: async () => ({ personality: 'test', correctedName: 'Test' }) });
+      }
+      if (url === '/api/generate-avatar') {
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png', gender: 'male' }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const voiceCfg: VoiceCfg = { name: 'en-US-Wavenet-A', languageCodes: ['en-US'] };
+    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Test'));
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    await waitFor(() => expect(onBotCreated).toHaveBeenCalled());
+    expect(result.current.validating).toBe(false);
+  });
+
+  it('handleRandomCharacter with response not ok', async () => {
+    mockAuthFetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+
+    const { result } = renderHook(() => useBotCreation(() => {}));
+
+    await act(async () => {
+      await result.current.handleRandomCharacter();
+    });
+
+    expect(result.current.input).toBe('Sherlock Holmes');
+  });
+
+  it('handleRandomCharacter with empty name in response', async () => {
+    mockAuthFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ name: '   ' }) });
+
+    const { result } = renderHook(() => useBotCreation(() => {}));
+
+    await act(async () => {
+      await result.current.handleRandomCharacter();
+    });
+
+    expect(result.current.input).toBe('Sherlock Holmes');
+  });
+
+  it('validation error logging when window is undefined', async () => {
+    const originalWindow = (global as unknown as { window?: Window }).window;
+    delete (global as unknown as { window?: Window }).window;
+
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.reject(new Error('Network error'));
+      }
+      if (url === '/api/generate-personality') {
+        return Promise.resolve({ ok: true, json: async () => ({ personality: 'test', correctedName: 'Test' }) });
+      }
+      if (url === '/api/generate-avatar') {
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png' }) });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const voiceCfg: VoiceCfg = { name: 'en-US-Wavenet-A', languageCodes: ['en-US'] };
+    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Test'));
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    (global as unknown as { window?: Window }).window = originalWindow;
+    await waitFor(() => expect(onBotCreated).toHaveBeenCalled());
+  });
+
+  it('random character error logging when window is undefined', async () => {
+    const originalWindow = (global as unknown as { window?: Window }).window;
+    delete (global as unknown as { window?: Window }).window;
+
+    mockAuthFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    const { result } = renderHook(() => useBotCreation(() => {}));
+
+    await act(async () => {
+      await result.current.handleRandomCharacter();
+    });
+
+    (global as unknown as { window?: Window }).window = originalWindow;
+    expect(result.current.input).toBe('Sherlock Holmes');
+  });
 });

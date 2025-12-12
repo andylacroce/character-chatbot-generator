@@ -5,12 +5,13 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Open
 ## Key Features
 
 - **Advanced OpenAI Integration**: Uses gpt-4o (production) / gpt-4o-mini (dev) with streaming responses, conversation summarization, and prompt caching
+- **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
 - **Structured Outputs**: JSON Schema validation for reliable avatar generation
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 50 messages
 - **Cost Optimization**: Prompt caching reduces API costs for repeated system prompts
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
-- **Comprehensive Testing**: Jest test suite with 92%+ code coverage
+- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 351 passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
 
@@ -134,23 +135,31 @@ Multi-layered protection for all API endpoints:
 ## Project Structure
 
 ```
-app/                  # Next.js app & UI components
+app/
+  components/        # React components & hooks
+    CopyrightWarningModal.tsx  # Warning modal for copyrighted characters
+    useBotCreation.ts          # Bot creation with validation flow
 pages/api/           # API routes (chat, audio, health, transcript)
-   chat.ts            # Main chat endpoint with streaming & summarization
+  chat.ts            # Main chat endpoint with streaming & summarization
   audio.ts           # TTS audio generation
-   generate-avatar.ts # Avatar generation with structured outputs
+  generate-avatar.ts # Avatar generation with structured outputs
+  validate-character.ts # Copyright/trademark validation
+  random-character.ts   # Public domain character suggestions
 src/
-   utils/             # Utilities (TTS, logger, cache, security)
+  utils/             # Utilities (TTS, logger, cache, security)
   types/             # TypeScript type definitions
   config/            # Configuration files
-tests/               # Jest test suite
+tests/               # Jest test suite (80%+ branch coverage)
 proxy.ts             # API authentication middleware (Next.js 16)
 ```
 
 ## How It Works
 
 1. **Character Creation**: 
-   - Enter a name or generate a random character
+   - Enter a name or generate a random public domain character
+   - AI validates character for copyright/trademark concerns before creation
+   - If copyrighted character detected, shows warning modal with public domain alternatives
+   - User can proceed with warning or select a suggested alternative
    - App creates personality, avatar (DALL-E), and voice configuration
    - Uses structured outputs with JSON Schema validation
 
@@ -225,7 +234,9 @@ PRs welcome! Please include:
 
 ## License & Disclaimer
 
-Educational/portfolio project. Not affiliated with OpenAI or Google. Use public domain characters only.
+Educational/portfolio project. Not affiliated with OpenAI or Google.
+
+**Copyright Notice**: This app includes AI-powered copyright/trademark validation to help users avoid creating chatbots based on copyrighted or trademarked characters. When a potentially copyrighted character is detected, users receive warnings and suggestions for public domain alternatives. Users are solely responsible for ensuring their use complies with applicable copyright and trademark laws. The validation system provides guidance but does not constitute legal advice.
 
 ## Agent Instructions
 
