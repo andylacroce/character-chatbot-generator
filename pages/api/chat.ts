@@ -259,9 +259,15 @@ async function handler(
     const gender = req.body.gender;
     const conversationHistory = req.body.conversationHistory || [];
     const stream = req.body.stream === true; // Support streaming mode
+    const voiceConfig = req.body.voiceConfig;
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required | requestId=${requestId}`);
       res.status(400).json({ error: "Message is required", requestId });
+      return;
+    }
+    if (!voiceConfig || typeof voiceConfig !== 'object') {
+      logger.info(`[Chat API] 400 Bad Request: Voice config is required | requestId=${requestId}`);
+      res.status(400).json({ error: "Voice config is required", requestId });
       return;
     }
 
@@ -330,13 +336,13 @@ async function handler(
       logger.info(`[Chat API] Cache hit for key: ${cacheKey} | requestId=${requestId}`);
       // Prepare TTS/audio as usual for the cached reply
       // Robust Studio voice detection
-      const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
-      logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfig)}`);
-      const isStudio = (voiceConfig.type === 'Studio') || (voiceConfig.name && voiceConfig.name.includes('Studio'));
-      let selectedVoice = voiceConfig;
+      const voiceConfigToUse = voiceConfig;
+      logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfigToUse)}`);
+      const isStudio = (voiceConfigToUse.type === 'Studio') || (voiceConfigToUse.name && voiceConfigToUse.name.includes('Studio'));
+      let selectedVoice = voiceConfigToUse;
       if (isStudio) {
         const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
-        if (!validStudioVoices.includes(voiceConfig.name)) {
+        if (!validStudioVoices.includes(voiceConfigToUse.name)) {
           // fallback to en-US-Studio-M
           selectedVoice = {
             languageCodes: ['en-US'],
@@ -441,12 +447,12 @@ async function handler(
         }
         
         // Generate audio after streaming is complete
-        const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
-        const isStudio = (voiceConfig.type === 'Studio') || (voiceConfig.name && voiceConfig.name.includes('Studio'));
-        let selectedVoice = voiceConfig;
+        const voiceConfigToUse = voiceConfig;
+        const isStudio = (voiceConfigToUse.type === 'Studio') || (voiceConfigToUse.name && voiceConfigToUse.name.includes('Studio'));
+        let selectedVoice = voiceConfigToUse;
         if (isStudio) {
           const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
-          if (!validStudioVoices.includes(voiceConfig.name)) {
+          if (!validStudioVoices.includes(voiceConfigToUse.name)) {
             selectedVoice = {
               languageCodes: ['en-US'],
               name: 'en-US-Studio-M',
@@ -469,7 +475,7 @@ async function handler(
           ssml: false,
           voice: selectedVoice,
         });
-        const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
+        const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
         
         // Send final message with audio URL
         res.write(`data: ${JSON.stringify({ reply: botReply, audioFileUrl, done: true })}\n\n`);
@@ -518,16 +524,16 @@ async function handler(
     }
 
     // Prepare TTS request (voice tuned for character)
-    const voiceConfig = req.body.voiceConfig || (await import("../../src/utils/characterVoices")).CHARACTER_VOICE_MAP["Default"];
+    const voiceConfigToUse = voiceConfig;
     // Add a hash to the voiceConfig for logging/debugging
-    const voiceConfigHash = crypto.createHash("sha256").update(JSON.stringify(voiceConfig)).digest("hex");
-    logger.info(`[TTS] Using voice for botName='${botName}', voiceConfigHash=${voiceConfigHash}: ${JSON.stringify(voiceConfig)}`);
+    const voiceConfigHash = crypto.createHash("sha256").update(JSON.stringify(voiceConfigToUse)).digest("hex");
+    logger.info(`[TTS] Using voice for botName='${botName}', voiceConfigHash=${voiceConfigHash}: ${JSON.stringify(voiceConfigToUse)}`);
     // Robust Studio voice detection
-    const isStudio = (voiceConfig.type === 'Studio') || (voiceConfig.name && voiceConfig.name.includes('Studio'));
-    let selectedVoice = voiceConfig;
+    const isStudio = (voiceConfigToUse.type === 'Studio') || (voiceConfigToUse.name && voiceConfigToUse.name.includes('Studio'));
+    let selectedVoice = voiceConfigToUse;
     if (isStudio) {
       const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
-      if (!validStudioVoices.includes(voiceConfig.name)) {
+      if (!validStudioVoices.includes(voiceConfigToUse.name)) {
         // fallback to en-US-Studio-M
         selectedVoice = {
           languageCodes: ['en-US'],
@@ -588,7 +594,7 @@ async function handler(
     );
     logger.info(`[Chat API] 200 OK: Reply and audioFileUrl sent | requestId=${requestId}`);
     // Return audioFileUrl with text param for stateless regeneration
-    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
+    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
     res.status(200).json({
       reply: botReply,
       audioFileUrl,

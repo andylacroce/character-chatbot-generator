@@ -3,6 +3,7 @@ import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter
 import { authenticatedFetch } from "../../src/utils/api";
 import type { Bot } from "./BotCreator";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
+import { persistVoiceConfig } from "../../src/utils/voiceConfigPersistence";
 
 type ProgressStep = "personality" | "avatar" | "voice" | null;
 
@@ -202,10 +203,9 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         if (!voiceConfig) {
             throw new Error("Failed to generate a consistent voice for this character. Please try again.");
         }
-        // Store voiceConfig in local storage (versioned wrapper) for durability across sessions
+        // Store voiceConfig with both localStorage and cookie fallback for durability across sessions
         try {
-            const storage = await import('../../src/utils/storage');
-            storage.default.setVersionedJSON(`voiceConfig-${correctedName}`, voiceConfig, 1);
+            persistVoiceConfig(correctedName, voiceConfig);
         } catch {}
         return { name: correctedName, personality, avatarUrl, voiceConfig, gender };
     }

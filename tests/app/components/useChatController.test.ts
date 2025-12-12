@@ -15,6 +15,20 @@ jest.mock("../../../src/utils/api", () => ({
     authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
 }));
 
+// Mock voice config persistence helpers
+const mockLoadVoiceConfig = jest.fn();
+const mockPersistVoiceConfig = jest.fn();
+jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
+    loadVoiceConfig: (...args: unknown[]) => mockLoadVoiceConfig(...(args as unknown[])),
+    persistVoiceConfig: (...args: unknown[]) => mockPersistVoiceConfig(...(args as unknown[])),
+}));
+
+// Mock API voice config fetcher used by the controller
+const mockApiGetVoiceConfigForCharacter = jest.fn();
+jest.mock("../../../app/components/api_getVoiceConfigForCharacter", () => ({
+    api_getVoiceConfigForCharacter: (...args: unknown[]) => mockApiGetVoiceConfigForCharacter(...(args as unknown[])),
+}));
+
 import { useChatController } from "../../../app/components/useChatController";
 // Merge: mock storage to exercise additional branches
 jest.mock("../../../src/utils/storage", () => ({
@@ -70,6 +84,8 @@ describe("useChatController uncovered branches", () => {
         jest.spyOn(console, 'error').mockImplementation(() => {});
         // Set default mock for authenticatedFetch
         mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Default reply", audioFileUrl: null }));
+        mockLoadVoiceConfig.mockReturnValue(mockBot.voiceConfig);
+        mockApiGetVoiceConfigForCharacter.mockResolvedValue(mockBot.voiceConfig);
         // Add a debug statement to log when sendMessage is called
         jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
             if (args[0] === 'sendMessage called') {
@@ -85,6 +101,8 @@ describe("useChatController uncovered branches", () => {
 
     it("handles missing voiceConfig in getIntro", async () => {
         mockAuthenticatedFetch.mockResolvedValue(mockResponse({}));
+        mockLoadVoiceConfig.mockReturnValue(null);
+        mockApiGetVoiceConfigForCharacter.mockRejectedValue(new Error("no voice"));
         const botWithoutVoiceConfig = { ...mockBot, voiceConfig: null };
         const { result: _result } = renderHook(() => useChatController(botWithoutVoiceConfig));
         await act(async () => {
@@ -289,12 +307,16 @@ describe("useChatController additional branches (merged)", () => {
         mockStorage.getItem.mockReturnValue(null);
         mockStorage.getVersionedJSON.mockReturnValue(null);
         mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Intro", audioFileUrl: null }));
+        mockLoadVoiceConfig.mockReturnValue(baseBot.voiceConfig);
+        mockApiGetVoiceConfigForCharacter.mockResolvedValue(baseBot.voiceConfig);
     });
 
     it("retrieves voiceConfig from saved bot in storage", async () => {
         const savedBot = { ...baseBot, voiceConfig: { name: "en-US-Wavenet-B", languageCodes: ["en-US"], ssmlGender: 1 } };
+        mockLoadVoiceConfig.mockReturnValue(null);
+        mockApiGetVoiceConfigForCharacter.mockRejectedValue(new Error("should not fetch"));
         mockStorage.getItem.mockImplementation((key: string) => (key === "chatbot-bot" ? JSON.stringify(savedBot) : null));
-        const { result } = renderHook(() => useChatController(baseBot));
+        const { result } = renderHook(() => useChatController({ ...baseBot, voiceConfig: null }));
         await act(async () => {
             await new Promise(res => setTimeout(res, 10));
         });
