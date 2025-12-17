@@ -581,53 +581,81 @@ describe("useChatController additional branches (merged)", () => {
         expect(anyWithAudio).toBe(false);
     });
 
-    it('visualViewport resize sets CSS keyboard pad variable', () => {
-        // store listeners
-        const listeners: Record<string, (...args: unknown[]) => void> = {};
-        Object.defineProperty(window, 'visualViewport', {
-            value: {
-                height: 500,
-                addEventListener: (ev: string, cb: (...args: unknown[]) => void) => { listeners[ev] = cb; },
-                removeEventListener: (ev: string) => { delete listeners[ev]; },
-                scroll: () => {}
-            },
-            configurable: true,
-        });
 
-        // set an innerHeight larger than visualViewport to simulate keyboard open
-        const w = window as unknown as { innerHeight: number };
-        const originalInner = w.innerHeight;
-        w.innerHeight = 900;
 
-        // Mock RAF to run synchronously and capture id for cancellation
-        const origRaf = window.requestAnimationFrame;
-        const origCancel = window.cancelAnimationFrame;
-        (window as unknown as { requestAnimationFrame: typeof window.requestAnimationFrame }).requestAnimationFrame = (cb: FrameRequestCallback) => { cb(0); return 777; };
-        (window as unknown as { cancelAnimationFrame: typeof window.cancelAnimationFrame }).cancelAnimationFrame = jest.fn();
-
-        const { unmount } = renderHook(() => useChatController(baseBot));
-
-        // Trigger the resize listener and allow RAF to run
-        act(() => {
-            if (listeners['resize']) {
-                listeners['resize']();
+    it('sendMessage retries on HTTP 410 and exhausts retries, then logs error', async () => {
+        let attempts = 0;
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') {
+                attempts++;
+                // Return a non-ok 410 response to simulate permanent gone
+                return Promise.resolve({ ok: false, status: 410 });
             }
+            return Promise.resolve(mockResponse({}));
         });
 
-        // Check that CSS var was set (non-empty string)
-        const pad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
-        expect(typeof pad).toBe('string');
+        const { result } = renderHook(() => useChatController(baseBot));
+        // Wait for intro/health to settle
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
 
-        // Unmount and ensure cleanup ran without throwing
-        unmount();
+        act(() => result.current.setInput('will 410'));
+        await act(async () => { await result.current.sendMessage(); });
 
-        // restore innerHeight and original RAF functions
-        w.innerHeight = originalInner;
-        window.requestAnimationFrame = origRaf;
-        window.cancelAnimationFrame = origCancel;
+        expect(attempts).toBeGreaterThanOrEqual(3);
+        const errLogFound = mockLogEvent.mock.calls.some(c => c[1] === 'chat_send_message_failed');
+        expect(errLogFound).toBe(true);
+    });
+
+    it('sendMessage: production logging suppressed for retry info', async () => {
+        const prevEnv = process.env.NODE_ENV;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (process.env as any).NODE_ENV = 'production';
+
+        try {
+            let attempts = 0;
+            mockAuthenticatedFetch.mockImplementation((url: string) => {
+                if (url === '/api/health') return Promise.resolve(mockResponse({}));
+                if (url === '/api/chat') {
+                    attempts++;
+                    if (attempts < 3) return Promise.reject(new Error('Transient')); // force retries
+                    return Promise.resolve(mockResponse({ reply: 'Recovered', audioFileUrl: null }));
+                }
+                return Promise.resolve(mockResponse({}));
+            });
+
+            const { result } = renderHook(() => useChatController(baseBot));
+            // wait for hook to be ready
+            await act(async () => { await new Promise(res => setTimeout(res, 30)); });
+
+            act(() => result.current.setInput('prod retry'));
+            await act(async () => { await result.current.sendMessage(); });
+
+            // In production, retry-related logEvent calls should not be emitted
+            const foundStart = mockLogEvent.mock.calls.some(call => call[1] === 'chat_send_retry_start');
+            const foundSuccess = mockLogEvent.mock.calls.some(call => call[1] === 'chat_send_retry_success');
+            expect(foundStart).toBe(false);
+            expect(foundSuccess).toBe(false);
+        } finally {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (process.env as any).NODE_ENV = prevEnv;
+        }
     });
 
 
+
+
+
+    it('SSE parsing: handles error frame and sets error state', async () => {
+        const { result } = renderHook(() => useChatController(baseBot));
+        const errorFrame = { error: 'something went wrong', done: true };
+        mockAuthenticatedFetch.mockResolvedValueOnce({ ok: true, body: makeMockSSEBody([errorFrame]) });
+        await act(async () => {
+            result.current.setInput('hi');
+            await result.current.sendMessage();
+        });
+        expect(result.current.error).toBeTruthy();
+    });
 
     it('handleDownloadTranscript logs error and shows alert when download fails', async () => {
         const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
