@@ -38,7 +38,7 @@ describe('getOpenAIModel', () => {
 
     it('returns correct image models in production', () => {
         setEnv({ NODE_ENV: 'production', VERCEL_ENV: undefined });
-        expect(getOpenAIModel('image')).toEqual({ primary: 'gpt-image-1.5', fallback: 'dall-e-3' });
+        expect(getOpenAIModel('image')).toEqual({ primary: 'gpt-image-1', fallback: 'dall-e-3' });
     });
 
     it('returns correct image models in development', () => {

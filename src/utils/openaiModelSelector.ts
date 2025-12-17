@@ -23,7 +23,7 @@ export function getOpenAIModel(type: "text" | "image"): string | { primary: stri
         // Production: prefer the new gpt-image-1.5 for best quality
         // Development: dall-e-2 for cost savings
         if (isProd) {
-            return { primary: "gpt-image-1.5", fallback: "dall-e-3" };
+            return { primary: "gpt-image-1", fallback: "dall-e-3" };
         } else {
             return { primary: "dall-e-2", fallback: "dall-e-3" };
         }
