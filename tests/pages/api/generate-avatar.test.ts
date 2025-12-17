@@ -1,0 +1,186 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+// Mock logger (provide default `logger` with warn/info/error to avoid runtime errors)
+const mockLogEvent = jest.fn();
+const mockSanitize = jest.fn((m: unknown) => m);
+const mockLoggerDefault = { warn: jest.fn(), info: jest.fn(), error: jest.fn(), log: jest.fn() };
+jest.mock('../../../src/utils/logger', () => ({
+  default: mockLoggerDefault,
+  logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+  sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+}));
+
+// Mock model selector
+jest.mock('../../../src/utils/openaiModelSelector', () => ({ getOpenAIModel: (_: string) => ({ primary: 'dall-e-3', fallback: 'gpt-image-1-mini' }) }));
+
+// Make sanitizeCharacterName permissive for tests (return trimmed input)
+jest.mock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+function makeRes() {
+  const res: Partial<NextApiResponse> = {};
+  res.status = jest.fn().mockReturnValue(res as NextApiResponse);
+  res.end = jest.fn().mockReturnValue(res as NextApiResponse);
+  res.json = jest.fn().mockReturnValue(res as NextApiResponse);
+  return res as NextApiResponse;
+}
+
+describe('generate-avatar API', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('returns 405 for non-POST methods', async () => {
+    const handler = require('../../../pages/api/generate-avatar').default;
+    const req = { method: 'GET' } as Partial<NextApiRequest> as NextApiRequest;
+    const res = makeRes();
+    await handler(req, res);
+    expect(res.status).toHaveBeenCalledWith(405);
+  });
+
+  it('returns 400 for missing or invalid name', async () => {
+    const handler = require('../../../pages/api/generate-avatar').default;
+    const req = { method: 'POST', body: {} } as Partial<NextApiRequest> as NextApiRequest;
+    const res = makeRes();
+    await handler(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Valid name required' });
+  });
+
+  it('returns 400 when sanitized name is invalid', async () => {
+    // Use async isolation so Jest awaits promises and captures assertion failures
+    await jest.isolateModulesAsync(async () => {
+      // reset to ensure our local doMock overrides module cache and top-level mocks
+      jest.resetModules();
+      jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (_: string) => '' }));
+      jest.doMock('../../../src/utils/logger', () => ({ default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+      const handler = require('../../../pages/api/generate-avatar').default;
+      // Ensure logger default has warn function in this isolated module context
+      const loggerMod = require('../../../src/utils/logger');
+      if (!loggerMod.default || typeof loggerMod.default.warn !== 'function') {
+        loggerMod.default = mockLoggerDefault;
+      }
+      const req = { method: 'POST', body: { name: '???' } } as Partial<NextApiRequest> as NextApiRequest;
+      const res = makeRes();
+      await handler(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Invalid character name' });
+    });
+    // Restore default module mocks (ensure later tests use the normal sanitizeCharacterName)
+    jest.resetModules();
+    jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+  });
+
+  it('falls back to silhouette when OpenAI import fails', async () => {
+    // Make dynamic import of 'openai' throw
+    jest.doMock('openai', () => { throw new Error('no openai'); });
+    // Ensure logger default exists in this module context
+    jest.doMock('../../../src/utils/logger', () => ({ default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+    const handler = require('../../../pages/api/generate-avatar').default;
+    const req = { method: 'POST', body: { name: 'Hero' } } as Partial<NextApiRequest> as NextApiRequest;
+    const res = makeRes();
+    await handler(req, res);
+    expect(res.json).toHaveBeenCalledWith({ avatarUrl: '/silhouette.svg' });
+    expect(mockLogEvent).toHaveBeenCalledWith('error', 'avatar_unhandled_error', 'Unhandled error in generate-avatar', expect.any(Object));
+  });
+
+  it('returns avatarUrl and gender on successful primary image generation', async () => {
+    // Mock openai to return a valid JSON prompt and image URL
+    const mockCreate = jest.fn().mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ subject: 's', artStyle: 'a', composition: 'c', iconicElements: 'i', negativePrompts: 'n', gender: 'female' }) } }] });
+    const mockImagesGenerate = jest.fn().mockResolvedValueOnce({ data: [{ url: 'http://example.com/img.png' }] });
+    jest.doMock('openai', () => {
+      return function OpenAIMock() {
+        return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+      };
+    });
+    jest.doMock('../../../src/utils/logger', () => ({ default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+
+    const handler = require('../../../pages/api/generate-avatar').default;
+    const req = { method: 'POST', body: { name: 'TestName' } } as Partial<NextApiRequest> as NextApiRequest;
+    const res = makeRes();
+    await handler(req, res);
+    expect(res.json).toHaveBeenCalledWith({ avatarUrl: 'http://example.com/img.png', gender: 'female' });
+    // Ensure success logs were emitted
+    expect(mockLogEvent).toHaveBeenCalledWith('info', 'avatar_image_primary_success', 'Image generated successfully with primary model', expect.any(Object));
+  });
+
+  it('falls back to fallback model when primary fails and returns silhouette when fallback fails', async () => {
+    // Isolate module context so mocks are fresh and no previous imports leak
+    await jest.isolateModulesAsync(async () => {
+      // Reset modules to avoid any cached imports interfering with isolated mocks
+      jest.resetModules();
+      const mockCreate = jest.fn().mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ subject: 's' }) } }] });
+      const errPrimary = new Error('primary failed');
+      const errFallback = new Error('fallback failed');
+      const mockImagesGenerate = jest.fn()
+        .mockRejectedValueOnce(errPrimary) // primary
+        .mockRejectedValueOnce(errFallback); // fallback
+
+      jest.doMock('openai', () => {
+        return function OpenAIMock() {
+          return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+        };
+      });
+      // Re-mock sanitizeCharacterName for isolated module context
+      jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+      jest.doMock('../../../src/utils/logger', () => ({
+        default: mockLoggerDefault,
+        logger: mockLoggerDefault,
+        logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+        sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+      }));
+
+      const handler = require('../../../pages/api/generate-avatar').default;
+      // Ensure logger default has warn function in this isolated module context
+      const loggerMod = require('../../../src/utils/logger');
+      if (!loggerMod.default || typeof loggerMod.default.warn !== 'function') {
+        loggerMod.default = mockLoggerDefault;
+      }
+      const req = { method: 'POST', body: { name: 'Failing' } } as Partial<NextApiRequest> as NextApiRequest;
+      const res = makeRes();
+      await handler(req, res);
+
+      // Should return silhouette after fallback also fails
+      expect(res.json).toHaveBeenCalledWith({ avatarUrl: '/silhouette.svg' });
+      expect(mockLogEvent).toHaveBeenCalledWith('error', 'avatar_image_fallback_error', 'OpenAI image generation error (fallback)', expect.any(Object));
+      expect(mockLogEvent).toHaveBeenCalledWith('warn', 'avatar_image_fallback_failed', 'Fallback image model also failed, using silhouette', expect.any(Object));
+    });
+  });
+
+  it('handles moderation blocked and then uses fallback successfully', async () => {
+    await jest.isolateModulesAsync(async () => {
+      // Reset modules to avoid any cached imports interfering with isolated mocks
+      jest.resetModules();
+      const mockCreate = jest.fn().mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ subject: 's' }) } }] });
+      const modErr = new Error('blocked') as { code?: string };
+      modErr.code = 'moderation_blocked';
+      const mockImagesGenerate = jest.fn()
+        .mockRejectedValueOnce(modErr) // primary moderation blocked
+        // gpt-image-* models return base64 (`b64_json`) rather than URL
+        .mockResolvedValueOnce({ data: [{ b64_json: 'ABCD' }] }); // fallback succeed
+
+      jest.doMock('openai', () => {
+        return function OpenAIMock() {
+          return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+        };
+      });
+      // Re-mock sanitizeCharacterName for isolated module context
+      jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+      jest.doMock('../../../src/utils/logger', () => ({
+        default: mockLoggerDefault,
+        logger: mockLoggerDefault,
+        logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+        sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+      }));
+
+      const handler = require('../../../pages/api/generate-avatar').default;
+      const req = { method: 'POST', body: { name: 'Blocked' } } as Partial<NextApiRequest> as NextApiRequest;
+      const res = makeRes();
+      await handler(req, res);
+
+      // (previously had debug output here)
+
+      expect(res.json).toHaveBeenCalledWith({ avatarUrl: 'data:image/png;base64,ABCD', gender: null });
+      expect(mockLogEvent).toHaveBeenCalledWith('warn', 'avatar_image_moderation_blocked', 'OpenAI image generation blocked by moderation/safety system', expect.any(Object));
+    });
+  });
+});

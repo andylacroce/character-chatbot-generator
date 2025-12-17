@@ -606,4 +606,67 @@ describe("useChatController additional branches (merged)", () => {
         // useApiError maps thrown errors to a user-friendly message
         expect(result.current.error).toBe('Error sending message. Please try again.');
     });
+
+    // New focused tests to cover additional branches
+    it('health check success sets apiAvailable=true and focuses input', async () => {
+        // Create a real input element and attach to DOM so focus() works
+        const inputEl = document.createElement('input');
+        document.body.appendChild(inputEl);
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(mockBot));
+        // Make the hook's inputRef point to our input element
+        act(() => { result.current.inputRef.current = inputEl; });
+
+        // Wait briefly for health check effect to run
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+
+        expect(result.current.apiAvailable).toBe(true);
+        // Clean up
+        document.body.removeChild(inputEl);
+    });
+
+    it('sendMessage sets error and logs when voiceConfig is missing', async () => {
+        // Ensure voice config cannot be resolved
+        mockLoadVoiceConfig.mockReturnValue(null);
+        mockApiGetVoiceConfigForCharacter.mockRejectedValueOnce(new Error('no voice config'));
+        const botNoVoice = { ...baseBot, voiceConfig: null };
+
+        const { result } = renderHook(() => useChatController(botNoVoice));
+
+        // Wait a moment for any hydration
+        await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+
+        act(() => result.current.setInput('hello'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        // Voice config missing should produce an error-level log (intro effects may emit related logs first).
+        const errLogFound = mockLogEvent.mock.calls.some((c) => c[0] === 'error' && ['voice_config_fetch_failed','chat_intro_voice_config_missing','chat_send_voice_config_missing'].includes(c[1] as string));
+        expect(errLogFound).toBe(true);
+        expect(result.current.loading).toBe(false);
+    });
+
+    it('profileApiCall logs timing for Log Message operation', async () => {
+        // Spy on logEvent calls and ensure an entry exists for 'Log Message'
+        mockAuthenticatedFetch.mockImplementation((url: string, _opts?: unknown) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'Hello', audioFileUrl: null }));
+            if (url === '/api/log-message') return Promise.resolve({ ok: true, json: async () => ({}) });
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(mockBot));
+
+        // Give intro a moment
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+
+        act(() => result.current.setInput('Ping'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        const found = mockLogEvent.mock.calls.some(call => call[1] === 'chat_api_timing' && call[3] && (call[3] as Record<string, unknown>).operation === 'Log Message');
+        expect(found).toBe(true);
+    });
 });

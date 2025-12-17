@@ -66,6 +66,20 @@ afterEach(() => {
   jest.useRealTimers(); // Ensure no fake timers leak between tests
 });
 
+// Protect test process by removing any existing unhandled rejection listeners
+// (Next may install an instrumentation listener that can throw during test
+// execution and cause the process to crash). Install a safe fallback now so
+// it is present for the entire test run.
+try {
+  process.removeAllListeners('unhandledRejection');
+  process.on('unhandledRejection', (reason) => {
+    // eslint-disable-next-line no-console
+    console.error('unhandledRejection (test-protected):', reason && reason.stack ? reason.stack : reason);
+  });
+} catch (e) {
+  // ignore in test environment
+}
+
 // Clean up undici's global dispatcher to close open TCP handles after all tests
 // try {
 //   const { globalDispatcher } = require("undici");
@@ -80,3 +94,21 @@ afterEach(() => {
 // } catch (e) {
 //   // undici not used, ignore
 // }
+
+// Prevent Next's unhandled-rejection instrumentation from crashing the Jest process.
+// Some Next internals install a listener that can throw during teardown; remove
+// any listeners after tests and replace with a safe logger to avoid uncatchable
+// rethrows that kill the test runner.
+// Keep the afterAll for defensive cleanup in case more listeners are added
+// during tests (this will re-assert our safe handler at teardown).
+afterAll(() => {
+  try {
+    process.removeAllListeners('unhandledRejection');
+    process.on('unhandledRejection', (reason) => {
+      // eslint-disable-next-line no-console
+      console.error('unhandledRejection (test-protected):', reason && reason.stack ? reason.stack : reason);
+    });
+  } catch (e) {
+    // ignore in test environment
+  }
+});

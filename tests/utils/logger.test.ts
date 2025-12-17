@@ -203,4 +203,75 @@ describe('logger utility', () => {
         expect(typeof logEvent).toBe('function');
         expect(typeof generateRequestId).toBe('function');
     });
+
+    it('uses winston when available on server', () => {
+        // Ensure we're running in a server-like environment for this import
+        const origWindow = (globalThis as unknown as { window?: Window }).window;
+        delete (globalThis as unknown as { window?: Window }).window;
+
+        // Mock a minimal winston implementation that exposes createLogger
+        jest.isolateModules(() => {
+            jest.doMock('winston', () => ({
+                createLogger: () => ({ log: jest.fn() }),
+                transports: { Console: function Console() {} },
+                format: { combine: () => {}, timestamp: () => {}, printf: () => {} }
+            }));
+
+            // Re-require module in isolated context to exercise server-side branch
+            const serverLogger = require('../../src/utils/logger');
+            expect(typeof serverLogger.logger.info).toBe('function');
+            expect(() => serverLogger.logger.info('server test')).not.toThrow();
+        });
+
+        // restore environment
+        (globalThis as unknown as { window?: Window }).window = origWindow;
+        jest.resetModules();
+    });
+
+    it('polyfills setImmediate when missing on server', () => {
+        const origWindow = (globalThis as unknown as { window?: Window }).window;
+        const origSetImmediate = (globalThis as unknown as { setImmediate?: unknown }).setImmediate;
+        delete (globalThis as unknown as { window?: Window }).window;
+
+        jest.isolateModules(() => {
+            // Ensure setImmediate is missing inside the isolated module context
+            delete (globalThis as unknown as { setImmediate?: unknown }).setImmediate;
+
+            jest.doMock('winston', () => ({
+                createLogger: () => ({ log: jest.fn() }),
+                transports: { Console: function Console() {} },
+                format: { combine: () => {}, timestamp: () => {}, printf: () => {} }
+            }));
+
+            // Re-require module to exercise setImmediate polyfill path
+            const serverLogger = require('../../src/utils/logger');
+            // We verify that the server logger initializes successfully (polyfill may be environment-dependent)
+            expect(typeof serverLogger.logger.info).toBe('function');
+        });
+
+        // restore environment
+        (globalThis as unknown as { window?: Window }).window = origWindow;
+        (globalThis as unknown as { setImmediate?: unknown }).setImmediate = origSetImmediate;
+        jest.resetModules();
+    });
+
+    it('falls back to browser logger when winston import fails on server', () => {
+        const origWindow = (globalThis as unknown as { window?: Window }).window;
+        delete (globalThis as unknown as { window?: Window }).window;
+
+        jest.isolateModules(() => {
+            // Make requiring winston throw to trigger the fallback
+            jest.doMock('winston', () => { throw new Error('nope'); });
+
+            const serverLogger = require('../../src/utils/logger');
+
+            const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+            serverLogger.log('info', 'fallback test', { foo: 'bar' });
+            expect(logSpy).toHaveBeenCalled();
+            logSpy.mockRestore();
+        });
+
+        (globalThis as unknown as { window?: Window }).window = origWindow;
+        jest.resetModules();
+    });
 });

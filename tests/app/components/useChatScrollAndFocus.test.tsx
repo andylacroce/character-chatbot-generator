@@ -136,13 +136,19 @@ describe("useChatScrollAndFocus", () => {
       configurable: true
     });
     // Minimal visualViewport mock
+    const addMock = jest.fn();
+    const removeMock = jest.fn();
     (window as unknown as { visualViewport?: { addEventListener?: jest.Mock; removeEventListener?: jest.Mock } }).visualViewport = {
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn()
+      addEventListener: addMock,
+      removeEventListener: removeMock
     };
     const { TestComponent, chatBoxRef: _chatBoxRef } = setup();
-    render(<TestComponent messages={[]} loading={false} />);
-    expect((window.visualViewport as unknown as { addEventListener: jest.Mock }).addEventListener.mock.calls[0][0]).toBe("resize");
+    const { unmount } = render(<TestComponent messages={[]} loading={false} />);
+    expect(addMock.mock.calls[0][0]).toBe("resize");
+
+    // Unmount should remove the listener
+    unmount();
+    expect(removeMock).toHaveBeenCalledWith("resize", expect.any(Function));
     // Clean up
     Object.defineProperty(window.navigator, "userAgent", { value: origUA, configurable: true });
   Object.defineProperty(window, 'visualViewport', { value: origVV, configurable: true });
@@ -277,6 +283,26 @@ describe("useChatScrollAndFocus", () => {
     expect(() => {
       render(<TestComponent />);
     }).not.toThrow();
+  });
+
+  it('defers focus when NODE_ENV is not test', () => {
+    const originalEnv = (process.env as unknown as { NODE_ENV?: string }).NODE_ENV;
+    (process.env as unknown as { NODE_ENV?: string }).NODE_ENV = 'production';
+
+    jest.useFakeTimers();
+    const { TestComponent, inputRef } = setup();
+    render(<TestComponent messages={[]} loading={false} />);
+
+    // Immediately after render the input should NOT yet be focused (deferred)
+    expect(document.activeElement).not.toBe(inputRef.current);
+
+    // Run timers to trigger deferred focus
+    act(() => { jest.runOnlyPendingTimers(); });
+
+    expect(document.activeElement).toBe(inputRef.current);
+
+    (process.env as unknown as { NODE_ENV?: string }).NODE_ENV = originalEnv;
+    jest.useRealTimers();
   });
 });
 
