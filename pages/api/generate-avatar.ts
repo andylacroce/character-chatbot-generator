@@ -131,8 +131,9 @@ Return JSON with these fields:
     
     // Helper to get image from OpenAI, handling both URL and base64 (data URL) responses
     async function getOpenAIImage(model: string) {
-      // gpt-image-1 only supports base64 (b64_json), not URL, but does NOT accept response_format param at all
-      const isGptImage1 = model === "gpt-image-1";
+      // Any `gpt-image-*` models (e.g. gpt-image-1, gpt-image-1.5) currently return
+      // base64 (`b64_json`) and do not accept `response_format`, so treat them generically.
+      const isGptImage = model.startsWith("gpt-image-");
       const params: OpenAIImageGenerateParams = {
         model,
         prompt: prompt,
@@ -143,11 +144,11 @@ Return JSON with these fields:
       if (model === "dall-e-2" || model === "dall-e-3") {
         params.response_format = "url";
       }
-      // Do NOT set response_format for gpt-image-1 (omit the property entirely)
+      // Do NOT set response_format for gpt-image-* models (omit the property entirely)
       logEvent("info", "avatar_openai_image_call", "Calling OpenAI image generation", { model, params });
       const image = await openai.images.generate(params);
       logEvent("info", "avatar_openai_image_response", "OpenAI image API response", { model, response: image });
-      if (isGptImage1) {
+      if (isGptImage) {
         const b64 = image.data?.[0]?.b64_json;
         if (!b64) return null;
         // Return as data URL
