@@ -1,4 +1,5 @@
 import { createMocks } from 'node-mocks-http';
+import type { OpenAIImageGenerateParams } from '../../src/types/openai-image';
 
 jest.mock('openai', () => {
     return jest.fn().mockImplementation(() => ({
@@ -393,5 +394,80 @@ describe('generate-avatar API', () => {
         const { req, res } = createMocks({ method: 'POST', body: { name: longName } });
         await handler(req, res);
         expect(res._getStatusCode()).toBe(200);
+    });
+
+    // New tests to assert image model parameter handling
+    it('uses quality=high and returns data URL for gpt-image-1.5 (b64_json)', async () => {
+        let capturedParams: Partial<OpenAIImageGenerateParams> | null = null;
+        const fakeB64 = Buffer.from('fakeimg').toString('base64');
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{"race":"Human","gender":"female","other":"artist"}' } }] }) } },
+                images: { generate: jest.fn().mockImplementation((params: OpenAIImageGenerateParams) => {
+                    capturedParams = params;
+                    return Promise.resolve({ data: [{ b64_json: fakeB64 }] });
+                }) }
+            }));
+        });
+        jest.mock('../../src/utils/openaiModelSelector', () => ({ getOpenAIModel: (type: "text" | "image") => { if (type === 'text') return 'gpt-4o'; return { primary: 'gpt-image-1.5', fallback: 'dall-e-3' }; } }));
+        const handler = (await import('../../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Ada Lovelace' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        // Confirm params sent to OpenAI
+        expect(capturedParams).toBeTruthy();
+        expect(capturedParams!.model).toBe('gpt-image-1.5');
+        expect(capturedParams!.quality).toBe('high');
+        expect(capturedParams!.response_format).toBeUndefined();
+        const dataRaw = res._getData();
+        const data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
+        expect(data.avatarUrl).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('uses quality=low for gpt-image-1-mini', async () => {
+        let capturedParams: Partial<OpenAIImageGenerateParams> | null = null;
+        const fakeB64 = Buffer.from('mini').toString('base64');
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{"race":"Human","gender":"male","other":"miner"}' } }] }) } },
+                images: { generate: jest.fn().mockImplementation((params: OpenAIImageGenerateParams) => {
+                    capturedParams = params;
+                    return Promise.resolve({ data: [{ b64_json: fakeB64 }] });
+                }) }
+            }));
+        });
+        jest.mock('../../src/utils/openaiModelSelector', () => ({ getOpenAIModel: (type: "text" | "image") => { if (type === 'text') return 'gpt-4o'; return { primary: 'gpt-image-1-mini', fallback: 'dall-e-3' }; } }));
+        const handler = (await import('../../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Tiny Tim' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        expect(capturedParams).toBeTruthy();
+        expect(capturedParams!.model).toBe('gpt-image-1-mini');
+        expect(capturedParams!.quality).toBe('low');
+    });
+
+    it('uses response_format=url for DALL·E models and does not set quality', async () => {
+        let capturedParams: Partial<OpenAIImageGenerateParams> | null = null;
+        jest.mock('openai', () => {
+            return jest.fn().mockImplementation(() => ({
+                chat: { completions: { create: jest.fn().mockResolvedValue({ choices: [{ message: { content: '{"race":"Human","gender":"female","other":"sculptor"}' } }] }) } },
+                images: { generate: jest.fn().mockImplementation((params: OpenAIImageGenerateParams) => {
+                    capturedParams = params;
+                    return Promise.resolve({ data: [{ url: 'http://dalle.fake/avatar.png' }] });
+                }) }
+            }));
+        });
+        jest.mock('../../src/utils/openaiModelSelector', () => ({ getOpenAIModel: (type: "text" | "image") => { if (type === 'text') return 'gpt-4o'; return { primary: 'dall-e-3', fallback: 'dall-e-3' }; } }));
+        const handler = (await import('../../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Statue of Liberty' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        expect(capturedParams).toBeTruthy();
+        expect(capturedParams!.model).toBe('dall-e-3');
+        expect(capturedParams!.response_format).toBe('url');
+        expect(capturedParams!.quality).toBeUndefined();
+        const dataRaw = res._getData();
+        const data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
+        expect(data.avatarUrl).toBe('http://dalle.fake/avatar.png');
     });
 });
