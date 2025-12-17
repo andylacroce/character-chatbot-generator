@@ -136,8 +136,11 @@ Return JSON with these fields:
       // - `gpt-image-1.5` (production) should use high fidelity
       // - `gpt-image-1-mini` (non-prod) is low-cost; do not set fidelity if unsupported
       const isGptImage = model.startsWith("gpt-image-");
-      // Use 'quality' for GPT image models per API docs; 'input_fidelity' is only used for edits/input matching and
-      // is supported for `gpt-image-1` edit flows. For generation, prefer 'quality' (high/medium/low).
+      // Per OpenAI Images API: GPT image models support `quality` ("high"|"medium"|"low") and always
+      // return base64-encoded images (`b64_json`) so `response_format` is not supported for them.
+      // DALL·E models (`dall-e-2`, `dall-e-3`) support `response_format` ("url"|"b64_json") and have
+      // different quality options; prefer `url` for DALL·E so clients receive a stable HTTP URL.
+      // See: https://platform.openai.com/docs/api-reference/images/create
       const params = {
         model,
         prompt: prompt,
@@ -150,7 +153,9 @@ Return JSON with these fields:
       } else if (model === "gpt-image-1-mini") {
         params.quality = "low"; // keep costs lower for mini model
       }
-      // Only add response_format for DALL·E models (they support url|b64_json); GPT image models always return base64.
+      // For DALL·E models we explicitly request `response_format = "url"` so the API returns a publicly
+      // accessible image URL (valid for ~60 minutes). GPT image models don't support `response_format` and
+      // instead return base64 (`b64_json`). See: https://platform.openai.com/docs/api-reference/images/create
       if (model === "dall-e-2" || model === "dall-e-3") {
         params.response_format = "url";
       }
