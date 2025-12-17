@@ -225,103 +225,8 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         }
     };
 
-    async function generateBotDataWithProgressCancelable(
-        originalInputName: string,
-        onProgress: (step: ProgressStep) => void,
-        setLoadingMessage: (msg: string | null) => void,
-        cancelRequested: MutableRefObject<boolean>
-    ): Promise<Bot> {
-        let personality = `You are ${originalInputName}. Stay in character.`;
-        let correctedName = originalInputName;
-        onProgress("personality");
-        setLoadingMessage("Creating personality");
-        if (cancelRequested.current) throw new Error("cancelled");
-        try {
-            setLoadingMessage("Creating personality");
-            const personalityRes = await authenticatedFetch("/api/generate-personality", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: originalInputName }),
-            });
-            if (cancelRequested.current) throw new Error("cancelled");
-            if (personalityRes.ok) {
-                const data = await personalityRes.json();
-                if (data.personality) personality = data.personality;
-                if (data.correctedName) correctedName = data.correctedName;
-                if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-                    logEvent('info', 'bot_personality_generated', 'Personality generated', sanitizeLogMeta({
-                        characterName: correctedName,
-                        originalName: originalInputName
-                    }));
-                }
-            }
-        } catch (err) {
-            if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-                logEvent('warn', 'bot_personality_generation_failed', 'Personality generation failed, using default', sanitizeLogMeta({
-                    characterName: originalInputName,
-                    error: err instanceof Error ? err.message : String(err)
-                }));
-            }
-        }
-        onProgress("avatar");
-        setLoadingMessage("Generating portrait — may take up to a minute");
-        let avatarUrl = "/silhouette.svg";
-        let gender: string | null = null;
-        if (cancelRequested.current) throw new Error("cancelled");
-        try {
-            setLoadingMessage("Generating portrait — may take up to a minute");
-            const avatarRes = await authenticatedFetch("/api/generate-avatar", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: correctedName }),
-            });
-            if (cancelRequested.current) throw new Error("cancelled");
-            if (avatarRes.ok) {
-                const data = await avatarRes.json();
-                if (data.avatarUrl) {
-                    avatarUrl = data.avatarUrl;
-                    if (data.avatarUrl === "/silhouette.svg") {
-                        setLoadingMessage("Using default image");
-                    }
-                }
-                gender = data.gender || null;
-            } else {
-                setLoadingMessage("Using default image");
-            }
-        } catch {
-            setLoadingMessage("Using default image");
-        }
-        onProgress("voice");
-        setLoadingMessage("Selecting voice");
-        let voiceConfig = null;
-        if (cancelRequested.current) throw new Error("cancelled");
-        try {
-            voiceConfig = await api_getVoiceConfigForCharacter(correctedName, gender);
-            if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-                logEvent('info', 'bot_voice_config_generated', 'Voice config generated', sanitizeLogMeta({
-                    characterName: correctedName,
-                    voiceName: voiceConfig?.name
-                }));
-            }
-        } catch (err) {
-            if (typeof window !== 'undefined') {
-                logEvent('warn', 'bot_voice_config_generation_failed', 'Voice config generation failed', sanitizeLogMeta({
-                    characterName: correctedName,
-                    error: err instanceof Error ? err.message : String(err)
-                }));
-            }
-            setLoadingMessage("Using default voice");
-        }
-        if (cancelRequested.current) throw new Error("cancelled");
-        if (!voiceConfig) {
-            throw new Error("Failed to generate a consistent voice for this character. Please try again.");
-        }
-        // Store voiceConfig with both localStorage and cookie fallback for durability across sessions
-        try {
-            persistVoiceConfig(correctedName, voiceConfig);
-        } catch {}
-        return { name: correctedName, personality, avatarUrl, voiceConfig, gender };
-    }
+    // generateBotDataWithProgressCancelable is implemented as a top-level exported helper for testability
+    // (see exported `generateBotDataWithProgressCancelable` function at module scope)
 
     return {
         input, setInput, error, setError, loading, setLoading, progress, setProgress,
@@ -331,4 +236,104 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         handleCreate, handleCancel, handleRandomCharacter,
         handleValidationContinue, handleValidationCancel, handleValidationSuggestion
     };
+}
+
+// Top-level exported implementation so it can be unit tested independently of the hook
+export async function generateBotDataWithProgressCancelable(
+    originalInputName: string,
+    onProgress: (step: ProgressStep) => void,
+    setLoadingMessage: (msg: string | null) => void,
+    cancelRequested: MutableRefObject<boolean>
+): Promise<Bot> {
+    // Implementation copied from previous inner function
+    let personality = `You are ${originalInputName}. Stay in character.`;
+    let correctedName = originalInputName;
+    onProgress("personality");
+    setLoadingMessage("Creating personality");
+    if (cancelRequested.current) throw new Error("cancelled");
+    try {
+        setLoadingMessage("Creating personality");
+        const personalityRes = await authenticatedFetch("/api/generate-personality", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: originalInputName }),
+        });
+        if (cancelRequested.current) throw new Error("cancelled");
+        if (personalityRes.ok) {
+            const data = await personalityRes.json();
+            if (data.personality) personality = data.personality;
+            if (data.correctedName) correctedName = data.correctedName;
+            if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+                logEvent('info', 'bot_personality_generated', 'Personality generated', sanitizeLogMeta({
+                    characterName: correctedName,
+                    originalName: originalInputName
+                }));
+            }
+        }
+    } catch (err) {
+        if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+            logEvent('warn', 'bot_personality_generation_failed', 'Personality generation failed, using default', sanitizeLogMeta({
+                characterName: originalInputName,
+                error: err instanceof Error ? err.message : String(err)
+            }));
+        }
+    }
+    onProgress("avatar");
+    setLoadingMessage("Generating portrait — may take up to a minute");
+    let avatarUrl = "/silhouette.svg";
+    let gender: string | null = null;
+    if (cancelRequested.current) throw new Error("cancelled");
+    try {
+        setLoadingMessage("Generating portrait — may take up to a minute");
+        const avatarRes = await authenticatedFetch("/api/generate-avatar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: correctedName }),
+        });
+        if (cancelRequested.current) throw new Error("cancelled");
+        if (avatarRes.ok) {
+            const data = await avatarRes.json();
+            if (data.avatarUrl) {
+                avatarUrl = data.avatarUrl;
+                if (data.avatarUrl === "/silhouette.svg") {
+                    setLoadingMessage("Using default image");
+                }
+            }
+            gender = data.gender || null;
+        } else {
+            setLoadingMessage("Using default image");
+        }
+    } catch {
+        setLoadingMessage("Using default image");
+    }
+    onProgress("voice");
+    setLoadingMessage("Selecting voice");
+    let voiceConfig = null;
+    if (cancelRequested.current) throw new Error("cancelled");
+    try {
+        voiceConfig = await api_getVoiceConfigForCharacter(correctedName, gender);
+        if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+            logEvent('info', 'bot_voice_config_generated', 'Voice config generated', sanitizeLogMeta({
+                characterName: correctedName,
+                voiceName: voiceConfig?.name
+            }));
+        }
+    } catch (err) {
+        if (typeof window !== 'undefined') {
+            logEvent('warn', 'bot_voice_config_generation_failed', 'Voice config generation failed', sanitizeLogMeta({
+                characterName: correctedName,
+                error: err instanceof Error ? err.message : String(err)
+            }));
+        }
+        setLoadingMessage("Using default voice");
+    }
+    if (cancelRequested.current) throw new Error("cancelled");
+    if (!voiceConfig) {
+        throw new Error("Failed to generate a consistent voice for this character. Please try again.");
+    }
+    // Store voiceConfig with both localStorage and cookie fallback for durability across sessions
+    try {
+        persistVoiceConfig(correctedName, voiceConfig);
+    } catch {}
+    return { name: correctedName, personality, avatarUrl, voiceConfig, gender };
 }

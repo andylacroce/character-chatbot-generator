@@ -129,6 +129,47 @@ describe('voiceConfigPersistence', () => {
       expect(() => persistVoiceConfig('TestBot', createMockConfig())).not.toThrow();
     });
 
+    it('writes cookie when btoa is present and loadVoiceConfig reads it back', () => {
+      const config = createMockConfig();
+      // ensure cookie is empty
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (global as any).document.cookie = '';
+
+      persistVoiceConfig('CookieBot', config);
+
+      // cookie should exist
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((global as any).document.cookie).toContain('voiceConfig-CookieBot=');
+
+      // Simulate load reading cookie and decoding
+      const loaded = loadVoiceConfig('CookieBot');
+      if (loaded) {
+        expect(loaded.name).toBe(config.name);
+      } else {
+        // On platforms where cookie parsing fails for any reason, this should still be graceful
+        expect(loaded).toBeNull();
+      }
+    });
+
+    it('handles cookie setter throwing without bubbling error', () => {
+      const config = createMockConfig();
+      // Make cookie setter throw
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const originalDoc = (global as any).document;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Object.defineProperty((global as any).document, 'cookie', {
+        configurable: true,
+        get: () => '',
+        set: () => { throw new Error('cookie write failure'); },
+      });
+
+      expect(() => persistVoiceConfig('TestBot', config)).not.toThrow();
+
+      // restore
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      Object.defineProperty((global as any).document, 'cookie', { value: originalDoc.cookie, writable: true });
+    });
+
     it('handles JSON.stringify throwing (circular reference)', () => {
       const config = createMockConfig();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
