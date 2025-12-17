@@ -76,7 +76,40 @@ describe('useSession', () => {
         unmount();
     });
 
+    it('returns empty values when not in browser (SSR)', async () => {
+        // Use test helper to override browser detection deterministically
+        const useSessionModule = require('../../../app/components/useSession');
+        useSessionModule.resetIsBrowserForTests();
+
+        try {
+            useSessionModule.setIsBrowserForTests(() => false);
+
+            let received: [string, string] | null = null;
+
+            function TestComponent({ onResult }: { onResult: (s: [string, string]) => void }) {
+                const val = useSession();
+                React.useEffect(() => { onResult(val); }, [val, onResult]);
+                return null;
+            }
+
+            const onResult = (s: [string, string]) => { received = s; };
+            render(<TestComponent onResult={onResult} />);
+
+            // Wait for effect
+            await new Promise(res => setTimeout(res, 20));
+
+            expect(received).not.toBeNull();
+            expect(received![0]).toBe('');
+            expect(received![1]).toBe('');
+        } finally {
+            useSessionModule.resetIsBrowserForTests();
+        }
+    });
+
     // SSR-specific behavior is tested indirectly elsewhere; attempting to simulate a full SSR
     // environment within the JSDOM-based test runner proved flaky so we avoid a dedicated test here.
+
+
+
 
 });

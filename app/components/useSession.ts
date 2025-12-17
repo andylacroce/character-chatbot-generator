@@ -12,6 +12,18 @@ import storage from '../../src/utils/storage';
  * Custom hook to manage session ID and session datetime for chat sessions.
  * Returns [sessionId, sessionDatetime].
  */
+// Test hook: override in tests by replacing `_isBrowser` to simulate SSR/browser
+export let _isBrowser = () => typeof window !== "undefined";
+export function isBrowser() { return _isBrowser(); }
+
+// Test helpers: allow tests to override the browser detection function deterministically
+export function setIsBrowserForTests(fn: () => boolean) {
+  _isBrowser = fn;
+}
+export function resetIsBrowserForTests() {
+  _isBrowser = () => typeof window !== "undefined";
+}
+
 export function useSession(): [string, string] {
   const [sessionId, setSessionId] = useState("");
   const [sessionDatetime, setSessionDatetime] = useState("");
@@ -19,7 +31,7 @@ export function useSession(): [string, string] {
   useEffect(() => {
     let newSessionId = "";
     let sessionDatetime = "";
-    if (typeof window !== "undefined") {
+    if (isBrowser()) {
       newSessionId = uuidv4();
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, "0");
