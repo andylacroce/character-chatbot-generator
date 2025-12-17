@@ -902,6 +902,68 @@ describe("useChatController additional branches (merged)", () => {
         expect(result.current.loading).toBe(false);
     });
 
+    it('ensureVoiceConfig falls back to api_getVoiceConfigForCharacter when load/storage throw', async () => {
+        // Simulate loadVoiceConfig throwing and storage.getItem throwing to hit catch branches
+        mockLoadVoiceConfig.mockImplementation(() => { throw new Error('boom'); });
+        (storage as jest.Mocked<typeof storage>).getItem.mockImplementation((key: string) => {
+            if (key === 'chatbot-bot') throw new Error('broken storage');
+            return null;
+        });
+        const fetchedConfig = { ...baseBot.voiceConfig, name: 'fetched-voice' } as unknown as import('../../../src/utils/characterVoices').CharacterVoiceConfig;
+        mockApiGetVoiceConfigForCharacter.mockResolvedValueOnce(fetchedConfig);
+
+        // Use a bot without voiceConfig so ensureVoiceConfig runs and triggers fetch
+        renderHook(() => useChatController({ ...baseBot, voiceConfig: null }));
+
+        // Wait for ensureVoiceConfig and intro to settle
+        await waitFor(() => expect(mockPersistVoiceConfig).toHaveBeenCalledWith(baseBot.name, fetchedConfig));
+
+        // persistVoiceConfig should have been called with fetched config
+        expect(mockPersistVoiceConfig).toHaveBeenCalledWith(baseBot.name, fetchedConfig);
+    });
+
+    it('handleAudioToggle tolerates storage.setItem throwing', () => {
+        // Make storage.setItem throw to exercise catch path
+        (storage as jest.Mocked<typeof storage>).setItem.mockImplementation(() => { throw new Error('no space'); });
+        const { result } = renderHook(() => useChatController(mockBot));
+
+        // Provide an input element and audioRef to simulate real DOM
+        const inputEl = document.createElement('input');
+        document.body.appendChild(inputEl);
+        act(() => {
+            result.current.inputRef.current = inputEl;
+            (result.current as unknown as { audioRef: React.RefObject<HTMLAudioElement> }).audioRef = mockAudioRef;
+        });
+
+        // Should not throw despite storage.setItem throwing
+        expect(() => act(() => { result.current.handleAudioToggle(); })).not.toThrow();
+        // audioRef should have been toggled
+        expect(mockAudioRef.current.muted).toBe(true);
+        document.body.removeChild(inputEl);
+    });
+
+    it('safeFocus does not call focus when input is not in document', async () => {
+        // create an input element but do NOT append to document
+        const inputEl = document.createElement('input');
+        const focusSpy = jest.spyOn(inputEl, 'focus');
+
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(mockBot));
+        // Ensure hook is ready then assign inputRef to the detached element
+        await waitFor(() => expect(result.current).toBeDefined());
+        act(() => { result.current.inputRef.current = inputEl; });
+
+        // Wait for health check / safeFocus to run and for apiAvailable to be set
+        await waitFor(() => expect(result.current.apiAvailable).toBe(true));
+
+        expect(focusSpy).not.toHaveBeenCalled();
+        focusSpy.mockRestore();
+    });
+
     it('profileApiCall logs timing for Log Message operation', async () => {
         // Spy on logEvent calls and ensure an entry exists for 'Log Message'
         mockAuthenticatedFetch.mockImplementation((url: string, _opts?: unknown) => {
