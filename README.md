@@ -1,3 +1,26 @@
+## Project Structure
+
+```text
+app/
+   components/        # React components & hooks
+      CopyrightWarningModal.tsx  # Warning modal for copyrighted characters
+      useBotCreation.ts          # Bot creation with validation flow
+pages/api/           # API routes (chat, audio, health, transcript)
+   chat.ts            # Main chat endpoint with streaming & summarization
+   audio.ts           # TTS audio generation
+   generate-avatar.ts # Avatar generation with structured outputs
+   validate-character.ts # Copyright/trademark validation
+   random-character.ts   # Public domain character suggestions
+src/
+   utils/             # Utilities (TTS, logger, cache, security)
+   types/             # TypeScript type definitions
+   config/            # Configuration files
+tests/               # Jest test suite (80%+ branch coverage)
+proxy.ts             # API authentication middleware (Next.js 16)
+```
+
+App creates personality, avatar (OpenAI image models — production uses `gpt-image-1.5`, non-production uses `gpt-image-1-mini`; fallbacks include `dall-e-3`), and voice configuration
+
 # Character Chatbot Generator
 
 A Next.js 16 + TypeScript app that provides a character-driven chat UI with OpenAI-powered responses and Google Text-to-Speech audio replies.
@@ -44,7 +67,7 @@ cd character-chatbot-generator
 npm install
 ```
 
-2. **Environment Setup**
+1. **Environment Setup**
 
 Create `.env.local` at project root with required secrets:
 
@@ -57,13 +80,13 @@ VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_token
 TTS_TMP_DIR=/custom/temp/path
 ```
 
-3. **Google Cloud Setup**
+1. **Google Cloud Setup**
 
    - Create a GCP service account with Text-to-Speech API access
    - Download the JSON key file
    - Place it at `config/gcp-key.json` or paste contents into `GOOGLE_APPLICATION_CREDENTIALS_JSON`
 
-4. **Start Development Server**:
+1. **Start Development Server**:
 
 ```powershell
 npm run dev
@@ -132,75 +155,12 @@ Multi-layered protection for all API endpoints:
 
 **Custom Domains**: Update `allowedOrigins` in `proxy.ts` when deploying to custom domains.
 
-## Project Structure
-
-```
-app/
-  components/        # React components & hooks
-    CopyrightWarningModal.tsx  # Warning modal for copyrighted characters
-    useBotCreation.ts          # Bot creation with validation flow
-pages/api/           # API routes (chat, audio, health, transcript)
-  chat.ts            # Main chat endpoint with streaming & summarization
-  audio.ts           # TTS audio generation
-  generate-avatar.ts # Avatar generation with structured outputs
-  validate-character.ts # Copyright/trademark validation
-  random-character.ts   # Public domain character suggestions
-src/
-  utils/             # Utilities (TTS, logger, cache, security)
-  types/             # TypeScript type definitions
-  config/            # Configuration files
-tests/               # Jest test suite (80%+ branch coverage)
-proxy.ts             # API authentication middleware (Next.js 16)
-```
-
-## How It Works
-
-1. **Character Creation**: 
-   - Enter a name or generate a random public domain character
-   - AI validates character for copyright/trademark concerns before creation
-   - If copyrighted character detected, shows warning modal with public domain alternatives
-   - User can proceed with warning or select a suggested alternative
-   - App creates personality, avatar (DALL-E), and voice configuration
-   - Uses structured outputs with JSON Schema validation
-
-2. **Chat Interface**:
-   - Real-time streaming responses via Server-Sent Events
-   - Automatic conversation summarization for long chats (>50 messages)
-   - Smart continuation detection: when responses are truncated, bot prompts "Would you like me to continue?" and seamlessly resumes when user says "yes"
-   - Prompt caching reduces API costs for repeated prompts
-   - Character-specific voice synthesis with Google TTS
-   - Production uses gpt-4o for superior conversation quality and natural fluency
-
-3. **Transcripts**: 
-   - Clean HTML format with character avatars
-   - Opens in new browser tab
-   - Compatible with all modern browsers
-
-## Deployment (Vercel)
-
-1. **Environment Variables**
-
-   Set these in Vercel Project Settings:
-   - `OPENAI_API_KEY`
-   - `API_SECRET`
-   - `GOOGLE_APPLICATION_CREDENTIALS_JSON` (paste full JSON content)
-   - `VERCEL_BLOB_READ_WRITE_TOKEN` (optional)
-
-2. **Runtime Configuration**
-
-   - Use Node.js runtime (not Edge) for API routes
-   - Node version ≥18 recommended
-   - Next.js 16.0.0+ with Turbopack support (experimental `optimizeCss` enabled)
-
-3. **Custom Domains**
-
-   Update `allowedOrigins` in `proxy.ts` to include your custom domain.
-
 ## Storage (Client-Side)
 
 Uses safe storage wrapper at `src/utils/storage.ts` with localStorage and in-memory fallback.
 
 **Storage Keys**:
+
 - `voiceConfig-<bot.name>` — Versioned voice configuration
 - `chatbot-bot` — Current bot data
 - `chatbot-history-<bot.name>` — Chat history
@@ -227,6 +187,7 @@ Check browser console for SSE connection errors. Ensure the API endpoint isn't b
 ## Contributing
 
 PRs welcome! Please include:
+
 - Tests for new features
 - Updated documentation
 - Follow existing code style
