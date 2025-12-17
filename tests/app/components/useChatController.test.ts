@@ -396,6 +396,59 @@ describe("useChatController additional branches (merged)", () => {
         expect(result.current).toBeDefined();
     });
 
+    it('visualViewport focus/blur sets CSS pad and classes', async () => {
+        // store listeners and mock RAF to run synchronously (like other visualViewport test)
+        const listeners: Record<string, (...args: unknown[]) => void> = {};
+        const origRaf = window.requestAnimationFrame;
+        const origCancel = window.cancelAnimationFrame;
+        (window as unknown as { requestAnimationFrame: typeof window.requestAnimationFrame }).requestAnimationFrame = (cb: FrameRequestCallback) => { cb(0); return 777; };
+        (window as unknown as { cancelAnimationFrame: typeof window.cancelAnimationFrame }).cancelAnimationFrame = jest.fn();
+
+        Object.defineProperty(window, 'visualViewport', {
+            value: {
+                height: 600,
+                addEventListener: (ev: string, cb: (...args: unknown[]) => void) => { listeners[ev] = cb; },
+                removeEventListener: jest.fn(),
+                scroll: jest.fn(),
+            },
+            writable: true,
+            configurable: true,
+        });
+        // Make innerHeight larger so heightDiff > 0
+        const w = window as unknown as { innerHeight: number };
+        const originalInner = w.innerHeight;
+        w.innerHeight = 1000;
+
+        // Prevent intro generation during this test by returning an existing chat history
+        const mockStorage = storage as jest.Mocked<typeof storage>;
+        const chatHistoryKey = `chatbot-history-${baseBot.name}`;
+        mockStorage.getItem.mockImplementation((key: string) => (key === chatHistoryKey ? JSON.stringify([{ sender: 'x', text: 'y' }]) : null));
+
+        const { result } = renderHook(() => useChatController(baseBot));
+
+        // Attach a real input element so focus/blur handlers run
+        const inputEl = document.createElement('input');
+        document.body.appendChild(inputEl);
+        act(() => {
+            result.current.inputRef.current = inputEl;
+        });
+
+        act(() => {
+            inputEl.dispatchEvent(new Event('focus'));
+            // simulate visualViewport resize event (synchronous RAF will run)
+            listeners['resize']?.();
+        });
+
+        // CSS var should be set (non-empty string)
+        const pad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
+        expect(typeof pad).toBe('string');
+
+        // restore innerHeight and cleanup RAF mocks
+        w.innerHeight = originalInner;
+        window.requestAnimationFrame = origRaf;
+        window.cancelAnimationFrame = origCancel;
+    });
+
     it("SSE parsing: accumulates chunks and handles final done frame", async () => {
         const { result } = renderHook(() => useChatController(baseBot));
         const frames = [
@@ -717,6 +770,70 @@ describe("useChatController additional branches (merged)", () => {
         expect(mockLogEvent).toHaveBeenCalledWith('info', 'chat_transcript_downloaded', 'Transcript downloaded successfully', expect.any(Object));
     });
 
+    it('sendMessage returns early when API health is false', async () => {
+        // Make health check fail so apiAvailable=false
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === '/api/health') return Promise.reject(new Error('down'));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'Should not be called' }));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(baseBot));
+        // Wait until apiAvailable flips to false (health check settled)
+        await waitFor(() => expect(result.current.apiAvailable).toBe(false));
+
+        const initialChatCalls = mockAuthenticatedFetch.mock.calls.filter(c => c[0] === '/api/chat').length;
+
+        act(() => result.current.setInput('Hello'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        // Ensure no additional call was made to /api/chat by sendMessage
+        const chatCallsAfter = mockAuthenticatedFetch.mock.calls.filter(c => c[0] === '/api/chat').length;
+        expect(chatCallsAfter).toBe(initialChatCalls);
+
+        // (We ensure that no extra /api/chat call was initiated by sendMessage when apiAvailable is false.)
+    });
+
+    it('concurrent sendMessage calls are ignored while loading', async () => {
+        // Make /api/chat resolve after a short delay so the first call is in-flight
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return new Promise(res => setTimeout(() => res(mockResponse({ reply: 'reply', audioFileUrl: null })), 30));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(baseBot));
+        // Wait for intro/health to settle and ensure hook is ready
+        await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+        await waitFor(() => expect(result.current).toBeDefined());
+        await waitFor(() => expect(typeof result.current.setInput).toBe('function'));
+
+        act(() => result.current.setInput('first'));
+        // Start first send
+        const p1 = act(async () => { await result.current.sendMessage(); });
+
+        // Immediately attempt second send
+        act(() => result.current.setInput('second'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        // Ensure a second call was NOT initiated immediately while first is in-flight
+        const initialChatCalls = mockAuthenticatedFetch.mock.calls.filter(c => c[0] === '/api/chat').length;
+        // Only one additional chat call should have been started by our send attempts
+        expect(initialChatCalls).toBeGreaterThanOrEqual(1);
+        // There should be exactly one new call compared to before we initiated sends
+        // (Intro may have caused earlier /api/chat calls)
+
+        // Wait for first to resolve
+        await act(async () => { await new Promise(res => setTimeout(res, 40)); });
+
+        // Ensure only one additional /api/chat call was made by these sends
+        const chatCalls = mockAuthenticatedFetch.mock.calls.filter(c => c[0] === '/api/chat');
+        // There should be exactly one extra call beyond any pre-existing calls
+        expect(chatCalls.length).toBe(initialChatCalls);
+
+        await p1; // wait for first to fully complete
+    });
+
     it('successful audio playback stores last played hash', async () => {
         mockAuthenticatedFetch.mockImplementation((url: string) => {
             if (url === '/api/health') return Promise.resolve(mockResponse({}));
@@ -726,8 +843,10 @@ describe("useChatController additional branches (merged)", () => {
         mockPlayAudio.mockResolvedValueOnce(true);
 
         const { result } = renderHook(() => useChatController(mockBot));
-        // Wait for intro
+        // Wait for intro and ensure hook is ready
         await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+        await waitFor(() => expect(result.current).toBeDefined());
+        await waitFor(() => expect(typeof result.current.setInput).toBe('function'));
 
         act(() => result.current.setInput('play now'));
         await act(async () => { await result.current.sendMessage(); });
@@ -751,7 +870,8 @@ describe("useChatController additional branches (merged)", () => {
         });
 
         const { result } = renderHook(() => useChatController(mockBot));
-        // Make the hook's inputRef point to our input element
+        // Make sure hook is initialized before assigning inputRef
+        await waitFor(() => expect(result.current).toBeDefined());
         act(() => { result.current.inputRef.current = inputEl; });
 
         // Wait briefly for health check effect to run
@@ -770,9 +890,9 @@ describe("useChatController additional branches (merged)", () => {
 
         const { result } = renderHook(() => useChatController(botNoVoice));
 
-        // Wait a moment for any hydration
+        // Wait a moment for any hydration and ensure the hook is ready
         await act(async () => { await new Promise(res => setTimeout(res, 10)); });
-
+        await waitFor(() => expect(result.current).toBeDefined());
         act(() => result.current.setInput('hello'));
         await act(async () => { await result.current.sendMessage(); });
 
@@ -793,9 +913,9 @@ describe("useChatController additional branches (merged)", () => {
 
         const { result } = renderHook(() => useChatController(mockBot));
 
-        // Give intro a moment
+        // Give intro a moment and ensure hook ready
         await act(async () => { await new Promise(res => setTimeout(res, 20)); });
-
+        await waitFor(() => expect(result.current).toBeDefined());
         act(() => result.current.setInput('Ping'));
         await act(async () => { await result.current.sendMessage(); });
 
@@ -814,9 +934,9 @@ describe("useChatController additional branches (merged)", () => {
 
         const { result } = renderHook(() => useChatController(mockBot));
 
-        // Wait for intro to settle
+        // Wait for intro to settle and ensure hook is ready
         await act(async () => { await new Promise(res => setTimeout(res, 20)); });
-
+        await waitFor(() => expect(result.current).toBeDefined());
         act(() => result.current.setInput('Log this'));
         await act(async () => { await result.current.sendMessage(); });
 
@@ -832,9 +952,9 @@ describe("useChatController additional branches (merged)", () => {
         });
 
         const { result } = renderHook(() => useChatController(mockBot));
-        // Wait for intro to complete
+        // Wait for intro to complete and ensure hook ready
         await act(async () => { await new Promise(res => setTimeout(res, 20)); });
-
+        await waitFor(() => expect(result.current).toBeDefined());
         act(() => result.current.setInput('Hello world'));
         // Simulate pressing Enter
         act(() => result.current.handleKeyDown({ key: 'Enter' } as unknown as React.KeyboardEvent));

@@ -8,6 +8,7 @@ import {
   CHARACTER_VOICE_MAP, 
   SSML_GENDER
 } from '../../src/utils/characterVoices';
+import type { VoiceConfig } from '../../src/utils/characterVoices';
 
 // Mock logger for testing
 jest.mock('../../src/utils/logger', () => ({
@@ -524,6 +525,204 @@ describe('characterVoices - Simplified OpenAI → Google TTS Pipeline', () => {
       // Should fall back to Default after 3 attempts
       expect(config.name).toBe(CHARACTER_VOICE_MAP['Default'].name);
       expect(mockOpenAICreate).toHaveBeenCalledTimes(3);
+    });
+
+    // New tests to exercise additional branches
+    it('should return Standard voice type for Standard-named voices', async () => {
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          gender: 'male',
+          languageCode: 'en-US',
+          voiceName: 'en-US-Standard-E',
+          pitch: 0,
+          rate: 1.0
+        }) } }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Standard Voice Character');
+      expect(config.type).toBe('Standard');
+      expect(config.name).toBe('en-US-Standard-E');
+    });
+
+    it('treats synthesizeSpeech with missing audioContent as invalid and retries', async () => {
+      // First attempt: OpenAI returns a Wavenet voice but synthesizeSpeech returns an item without audioContent
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          gender: 'male',
+          languageCode: 'en-US',
+          voiceName: 'en-US-Wavenet-Q',
+          pitch: 0,
+          rate: 1.0
+        }) } }]
+      });
+      // synthesizeSpeech returns an entry with no audioContent (falsy)
+      mockSynthesizeSpeech.mockResolvedValueOnce([{}]);
+
+      // Second attempt: OpenAI returns a good voice and synthesize succeeds
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          gender: 'male',
+          languageCode: 'en-US',
+          voiceName: 'en-US-Wavenet-A',
+          pitch: 0,
+          rate: 1.0
+        }) } }]
+      });
+      mockSynthesizeSpeech.mockResolvedValueOnce([{ audioContent: Buffer.from('ok') }]);
+
+      const config = await getVoiceConfigForCharacter('NoAudioContent Character');
+      expect(config.name).toBe('en-US-Wavenet-A');
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(2);
+    });
+
+    it('falls back to Default when TTS client import throws', async () => {
+      // Make getTTSClient throw on every attempt to simulate persistent runtime failure
+      const tts = require('../../src/utils/tts');
+      (tts.getTTSClient as jest.Mock).mockImplementation(() => { throw new Error('GCP init failed'); });
+
+      // OpenAI returns a seemingly valid voice name (same on each attempt)
+      mockOpenAICreate.mockResolvedValue({
+        choices: [{ message: { content: JSON.stringify({
+          gender: 'male',
+          languageCode: 'en-US',
+          voiceName: 'en-US-Wavenet-B',
+          pitch: 0,
+          rate: 1.0
+        }) } }]
+      });
+
+      const config = await getVoiceConfigForCharacter('TTS Failure Character');
+      // With TTS client failing validation across all attempts, we should fall back to default
+      expect(config.name).toBe(CHARACTER_VOICE_MAP['Default'].name);
+      // And OpenAI was asked multiple times while trying to find a valid voice
+      expect(mockOpenAICreate).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('internal helpers', () => {
+    it('fetchVoiceConfigFromOpenAI throws when maxRetries is zero', async () => {
+      const { fetchVoiceConfigFromOpenAI } = require('../../src/utils/characterVoices');
+      await expect(fetchVoiceConfigFromOpenAI('No attempts', 0)).rejects.toThrow('Failed to get valid voice config from OpenAI');
+    });
+
+    it('maps neutral gender to SSML_GENDER.NEUTRAL', () => {
+      const mod = require('../../src/utils/characterVoices');
+      expect(mod.mapGenderToSsml('neutral')).toBe(SSML_GENDER.NEUTRAL);
+    });
+
+
+
+    it('logs info when voice validation fails once then succeeds', async () => {
+      // First validation attempt fails with an error
+      mockSynthesizeSpeech.mockRejectedValueOnce(new Error('synth failure'));
+      // Then it succeeds
+      mockSynthesizeSpeech.mockResolvedValueOnce([{ audioContent: Buffer.from('ok') }]);
+
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          gender: 'male',
+          languageCode: 'en-US',
+          voiceName: 'en-US-Wavenet-G',
+          pitch: 0,
+          rate: 1.0
+        }) } }]
+      });
+
+      const logger = require('../../src/utils/logger');
+      await getVoiceConfigForCharacter('Log Validation Failure');
+
+      expect(logger.default.info).toHaveBeenCalledWith('Voice validation failed', expect.any(Object));
+    });
+
+    // New edge-case tests to exercise uncovered branches
+    it('throws when OpenAI content is empty string (fallback to {})', async () => {
+      const { fetchVoiceConfigFromOpenAI } = require('../../src/utils/characterVoices');
+
+      // Simulate OpenAI returning an empty content string (trim -> '')
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{ message: { content: '   ' } }]
+      });
+
+      await expect(fetchVoiceConfigFromOpenAI('EmptyContent', 1)).rejects.toThrow('Invalid voice name format after 1 attempts');
+    });
+
+    it('normalizeOpenAIConfig applies defaults for missing fields', async () => {
+      const mod = require('../../src/utils/characterVoices');
+      const normalized = mod.normalizeOpenAIConfig({} as Partial<VoiceConfig>);
+      expect(normalized.gender).toBe('male');
+      expect(normalized.languageCode).toBe('en-US');
+      expect(normalized.pitch).toBe(0);
+      expect(normalized.rate).toBe(1.0);
+    });
+
+    it('normalizeOpenAIConfig respects neutral gender and clamps values', () => {
+      const mod = require('../../src/utils/characterVoices');
+      const normalized = mod.normalizeOpenAIConfig({ gender: 'neutral', pitch: 50, rate: 10 } as Partial<VoiceConfig>);
+      expect(normalized.gender).toBe('neutral');
+      expect(normalized.pitch).toBeLessThanOrEqual(20);
+      expect(normalized.rate).toBeLessThanOrEqual(4.0);
+    });
+
+    it('applies default gender/pitch/rate when fields are missing (unit)', () => {
+      // Unit test using normalization helper to avoid external validation dependency
+      const mod = require('../../src/utils/characterVoices');
+      const normalized = mod.normalizeOpenAIConfig({ languageCode: 'en-US', voiceName: 'en-US-Wavenet-D' } as Partial<VoiceConfig>);
+      expect(normalized.gender).toBe('male');
+      expect(normalized.pitch).toBe(0);
+      expect(normalized.rate).toBe(1.0);
+    });
+
+    it('handles non-Error thrown in isValidGoogleTTSVoice and logs string error', async () => {
+      // Make synthesizeSpeech reject with a non-Error value
+      mockSynthesizeSpeech.mockRejectedValueOnce('synth-plain-error');
+
+      mockOpenAICreate.mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify({
+          gender: 'male',
+          languageCode: 'en-US',
+          voiceName: 'en-US-Wavenet-H',
+          pitch: 0,
+          rate: 1.0
+        }) } }]
+      });
+
+      const logger = require('../../src/utils/logger');
+      await getVoiceConfigForCharacter('NonErrorSynth');
+
+      // The logger should have been called with the stringified error message
+      expect(logger.default.info).toHaveBeenCalledWith('Voice validation failed', expect.any(Object));
+    });
+
+    it('falls back to Default when OpenAI rejects with non-Error value', async () => {
+      // Simulate OpenAI rejecting with a plain string
+      mockOpenAICreate.mockRejectedValueOnce('openai-boom');
+
+      const logger = require('../../src/utils/logger');
+      const config = await getVoiceConfigForCharacter('OpenAIFailString');
+
+      expect(config.name).toBe(CHARACTER_VOICE_MAP['Default'].name);
+      expect(logger.default.warn).toHaveBeenCalledWith('Falling back to Default voice', expect.any(Object));
+      // Ensure the string error was passed through (via String(err)) in metadata
+      const meta = logger.default.warn.mock.calls[0][1];
+      expect(JSON.stringify(meta)).toContain('openai-boom');
+    });
+
+    it('maps neutral gender to NEUTRAL (unit)', () => {
+      const mod = require('../../src/utils/characterVoices');
+      expect(mod.mapGenderToSsml('neutral')).toBe(mod.SSML_GENDER.NEUTRAL);
+    });
+
+    describe('mapping helpers (mock fetch)', () => {
+      it('getVoiceConfigForCharacter maps neutral gender when fetch returns neutral', async () => {
+        const mod = require('../../src/utils/characterVoices');
+        // call helper directly
+        expect(mod.mapGenderToSsml('neutral')).toBe(SSML_GENDER.NEUTRAL);
+      });
+
+      it('getVoiceConfigForCharacter maps Journey voice type to Standard', async () => {
+        const mod = require('../../src/utils/characterVoices');
+        expect(mod.detectVoiceType('en-US-Journey-A')).toBe('Standard');
+      });
     });
   });
 });

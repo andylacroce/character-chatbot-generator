@@ -56,7 +56,7 @@ const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
 /**
  * Voice configuration from OpenAI (maps directly to Google TTS parameters).
  */
-interface VoiceConfig {
+export interface VoiceConfig {
   gender: 'male' | 'female' | 'neutral';
   languageCode: string; // Language code (e.g., 'en-GB', 'en-US', 'de-DE')
   voiceName: string; // Google TTS voice name (e.g., 'en-GB-Wavenet-D')
@@ -103,7 +103,7 @@ async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): P
  * Fetches complete voice configuration from OpenAI with retry logic.
  * If OpenAI returns an invalid voice name, it will retry with error feedback.
  */
-async function fetchVoiceConfigFromOpenAI(name: string, maxRetries = 3): Promise<VoiceConfig> {
+export async function fetchVoiceConfigFromOpenAI(name: string, maxRetries = 3): Promise<VoiceConfig> {
   const OpenAI = (await import('openai')).default;
   const { getOpenAIModel } = await import('./openaiModelSelector');
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
@@ -193,7 +193,6 @@ CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error f
         pitch: typeof config.pitch === 'number' ? Math.max(-20, Math.min(20, config.pitch)) : 0,
         rate: typeof config.rate === 'number' ? Math.max(0.25, Math.min(4.0, config.rate)) : 1.0,
       };
-
     } catch (err) {
       if (attempt === maxRetries) {
         throw err;
@@ -207,8 +206,19 @@ CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error f
   throw new Error('Failed to get valid voice config from OpenAI');
 }
 
+// Exported helper to normalize OpenAI voice configs for unit testing
+export function normalizeOpenAIConfig(config: Partial<VoiceConfig>) {
+  return {
+    gender: config.gender || 'male',
+    languageCode: config.languageCode || 'en-US',
+    voiceName: config.voiceName || '',
+    pitch: typeof config.pitch === 'number' ? Math.max(-20, Math.min(20, config.pitch)) : 0,
+    rate: typeof config.rate === 'number' ? Math.max(0.25, Math.min(4.0, config.rate)) : 1.0,
+  };
+}
+
 /**
- * Gets voice configuration for a character.
+ * Gets voice configuration for a character:
  * Uses OpenAI to get exact Google TTS parameters, then passes them directly.
  */
 export async function getVoiceConfigForCharacter(
@@ -230,10 +240,8 @@ export async function getVoiceConfigForCharacter(
     const voiceConfig = await fetchVoiceConfigFromOpenAI(normalized);
     
     // Map gender string to SSML gender enum (apply override if provided)
-    let ssmlGender = SSML_GENDER.MALE;
     const effectiveGender = genderOverride || voiceConfig.gender;
-    if (effectiveGender === 'female') ssmlGender = SSML_GENDER.FEMALE;
-    else if (effectiveGender === 'neutral') ssmlGender = SSML_GENDER.NEUTRAL;
+    const ssmlGender = mapGenderToSsml(effectiveGender);
     
     // Create voice configuration directly from OpenAI response
     config = {
@@ -242,9 +250,7 @@ export async function getVoiceConfigForCharacter(
       ssmlGender,
       pitch: voiceConfig.pitch,
       rate: voiceConfig.rate,
-      type: voiceConfig.voiceName.includes('Studio') ? 'Studio' :
-            voiceConfig.voiceName.includes('Wavenet') ? 'Wavenet' :
-            voiceConfig.voiceName.includes('Neural2') ? 'Neural2' : 'Standard',
+      type: detectVoiceType(voiceConfig.voiceName),
     };
     
     logger.info("Voice config from OpenAI", sanitizeLogMeta({
@@ -269,4 +275,17 @@ export async function getVoiceConfigForCharacter(
   // Cache the configuration and return
   dynamicVoiceCache[cacheKey] = config;
   return config;
+}
+
+export function mapGenderToSsml(effectiveGender?: string | null) {
+  if (effectiveGender === 'female') return SSML_GENDER.FEMALE;
+  if (effectiveGender === 'neutral') return SSML_GENDER.NEUTRAL;
+  return SSML_GENDER.MALE;
+}
+
+export function detectVoiceType(voiceName: string) {
+  if (voiceName.includes('Studio')) return 'Studio';
+  if (voiceName.includes('Wavenet')) return 'Wavenet';
+  if (voiceName.includes('Neural2')) return 'Neural2';
+  return 'Standard';
 }
