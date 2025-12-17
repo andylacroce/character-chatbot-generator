@@ -274,4 +274,30 @@ describe('logger utility', () => {
         (globalThis as unknown as { window?: Window }).window = origWindow;
         jest.resetModules();
     });
+
+    it('falls back to browser logger when winston.createLogger throws', () => {
+        const origWindow = (globalThis as unknown as { window?: Window }).window;
+        delete (globalThis as unknown as { window?: Window }).window;
+
+        jest.isolateModules(() => {
+            // Mock winston to exist but throw during createLogger initialization
+            jest.doMock('winston', () => ({
+                createLogger: () => { throw new Error('init fail'); },
+                transports: { Console: function Console() {} },
+                format: { combine: () => {}, timestamp: () => {}, printf: () => {} }
+            }));
+
+            // Re-require module in isolated context to exercise server-side fallback
+            const serverLogger = require('../../src/utils/logger');
+
+            const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+            expect(() => serverLogger.logger.info('should not crash')).not.toThrow();
+            serverLogger.logger.info('should not crash');
+            expect(logSpy).toHaveBeenCalled();
+            logSpy.mockRestore();
+        });
+
+        (globalThis as unknown as { window?: Window }).window = origWindow;
+        jest.resetModules();
+    });
 });

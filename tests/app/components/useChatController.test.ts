@@ -574,6 +574,8 @@ describe("useChatController additional branches (merged)", () => {
         window.cancelAnimationFrame = origCancel;
     });
 
+
+
     it('handleDownloadTranscript logs error and shows alert when download fails', async () => {
         const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
         mockDownloadTranscript.mockImplementationOnce(() => { throw new Error('disk full'); });
@@ -582,6 +584,19 @@ describe("useChatController additional branches (merged)", () => {
         await act(async () => { await result.current.handleDownloadTranscript(); });
 
         expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to open transcript'));
+        alertSpy.mockRestore();
+        mockDownloadTranscript.mockClear();
+    });
+
+    it('handleDownloadTranscript handles non-Error throw and shows unknown message', async () => {
+        const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+        // Throw a non-Error value
+        mockDownloadTranscript.mockImplementationOnce(() => { throw 'oops'; });
+
+        const { result } = renderHook(() => useChatController(baseBot));
+        await act(async () => { await result.current.handleDownloadTranscript(); });
+
+        expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown error occurred'));
         alertSpy.mockRestore();
         mockDownloadTranscript.mockClear();
     });
@@ -624,7 +639,75 @@ describe("useChatController additional branches (merged)", () => {
         const s = storage as unknown as jest.Mocked<typeof storage>;
         expect(s.setItem).toHaveBeenCalledWith('audioEnabled', expect.any(String));
         // Focus should have been called on the input element
+        // audioRef.muted should have been toggled to true
+        expect(mockAudioRef.current.muted).toBe(true);
         document.body.removeChild(inputEl);
+    });
+
+    it('logMessage returns early when session is missing (no /api/log-message call)', async () => {
+        // Simulate SSR/no browser session so `useSession` returns empty values
+        const useSessionModule = require('../../../app/components/useSession');
+        useSessionModule.setIsBrowserForTests(() => false);
+
+        // Ensure chat API responds so sendMessage proceeds
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'Ok', audioFileUrl: null }));
+            // Any other calls -> success
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(baseBot));
+
+        // Wait for intro to settle
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+
+        act(() => result.current.setInput('Hello no session'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        // Ensure no call was made to /api/log-message
+        const logCalls = mockAuthenticatedFetch.mock.calls.filter(c => c[0] === '/api/log-message');
+        expect(logCalls.length).toBe(0);
+
+        // Reset module-level test helpers
+        useSessionModule.resetIsBrowserForTests();
+    });
+
+    it('logMessage handles fetch rejection and logs a warning', async () => {
+        // Make /api/log-message reject to trigger the catch branch
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/log-message') return Promise.reject(new Error('network down'));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'OK', audioFileUrl: null }));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(baseBot));
+        // Wait for intro to settle
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+
+        act(() => result.current.setInput('Trigger log fail'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        const found = mockLogEvent.mock.calls.some(call => call[1] === 'client_log_message_failed');
+        expect(found).toBe(true);
+    });
+
+    it('intro generation failure sets introError and logs', async () => {
+        // Ensure voice config available so failure comes from /api/chat
+        mockLoadVoiceConfig.mockReturnValue(baseBot.voiceConfig);
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return Promise.reject(new Error('intro service down'));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(baseBot));
+        // Wait for intro attempt
+        await act(async () => { await new Promise(res => setTimeout(res, 30)); });
+
+        expect(result.current.introError).toBeTruthy();
+        expect(mockLogEvent).toHaveBeenCalledWith('error', 'chat_intro_generation_failed', 'Failed to generate intro or voice config. Please recreate the bot.', expect.any(Object));
     });
 
     it('handleDownloadTranscript logs info on success', async () => {
@@ -718,5 +801,47 @@ describe("useChatController additional branches (merged)", () => {
 
         const found = mockLogEvent.mock.calls.some(call => call[1] === 'chat_api_timing' && call[3] && (call[3] as Record<string, unknown>).operation === 'Log Message');
         expect(found).toBe(true);
+    });
+
+    it('logMessage handles non-ok log response and logs a warning', async () => {
+        // Make /api/log-message return not-ok to trigger the catch branch
+        mockAuthenticatedFetch.mockImplementation((url: string, _opts?: unknown) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'Hello', audioFileUrl: null }));
+            if (url === '/api/log-message') return Promise.resolve({ ok: false, status: 500, json: async () => ({}) });
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(mockBot));
+
+        // Wait for intro to settle
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+
+        act(() => result.current.setInput('Log this'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        const found = mockLogEvent.mock.calls.some(call => call[1] === 'client_log_message_failed');
+        expect(found).toBe(true);
+    });
+
+    it('handleKeyDown triggers sendMessage on Enter', async () => {
+        mockAuthenticatedFetch.mockImplementation((url: string, _opts?: unknown) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'OK', audioFileUrl: null }));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(mockBot));
+        // Wait for intro to complete
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+
+        act(() => result.current.setInput('Hello world'));
+        // Simulate pressing Enter
+        act(() => result.current.handleKeyDown({ key: 'Enter' } as unknown as React.KeyboardEvent));
+
+        // Allow async sendMessage to complete
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+        // Expect bot reply appended
+        expect(result.current.messages.some(m => m.text === 'OK')).toBe(true);
     });
 });
