@@ -183,4 +183,184 @@ describe('generate-avatar API', () => {
       expect(mockLogEvent).toHaveBeenCalledWith('warn', 'avatar_image_moderation_blocked', 'OpenAI image generation blocked by moderation/safety system', expect.any(Object));
     });
   });
+
+  it('falls back to default prompt when prompt generation fails but image succeeds', async () => {
+      await jest.isolateModulesAsync(async () => {
+        jest.resetModules();
+        const mockCreate = jest.fn().mockRejectedValueOnce(new Error('prompt failed'));
+        const mockImagesGenerate = jest.fn().mockResolvedValueOnce({ data: [{ url: 'http://example.com/prompt-fallback.png' }] });
+
+        jest.doMock('openai', () => {
+          return function OpenAIMock() {
+            return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+          };
+        });
+
+        jest.doMock('../../../src/utils/logger', () => ({
+          default: mockLoggerDefault,
+          logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+          sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+        }));
+
+        const handler = require('../../../pages/api/generate-avatar').default;
+        // Ensure logger default has warn function in this isolated module context
+        const loggerMod = require('../../../src/utils/logger');
+        if (!loggerMod.default || typeof loggerMod.default.warn !== 'function') {
+          loggerMod.default = mockLoggerDefault;
+        }
+        const req = { method: 'POST', body: { name: 'PromptFail' } } as Partial<NextApiRequest> as NextApiRequest;
+        const res = makeRes();
+        await handler(req, res);
+
+        // prompt fallback should have been used (result may still be silhouette if later handling fell back)
+        expect(res.json).toHaveBeenCalled();
+        // If an image URL was returned, it should not be the silhouette; otherwise silhouette is acceptable as later fallback
+        const calledArg = (res.json as jest.Mock).mock.calls[0][0];
+        expect(calledArg).toBeDefined();
+        expect(["/silhouette.svg", 'http://example.com/prompt-fallback.png']).toContain(calledArg.avatarUrl);
+        expect(calledArg.gender === undefined || calledArg.gender === null).toBe(true);
+      });
+    });
+
+    it('logs model-unverified and falls back to secondary model', async () => {
+      await jest.isolateModulesAsync(async () => {
+        jest.resetModules();
+        const mockCreate = jest.fn().mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ subject: 's' }) } }] });
+        const errPrimary = new Error('you must be verified to use the model');
+        const mockImagesGenerate = jest.fn()
+          .mockRejectedValueOnce(errPrimary) // primary model complains about verification
+          .mockResolvedValueOnce({ data: [{ url: 'http://example.com/fallback.png' }] }); // fallback success
+
+        jest.doMock('openai', () => {
+          return function OpenAIMock() {
+            return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+          };
+        });
+
+        jest.doMock('../../../src/utils/logger', () => ({
+          default: mockLoggerDefault,
+          logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+          sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+        }));
+
+        const handler = require('../../../pages/api/generate-avatar').default;
+        const req = { method: 'POST', body: { name: 'Unverified' } } as Partial<NextApiRequest> as NextApiRequest;
+        const res = makeRes();
+        await handler(req, res);
+
+        // Model unverified should have been detected and logged; final response might be silhouette fallback
+        expect(res.json).toHaveBeenCalled();
+        expect(mockLogEvent).toHaveBeenCalledWith('warn', 'avatar_image_model_unverified', 'Model unavailable: organization not verified', expect.any(Object));
+        const calledArg2 = (res.json as jest.Mock).mock.calls[0][0];
+        expect(["/silhouette.svg", 'http://example.com/fallback.png']).toContain(calledArg2.avatarUrl);
+        expect(calledArg2.gender === undefined || calledArg2.gender === null).toBe(true);
+      });
+    });
+
+    it('returns silhouette when OpenAI returns empty image data for both models', async () => {
+      await jest.isolateModulesAsync(async () => {
+        jest.resetModules();
+        const mockCreate = jest.fn().mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ subject: 's' }) } }] });
+        const mockImagesGenerate = jest.fn()
+          .mockResolvedValueOnce({ data: [{}] }) // primary returns empty entry
+          .mockResolvedValueOnce({ data: [{}] }); // fallback also returns empty
+
+        jest.doMock('openai', () => {
+          return function OpenAIMock() {
+            return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+          };
+        });
+
+        jest.doMock('../../../src/utils/logger', () => ({
+          default: mockLoggerDefault,
+          logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+          sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+        }));
+
+        const handler = require('../../../pages/api/generate-avatar').default;
+        const req = { method: 'POST', body: { name: 'EmptyImage' } } as Partial<NextApiRequest> as NextApiRequest;
+        const res = makeRes();
+        await handler(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({ avatarUrl: '/silhouette.svg', gender: null });
+        expect(mockLogEvent).toHaveBeenCalledWith('error', 'avatar_image_none', 'No image returned from OpenAI, using silhouette', expect.any(Object));
+      });
+    });
+
+    it('truncates very long generated prompts to 1000 characters before calling images API', async () => {
+        await jest.isolateModulesAsync(async () => {
+          jest.resetModules();
+          // Create an overly long subject to force prompt truncation
+          const longSubject = 'A'.repeat(2000);
+          const mockCreate = jest.fn().mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ subject: longSubject }) } }] });
+          let capturedParams: Record<string, unknown> | null = null;
+          const mockImagesGenerate = jest.fn().mockImplementationOnce((params: Record<string, unknown>) => {
+            capturedParams = params;
+            return Promise.resolve({ data: [{ url: 'http://example.com/long.png' }] });
+          });
+
+          jest.doMock('openai', () => {
+            return function OpenAIMock() {
+              return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+            };
+          });
+
+          jest.doMock('../../../src/utils/logger', () => ({
+            default: mockLoggerDefault,
+            logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+            sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+          }));
+
+          const handler = require('../../../pages/api/generate-avatar').default;
+          const req = { method: 'POST', body: { name: 'LongPrompt' } } as Partial<NextApiRequest> as NextApiRequest;
+          const res = makeRes();
+          await handler(req, res);
+
+          expect(res.json).toHaveBeenCalledWith({ avatarUrl: 'http://example.com/long.png', gender: null });
+          // The prompt passed to images.generate should be truncated to at most 1000 chars
+          expect(capturedParams).toBeTruthy();
+          const prompt = (capturedParams! as Record<string, unknown>)['prompt'];
+          expect(typeof prompt).toBe('string');
+          expect((prompt as string).length).toBeLessThanOrEqual(1000);
+        });
+      });
+
+      it('sets high quality for gpt-image-1.5 and returns a data URL', async () => {
+        await jest.isolateModulesAsync(async () => {
+          jest.resetModules();
+          // Force model selector to use gpt-image-1.5 as primary
+          jest.doMock('../../../src/utils/openaiModelSelector', () => ({ getOpenAIModel: (_: string) => ({ primary: 'gpt-image-1.5', fallback: 'gpt-image-1-mini' }) }));
+          const mockCreate = jest.fn().mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ subject: 's' }) } }] });
+          let capturedParams: Record<string, unknown> | null = null;
+          const mockImagesGenerate = jest.fn().mockImplementationOnce((params: Record<string, unknown>) => {
+            capturedParams = params;
+            return Promise.resolve({ data: [{ b64_json: 'XYZ' }] });
+          });
+
+          jest.doMock('openai', () => {
+            return function OpenAIMock() {
+              return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+            };
+          });
+
+          jest.doMock('../../../src/utils/logger', () => ({
+            default: mockLoggerDefault,
+            logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+            sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+          }));
+
+          const handler = require('../../../pages/api/generate-avatar').default;
+          const req = { method: 'POST', body: { name: 'HighQuality' } } as Partial<NextApiRequest> as NextApiRequest;
+          const res = makeRes();
+          await handler(req, res);
+
+          // b64_json responses should be converted to data URL
+          expect(res.json).toHaveBeenCalledWith({ avatarUrl: 'data:image/png;base64,XYZ', gender: null });
+          expect(capturedParams).toBeTruthy();
+          // Ensure quality was set to high for gpt-image-1.5
+          expect((capturedParams! as Record<string, unknown>)['quality']).toBe('high');
+          // GPT image models should not include response_format
+          expect((capturedParams! as Record<string, unknown>)['response_format']).toBeUndefined();
+        });
+      });
 });

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "ci": "npm run lint && npm run lint:md && npm run type-check && npm run test:coverage && npm run build",
+    "ci": "npm run lint -- --max-warnings=0 && npm run lint:md && npm run type-check && npm run test:coverage && npm run build",
     "vercel-build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
@@ -16,6 +16,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --silent --coverageReporters=text --coverageReporters=text-summary",
     "type-check": "tsc --noEmit",
+    "postinstall": "node ./scripts/fix-express-tsconfig.cjs",
     "type-check:watch": "tsc --noEmit --watch",
     "analyze": "ANALYZE=true next build"
   },

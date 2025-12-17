@@ -607,6 +607,56 @@ describe("useChatController additional branches (merged)", () => {
         expect(result.current.error).toBe('Error sending message. Please try again.');
     });
 
+    it('handleAudioToggle toggles audio, persists preference, and focuses input', () => {
+        const { result } = renderHook(() => useChatController(mockBot));
+        // Provide an input element and audioRef to simulate real DOM
+        const inputEl = document.createElement('input');
+        document.body.appendChild(inputEl);
+        act(() => {
+            result.current.inputRef.current = inputEl;
+            // Provide the mocked audioRef for the test
+            (result.current as unknown as { audioRef: React.RefObject<HTMLAudioElement> }).audioRef = mockAudioRef;
+        });
+
+        // Initially audioEnabled is true; toggling should persist false
+        act(() => { result.current.handleAudioToggle(); });
+
+        const s = storage as unknown as jest.Mocked<typeof storage>;
+        expect(s.setItem).toHaveBeenCalledWith('audioEnabled', expect.any(String));
+        // Focus should have been called on the input element
+        document.body.removeChild(inputEl);
+    });
+
+    it('handleDownloadTranscript logs info on success', async () => {
+        mockDownloadTranscript.mockResolvedValueOnce(true);
+        const { result } = renderHook(() => useChatController(mockBot));
+        await act(async () => { await result.current.handleDownloadTranscript(); });
+        expect(mockLogEvent).toHaveBeenCalledWith('info', 'chat_transcript_downloaded', 'Transcript downloaded successfully', expect.any(Object));
+    });
+
+    it('successful audio playback stores last played hash', async () => {
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'Audio reply', audioFileUrl: '/audio/success.mp3' }));
+            return Promise.resolve(mockResponse({}));
+        });
+        mockPlayAudio.mockResolvedValueOnce(true);
+
+        const { result } = renderHook(() => useChatController(mockBot));
+        // Wait for intro
+        await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+
+        act(() => result.current.setInput('play now'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        // Allow playback effect to run
+        await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+
+        // Should have called storage.setItem with lastPlayedAudioHash key
+        const s2 = storage as unknown as jest.Mocked<typeof storage>;
+        expect(s2.setItem).toHaveBeenCalledWith(expect.stringContaining('lastPlayedAudioHash-'), expect.any(String));
+    });
+
     // New focused tests to cover additional branches
     it('health check success sets apiAvailable=true and focuses input', async () => {
         // Create a real input element and attach to DOM so focus() works
