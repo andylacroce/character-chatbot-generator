@@ -131,20 +131,29 @@ Return JSON with these fields:
     
     // Helper to get image from OpenAI, handling both URL and base64 (data URL) responses
     async function getOpenAIImage(model: string) {
-      // Any `gpt-image-*` models (e.g. gpt-image-1, gpt-image-1.5) currently return
-      // base64 (`b64_json`) and do not accept `response_format`, so treat them generically.
+      // Any `gpt-image-*` models return base64 (`b64_json`) and do not accept
+      // `response_format`, so treat them generically. For quality control:
+      // - `gpt-image-1.5` (production) should use high fidelity
+      // - `gpt-image-1-mini` (non-prod) is low-cost; do not set fidelity if unsupported
       const isGptImage = model.startsWith("gpt-image-");
-      const params: OpenAIImageGenerateParams = {
+      // Use 'quality' for GPT image models per API docs; 'input_fidelity' is only used for edits/input matching and
+      // is supported for `gpt-image-1` edit flows. For generation, prefer 'quality' (high/medium/low).
+      const params = {
         model,
         prompt: prompt,
         n: 1,
         size: "1024x1024"
-      };
-      // Only add response_format if the model supports it
+      } as OpenAIImageGenerateParams & { quality?: "high" | "medium" | "low" };
+      // Set quality according to model to favor photorealism in production and lower cost in dev/mini.
+      if (model === "gpt-image-1.5" || model === "gpt-image-1") {
+        params.quality = "high"; // high-quality output for production-level models
+      } else if (model === "gpt-image-1-mini") {
+        params.quality = "low"; // keep costs lower for mini model
+      }
+      // Only add response_format for DALL·E models (they support url|b64_json); GPT image models always return base64.
       if (model === "dall-e-2" || model === "dall-e-3") {
         params.response_format = "url";
       }
-      // Do NOT set response_format for gpt-image-* models (omit the property entirely)
       logEvent("info", "avatar_openai_image_call", "Calling OpenAI image generation", { model, params });
       const image = await openai.images.generate(params);
       logEvent("info", "avatar_openai_image_response", "OpenAI image API response", { model, response: image });

@@ -23,9 +23,11 @@ export function getOpenAIModel(type: "text" | "image"): string | { primary: stri
         // Production: prefer the new gpt-image-1.5 for best quality
         // Development: dall-e-2 for cost savings
         if (isProd) {
-            return { primary: "gpt-image-1", fallback: "dall-e-3" };
+            // Use the higher-quality gpt-image-1.5 in production
+            return { primary: "gpt-image-1.5", fallback: "dall-e-3" };
         } else {
-            return { primary: "dall-e-2", fallback: "dall-e-3" };
+            // Use the lower-quality, cheaper mini model in non-production
+            return { primary: "gpt-image-1-mini", fallback: "dall-e-3" };
         }
     }
     throw new Error(`Unknown OpenAI model type: ${type}`);
