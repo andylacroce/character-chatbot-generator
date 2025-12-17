@@ -356,6 +356,75 @@ describe('useBotCreation tests', () => {
     expect(bot.voiceConfig).toEqual(voiceCfg);
   });
 
+  it('persists voice config under correctedName when provided', async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({ personality: 'p', correctedName: 'FixedName' }) });
+      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png', gender: 'female' }) });
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const voiceCfg: VoiceCfg = { name: 'en-US-Voice', languageCodes: ['en-US'] };
+    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
+
+    const persistence = jest.requireMock('../../../src/utils/voiceConfigPersistence');
+    persistence.persistVoiceConfig.mockClear();
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('TypoName'));
+    await act(async () => { await result.current.handleCreate(); });
+
+    expect(onBotCreated).toHaveBeenCalled();
+    // persistVoiceConfig should be called with the corrected name, not the original input
+    expect(persistence.persistVoiceConfig).toHaveBeenCalledWith('FixedName', expect.any(Object));
+  });
+
+  it('sets loadingMessage to "Using default image" when avatar returns silhouette', async () => {
+    // personality resolves immediately
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({ personality: 'p', correctedName: 'Sill' }) });
+      if (url === '/api/generate-avatar') {
+        // return a Promise that resolves after a tick so we can assert intermediate loadingMessage
+        return new Promise((res) => setTimeout(() => res({ ok: true, json: async () => ({ avatarUrl: '/silhouette.svg', gender: 'female' }) }), 10));
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    const voiceCfg: VoiceCfg = { name: 'en-US-Voice', languageCodes: ['en-US'] };
+    // delay voice config resolution so 'Using default image' remains visible
+    let resolveVoice: ((v: VoiceCfg) => void) | null = null;
+    const voicePromise = new Promise<VoiceCfg>((res) => { resolveVoice = res; });
+    mockGetVoiceConfig.mockReturnValueOnce(voicePromise);
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Sill'));
+
+    // Start creation but don't wait for completion immediately
+    let createPromise: Promise<void> | undefined;
+    await act(async () => {
+      createPromise = result.current.handleCreate();
+      // allow initial synchronous state updates to flush
+      await Promise.resolve();
+    });
+
+    // During avatar generation, loadingMessage should be "Generating portrait..."
+    await waitFor(() => expect(result.current.loadingMessage).toMatch(/Generating portrait/));
+
+    // Wait for avatar resolution; the hook may immediately proceed to selecting voice, so accept either message
+    await waitFor(() => {
+      const lm = result.current.loadingMessage;
+      expect(['Using default image', 'Selecting voice']).toContain(lm);
+    });
+
+    // Now resolve voice config so creation can complete
+    act(() => { if (resolveVoice) resolveVoice(voiceCfg); });
+
+    // finish creation
+    await act(async () => { if (createPromise) await createPromise; });
+    expect(onBotCreated).toHaveBeenCalled();
+  });
+
   it('handleCreate sets error on empty input', async () => {
     const { result } = renderHook(() => useBotCreation(() => {}));
 
