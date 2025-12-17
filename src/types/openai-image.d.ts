@@ -7,4 +7,12 @@ export interface OpenAIImageGenerateParams {
     n: number;
     size: OpenAIImageSize;
     response_format?: "url" | "b64_json";
+    /**
+     * Quality for GPT image models: 'high' | 'medium' | 'low'. Defaults to 'auto' on the API side.
+     */
+    quality?: "high" | "medium" | "low";
+    /**
+     * Output format for GPT image models (png, jpeg, webp). Only applies to GPT image models.
+     */
+    output_format?: "png" | "jpeg" | "webp";
 }
