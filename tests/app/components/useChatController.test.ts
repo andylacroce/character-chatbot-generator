@@ -1054,4 +1054,66 @@ describe("useChatController additional branches (merged)", () => {
         // Expect bot reply appended
         expect(result.current.messages.some(m => m.text === 'OK')).toBe(true);
     });
+
+    // Audio playback branches: success, AbortError, and generic error
+    it('plays audio and stores lastPlayedAudioHash on success', async () => {
+        mockAuthenticatedFetch.mockImplementation((url: string, _opts?: unknown) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'Audio reply', audioFileUrl: 'http://example/audio.mp3' }));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        // Ensure playAudio resolves
+        mockPlayAudio.mockResolvedValueOnce(true as unknown as void);
+
+        const { result } = renderHook(() => useChatController(mockBot));
+        // Wait for intro
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+        act(() => result.current.setInput('Play audio'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        // playAudio should have been called with the audio URL
+        expect(mockPlayAudio).toHaveBeenCalledWith('http://example/audio.mp3', expect.any(Object));
+        // lastPlayedAudioHash should have been persisted
+        expect(storage.setItem).toHaveBeenCalledWith(`lastPlayedAudioHash-${mockBot.name}`, expect.any(String));
+    });
+
+    it('logs info when audio playback is aborted (AbortError)', async () => {
+        mockAuthenticatedFetch.mockImplementation((url: string, _opts?: unknown) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'Audio abort', audioFileUrl: 'http://example/abort.mp3' }));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        // Simulate AbortError thrown by playAudio
+        const abortErr = new Error('aborted') as unknown as { name?: string };
+        abortErr.name = 'AbortError';
+        mockPlayAudio.mockRejectedValueOnce(abortErr);
+
+        const { result } = renderHook(() => useChatController(mockBot));
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+        act(() => result.current.setInput('Abort test'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        const found = mockLogEvent.mock.calls.some(call => call[1] === 'chat_audio_playback_aborted');
+        expect(found).toBe(true);
+    });
+
+    it('logs error when audio playback fails with non-abort error', async () => {
+        mockAuthenticatedFetch.mockImplementation((url: string, _opts?: unknown) => {
+            if (url === '/api/health') return Promise.resolve(mockResponse({}));
+            if (url === '/api/chat') return Promise.resolve(mockResponse({ reply: 'Audio fail', audioFileUrl: 'http://example/fail.mp3' }));
+            return Promise.resolve(mockResponse({}));
+        });
+
+        mockPlayAudio.mockRejectedValueOnce(new Error('playback failed'));
+
+        const { result } = renderHook(() => useChatController(mockBot));
+        await act(async () => { await new Promise(res => setTimeout(res, 20)); });
+        act(() => result.current.setInput('Fail test'));
+        await act(async () => { await result.current.sendMessage(); });
+
+        const found = mockLogEvent.mock.calls.some(call => call[1] === 'chat_audio_playback_error');
+        expect(found).toBe(true);
+    });
 });
