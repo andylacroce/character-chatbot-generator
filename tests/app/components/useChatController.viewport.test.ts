@@ -144,4 +144,93 @@ describe('useChatController viewport and focus behavior', () => {
 
     focusSpy.mockRestore();
   });
+
+  it('visualViewport resize triggers CSS pad and classes', async () => {
+    // Mock a visualViewport object that stores listeners
+    const listeners: Record<string, EventListener[]> = {};
+    const vv: {
+      height: number;
+      addEventListener(evt: string, cb: EventListenerOrEventListenerObject): void;
+      removeEventListener(evt: string, cb: EventListenerOrEventListenerObject): void;
+    } = {
+      height: 800,
+      addEventListener: (evt: string, cb: EventListenerOrEventListenerObject) => {
+        listeners[evt] = listeners[evt] || [];
+        // normalize to function
+        const fn = (cb as EventListener);
+        listeners[evt].push(fn);
+      },
+      removeEventListener: (evt: string, cb: EventListenerOrEventListenerObject) => {
+        listeners[evt] = (listeners[evt] || []).filter(f => f !== (cb as EventListener));
+      }
+    };
+
+    Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
+
+    // Render TestHost to get refs attached
+    const TestHost = (props: { botProp: Bot }) => {
+      const ctrl = useChatController(props.botProp);
+      return React.createElement(React.Fragment, null,
+        React.createElement('div', { 'data-testid': 'chat', ref: ctrl.chatBoxRef }),
+        React.createElement('input', { 'data-testid': 'input', ref: ctrl.inputRef })
+      );
+    };
+
+    const { getByTestId, unmount } = require('@testing-library/react').render(React.createElement(TestHost, { botProp: baseBot }));
+
+    const chatEl = getByTestId('chat');
+    Object.defineProperty(chatEl, 'scrollHeight', { value: 2000, configurable: true });
+    chatEl.scrollTop = 0;
+
+    // Make RAF synchronous
+    const originalRaf = (window as Window & { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame;
+    (window as Window & { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame = (cb) => { cb(0); return 0; };
+
+    // Ensure window.innerHeight is set so heightDiff > 0 when vv.height shrinks
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+
+    // Trigger a vv resize by changing height and invoking listeners
+    vv.height = 500;
+    (listeners['resize'] || []).forEach(f => f(new Event('resize') as Event));
+
+    await waitFor(() => {
+      const pad = parseInt(document.documentElement.style.getPropertyValue('--vv-keyboard-pad') || '0', 10);
+      expect(pad).toBeGreaterThan(0);
+      expect(document.documentElement.classList.contains('mobile-keyboard-open') || document.documentElement.classList.contains('ff-android-input-focus')).toBe(true);
+    }, { timeout: 500 });
+
+    (window as Window & { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame = originalRaf;
+    unmount();
+  });
+
+  it('onBlur clears CSS pad and removes classes', async () => {
+    // Use iOS fallback path from earlier test but trigger blur explicitly
+    const TestHost = (props: { botProp: Bot }) => {
+      const ctrl = useChatController(props.botProp);
+      return React.createElement(React.Fragment, null,
+        React.createElement('div', { 'data-testid': 'chat', ref: ctrl.chatBoxRef }),
+        React.createElement('input', { 'data-testid': 'input', ref: ctrl.inputRef })
+      );
+    };
+
+    const { getByTestId, unmount } = require('@testing-library/react').render(React.createElement(TestHost, { botProp: baseBot }));
+    const inputEl = getByTestId('input') as HTMLInputElement;
+
+    // Set a pad and class as if focused
+    document.documentElement.style.setProperty('--vv-keyboard-pad', '100px');
+    document.documentElement.classList.add('mobile-keyboard-open');
+
+    act(() => {
+      inputEl.dispatchEvent(new Event('blur'));
+    });
+
+    await waitFor(() => {
+      const pad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
+      // onBlur sets pad to 0px (not removed until cleanup), so we expect '0px'
+      expect(pad).toBe('0px');
+      expect(document.documentElement.classList.contains('mobile-keyboard-open')).toBe(false);
+    });
+
+    unmount();
+  });
 });

@@ -58,4 +58,35 @@ describe('useChatController - intro generation', () => {
 
     await waitFor(() => expect(result.current.introError).toBeTruthy());
   });
+
+  it('falls back to fetch when saved bot exists but lacks voiceConfig', async () => {
+    const bot = { name: 'SavedBot', personality: 'p', avatarUrl: '', voiceConfig: null, gender: null } as any;
+
+    // saved bot in storage with matching name but missing voiceConfig
+    jest.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) {
+      if (key === 'chatbot-bot') return JSON.stringify({ name: 'SavedBot' });
+      if (key === `/chatbot-history-${bot.name}`) return JSON.stringify([]);
+      return null;
+    });
+
+    mockGetVoice.mockResolvedValue({ name: 'fetched', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 } as any);
+
+    mockAuth.mockImplementation((url: string) => {
+      if (url === '/api/health') return Promise.resolve({ ok: true } as any);
+      if (url === '/api/chat') return Promise.resolve({ ok: true, json: async () => ({ reply: 'Hi from fetch', audioFileUrl: null }) } as any);
+      return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+    });
+
+    const { result } = renderHook(() => useChatController(bot));
+
+    await waitFor(() => expect(result.current.apiAvailable).toBe(true));
+    await waitFor(() => expect(result.current.messages.length).toBeGreaterThanOrEqual(1));
+
+    const intro = result.current.messages[0];
+    expect(intro.text).toBe('Hi from fetch');
+
+    // restore spy
+    (Storage.prototype.getItem as jest.Mock).mockRestore();
+  });
+
 });
