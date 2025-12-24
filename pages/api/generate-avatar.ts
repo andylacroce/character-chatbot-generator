@@ -78,22 +78,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         messages: [
           {
             role: "system",
-            content: `You are an expert at creating DALL-E image prompts. Generate a detailed, single-character portrait prompt that avoids multiple people or duplicates. 
-
-CRITICAL: If the character is a well-known person or fictional character, the description MUST accurately match their canonical/real appearance as closely as possible. Do not create generic descriptions - capture their actual likeness, distinctive features, and iconic appearance.`
+            content: `You are an expert at creating concise, unambiguous image-generation prompts for DALL·E and similar models. Produce a deterministic prompt for a single-person portrait suitable for photorealistic rendering. The prompt must explicitly forbid multiple photos, collages, side-by-side images, reflections, split/composite images, multiple exposures, or any duplicates. Also instruct against text overlays, watermarks, logos, captions, or any extraneous elements. When the character is a real person or a known fictional character, prioritize an *accurate likeness*: capture distinctive facial features, hair, skin tone, and iconic details. For photorealism include camera/lens, lighting, and background guidance as appropriate. Always return only the requested JSON fields and do not add commentary.`
           },
           {
             role: "user",
             content: `Create a DALL-E prompt for ${sanitizedName}.
 
-${sanitizedName.toLowerCase().includes('original character') || sanitizedName.toLowerCase().includes('oc ') ? 'This is an original character - create a unique appearance.' : 'If this is a known character or real person, describe their canonical/actual appearance with specific distinctive features. Match their real likeness as closely as possible.'}
+${sanitizedName.toLowerCase().includes('original character') || sanitizedName.toLowerCase().includes('oc ') ? 'This is an original character — create a unique appearance with clear defining details.' : 'If this is a known character or real person, describe their canonical/real appearance with specific, verifiable distinctive features. Match their real likeness as closely as possible.'}
 
-Return JSON with these fields:
-- subject: detailed physical description matching their canonical/real appearance (200 chars max)
-- artStyle: appropriate visual style for this character (50 chars max)
-- composition: framing and pose guidance (100 chars max)
-- iconicElements: signature props, clothing, or background elements specific to this character (100 chars max)
-- negativePrompts: what to exclude to ensure single subject (150 chars max)
+Return JSON with these fields (strict JSON only; do not add extra commentary):
+- subject: concise physical description matching canonical/real appearance (200 chars max). Include age range, ethnicity if relevant, and distinguishing facial features.
+- artStyle: visual style (e.g., photorealistic, studio headshot) (50 chars max)
+- composition: framing and pose guidance (e.g., close-up headshot, 3/4 view) (100 chars max)
+- iconicElements: signature props, clothing, or background elements tied to the character (100 chars max)
+- negativePrompts: explicit exclusions to ensure a single, realistic portrait (150 chars max). Must include: "no collage, no side-by-side photos, no multiple people, single face only, no reflections, no double exposures, no duplicates, no text, no watermark, no logo, no extra limbs, no extra hands, no extra faces".
 - gender: character's gender (for voice matching)`
           }
         ],
@@ -119,7 +117,7 @@ Return JSON with these fields:
     } catch (promptErr) {
       logger.warn("Failed to generate dynamic DALL-E prompt, using fallback:", { error: promptErr });
       // Fallback to simple template with canonical likeness emphasis
-      prompt = `Accurate likeness of ${sanitizedName}. Match their canonical/real appearance exactly. single, solo, alone, centered, close-up portrait, no other people, no duplicates.`;
+      prompt = `Accurate photorealistic likeness of ${sanitizedName}. Match canonical/real appearance precisely (face, hair, skin tone, and iconic features). Single subject, one person, one face; high-resolution head-and-shoulders portrait (frontal or 3/4) with neutral background and even soft lighting. Do NOT create collages, side-by-side photos, split/composite images, reflections, or duplicates. Exclude text, watermarks, logos, extra limbs, extra faces, or any compositing.`;
       logEvent("info", "avatar_dalle_prompt_fallback", "Using fallback DALL-E prompt", sanitizeLogMeta({ prompt }));
     }
 

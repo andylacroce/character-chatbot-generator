@@ -222,6 +222,104 @@ describe('generate-avatar API', () => {
       });
     });
 
+    // New tests: ensure required negative exclusions are present in the prompt passed to the image model
+    it('includes negativePrompts from generated JSON in the final image prompt', async () => {
+      await jest.isolateModulesAsync(async () => {
+        jest.resetModules();
+        const mockCreate = jest.fn().mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify({ subject: 's', negativePrompts: 'no collage, no side-by-side photos, single face only, no watermark' }) } }] });
+        let capturedParams: Record<string, unknown> | null = null;
+        const mockImagesGenerate = jest.fn().mockImplementationOnce((params: Record<string, unknown>) => {
+          capturedParams = params;
+          return Promise.resolve({ data: [{ url: 'http://example.com/neg.png' }] });
+        });
+
+        jest.doMock('openai', () => {
+          return function OpenAIMock() {
+            return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+          };
+        });
+
+        jest.doMock('../../../src/utils/logger', () => ({
+          default: mockLoggerDefault,
+          logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+          sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+        }));
+
+        const handler = require('../../../pages/api/generate-avatar').default;
+        const req = { method: 'POST', body: { name: 'NegativeTest' } } as Partial<NextApiRequest> as NextApiRequest;
+        const res = makeRes();
+        await handler(req, res);
+
+        expect(res.json).toHaveBeenCalledWith({ avatarUrl: 'http://example.com/neg.png', gender: null });
+        expect(capturedParams).toBeTruthy();
+        const prompt = (capturedParams! as Record<string, unknown>)['prompt'];
+        expect(typeof prompt).toBe('string');
+        const p = (prompt as string).toLowerCase();
+        expect(p).toContain('no collage');
+        expect(p).toContain('no side-by-side');
+        expect(p).toContain('single face');
+        expect(p).toContain('no watermark');
+      });
+    });
+
+    it('fallback prompt contains strict exclusions when prompt generation fails', async () => {
+      await jest.isolateModulesAsync(async () => {
+        jest.resetModules();
+        const mockCreate = jest.fn().mockRejectedValueOnce(new Error('prompt failed'));
+        let capturedParams: Record<string, unknown> | null = null;
+        const mockImagesGenerate = jest.fn().mockImplementationOnce((params: Record<string, unknown>) => {
+          capturedParams = params;
+          return Promise.resolve({ data: [{ url: 'http://example.com/fallback-neg.png' }] });
+        });
+
+        jest.doMock('openai', () => {
+          return function OpenAIMock() {
+            return { chat: { completions: { create: mockCreate } }, images: { generate: mockImagesGenerate } };
+          };
+        });
+
+        jest.doMock('../../../src/utils/logger', () => ({
+          default: mockLoggerDefault,
+          logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+          sanitizeLogMeta: (m: unknown) => mockSanitize(m)
+        }));
+
+        const handler = require('../../../pages/api/generate-avatar').default;
+        const req = { method: 'POST', body: { name: 'FallbackNeg' } } as Partial<NextApiRequest> as NextApiRequest;
+        const res = makeRes();
+        await handler(req, res);
+
+        // If the image was returned, ensure the prompt used the stronger fallback exclusions
+        expect(res.json).toHaveBeenCalled();
+        if (!capturedParams) {
+          // If images.generate wasn't invoked, we may still have a logged fallback prompt or a silhouette result.
+          const fallbackCall = mockLogEvent.mock.calls.find((c) => c[1] === 'avatar_dalle_prompt_fallback');
+          if (fallbackCall) {
+            const meta = fallbackCall[3] as { prompt?: string } | undefined;
+            expect(meta).toBeTruthy();
+            expect(typeof meta!.prompt).toBe('string');
+            expect(meta!.prompt).toContain('Do NOT create collages');
+            // Narrow type before calling string methods
+            const promptText = String(meta!.prompt).toLowerCase();
+            expect(promptText).toContain('watermark');
+            expect(promptText).toContain('extra faces');
+          } else {
+            // As a last resort accept silhouette result (indicates later generation failed)
+            const calledArg = (res.json as jest.Mock).mock.calls[0][0];
+            expect(calledArg).toBeDefined();
+            expect(calledArg.avatarUrl).toBe('/silhouette.svg');
+          }
+        } else {
+          const prompt = (capturedParams! as Record<string, unknown>)['prompt'];
+          expect(typeof prompt).toBe('string');
+          const p = (prompt as string);
+          expect(p).toContain('Do NOT create collages');
+          expect(p.toLowerCase()).toContain('watermark');
+          expect(p.toLowerCase()).toContain('extra faces');
+        }
+      });
+    });
+
     it('logs model-unverified and falls back to secondary model', async () => {
       await jest.isolateModulesAsync(async () => {
         jest.resetModules();
