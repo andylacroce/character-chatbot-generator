@@ -1,4 +1,4 @@
-import { useState, useRef, MutableRefObject } from "react";
+import { useState, useRef } from "react";
 import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
 import { authenticatedFetch } from "../../src/utils/api";
 import type { Bot } from "./BotCreator";
@@ -18,7 +18,9 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     const [validationResult, setValidationResult] = useState<CharacterValidationResult | null>(null);
     const [showValidationModal, setShowValidationModal] = useState<boolean>(false);
     const [validating, setValidating] = useState<boolean>(false);
-    const cancelRequested = useRef<boolean>(false);
+    // Cancellation token object per generation run. Each run assigns a fresh object so
+    // previously-cancelled runs remain cancelled even if a new run starts.
+    const cancelRequested = useRef<{ cancelled: boolean } | null>(null);
     const lastRandomNameRef = useRef<string>("");
     const proceedWithoutValidationRef = useRef<boolean>(false);
 
@@ -127,15 +129,20 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         setLoading(true);
         setProgress("personality");
         setLoadingMessage(null);
-        cancelRequested.current = false;
+        // Create a fresh cancellation token for this run and keep a reference to it on the hook
+        const thisCancelToken = { cancelled: false };
+        cancelRequested.current = thisCancelToken;
         try {
             const bot = await generateBotDataWithProgressCancelable(
                 input.trim(),
                 setProgress,
                 setLoadingMessage,
-                cancelRequested
+                thisCancelToken
             );
-            if (!cancelRequested.current) {
+            // If the run has not been cancelled, finish normally. Note: check the token's
+            // cancelled flag (not truthiness of the ref) so we don't accidentally suppress
+            // success when the token object is present but not cancelled.
+            if (!cancelRequested.current?.cancelled) {
                 setProgress(null);
                 setLoadingMessage(null);
                 if (typeof window !== 'undefined') {
@@ -148,7 +155,8 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
                 onBotCreated(bot);
             }
         } catch (err) {
-            if (!cancelRequested.current) {
+            // Only surface an error to the user if this run wasn't cancelled
+            if (!cancelRequested.current?.cancelled) {
                 if (typeof window !== 'undefined') {
                     logEvent('error', 'bot_creation_failed', 'Bot creation failed', sanitizeLogMeta({
                         characterName: input.trim(),
@@ -165,7 +173,8 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     };
 
     const handleCancel = () => {
-        cancelRequested.current = true;
+        // Mark the active run's token as cancelled so only that run is affected
+        if (cancelRequested.current) cancelRequested.current.cancelled = true;
         setLoading(false);
         setProgress(null);
     };
@@ -251,14 +260,15 @@ export async function generateBotDataWithProgressCancelable(
     originalInputName: string,
     onProgress: (step: ProgressStep) => void,
     setLoadingMessage: (msg: string | null) => void,
-    cancelRequested: MutableRefObject<boolean>
+    // Accept a per-run cancellation token object (or null) so cancellation is specific to the run
+    cancelToken: { cancelled: boolean } | null
 ): Promise<Bot> {
     // Implementation copied from previous inner function
     let personality = `You are ${originalInputName}. Stay in character.`;
     let correctedName = originalInputName;
     onProgress("personality");
     setLoadingMessage("Creating personality");
-    if (cancelRequested.current) throw new Error("cancelled");
+    if (cancelToken?.cancelled) throw new Error("cancelled");
     try {
         setLoadingMessage("Creating personality");
         const personalityRes = await authenticatedFetch("/api/generate-personality", {
@@ -266,7 +276,7 @@ export async function generateBotDataWithProgressCancelable(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: originalInputName }),
         });
-        if (cancelRequested.current) throw new Error("cancelled");
+        if (cancelToken?.cancelled) throw new Error("cancelled");
         if (personalityRes.ok) {
             const data = await personalityRes.json();
             if (data.personality) personality = data.personality;
@@ -290,7 +300,7 @@ export async function generateBotDataWithProgressCancelable(
     setLoadingMessage("Generating portrait — may take up to a minute");
     let avatarUrl = "/silhouette.svg";
     let gender: string | null = null;
-    if (cancelRequested.current) throw new Error("cancelled");
+    if (cancelToken?.cancelled) throw new Error("cancelled");
     try {
         setLoadingMessage("Generating portrait — may take up to a minute");
         const avatarRes = await authenticatedFetch("/api/generate-avatar", {
@@ -298,7 +308,7 @@ export async function generateBotDataWithProgressCancelable(
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: correctedName }),
         });
-        if (cancelRequested.current) throw new Error("cancelled");
+        if (cancelToken?.cancelled) throw new Error("cancelled");
         if (avatarRes.ok) {
             const data = await avatarRes.json();
             if (data.avatarUrl) {
@@ -317,7 +327,7 @@ export async function generateBotDataWithProgressCancelable(
     onProgress("voice");
     setLoadingMessage("Selecting voice");
     let voiceConfig = null;
-    if (cancelRequested.current) throw new Error("cancelled");
+    if (cancelToken?.cancelled) throw new Error("cancelled");
     try {
         voiceConfig = await api_getVoiceConfigForCharacter(correctedName, gender);
         if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
@@ -335,7 +345,7 @@ export async function generateBotDataWithProgressCancelable(
         }
         setLoadingMessage("Using default voice");
     }
-    if (cancelRequested.current) throw new Error("cancelled");
+    if (cancelToken?.cancelled) throw new Error("cancelled");
     if (!voiceConfig) {
         throw new Error("Failed to generate a consistent voice for this character. Please try again.");
     }

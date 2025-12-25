@@ -436,12 +436,13 @@ describe('useBotCreation tests', () => {
     await waitFor(() => expect(result.current.error).toBe('Please enter a name or character.'));
   });
 
-  it('handleCancel sets cancelRequested and clears loading/progress', () => {
+  it('handleCancel marks active run cancelled (or no-op) and clears loading/progress', () => {
     const { result } = renderHook(() => useBotCreation(() => {}));
 
     act(() => result.current.handleCancel());
 
-    expect(result.current.cancelRequested.current).toBe(true);
+    // When there is no active run, `handleCancel` is a no-op for the token and leaves it null.
+    expect(result.current.cancelRequested.current).toBeNull();
     expect(result.current.loading).toBe(false);
     expect(result.current.progress).toBeNull();
   });

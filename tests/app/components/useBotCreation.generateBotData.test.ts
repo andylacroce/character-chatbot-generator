@@ -84,6 +84,57 @@ describe('useBotCreation generateBotDataWithProgressCancelable branches', () => 
     expect(mockLogEvent).toHaveBeenCalledWith(expect.any(String), 'bot_personality_generation_failed', expect.any(String), expect.any(Object));
   });
 
+  it('does not resurrect a cancelled run when a new run starts quickly', async () => {
+    // Make first personality promise resolvable externally so we can cancel and start a second run
+    let resolveFirst: ((v: unknown) => void) | null = null;
+    const firstPersonalityPromise = new Promise((res) => { resolveFirst = res; });
+
+    // Track calls to personality so we can return controlled promises in order
+    let personalityCallCount = 0;
+    mockAuthenticatedFetch.mockImplementation((url: string) => {
+      if (url === '/api/generate-personality') {
+        const callIdx = personalityCallCount++;
+        if (callIdx === 0) return firstPersonalityPromise; // long-running first call
+        return Promise.resolve(mockResponse({ personality: 'gen-personality-2', correctedName: 'Beta' }));
+      }
+      if (url === '/api/generate-avatar') return Promise.resolve(mockResponse({ avatarUrl: '/avatar.png' }));
+      return Promise.resolve(mockResponse({}));
+    });
+
+    mockApiGetVoiceConfigForCharacter.mockResolvedValue(baseBot.voiceConfig);
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    // Start first generation for Alpha
+    act(() => { result.current.setInput('Alpha'); });
+
+    // Unused by design: start the first run then cancel it and start a second run.
+    // Prefix with underscore so ESLint's no-unused-vars rule permits it.
+    let _firstCreatePromise: Promise<void> | undefined;
+    await act(async () => {
+      _firstCreatePromise = result.current.handleCreate();
+      // Wait until validating finished and loading started
+      await waitFor(() => expect(result.current.validating).toBe(false));
+      // Cancel the first run
+      result.current.handleCancel();
+      // Immediately start a new generation for Beta
+      result.current.setInput('Beta');
+      await result.current.handleCreate();
+    });
+
+    // Resolve the first personality late (after we started the second run)
+    // Cast to a callable type to avoid TypeScript narrowing issues in tests.
+    (resolveFirst as ((v: unknown) => void) | null)?.({ personality: 'late' });
+    // Wait for state to settle
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // Ensure only one bot was created (the second run), and it's the Beta bot
+    expect(onBotCreated).toHaveBeenCalledTimes(1);
+    const created = onBotCreated.mock.calls[0][0] as Bot;
+    expect(created.name).toBe('Beta');
+  });
+
   it('falls back to default avatar when avatar generation fails', async () => {
     mockAuthenticatedFetch.mockImplementation((url: string) => {
       if (url === '/api/generate-personality') return Promise.resolve(mockResponse({ personality: 'gen-personality' }));

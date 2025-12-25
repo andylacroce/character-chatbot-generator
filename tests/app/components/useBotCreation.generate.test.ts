@@ -26,11 +26,11 @@ describe('generateBotDataWithProgressCancelable (unit tests)', () => {
     });
     mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
 
-    const cancelRef = { current: false } as any;
+    const cancelToken = { cancelled: false } as any;
     const onProgress = jest.fn();
     const setLoadingMessage = jest.fn();
 
-    const bot = await generateBotDataWithProgressCancelable('Alice', onProgress, setLoadingMessage, cancelRef);
+    const bot = await generateBotDataWithProgressCancelable('Alice', onProgress, setLoadingMessage, cancelToken);
 
     expect(bot.avatarUrl).toBe('/img.png');
     expect(bot.voiceConfig).toBeDefined();
@@ -45,7 +45,7 @@ describe('generateBotDataWithProgressCancelable (unit tests)', () => {
     });
     mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
 
-    const bot = await generateBotDataWithProgressCancelable('Bob', jest.fn(), jest.fn(), { current: false } as any);
+    const bot = await generateBotDataWithProgressCancelable('Bob', jest.fn(), jest.fn(), { cancelled: false } as any);
     expect(bot.avatarUrl).toBe('/silhouette.svg');
   });
 
@@ -57,12 +57,12 @@ describe('generateBotDataWithProgressCancelable (unit tests)', () => {
     });
     mockGetVoice.mockRejectedValueOnce(new Error('no voice'));
 
-    await expect(generateBotDataWithProgressCancelable('Carol', jest.fn(), jest.fn(), { current: false } as any)).rejects.toThrow(/Failed to generate a consistent voice/);
+    await expect(generateBotDataWithProgressCancelable('Carol', jest.fn(), jest.fn(), { cancelled: false } as any)).rejects.toThrow(/Failed to generate a consistent voice/);
   });
 
   it('respects cancellation before personality step', async () => {
-    // cancel current is true
-    await expect(generateBotDataWithProgressCancelable('X', jest.fn(), jest.fn(), { current: true } as any)).rejects.toThrow('cancelled');
+    // cancel token set to true
+    await expect(generateBotDataWithProgressCancelable('X', jest.fn(), jest.fn(), { cancelled: true } as any)).rejects.toThrow('cancelled');
   });
 
   it('cancels when cancelRequested during avatar generation', async () => {
@@ -74,10 +74,10 @@ describe('generateBotDataWithProgressCancelable (unit tests)', () => {
     });
     mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
 
-    const cancelRef = { current: false } as any;
+    const cancelRef = { cancelled: false } as any;
     const create = generateBotDataWithProgressCancelable('D', jest.fn(), jest.fn(), cancelRef);
     // cancel before avatar resolves
-    cancelRef.current = true;
+    cancelRef.cancelled = true;
     await expect(create).rejects.toThrow('cancelled');
   });
 
