@@ -26,8 +26,16 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         try {
             const res = await authenticatedFetch(`/api/random-character`);
             const data = await res.json();
-            if (res.ok && data && typeof data.name === "string" && data.name.trim()) {
-                return data.name.trim();
+            if (res.ok && data) {
+                // Prefer the new `suggestions` array returned by the API
+                if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+                    const choice = data.suggestions[Math.floor(Math.random() * data.suggestions.length)];
+                    if (typeof choice === 'string' && choice.trim()) return choice.trim();
+                }
+                // Backwards compatible: accept a single `name` field
+                if (typeof data.name === "string" && data.name.trim()) {
+                    return data.name.trim();
+                }
             }
             return 'Sherlock Holmes';
         } catch {
