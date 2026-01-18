@@ -3,7 +3,7 @@
  * Stores logs using Vercel Blob or local file storage with XSS-safe HTML escaping.
  */
 
-import { put, head } from "@vercel/blob";
+import { BlobNotFoundError, head, put } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
 import logger, { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
@@ -154,23 +154,27 @@ export default async function handler(
     // --- End Determine Log Filename ---
 
     // --- Append to Log ---
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const blobToken = process.env.VERCEL_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+
+    if (blobToken) {
       // Append to Vercel Blob (Read, Append, Write)
       try {
         let existingContent = "";
         try {
           // Check if blob exists and get its content
-          const blobInfo = await head(logFilename); // Check if file exists
-          if (blobInfo && blobInfo.url) {
-            const response = await fetch(
-              blobInfo.url + `?cachebust=${Date.now()}`,
-            ); // Bypass CDN cache
-            if (response.ok) {
-              existingContent = await response.text();
-            }
+          const blobInfo = await head(logFilename, { token: blobToken });
+          const blobUrl = blobInfo.downloadUrl || blobInfo.url;
+
+          const response = await fetch(
+            blobUrl + `?cachebust=${Date.now()}`,
+          ); // Bypass CDN cache
+          if (response.ok) {
+            existingContent = await response.text();
           }
         } catch (error) {
-          if (
+          if (error instanceof BlobNotFoundError) {
+            // Expected when blob does not exist yet
+          } else if (
             typeof error === "object" &&
             error !== null &&
             "status" in error &&
@@ -187,6 +191,8 @@ export default async function handler(
         await put(logFilename, newContent, {
           access: "public", // Or 'private'
           allowOverwrite: true, // Allow overwriting the existing blob
+          addRandomSuffix: false, // Keep deterministic filename
+          token: blobToken,
         });
       } catch (error) {
         logger.error("[Log API] Error appending to Vercel Blob:", { error });

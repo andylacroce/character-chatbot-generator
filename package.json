@@ -21,7 +21,6 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "sanitize-filename": "^1.6.3",
     "@google-cloud/text-to-speech": "^6.4.0",
     "@trendmicro/react-toggle-switch": "^0.5.7",
     "@typescript-eslint/type-utils": "^8.53.0",
@@ -44,6 +43,7 @@
     "react-dom": "^19.2.3",
     "react-icons": "^5.5.0",
     "react-window": "^2.2.5",
+    "sanitize-filename": "^1.6.3",
     "uuid": "^13.0.0",
     "winston": "^3.19.0"
   },
@@ -71,11 +71,13 @@
     "ipinfo": "^1.5.2",
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
+    "markdownlint-cli": "^0.47.0",
     "node-mocks-http": "^1.17.2",
     "postcss": "^8.5.6",
     "supertest": "^7.2.2",
     "typescript": "^5"
-    ,
-    "markdownlint-cli": "^0.47.0"
+  },
+  "overrides": {
+    "undici": "^6.23.0"
   }
 }
