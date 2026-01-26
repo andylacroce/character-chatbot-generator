@@ -29,7 +29,7 @@
     "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^2.0.0",
     "@vercel/speed-insights": "^1.3.1",
-    "axios": "^1.13.2",
+    "axios": "^1.13.3",
     "brace-expansion": "^4.0.1",
     "critters": "^0.0.25",
     "eslint-config-next": "^16.1.4",
