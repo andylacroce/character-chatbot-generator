@@ -32,7 +32,7 @@
     "axios": "^1.13.3",
     "brace-expansion": "^4.0.1",
     "critters": "^0.0.25",
-    "eslint-config-next": "^16.1.4",
+    "eslint-config-next": "^16.1.5",
     "express-rate-limit": "^8.2.1",
     "lru-cache": "^11.2.5",
     "minimatch": "^10.1.1",
