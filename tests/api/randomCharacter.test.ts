@@ -158,4 +158,109 @@ describe('random-character API', () => {
     expect(data.suggestions).toEqual(['Sherlock Holmes', 'Robin Hood', 'Hercules']);
     expect(data.name).toBe('Sherlock Holmes');
   });
+
+  it('includes recent names in exclusion list for creative diversity', async () => {
+    const createMock = jest.fn();
+    const OpenAI = require('openai');
+    OpenAI.mockImplementation(() => ({
+      chat: {
+        completions: {
+          create: createMock.mockResolvedValue({
+            choices: [{
+              message: {
+                content: JSON.stringify({ suggestions: ['Alpha', 'Beta', 'Gamma'] })
+              }
+            }]
+          })
+        }
+      }
+    }));
+
+    const handler = (await import('../../pages/api/random-character')).default;
+    
+    // First call
+    const first = createMocks({ method: 'GET' });
+    await handler(first.req, first.res);
+    const firstData = first.res._getJSONData();
+    expect(firstData.name).toBe('Alpha');
+
+    // Second call should include first name in exclusion list
+    createMock.mockClear();
+    createMock.mockResolvedValueOnce({
+      choices: [{
+        message: {
+          content: JSON.stringify({ suggestions: ['Beta', 'Gamma', 'Delta'] })
+        }
+      }]
+    });
+
+    const second = createMocks({ method: 'GET' });
+    await handler(second.req, second.res);
+
+    // Verify exclusion list was passed in the prompt
+    const callArgs = createMock.mock.calls[0]?.[0];
+    expect(callArgs?.messages?.[1]?.content).toContain('Do NOT suggest any of these recently used names');
+    expect(callArgs?.messages?.[1]?.content).toContain('Alpha');
+  });
+
+  it('uses creative and exploratory system prompt', async () => {
+    const createMock = jest.fn();
+    const OpenAI = require('openai');
+    OpenAI.mockImplementation(() => ({
+      chat: {
+        completions: {
+          create: createMock.mockResolvedValue({
+            choices: [{
+              message: {
+                content: JSON.stringify({ suggestions: ['Test'] })
+              }
+            }]
+          })
+        }
+      }
+    }));
+
+    const handler = (await import('../../pages/api/random-character')).default;
+    const { req, res } = createMocks({ method: 'GET' });
+    await handler(req, res);
+
+    // Verify the system prompt emphasizes creativity and uniqueness
+    const callArgs = createMock.mock.calls[0]?.[0];
+    const systemPrompt = callArgs?.messages?.[0]?.content;
+    expect(systemPrompt).toContain('TRULY UNIQUE');
+    expect(systemPrompt).toContain('creative');
+    expect(systemPrompt).toContain('CATEGORY DISTRIBUTION');
+    expect(systemPrompt).toContain('predictable');
+    expect(systemPrompt).toContain('lesser-known');
+  });
+
+  it('requests category diversity in user prompt', async () => {
+    const createMock = jest.fn();
+    const OpenAI = require('openai');
+    OpenAI.mockImplementation(() => ({
+      chat: {
+        completions: {
+          create: createMock.mockResolvedValue({
+            choices: [{
+              message: {
+                content: JSON.stringify({ suggestions: ['Test'] })
+              }
+            }]
+          })
+        }
+      }
+    }));
+
+    const handler = (await import('../../pages/api/random-character')).default;
+    const { req, res } = createMocks({ method: 'GET' });
+    await handler(req, res);
+
+    // Verify the user prompt emphasizes diversity and exploration
+    const callArgs = createMock.mock.calls[0]?.[0];
+    const userPrompt = callArgs?.messages?.[1]?.content;
+    expect(userPrompt).toContain('DIFFERENT categories');
+    expect(userPrompt).toContain('creative');
+    expect(userPrompt).toContain('exploratory');
+    expect(userPrompt).toContain('distinct category');
+  });
 });

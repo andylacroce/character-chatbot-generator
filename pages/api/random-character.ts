@@ -61,21 +61,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       messages: [
         {
           role: "system",
-          content: `You are a creative name generator for chatbots. Provide a JSON object with a single field "suggestions" containing 3 to 5 WELL-KNOWN public domain character names (no explanations). Ensure the set is diverse across history, mythology, folklore, classic literature, and early science/arts. Include at least 3 distinct categories when possible, and avoid listing multiple entries from the same category unless needed.
+          content: `You are a creative name generator for chatbots. Your goal is to provide TRULY UNIQUE and VARIED public domain character suggestions, pulling from all time periods and cultures. Return a JSON object with a single field "suggestions" containing 3 to 5 WELL-KNOWN public domain character names (no explanations). Each call should explore DIFFERENT categories and time periods—do NOT repeat common patterns.
+
+CATEGORY DISTRIBUTION REQUIREMENT:
+- Aim for exactly one character from each distinct category: mythology (any culture), classic literature, historical figures, folklore/legends, and early science/arts
+- If only returning 3-4 suggestions, pick the most interesting mix of different categories
+- AVOID clustering similar types (e.g., 2 philosophers, 2 warriors, 2 literary detectives)
 
 IMPORTANT GUARDRAILS:
 - Only suggest characters that are firmly in the public domain (typically pre-1928 for US works)
 - AVOID any character from modern media, movies, TV shows, video games, or comics created after 1928
 - AVOID characters that are trademarked (e.g., Mickey Mouse, Superman, Harry Potter, Mario, Spider-Man)
-- PREFER famous historical figures, classical mythology, ancient folklore, classic literature, and early science/arts figures
+- AVOID the most predictable/popular choices unless explicitly constrained
+- Include lesser-known but still well-recognizable figures to increase variety
 - AVOID obscure or extremely local folk characters; suggestions must be widely recognizable and well-known
-- Examples of GOOD choices: Sherlock Holmes, Dracula, Cleopatra, Julius Caesar, Zeus, King Arthur, Robin Hood, Odysseus, Joan of Arc, Leonardo da Vinci, Benjamin Franklin, Marie Curie, Abraham Lincoln, Confucius, Buddha, Socrates, Jane Austen, Edgar Allan Poe
+- Good variety examples: Cleopatra (history), Anansi (African mythology), Don Quixote (literature), Merlin (folklore), Ada Lovelace (early science)
 
 Return ONLY valid JSON, for example: { "suggestions": ["Sherlock Holmes", "Robin Hood"] }`
         },
         {
           role: "user",
-          content: `${exclusionList}Suggest 3 to 5 well-known public domain character names as a JSON object with a "suggestions" array. Ensure variety across categories (aim for history, mythology, folklore, classic literature, early science/arts) and avoid multiple picks from the same category unless necessary; prioritize widely recognizable names; reply ONLY with valid JSON.`
+          content: `${exclusionList}Suggest 3 to 5 well-known public domain character names from DIFFERENT categories and time periods as a JSON object with a "suggestions" array. Be creative and exploratory—avoid default/predictable answers. Ensure each suggestion comes from a distinct category (mythology, literature, history, folklore, science/arts). Reply ONLY with valid JSON.`
         }
       ],
       max_tokens: 150,
