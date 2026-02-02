@@ -29,14 +29,14 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             const res = await authenticatedFetch(`/api/random-character`);
             const data = await res.json();
             if (res.ok && data) {
-                // Prefer the new `suggestions` array returned by the API
+                // Prefer the API-provided chosen name to keep UI consistent with server logs
+                if (typeof data.name === "string" && data.name.trim()) {
+                    return data.name.trim();
+                }
+                // Fall back to the suggestions array if no chosen name is provided
                 if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
                     const choice = data.suggestions[Math.floor(Math.random() * data.suggestions.length)];
                     if (typeof choice === 'string' && choice.trim()) return choice.trim();
-                }
-                // Backwards compatible: accept a single `name` field
-                if (typeof data.name === "string" && data.name.trim()) {
-                    return data.name.trim();
                 }
             }
             return 'Sherlock Holmes';

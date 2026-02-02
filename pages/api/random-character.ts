@@ -14,6 +14,22 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 const recentNames: string[] = [];
 const MAX_RECENT_NAMES = 50;
 
+const MIN_SUGGESTIONS = 3;
+const MAX_SUGGESTIONS = 5;
+
+function normalizeSuggestions(items: string[]): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const item of items) {
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    normalized.push(trimmed);
+  }
+  return normalized;
+}
+
 /**
  * Next.js API route handler for generating a random character name using OpenAI.
  * Tracks recently generated names to improve variety.
@@ -45,13 +61,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       messages: [
         {
           role: "system",
-          content: `You are a creative name generator for chatbots. Provide a JSON object with a single field "suggestions" containing 3 to 5 WELL-KNOWN public domain character names (no explanations).
+          content: `You are a creative name generator for chatbots. Provide a JSON object with a single field "suggestions" containing 3 to 5 WELL-KNOWN public domain character names (no explanations). Ensure the set is diverse across history, mythology, folklore, classic literature, and early science/arts. Include at least 3 distinct categories when possible, and avoid listing multiple entries from the same category unless needed.
 
 IMPORTANT GUARDRAILS:
 - Only suggest characters that are firmly in the public domain (typically pre-1928 for US works)
 - AVOID any character from modern media, movies, TV shows, video games, or comics created after 1928
 - AVOID characters that are trademarked (e.g., Mickey Mouse, Superman, Harry Potter, Mario, Spider-Man)
-- PREFER famous historical figures, classical mythology, ancient folklore, and classic literature
+- PREFER famous historical figures, classical mythology, ancient folklore, classic literature, and early science/arts figures
 - AVOID obscure or extremely local folk characters; suggestions must be widely recognizable and well-known
 - Examples of GOOD choices: Sherlock Holmes, Dracula, Cleopatra, Julius Caesar, Zeus, King Arthur, Robin Hood, Odysseus, Joan of Arc, Leonardo da Vinci, Benjamin Franklin, Marie Curie, Abraham Lincoln, Confucius, Buddha, Socrates, Jane Austen, Edgar Allan Poe
 
@@ -59,7 +75,7 @@ Return ONLY valid JSON, for example: { "suggestions": ["Sherlock Holmes", "Robin
         },
         {
           role: "user",
-          content: `${exclusionList}Suggest 3 to 5 well-known public domain character names as a JSON object with a "suggestions" array. Prioritize widely recognizable names; reply ONLY with valid JSON.`
+          content: `${exclusionList}Suggest 3 to 5 well-known public domain character names as a JSON object with a "suggestions" array. Ensure variety across categories (aim for history, mythology, folklore, classic literature, early science/arts) and avoid multiple picks from the same category unless necessary; prioritize widely recognizable names; reply ONLY with valid JSON.`
         }
       ],
       max_tokens: 150,
@@ -76,9 +92,16 @@ Return ONLY valid JSON, for example: { "suggestions": ["Sherlock Holmes", "Robin
       suggestions = [];
     }
 
+    const normalized = normalizeSuggestions(suggestions ?? []);
+    const filtered = normalized.filter(item => !recentNames.includes(item));
+    const preferred = filtered.length >= MIN_SUGGESTIONS ? filtered : normalized;
+    const limited = preferred.slice(0, MAX_SUGGESTIONS);
+
     // Fallback list when the model fails to return suggestions
-    if (!suggestions || suggestions.length === 0) {
-      suggestions = ["Sherlock Holmes", "Robin Hood", "Hercules"];
+    if (limited.length === 0) {
+      suggestions = ["Sherlock Holmes", "Robin Hood", "Hercules"].slice(0, MAX_SUGGESTIONS);
+    } else {
+      suggestions = limited;
     }
 
     // Choose a suggestion that hasn't been used recently when possible

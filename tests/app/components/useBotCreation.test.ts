@@ -32,7 +32,7 @@ describe('useBotCreation tests', () => {
   });
 
   it('handleRandomCharacter sets input from API response', async () => {
-    mockAuthFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ suggestions: ['  Alice  '] }) });
+    mockAuthFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ name: '  Alice  ', suggestions: ['Bob'] }) });
 
     const { result } = renderHook(() => useBotCreation(() => {}));
 
@@ -46,8 +46,8 @@ describe('useBotCreation tests', () => {
 
   it('handleRandomCharacter can be called multiple times', async () => {
     mockAuthFetch
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ suggestions: ['Alice'] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ suggestions: ['Bob'] }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'Alice', suggestions: ['Zed'] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'Bob', suggestions: ['Yuki'] }) });
 
     const { result } = renderHook(() => useBotCreation(() => {}));
 
@@ -78,7 +78,7 @@ describe('useBotCreation tests', () => {
 
   it('handleRandomCharacter catch block logs error and sets error when logging throws', async () => {
     // Make the logger throw when called during normal success path to force the try/catch in handleRandomCharacter
-    mockAuthFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ suggestions: ['Hero'] }) });
+    mockAuthFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'Hero', suggestions: ['Other'] }) });
     mockLogEvent.mockImplementationOnce(() => { throw new Error('logger failure'); });
 
     const { result } = renderHook(() => useBotCreation(() => {}));
