@@ -176,6 +176,50 @@ function isOpenAIResponse(
 }
 
 /**
+ * Gracefully wraps a response that might be truncated by adding an appropriate ending.
+ * If the response ends abruptly, tries to complete it with punctuation.
+ * @param {string} response - The response text to potentially wrap
+ * @returns {string} The gracefully wrapped response
+ */
+function gracefullyWrapResponse(response: string): string {
+  if (!response || response.length === 0) return response;
+  
+  const trimmed = response.trimEnd();
+  
+  // If already ends with proper punctuation, return as-is
+  if (/[.!?;:]\s*$/.test(trimmed)) {
+    return trimmed;
+  }
+  
+  // If ends mid-sentence with comma, add more natural completion
+  if (trimmed.endsWith(',')) {
+    return trimmed.slice(0, -1) + '.';
+  }
+  
+  // If ends mid-word or incomplete, try to find last complete sentence
+  const lastPeriod = trimmed.lastIndexOf('.');
+  const lastExclamation = trimmed.lastIndexOf('!');
+  const lastQuestion = trimmed.lastIndexOf('?');
+  const lastSemicolon = trimmed.lastIndexOf(';');
+  
+  const lastPunctuation = Math.max(lastPeriod, lastExclamation, lastQuestion, lastSemicolon);
+  
+  // If we found proper punctuation before the end, use up to that point
+  if (lastPunctuation > trimmed.length * 0.6) { // Only if it's in the last 40% of the response
+    return trimmed.substring(0, lastPunctuation + 1);
+  }
+  
+  // Otherwise, try to find last complete word/phrase and end it gracefully
+  const lastSpace = trimmed.lastIndexOf(' ', trimmed.length - 1);
+  if (lastSpace > 0 && trimmed.length - lastSpace > 10) { // Only if there's content after the space
+    return trimmed.substring(0, lastSpace) + '.';
+  }
+  
+  // Last resort: just add a period
+  return trimmed + '.';
+}
+
+/**
  * Builds the OpenAI chat message array from conversation history and user input.
  * @param {string[]} history - The conversation history (excluding the latest user message).
  * @param {string} userMessage - The latest user message.
@@ -260,6 +304,7 @@ async function handler(
     const conversationHistory = req.body.conversationHistory || [];
     const stream = req.body.stream === true; // Support streaming mode
     const voiceConfig = req.body.voiceConfig;
+    
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required | requestId=${requestId}`);
       res.status(400).json({ error: "Message is required", requestId });
@@ -287,11 +332,12 @@ async function handler(
 
     const timestamp = new Date().toISOString();
     
-    // Implement conversation summarization when history exceeds 50 messages
+    // Implement conversation summarization when history exceeds 20 messages
+    // Always keep last 20 messages verbatim; summarize everything older
     let conversationSummary: string | undefined;
     let limitedHistory = conversationHistory;
     
-    if (conversationHistory.length > 50) {
+    if (conversationHistory.length > 20) {
       // Keep last 20 messages and summarize the rest
       const recentHistory = conversationHistory.slice(-20);
       const oldHistory = conversationHistory.slice(0, -20);
@@ -307,20 +353,43 @@ async function handler(
       limitedHistory = recentHistory;
     }
     
-    // Build messages array with correct types
-    const oldMessages = buildOpenAIMessages(limitedHistory.slice(0, -1), userMessage, botName, personality, conversationSummary).slice(1); // skip system prompt
-    
     // Add prompt caching to system message to reduce costs
+    // Include explicit instructions for using conversation history and handling continuations
+    const historyContextInstructions = `
+CRITICAL CONTEXT INSTRUCTIONS:
+- You have access to the full conversation history below. Read it carefully to understand narrative context and character consistency.
+- If the user asks to "continue", "go on", "keep going", or similar, ALWAYS resume the exact previous narrative from where it left off.
+- Do NOT start a new story or narrative when asked to continue - continue the existing one with the same characters, plot threads, and setting.
+- Maintain character voice, tone, and personality traits consistently throughout your response, matching the style established in the conversation history.
+- If the previous response was incomplete or truncated, seamlessly continue from the exact point where it ended.
+- Pay attention to all plot details, character names, and setting information from the conversation to ensure narrative continuity.`;
+
+    const systemPrompt = conversationSummary 
+      ? `${personality}\n${historyContextInstructions}\n\nPrevious conversation summary: ${conversationSummary}`
+      : `${personality}\n${historyContextInstructions}`;
+    
     const systemMessage: ChatCompletionMessageParam = {
       role: "system",
-      content: conversationSummary 
-        ? `${personality}\n\nPrevious conversation summary: ${conversationSummary}`
-        : personality,
+      content: systemPrompt,
     } as ChatCompletionMessageParam;
+    
+    // Build messages array: system prompt + full conversation history (verbatim) + new user message
+    const historyMessages: ChatCompletionMessageParam[] = [];
+    for (const entry of limitedHistory) {
+      if (entry.startsWith("User: ")) {
+        historyMessages.push({ role: "user", content: entry.replace(/^User: /, "") });
+      } else if (entry.startsWith("Bot: ")) {
+        historyMessages.push({
+          role: "assistant",
+          content: entry.replace(/^Bot: /, ""),
+        });
+      }
+    }
     
     const messages: ChatCompletionMessageParam[] = [
       systemMessage,
-      ...oldMessages
+      ...historyMessages,
+      { role: "user", content: userMessage }
     ];
 
     // --- API response caching logic ---
@@ -420,7 +489,7 @@ async function handler(
         const streamResponse = await openai.chat.completions.create({
           model: getOpenAIModel("text"),
           messages,
-          max_tokens: 150,
+          max_tokens: 500,
           temperature: 0.7,
           stream: true,
           stop: ["\n\n\n", "User:", "Bot:"],
@@ -445,6 +514,9 @@ async function handler(
           res.end();
           return;
         }
+        
+        // Gracefully wrap response to ensure it ends naturally
+        botReply = gracefullyWrapResponse(botReply);
         
         // Generate audio after streaming is complete
         const voiceConfigToUse = voiceConfig;
@@ -498,7 +570,7 @@ async function handler(
       openai.chat.completions.create({
         model: getOpenAIModel("text"),
         messages,
-        max_tokens: 150,
+        max_tokens: 500,
         temperature: 0.7,
         response_format: { type: "text" },
         stop: ["\n\n\n", "User:", "Bot:"],
@@ -516,12 +588,15 @@ async function handler(
       logger.info(`[Chat API] 500 Internal Server Error: Invalid OpenAI response | requestId=${requestId}`);
       throw new Error("Invalid response from OpenAI");
     }
-    const botReply = result.choices[0]?.message?.content?.trim() ?? "";
+    let botReply = result.choices[0]?.message?.content?.trim() ?? "";
     
     if (!botReply || botReply.trim() === "") {
       logger.info(`[Chat API] 500 Internal Server Error: Empty bot response | requestId=${requestId}`);
       throw new Error("Generated bot response is empty.");
     }
+    
+    // Gracefully wrap response to ensure it ends naturally
+    botReply = gracefullyWrapResponse(botReply);
 
     // Prepare TTS request (voice tuned for character)
     const voiceConfigToUse = voiceConfig;

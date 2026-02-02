@@ -34,16 +34,30 @@ const createBrowserLogger = (): LoggerInstance => {
   };
 };
 
-/** Winston-based server-side logger (only imported on server) */
-let loggerInstance: LoggerInstance;
+/** Initialize logger instance */
+let loggerInstance: LoggerInstance = createBrowserLogger();
 
-// For testability: allow forcing server logger via env var in tests
-const FORCE_SERVER_LOGGER = typeof process !== 'undefined' && (process.env as Record<string,string> | undefined)?.FORCE_SERVER_LOGGER === '1';
-if (typeof window === 'undefined' || FORCE_SERVER_LOGGER) {
-  // Use Winston logger on server side
+// Only attempt to load Winston on actual server runtime, never during build/SSR
+// Use a function-based check that can't be statically analyzed by bundlers
+const initializeServerLogger = () => {
   try {
-    // Dynamically require Winston via eval to avoid bundling it into client code
-    // This hides the static 'require("winston")' call from bundlers like Turbopack.
+    // Check if window is undefined at runtime (not at build time)
+    if (typeof window !== 'undefined') {
+      return; // Client environment, use browser logger
+    }
+
+    // Check if we have a real Node.js runtime (not just build time)
+    if (typeof process === 'undefined' || !process.versions || !process.versions.node) {
+      return; // Not a Node.js runtime
+    }
+
+    // For testability: allow forcing server logger via env var
+    const env = process.env as Record<string, string> | undefined;
+    if (!env?.FORCE_SERVER_LOGGER && typeof require === 'undefined') {
+      return; // require not available
+    }
+
+    // Test hook: if a test provides a global winston mock, use that
     type WinstonLike = {
       createLogger: (opts: { level?: string; format?: unknown; transports?: unknown[] }) => unknown;
       transports?: { Console: new (...args: unknown[]) => unknown } | undefined;
@@ -53,39 +67,57 @@ if (typeof window === 'undefined' || FORCE_SERVER_LOGGER) {
         printf: (fn: (...args: unknown[]) => string) => unknown;
       } | undefined;
     };
-    // Test hook: if a test provides a global winston mock, prefer that (useful when 'require' isn't present)
+
     const testWinston = (globalThis as unknown as Record<string, unknown>)?.__TEST_WINSTON__ as WinstonLike | undefined;
-    const winston = testWinston ?? (Function('return require')() as unknown as (id: string) => unknown)('winston') as WinstonLike;
+    if (testWinston) {
+      const logger = testWinston.createLogger({
+        level: "info",
+        format: testWinston.format!.combine(
+          testWinston.format!.timestamp(),
+          testWinston.format!.printf((info: unknown) => {
+            const { timestamp, level, message, ...meta } = info as { timestamp: string; level: string; message: string; [key: string]: unknown };
+            const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
+            return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
+          }),
+        ),
+        transports: [new (testWinston.transports!.Console)()],
+      });
+      loggerInstance = logger as unknown as LoggerInstance;
+      return;
+    }
+
+    // Use require directly - we've already verified it exists via type check above
+    const requireFn = require as (id: string) => WinstonLike;
+    const winston = requireFn('winston');
 
     if (typeof globalThis.setImmediate === "undefined") {
       (globalThis as Record<string, unknown>).setImmediate = (fn: (...args: unknown[]) => void, ...args: unknown[]) => setTimeout(fn, 0, ...args);
     }
 
-    const logger = (winston as WinstonLike).createLogger({
+    const logger = winston.createLogger({
       level: "info",
-      format: (winston as WinstonLike).format!.combine(
-        (winston as WinstonLike).format!.timestamp(),
-        (winston as WinstonLike).format!.printf((info: unknown) => {
+      format: winston.format!.combine(
+        winston.format!.timestamp(),
+        winston.format!.printf((info: unknown) => {
           const { timestamp, level, message, ...meta } = info as { timestamp: string; level: string; message: string; [key: string]: unknown };
           const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
           return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
         }),
       ),
-      transports: [new ((winston as WinstonLike).transports!.Console)()],
+      transports: [new (winston.transports!.Console)()],
     });
 
     loggerInstance = logger as unknown as LoggerInstance;
-  } catch (e) {
-    // Fallback if Winston fails to import or initialize
-    // Log the failure on server when possible (avoid throwing during import)
-    try {
-      console.warn('Winston not available, falling back to browser logger:', (e as Error)?.message || e);
-    } catch {}
+  } catch {
+    // Silently fall back to browser logger on any error
+    // This includes: require not available, Winston import fails, etc.
     loggerInstance = createBrowserLogger();
   }
-} else {
-  // Use browser-compatible logger on client side
-  loggerInstance = createBrowserLogger();
+};
+
+// Only call server logger initialization when NOT in browser
+if (typeof window === 'undefined') {
+  initializeServerLogger();
 }
 
 /**
