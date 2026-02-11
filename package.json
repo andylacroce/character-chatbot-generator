@@ -34,7 +34,7 @@
     "critters": "^0.0.25",
     "eslint-config-next": "^16.1.6",
     "express-rate-limit": "^8.2.1",
-    "lru-cache": "^11.2.5",
+    "lru-cache": "^11.2.6",
     "minimatch": "^10.1.2",
     "next": "^16.1.6",
     "node-fetch": "^3.3.2",
