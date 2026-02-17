@@ -64,7 +64,7 @@
     "autoprefixer": "^10.4.24",
     "babel-jest": "^30.2.0",
     "baseline-browser-mapping": "^2.9.19",
-    "eslint": "^9.39.2",
+    "eslint": "^10.0.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "express": "^5.2.1",
