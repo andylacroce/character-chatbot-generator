@@ -76,7 +76,6 @@
     "typescript": "^5"
   },
   "overrides": {
-    "undici": "^6.23.0",
-    "minimatch": "^10.2.2"
+    "undici": "^6.23.0"
   }
 }
