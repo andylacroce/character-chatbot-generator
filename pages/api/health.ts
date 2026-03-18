@@ -1,9 +1,9 @@
 /**
- * Health check endpoint for OpenAI and Google TTS.
+ * Health check endpoint for Claude (Anthropic) and Google TTS.
  * Returns service status for monitoring/uptime probes.
  */
 
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
 import { GoogleAuth } from 'google-auth-library';
 import fs from "fs";
@@ -11,7 +11,7 @@ import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/lo
 
 /**
  * Next.js API route handler for health checks.
- * Checks OpenAI and Google TTS service health.
+ * Checks Claude and Google TTS service health.
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
@@ -22,34 +22,33 @@ export default async function handler(
 ) {
   const requestId = req.headers["x-request-id"] || generateRequestId();
 
-  let openaiStatus = "ok";
-  let openaiError = null;
+  let claudeStatus = "ok";
+  let claudeError = null;
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) throw new Error("Missing OpenAI API key");
-    const openai = new OpenAI({ apiKey });
-    const result = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error("Missing Anthropic API key");
+    const anthropic = new Anthropic({ apiKey });
+    const result = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      system: "You are a health check bot.",
       messages: [{ role: "user", content: "ping" }],
       max_tokens: 1,
-      temperature: 0,
-      response_format: { type: "text" },
     });
-    if (!result || !result.choices || !result.choices[0]?.message?.content) {
-      throw new Error("No valid OpenAI response");
+    if (!result || !result.content || !result.content[0]) {
+      throw new Error("No valid Claude response");
     }
   } catch (err: unknown) {
-    openaiStatus = "error";
-    openaiError = err instanceof Error ? err.message : String(err);
+    claudeStatus = "error";
+    claudeError = err instanceof Error ? err.message : String(err);
     if (process.env.NODE_ENV !== "production") {
-      logEvent("error", "health_openai_error", "OpenAI health check error", sanitizeLogMeta({
+      logEvent("error", "health_claude_error", "Claude health check error", sanitizeLogMeta({
         requestId,
         error: err instanceof Error ? err.message : String(err)
       }));
     }
-    logEvent("info", "health_openai_failed", "OpenAI health check failed", sanitizeLogMeta({
+    logEvent("info", "health_claude_failed", "Claude health check failed", sanitizeLogMeta({
       requestId,
-      error: openaiError
+      error: claudeError
     }));
   }
 
@@ -63,18 +62,14 @@ export default async function handler(
     }
     const credentials = JSON.parse(creds);
     // Build GoogleAuth when explicit credentials exist; otherwise allow ADC discovery.
-    // Using GoogleAuth (instead of raw JWT) ensures the client gets the runtime methods it expects.
     let ttsClient: import('@google-cloud/text-to-speech').TextToSpeechClient;
     if (credentials && credentials.client_email && credentials.private_key) {
-      // Build a GoogleAuth instance from the credentials so the client receives
-      // a fully-featured auth object with the expected methods.
       const auth = new GoogleAuth({
         credentials: credentials as Record<string, unknown>,
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],
       });
       ttsClient = new textToSpeech.TextToSpeechClient({ auth });
     } else {
-      // No explicit credentials found; fallback to ADC for the health check.
       logEvent("info", "health_tts_adc_fallback", "Falling back to Application Default Credentials (ADC) for TTS client", sanitizeLogMeta({ requestId }));
       ttsClient = new textToSpeech.TextToSpeechClient();
     }
@@ -107,7 +102,7 @@ export default async function handler(
     }));
   }
 
-  if (openaiStatus === "ok" && ttsStatus === "ok") {
+  if (claudeStatus === "ok" && ttsStatus === "ok") {
     logEvent("info", "health_ok", "All services healthy", sanitizeLogMeta({
       requestId
     }));
@@ -116,19 +111,19 @@ export default async function handler(
   if (process.env.NODE_ENV !== "production")
     logEvent("error", "health_service_error", "Service error", sanitizeLogMeta({
       requestId,
-      openaiStatus,
-      openaiError,
+      claudeStatus,
+      claudeError,
       ttsStatus,
       ttsError
     }));
   logEvent("info", "health_service_error_info", "Service error", sanitizeLogMeta({
     requestId,
-    openaiStatus,
+    claudeStatus,
     ttsStatus
   }));
   return res.status(500).json({
     status: "error",
-    openai: { status: openaiStatus, error: openaiError },
+    claude: { status: claudeStatus, error: claudeError },
     tts: { status: ttsStatus, error: ttsError },
     requestId
   });

@@ -7,9 +7,8 @@ import fs from "fs";
 import path from "path";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import { getReplyCache } from "../../src/utils/cache";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 import rateLimit from "express-rate-limit";
@@ -277,36 +276,32 @@ async function handler(
             regenError = err;
           }
         }
-        // If still not found, try full OpenAI+TTS regen up to 3 times
+        // If still not found, try full Claude+TTS regen up to 3 times
         if (!found) {
-          const apiKey = process.env.OPENAI_API_KEY;
+          const apiKey = process.env.ANTHROPIC_API_KEY;
           if (!apiKey) {
-            logEvent("error", "audio_regen_missing_api_key", "Missing OPENAI_API_KEY for audio regen", sanitizeLogMeta({
+            logEvent("error", "audio_regen_missing_api_key", "Missing ANTHROPIC_API_KEY for audio regen", sanitizeLogMeta({
               file: sanitizedFile
             }));
           } else {
-            const openai = new OpenAI({ apiKey });
+            const anthropic = new Anthropic({ apiKey });
             for (let attempt = 1; attempt <= 3; attempt++) {
               try {
-                logEvent("info", "audio_regen_openai_attempt", "Attempting OpenAI+TTS audio regen", sanitizeLogMeta({
+                logEvent("info", "audio_regen_claude_attempt", "Attempting Claude+TTS audio regen", sanitizeLogMeta({
                   file: sanitizedFile,
                   attempt
                 }));
                 // Use the filename (without .mp3) as the user message if possible
                 const userMessage = sanitizedFile.replace(/\.mp3$/, "");
-                const messages: ChatCompletionMessageParam[] = [
-                  { role: "system", content: SYSTEM_PROMPT },
-                  { role: "user", content: userMessage },
-                ];
-                const result = await openai.chat.completions.create({
-                  model: "gpt-4o",
-                  messages,
+                const result = await anthropic.messages.create({
+                  model: "claude-haiku-4-5-20251001",
+                  system: SYSTEM_PROMPT,
+                  messages: [{ role: "user", content: userMessage }],
                   max_tokens: 150,
                   temperature: 0.8,
-                  response_format: { type: "text" },
                 });
-                const aiReply = result.choices[0]?.message?.content?.trim() ?? "";
-                if (!aiReply) throw new Error("OpenAI returned empty message");
+                const aiReply = result.content[0]?.type === "text" ? result.content[0].text.trim() : "";
+                if (!aiReply) throw new Error("Claude returned empty message");
                 // Save .txt for future regen
                 const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
                 fs.writeFileSync(txtFilePath, aiReply, "utf8");
@@ -346,7 +341,7 @@ async function handler(
                 });
                 normalizedAudioFilePath = checkFileExists(audioFilePath);
                 if (normalizedAudioFilePath) {
-                  logEvent("info", "audio_regen_openai_success", "Audio successfully regenerated via OpenAI+TTS", sanitizeLogMeta({
+                  logEvent("info", "audio_regen_claude_success", "Audio successfully regenerated via Claude+TTS", sanitizeLogMeta({
                     file: sanitizedFile,
                     attempt
                   }));
@@ -354,7 +349,7 @@ async function handler(
                   break;
                 }
               } catch (err) {
-                logEvent("error", "audio_regen_openai_failed", "OpenAI+TTS audio regen failed", sanitizeLogMeta({
+                logEvent("error", "audio_regen_claude_failed", "Claude+TTS audio regen failed", sanitizeLogMeta({
                   file: sanitizedFile,
                   attempt,
                   error: err instanceof Error ? err.message : String(err)

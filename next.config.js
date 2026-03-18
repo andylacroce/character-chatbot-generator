@@ -7,15 +7,6 @@ const nextConfig = {
   // Production builds currently run ESLint to help reproduce and fix the root cause.
   // If the issue is resolved, re-enable ignoreDuringBuilds for faster build times.
   serverExternalPackages: ['winston'],
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'oaidalleapiprodscus.blob.core.windows.net',
-        pathname: '/**',
-      },
-    ],
-  },
   // Performance optimizations
   compress: true,
   poweredByHeader: false,

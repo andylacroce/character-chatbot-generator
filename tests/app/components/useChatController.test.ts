@@ -133,13 +133,13 @@ describe("useChatController uncovered branches", () => {
         );
     });
 
-    it("handles OpenAI API error in sendMessage", async () => {
+    it("handles API error in sendMessage", async () => {
         // Mock authenticatedFetch to resolve health check but reject chat calls
         mockAuthenticatedFetch.mockImplementation((url: string) => {
             if (url === "/api/health") {
                 return Promise.resolve(mockResponse({}));
             } else {
-                return Promise.reject(new Error('OpenAI API Error'));
+                return Promise.reject(new Error('API Error'));
             }
         });
 

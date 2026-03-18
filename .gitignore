@@ -77,3 +77,4 @@ docs/
 !.github/workflows/
 
 # Local AI agent guidance (keep local overrides out of commits)
+.claude/

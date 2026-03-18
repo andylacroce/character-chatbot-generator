@@ -7,16 +7,17 @@ export const RESPONSE_CONSTRAINTS = `Keep responses under 100 words. Always fini
 If telling a story, reach a natural pause point or cliffhanger. Never trail off mid-sentence.`;
 
 /**
- * Generates a character-specific personality prompt using OpenAI.
+ * Generates a character-specific personality prompt using Claude.
  * Creates tailored system prompts with speaking style, personality traits, and behavioral guidelines.
  */
 export async function generatePersonalityPrompt(characterName: string): Promise<string> {
   try {
-    const OpenAI = (await import('openai')).default;
-    const { getOpenAIModel } = await import('../utils/openaiModelSelector');
-    
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-    
+    const Anthropic = (await import('@anthropic-ai/sdk')).default;
+    const { getClaudeModel } = await import('../utils/claudeModelSelector');
+    const { extractJson } = await import('../utils/parseClaudeJson');
+
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+
     const systemPrompt = `You are a character personality expert. Create a detailed system prompt for roleplaying as the given character.
 
 Return ONLY valid JSON with this schema:
@@ -35,18 +36,17 @@ Guidelines:
 - Identify key knowledge areas
 - Describe how they interact with others`;
 
-    const completion = await openai.chat.completions.create({
-      model: getOpenAIModel("text"),
+    const response = await anthropic.messages.create({
+      model: getClaudeModel("text"),  // personality quality affects all chat interactions
+      system: systemPrompt,
       messages: [
-        { role: "system", content: systemPrompt },
         { role: "user", content: `Character: "${characterName}"\n\nProvide character personality configuration as JSON.` }
       ],
       max_tokens: 300,
       temperature: 0.4,
-      response_format: { type: "json_object" }
     });
 
-    const content = completion.choices[0]?.message?.content?.trim() || '{}';
+    const content = extractJson(response.content[0]?.type === "text" ? response.content[0].text : '{}');
     const config = JSON.parse(content);
 
     // Build the system prompt from the structured data

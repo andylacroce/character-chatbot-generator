@@ -1,5 +1,5 @@
 /**
- * API endpoint for generating a character personality prompt via OpenAI.
+ * API endpoint for generating a character personality prompt via Claude.
  * Accepts POST requests with a character name and returns a personality string.
  */
 
@@ -29,7 +29,7 @@ const personalityRateLimit = rateLimit({
 });
 
 /**
- * Next.js API route handler for generating a character personality prompt using OpenAI.
+ * Next.js API route handler for generating a character personality prompt using Claude.
  * Accepts POST requests with a character name and returns a personality string.
  *
  * @param {NextApiRequest} req - The API request object.

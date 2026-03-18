@@ -8,7 +8,7 @@ app/
 pages/api/           # API routes (chat, audio, health, transcript)
    chat.ts            # Main chat endpoint with streaming & summarization
    audio.ts           # TTS audio generation
-   generate-avatar.ts # Avatar generation with structured outputs
+   generate-avatar.ts # Avatar generation via Claude + Vertex AI Imagen
    validate-character.ts # Copyright/trademark validation
    random-character.ts   # Public domain character suggestions
 src/
@@ -19,43 +19,28 @@ tests/               # Jest test suite (80%+ branch coverage)
 proxy.ts             # API authentication middleware (Next.js 16)
 ```
 
-App creates personality, avatar (OpenAI image models — production uses `gpt-image-1.5`, non-production uses `gpt-image-1-mini`; fallbacks include `dall-e-3`), and voice configuration
-
 # Character Chatbot Generator
 
-A Next.js 16 + TypeScript app that provides a character-driven chat UI with OpenAI-powered responses and Google Text-to-Speech audio replies.
+A Next.js 16 + TypeScript app that provides a character-driven chat UI with Claude-powered responses and Google Text-to-Speech audio replies.
 
 ## Key Features
 
-- **Advanced OpenAI Integration**: Uses gpt-4o (production) / gpt-4o-mini (dev) with streaming responses, conversation summarization, and prompt caching
+- **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with streaming responses and conversation summarization
 - **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
-- **Structured Outputs**: JSON Schema validation for reliable avatar generation
+- **Avatar Generation**: Claude generates image prompts; Google Vertex AI Imagen renders them
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 50 messages
-- **Cost Optimization**: Prompt caching reduces API costs for repeated system prompts
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
-- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 351 passing tests
+- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 498 passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
-
-## OpenAI Features
-
-This app leverages the latest OpenAI API capabilities:
-
-- **gpt-4o Model**: Production uses OpenAI's flagship model for best conversational quality and fluency (128K context window)
-- **gpt-4o-mini Model**: Development uses the faster, cheaper variant for cost-effective testing
-- **Streaming Responses**: Real-time message delivery via Server-Sent Events
-- **Structured Outputs**: JSON Schema with strict mode for avatar generation
-- **Prompt Caching**: Reduces costs by caching repeated system prompts
-- **Conversation Summarization**: Maintains context beyond 50 messages automatically
-- **Smart Continuation**: Detects truncated responses and allows seamless story continuation
 
 ## Prerequisites
 
 - Node.js ≥18
 - npm or yarn
-- OpenAI API key
-- Google Cloud service account with Text-to-Speech API access
+- Anthropic API key
+- Google Cloud service account with Text-to-Speech and Vertex AI APIs enabled
 
 ## Quickstart (Local Development)
 
@@ -72,9 +57,10 @@ npm install
 Create `.env.local` at project root with required secrets:
 
 ```ini
-OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
 API_SECRET=your_server_api_secret
 GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
+GOOGLE_CLOUD_PROJECT=your_gcp_project_id
 # Optional:
 VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_token
 TTS_TMP_DIR=/custom/temp/path
@@ -82,7 +68,8 @@ TTS_TMP_DIR=/custom/temp/path
 
 1. **Google Cloud Setup**
 
-   - Create a GCP service account with Text-to-Speech API access
+   - Create a GCP service account with Text-to-Speech and Vertex AI APIs enabled
+   - Grant the service account the `roles/aiplatform.user` role for Imagen
    - Download the JSON key file
    - Place it at `config/gcp-key.json` or paste contents into `GOOGLE_APPLICATION_CREDENTIALS_JSON`
 
@@ -135,9 +122,10 @@ npm run ci
 
 ### Required
 
-- `OPENAI_API_KEY` — OpenAI API key for chat generation (gpt-4o in production, gpt-4o-mini in dev)
+- `ANTHROPIC_API_KEY` — Anthropic API key for chat and avatar prompt generation
 - `API_SECRET` — Server-side API secret for request authorization
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON` — Path to GCP JSON key or full JSON content
+- `GOOGLE_CLOUD_PROJECT` — GCP project ID for Vertex AI Imagen
 
 ### Optional
 
@@ -195,7 +183,7 @@ PRs welcome! Please include:
 
 ## License & Disclaimer
 
-Educational/portfolio project. Not affiliated with OpenAI or Google.
+Educational/portfolio project. Not affiliated with Anthropic or Google.
 
 **Copyright Notice**: This app includes AI-powered copyright/trademark validation to help users avoid creating chatbots based on copyrighted or trademarked characters. When a potentially copyrighted character is detected, users receive warnings and suggestions for public domain alternatives. Users are solely responsible for ensuring their use complies with applicable copyright and trademark laws. The validation system provides guidance but does not constitute legal advice.
 
