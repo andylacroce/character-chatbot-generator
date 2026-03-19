@@ -44,6 +44,19 @@ describe('useBotCreation tests', () => {
     expect(result.current.lastRandomNameRef.current).toBe('Alice');
   });
 
+  it('handleRandomCharacter falls back to suggestions array when name field is absent (lines 38-39)', async () => {
+    mockAuthFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ suggestions: ['Zeus', 'Athena'] }) });
+
+    const { result } = renderHook(() => useBotCreation(() => {}));
+
+    await act(async () => {
+      await result.current.handleRandomCharacter();
+    });
+
+    // Should pick from the suggestions array since no name field was present
+    expect(['Zeus', 'Athena']).toContain(result.current.input);
+  });
+
   it('handleRandomCharacter can be called multiple times', async () => {
     mockAuthFetch
       .mockResolvedValueOnce({ ok: true, json: async () => ({ name: 'Alice', suggestions: ['Zed'] }) })

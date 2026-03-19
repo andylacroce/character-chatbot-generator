@@ -5,7 +5,7 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
-import rateLimit from "express-rate-limit";
+import { createRateLimiter } from "../../src/utils/rateLimit";
 import { sanitizeForDisplay, escapeHtml } from "../../src/utils/security";
 
 export const config = {
@@ -16,24 +16,11 @@ export const config = {
   },
 };
 
-// Rate limiter: 10 requests per minute per IP to prevent transcript generation abuse
-const transcriptRateLimit = rateLimit({
-  windowMs: 60 * 1000, // Rate limit window: 1 minute
-  max: 10, // Limit each IP to 10 requests per window
-  message: {
-    error: "Too many transcript requests from this IP, please try again later.",
-  },
-  standardHeaders: true, // Include rate limit info in RateLimit-* response headers
-  legacyHeaders: false, // Disable deprecated X-RateLimit-* headers
-  keyGenerator: (req) => {
-    // Handle client IP extraction for Next.js API routes
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-           (req.headers['x-real-ip'] as string) ||
-           (req.connection?.remoteAddress) ||
-           (req.socket?.remoteAddress) ||
-           'unknown';
-  },
-});
+/** Rate limiter: 10 requests per minute per IP to prevent transcript generation abuse. */
+const transcriptRateLimit = createRateLimiter(
+  10,
+  "Too many transcript requests from this IP, please try again later.",
+);
 
 /**
  * Next.js API route handler for generating and downloading chat transcripts.

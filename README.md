@@ -28,7 +28,7 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with streaming responses and conversation summarization
 - **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
-- **Avatar Generation**: Claude generates image prompts; Google Vertex AI Imagen renders them
+- **Avatar Generation**: Claude generates a detailed image prompt; Google Vertex AI Imagen (`imagen-3.0-fast-generate-001`) renders a portrait and returns it as a base64 data URL
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 50 messages
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 498 passing tests
@@ -131,6 +131,24 @@ npm run ci
 
 - `VERCEL_BLOB_READ_WRITE_TOKEN` — Enables logging to Vercel Blob storage
 - `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
+
+## Avatar Generation
+
+When a character chatbot is created, the app generates a portrait avatar automatically:
+
+1. **Prompt generation** — Claude (`claude-haiku-4-5-20251001`) receives the character name and produces a detailed, safe-for-work image prompt describing appearance, era, and artistic style.
+2. **Image rendering** — The prompt is sent to Google Vertex AI Imagen (`imagen-3.0-fast-generate-001`) which returns a 512 × 512 PNG as a base64 data URL.
+3. **Display** — The data URL is rendered directly in the UI; no external image hosting is required.
+
+### Requirements
+
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON` must reference a service account with `roles/aiplatform.user` granted in the GCP project.
+- `GOOGLE_CLOUD_PROJECT` must be set to the project where the Vertex AI API is enabled.
+- The `aiplatform.googleapis.com` API must be enabled in that project.
+
+### Rate limit
+
+Avatar generation is capped at **5 requests per minute per IP** because Imagen calls are relatively expensive compared to text inference.
 
 ## API Security
 

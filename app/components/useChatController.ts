@@ -39,7 +39,15 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     const [messages, setMessages] = useState<Message[]>(() => {
         try {
             const saved = storage.getItem(chatHistoryKey);
-            if (saved) return JSON.parse(saved);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                    return parsed.filter((m): m is Message =>
+                        m !== null && typeof m === 'object' &&
+                        typeof m.text === 'string' && typeof m.sender === 'string'
+                    );
+                }
+            }
         } catch { }
         return [];
     });
@@ -143,8 +151,13 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         const newChatHistoryKey = `chatbot-history-${bot.name}`;
         try {
             const saved = storage.getItem(newChatHistoryKey);
-            if (saved) setMessages(JSON.parse(saved));
-            else setMessages([]);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                setMessages(Array.isArray(parsed) ? parsed.filter((m): m is Message =>
+                    m !== null && typeof m === 'object' &&
+                    typeof m.text === 'string' && typeof m.sender === 'string'
+                ) : []);
+            } else setMessages([]);
         } catch {
             setMessages([]);
         }
@@ -290,8 +303,14 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                             gender: bot.gender,
                             conversationHistory: []
                         }),
-                    }).then(res => res.json()));
+                    }).then(res => {
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        return res.json();
+                    }));
                     if (cancelled) return;
+                    if (typeof response.reply !== 'string' || !response.reply) {
+                        throw new Error('Invalid intro response: missing reply');
+                    }
                     const introMsg: Message = {
                         sender: bot.name,
                         text: response.reply,
@@ -420,6 +439,9 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             );
             if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
                 logEvent('info', 'chat_send_retry_success', 'Message send succeeded', { botName: bot.name });
+            }
+            if (typeof response.reply !== 'string' || !response.reply) {
+                throw new Error('Invalid chat response: missing reply');
             }
             const botReply: Message = {
                 sender: bot.name,

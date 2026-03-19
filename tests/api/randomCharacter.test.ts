@@ -213,4 +213,92 @@ describe('random-character API', () => {
         expect(userPrompt).toContain('exploratory');
         expect(userPrompt).toContain('distinct category');
     });
+
+    it('retries once when all suggestions are already in recentNames (line 90)', async () => {
+        const handler = (await import('../../pages/api/random-character')).default;
+
+        // First call: populate recentNames with 'OldA' and 'OldB'
+        mockCreate.mockResolvedValueOnce({
+            content: [{ type: "text", text: JSON.stringify({ suggestions: ['OldA', 'OldB'] }) }]
+        });
+        const seed = createMocks({ method: 'GET' });
+        await handler(seed.req, seed.res);
+        expect(seed.res._getStatusCode()).toBe(200);
+
+        // Second call: first fetch returns only names already in recentNames → retry triggers
+        mockCreate.mockResolvedValueOnce({
+            content: [{ type: "text", text: JSON.stringify({ suggestions: ['OldA', 'OldB'] }) }]
+        });
+        // Retry fetch returns fresh names
+        mockCreate.mockResolvedValueOnce({
+            content: [{ type: "text", text: JSON.stringify({ suggestions: ['NewC', 'NewD'] }) }]
+        });
+
+        const second = createMocks({ method: 'GET' });
+        await handler(second.req, second.res);
+        expect(second.res._getStatusCode()).toBe(200);
+        const data = second.res._getJSONData();
+        expect(data.suggestions).toContain('NewC');
+        expect(data.name).toBe('NewC');
+        // Two calls were made for the second request (initial + retry)
+        expect(mockCreate).toHaveBeenCalledTimes(3);
+    });
+
+    it('skips empty-string suggestions during normalization (line 23 branch)', async () => {
+        mockCreate.mockResolvedValueOnce({
+            content: [{ type: "text", text: JSON.stringify({ suggestions: ['', '  ', 'Merlin', 'Athena'] }) }]
+        });
+        const handler = (await import('../../pages/api/random-character')).default;
+        const { req, res } = createMocks({ method: 'GET' });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        const data = res._getJSONData();
+        expect(data.suggestions).not.toContain('');
+        expect(data.suggestions).not.toContain('  ');
+        expect(data.suggestions).toContain('Merlin');
+    });
+
+    it('returns 500 when Claude response content is non-text and no suggestions parsed (lines 60-62 branch)', async () => {
+        mockCreate.mockResolvedValueOnce({
+            content: [{ type: "image" }]
+        });
+        const handler = (await import('../../pages/api/random-character')).default;
+        const { req, res } = createMocks({ method: 'GET' });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(500);
+    });
+
+    it('returns 500 when parsed JSON has no suggestions array (line 62 false branch)', async () => {
+        mockCreate.mockResolvedValueOnce({
+            content: [{ type: "text", text: JSON.stringify({ data: ['Foo'] }) }]
+        });
+        const handler = (await import('../../pages/api/random-character')).default;
+        const { req, res } = createMocks({ method: 'GET' });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(500);
+    });
+
+    it('trims recentNames to MAX_RECENT_NAMES (100) after accumulating more than 100 names (line 112)', async () => {
+        const handler = (await import('../../pages/api/random-character')).default;
+
+        // Make 11 calls with 10 unique names each (110 total) to exceed MAX_RECENT_NAMES
+        for (let i = 0; i < 11; i++) {
+            const names = Array.from({ length: 10 }, (_, j) => `Name_${i}_${j}`);
+            mockCreate.mockResolvedValueOnce({
+                content: [{ type: "text", text: JSON.stringify({ suggestions: names }) }]
+            });
+            const { req, res } = createMocks({ method: 'GET' });
+            await handler(req, res);
+            expect(res._getStatusCode()).toBe(200);
+        }
+
+        // If the trim worked, the 12th call should still succeed
+        mockCreate.mockResolvedValueOnce({
+            content: [{ type: "text", text: JSON.stringify({ suggestions: ['FinalName'] }) }]
+        });
+        const { req: finalReq, res: finalRes } = createMocks({ method: 'GET' });
+        await handler(finalReq, finalRes);
+        expect(finalRes._getStatusCode()).toBe(200);
+        expect(finalRes._getJSONData().name).toBe('FinalName');
+    });
 });

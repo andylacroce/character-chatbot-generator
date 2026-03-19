@@ -1,5 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+// Module-level Anthropic mock prevents the SDK constructor from running in jsdom
+// (tests that need specific behaviour override this via jest.doMock inside isolateModulesAsync)
+jest.mock('@anthropic-ai/sdk', () => ({
+    default: function AnthropicStub() { return { messages: { create: jest.fn() } }; },
+    __esModule: true
+}));
+
 // Mock logger
 const mockLogEvent = jest.fn();
 const mockSanitize = jest.fn((m: unknown) => m);
@@ -234,6 +241,100 @@ describe('generate-avatar API', () => {
             expect(mockLogEvent).toHaveBeenCalledWith('info', 'avatar_prompt_fallback', 'Using fallback image prompt', expect.any(Object));
             const result = (res.json as jest.Mock).mock.calls[0][0];
             expect(result.avatarUrl).toMatch(/^data:image\/png;base64,/);
+        });
+    });
+
+    it('loads GCP credentials from file path when value is not JSON (line 31)', async () => {
+        await jest.isolateModulesAsync(async () => {
+            jest.resetModules();
+
+            const fakeCreds = JSON.stringify({ type: 'service_account', project_id: 'p' });
+            jest.doMock('fs', () => ({
+                existsSync: jest.fn().mockReturnValue(true),
+                readFileSync: jest.fn().mockReturnValue(fakeCreds),
+                writeFileSync: jest.fn(),
+            }));
+            const mockCreate = jest.fn().mockResolvedValueOnce({
+                content: [{ type: 'text', text: JSON.stringify({ subject: 's', gender: null }) }]
+            });
+            jest.doMock('@anthropic-ai/sdk', () => ({
+                default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
+                __esModule: true
+            }));
+            jest.doMock('@google-cloud/aiplatform', () => ({
+                PredictionServiceClient: jest.fn().mockImplementation(() => ({
+                    predict: jest.fn().mockResolvedValue([{
+                        predictions: [{ structValue: { fields: { bytesBase64Encoded: { stringValue: fakeB64 } } } }]
+                    }])
+                })),
+                helpers: { toValue: (obj: unknown) => obj }
+            }));
+            jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+            jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
+            jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+            // Set credentials as a file path (not a JSON string)
+            process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = '/tmp/fake-creds.json';
+
+            const handler = require('../../../pages/api/generate-avatar').default;
+            const req = { method: 'POST', body: { name: 'FileCreds' } } as Partial<NextApiRequest> as NextApiRequest;
+            const res = makeRes();
+            await handler(req, res);
+
+            expect(res.json).toHaveBeenCalled();
+        });
+    });
+
+    it('returns silhouette when loadGcpCredentials throws (missing env var, lines 176-178)', async () => {
+        await jest.isolateModulesAsync(async () => {
+            jest.resetModules();
+
+            const mockCreate = jest.fn().mockResolvedValueOnce({
+                content: [{ type: 'text', text: JSON.stringify({ subject: 's', gender: 'male' }) }]
+            });
+            jest.doMock('@anthropic-ai/sdk', () => ({
+                default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
+                __esModule: true
+            }));
+            jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+            jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
+            jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+            // Remove credentials so loadGcpCredentials throws
+            delete process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+
+            const handler = require('../../../pages/api/generate-avatar').default;
+            const req = { method: 'POST', body: { name: 'MissingCreds' } } as Partial<NextApiRequest> as NextApiRequest;
+            const res = makeRes();
+            await handler(req, res);
+
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ avatarUrl: '/silhouette.svg' }));
+            expect(mockLogEvent).toHaveBeenCalledWith('error', 'avatar_cred_error', expect.any(String), expect.any(Object));
+        });
+    });
+
+    it('outer catch returns silhouette on unhandled error (lines 202-204)', async () => {
+        await jest.isolateModulesAsync(async () => {
+            jest.resetModules();
+
+            // logEvent throws on first call to trigger the outer catch
+            const throwingLogEvent = jest.fn().mockImplementationOnce(() => {
+                throw new Error('unexpected log failure');
+            });
+            jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => throwingLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+            jest.doMock('@anthropic-ai/sdk', () => ({
+                default: function AnthropicMock() { return { messages: { create: jest.fn() } }; },
+                __esModule: true
+            }));
+            jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
+            jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+            const handler = require('../../../pages/api/generate-avatar').default;
+            const req = { method: 'POST', body: { name: 'Throws' } } as Partial<NextApiRequest> as NextApiRequest;
+            const res = makeRes();
+            await handler(req, res);
+
+            expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ avatarUrl: '/silhouette.svg' }));
         });
     });
 

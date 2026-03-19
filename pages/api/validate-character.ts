@@ -4,31 +4,17 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import Anthropic from "@anthropic-ai/sdk";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
-import rateLimit from "express-rate-limit";
+import { createRateLimiter } from "../../src/utils/rateLimit";
 import { extractJson } from "../../src/utils/parseClaudeJson";
+import anthropic from "../../src/utils/anthropicClient";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-
-// Rate limiter: 30 requests per minute per IP
-const validationRateLimit = rateLimit({
-  windowMs: 60 * 1000,
-  max: 30,
-  message: {
-    error: "Too many validation requests from this IP, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-           (req.headers['x-real-ip'] as string) ||
-           (req.connection?.remoteAddress) ||
-           (req.socket?.remoteAddress) ||
-           'unknown';
-  },
-});
+/** Rate limiter: 30 requests per minute per IP. */
+const validationRateLimit = createRateLimiter(
+  30,
+  "Too many validation requests from this IP, please try again later.",
+);
 
 export interface CharacterValidationResult {
   characterName: string;

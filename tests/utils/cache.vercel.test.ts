@@ -47,4 +47,16 @@ describe('cache in Vercel environment', () => {
     deleteReplyCache('k-del');
     expect(getReplyCache('k-del')).toBeNull();
   });
+
+  it('triggers cleanupExpiredEntries when memoryCache exceeds MAX_CACHE_SIZE (lines 90-92)', () => {
+    // Insert 1001 entries to exceed MAX_CACHE_SIZE=1000 and trigger cleanup
+    for (let i = 0; i < 1001; i++) {
+      setReplyCache(`bulk-key-${i}`, `val-${i}`);
+    }
+    // Advance mocked time so the sentinel entry has the most recent timestamp
+    // and is guaranteed to survive the sort-then-slice cleanup
+    now += 1000;
+    setReplyCache('post-cleanup', 'alive');
+    expect(getReplyCache('post-cleanup')).toBe('alive');
+  });
 });

@@ -4,7 +4,8 @@ export const AVATAR_TIMEOUT_MS = 60_000; // 60 seconds
 
 // Shared personality template constants
 export const RESPONSE_CONSTRAINTS = `Keep responses under 100 words. Always finish your current thought with proper punctuation before stopping.
-If telling a story, reach a natural pause point or cliffhanger. Never trail off mid-sentence.`;
+If telling a story, reach a natural pause point or cliffhanger. Never trail off mid-sentence.
+Never use action emotes or stage directions (e.g. *smiles*, *narrows eyes*, *laughs*). Speak only in dialogue and prose.`;
 
 /**
  * Generates a character-specific personality prompt using Claude.
@@ -12,11 +13,9 @@ If telling a story, reach a natural pause point or cliffhanger. Never trail off 
  */
 export async function generatePersonalityPrompt(characterName: string): Promise<string> {
   try {
-    const Anthropic = (await import('@anthropic-ai/sdk')).default;
     const { getClaudeModel } = await import('../utils/claudeModelSelector');
     const { extractJson } = await import('../utils/parseClaudeJson');
-
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+    const { default: anthropic } = await import('../utils/anthropicClient');
 
     const systemPrompt = `You are a character personality expert. Create a detailed system prompt for roleplaying as the given character.
 

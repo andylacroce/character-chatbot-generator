@@ -3,9 +3,6 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
   },
-  // Disable ESLint ignoreDuringBuilds while debugging circular-structure serialization issue.
-  // Production builds currently run ESLint to help reproduce and fix the root cause.
-  // If the issue is resolved, re-enable ignoreDuringBuilds for faster build times.
   serverExternalPackages: ['winston'],
   // Performance optimizations
   compress: true,

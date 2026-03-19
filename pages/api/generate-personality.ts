@@ -6,27 +6,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { sanitizeCharacterName } from "../../src/utils/security";
-import rateLimit from "express-rate-limit";
+import { createRateLimiter } from "../../src/utils/rateLimit";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 
-// Rate limiter: 20 requests per minute per IP (personality generation is lightweight)
-const personalityRateLimit = rateLimit({
-  windowMs: 60 * 1000, // Rate limit window: 1 minute
-  max: 20, // Limit each IP to 20 requests per window
-  message: {
-    error: "Too many personality generation requests from this IP, please try again later.",
-  },
-  standardHeaders: true, // Include rate limit info in RateLimit-* response headers
-  legacyHeaders: false, // Disable deprecated X-RateLimit-* headers
-  keyGenerator: (req) => {
-    // Extract client IP across proxies/load balancers for accurate limiting
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-           (req.headers['x-real-ip'] as string) ||
-           (req.connection?.remoteAddress) ||
-           (req.socket?.remoteAddress) ||
-           'unknown';
-  },
-});
+/** Rate limiter: 20 requests per minute per IP (personality generation is lightweight). */
+const personalityRateLimit = createRateLimiter(
+  20,
+  "Too many personality generation requests from this IP, please try again later.",
+);
 
 /**
  * Next.js API route handler for generating a character personality prompt using Claude.

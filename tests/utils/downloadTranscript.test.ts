@@ -83,6 +83,15 @@ describe('downloadTranscript', () => {
     global.window.open = open;
   });
 
+  it('uses "Unknown error" fallback when response.text() rejects on non-ok response', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 503,
+      text: () => Promise.reject(new Error('read failed')),
+    });
+    await expect(downloadTranscript([])).rejects.toThrow('API error (503): Unknown error');
+  });
+
   it('throws if window.URL.createObjectURL is not available', async () => {
     const orig = global.URL.createObjectURL;
   // @ts-expect-error test-mock: simulate missing createObjectURL

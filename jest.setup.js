@@ -19,16 +19,18 @@ if (typeof global.TextDecoder === "undefined") {
 
 import "@testing-library/jest-dom";
 
-// Mock HTMLMediaElement methods
-Object.defineProperty(global.HTMLMediaElement.prototype, "play", {
-  configurable: true,
-  value: jest.fn().mockImplementation(() => Promise.resolve()),
-});
+// Mock HTMLMediaElement methods (only available in jsdom, not Node environment)
+if (typeof global.HTMLMediaElement !== "undefined") {
+  Object.defineProperty(global.HTMLMediaElement.prototype, "play", {
+    configurable: true,
+    value: jest.fn().mockImplementation(() => Promise.resolve()),
+  });
 
-Object.defineProperty(global.HTMLMediaElement.prototype, "pause", {
-  configurable: true,
-  value: jest.fn(),
-});
+  Object.defineProperty(global.HTMLMediaElement.prototype, "pause", {
+    configurable: true,
+    value: jest.fn(),
+  });
+}
 
 // Suppress React warnings about deprecated lifecycle methods during tests
 const originalWarn = console.warn;

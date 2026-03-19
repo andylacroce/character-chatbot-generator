@@ -48,4 +48,30 @@ describe('cache file-based behavior', () => {
     deleteReplyCache('removeMe');
     expect(mockedFs.writeFileSync).toHaveBeenCalled();
   });
+
+  it('getReplyCache removes and saves when entry is expired (lines 129-130)', () => {
+    const expiredTs = Date.now() - (25 * 60 * 60 * 1000); // 25 hours ago
+    const payload = { staleKey: { value: 'stale', timestamp: expiredTs } };
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify(payload));
+
+    const result = getReplyCache('staleKey');
+    expect(result).toBeNull();
+    // Should have written the cleaned cache (expired entry removed)
+    expect(mockedFs.writeFileSync).toHaveBeenCalled();
+  });
+
+  it('cleanupExpiredEntries sort comparator runs when multiple entries exist (line 66)', () => {
+    const now = Date.now();
+    const payload = {
+      a: { value: 'v-a', timestamp: now - 1000 },
+      b: { value: 'v-b', timestamp: now },
+    };
+    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.readFileSync.mockReturnValue(JSON.stringify(payload));
+
+    // setReplyCache triggers cleanupExpiredEntries with 3 entries → sort comparator called
+    setReplyCache('c', 'v-c');
+    expect(mockedFs.writeFileSync).toHaveBeenCalled();
+  });
 });

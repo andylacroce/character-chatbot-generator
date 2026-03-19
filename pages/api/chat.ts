@@ -9,7 +9,6 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import sanitizeFilename from "sanitize-filename";
-import Anthropic from "@anthropic-ai/sdk";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import fs from "fs";
 import path from "path";
@@ -18,8 +17,11 @@ import logger, { generateRequestId } from "../../src/utils/logger";
 import { setReplyCache, getReplyCache } from "../../src/utils/cache";
 import crypto from "crypto";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
-import rateLimit from "express-rate-limit";
+import { createRateLimiter } from "../../src/utils/rateLimit";
+import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
+import { summarizeConversation, buildClaudeMessages, type ClaudeMessage } from "../../src/utils/conversationSummarizer";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
+import anthropic from "../../src/utils/anthropicClient";
 
 if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   throw new Error(
@@ -27,33 +29,11 @@ if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
   );
 }
 
-const apiKey = process.env.ANTHROPIC_API_KEY;
-if (!apiKey) {
-  throw new Error("Missing Anthropic API key");
-}
-const anthropic = new Anthropic({ apiKey });
-
-/**
- * Rate limiter for chat endpoint: 10 requests per minute per IP.
- * Prevents abuse and ensures fair resource allocation.
- */
-const chatRateLimit = rateLimit({
-  windowMs: 60 * 1000, // Window duration: 1 minute
-  max: 10, // Maximum requests per window per IP
-  message: {
-    error: "Too many chat requests from this IP, please try again later.",
-  },
-  standardHeaders: true, // Include RateLimit-* headers in response
-  legacyHeaders: false, // Exclude deprecated X-RateLimit-* headers
-  keyGenerator: (req) => {
-    // Extract client IP from headers (works with proxies and load balancers)
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-           (req.headers['x-real-ip'] as string) ||
-           (req.connection?.remoteAddress) ||
-           (req.socket?.remoteAddress) ||
-           'unknown';
-  },
-});
+/** Rate limiter for chat endpoint: 10 requests per minute per IP. */
+const chatRateLimit = createRateLimiter(
+  10,
+  "Too many chat requests from this IP, please try again later.",
+);
 
 /**
  * Periodic cleanup of audio files from /tmp to prevent disk bloat.
@@ -108,44 +88,13 @@ function stableStringify(obj: unknown): string {
   return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify((obj as Record<string, unknown>)[k])).join(',') + '}';
 }
 
-function getAudioCacheKey(text: string, voiceConfig: Record<string, unknown>) {
+function getAudioCacheKey(text: string, voiceConfig: object) {
   return crypto.createHash('sha256')
     .update(text)
     .update(stableStringify(voiceConfig))
     .digest('hex');
 }
 
-type ClaudeMessage = { role: "user" | "assistant"; content: string };
-
-/**
- * Summarizes conversation history when it exceeds the limit.
- * Uses Claude to create a concise summary of older messages.
- */
-async function summarizeConversation(
-  messages: ClaudeMessage[],
-  botName: string
-): Promise<string> {
-  try {
-    const conversationText = messages
-      .map(m => `${m.role === 'user' ? 'User' : botName}: ${m.content}`)
-      .join('\n');
-
-    const summaryResponse = await anthropic.messages.create({
-      model: getClaudeModel("text-simple"),
-      system: "Summarize this conversation concisely, capturing key topics, emotional tone, and important context. Keep it under 150 words.",
-      messages: [{ role: "user", content: conversationText }],
-      max_tokens: 200,
-      temperature: 0.3,
-    });
-
-    return summaryResponse.content[0]?.type === "text"
-      ? summaryResponse.content[0].text.trim()
-      : "Previous conversation history.";
-  } catch (error) {
-    logger.error("Failed to summarize conversation:", { error });
-    return "Previous conversation covered various topics.";
-  }
-}
 
 /**
  * Checks if the given object is a valid Claude messages response.
@@ -159,6 +108,15 @@ function isClaudeResponse(
     "content" in obj &&
     Array.isArray((obj as { content: unknown }).content)
   );
+}
+
+/**
+ * Removes roleplay action emotes (*action text*) from a response.
+ * Characters should speak in dialogue/prose only, not stage directions.
+ */
+function stripActionEmotes(response: string): string {
+  // Remove *...* patterns (action emotes) and clean up extra whitespace
+  return response.replace(/\*[^*]+\*/g, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /**
@@ -200,26 +158,6 @@ function gracefullyWrapResponse(response: string): string {
 
   // Last resort: just add a period
   return trimmed + '.';
-}
-
-/**
- * Builds the Claude message array from conversation history and user input.
- * System prompt is returned separately (Claude requires it as a top-level param).
- */
-function buildClaudeMessages(
-  history: string[],
-  userMessage: string,
-): ClaudeMessage[] {
-  const messages: ClaudeMessage[] = [];
-  for (const entry of history) {
-    if (entry.startsWith("User: ")) {
-      messages.push({ role: "user", content: entry.replace(/^User: /, "") });
-    } else if (entry.startsWith("Bot: ")) {
-      messages.push({ role: "assistant", content: entry.replace(/^Bot: /, "") });
-    }
-  }
-  messages.push({ role: "user", content: userMessage });
-  return messages;
 }
 
 /**
@@ -300,7 +238,7 @@ async function handler(
       const oldMessages = buildClaudeMessages(oldHistory, "").slice(0, -1); // exclude the empty user message at end
 
       if (oldMessages.length > 0) {
-        conversationSummary = await summarizeConversation(oldMessages, botName);
+        conversationSummary = await summarizeConversation(anthropic, oldMessages, botName);
         logger.info(`[Chat API] Summarized ${oldHistory.length} old messages | requestId=${requestId}`);
       }
 
@@ -335,27 +273,8 @@ CRITICAL CONTEXT INSTRUCTIONS:
       logger.info(`[Chat API] Cache hit for key: ${cacheKey} | requestId=${requestId}`);
       const voiceConfigToUse = voiceConfig;
       logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfigToUse)}`);
-      const isStudio = (voiceConfigToUse.type === 'Studio') || (voiceConfigToUse.name && voiceConfigToUse.name.includes('Studio'));
-      let selectedVoice = voiceConfigToUse;
-      if (isStudio) {
-        const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
-        if (!validStudioVoices.includes(voiceConfigToUse.name)) {
-          selectedVoice = {
-            languageCodes: ['en-US'],
-            name: 'en-US-Studio-M',
-            ssmlGender: 1,
-            type: 'Studio',
-          };
-        }
-      }
-      const pitch = typeof selectedVoice.pitch === 'number' ? selectedVoice.pitch : -13;
-      const rate = typeof selectedVoice.rate === 'number' ? Math.round(selectedVoice.rate * 100) + '%' : '80%';
-      let ssmlText;
-      if (isStudio) {
-        ssmlText = `<speak>${cachedReply}</speak>`;
-      } else {
-        ssmlText = `<speak><prosody pitch="${pitch}st" rate="${rate}"> ${cachedReply} </prosody></speak>`;
-      }
+      const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
+      const ssmlText = buildSsml(cachedReply, selectedVoice);
       const tmpDir = "/tmp";
       if (!fs.existsSync(tmpDir)) {
         fs.mkdirSync(tmpDir, { recursive: true });
@@ -437,22 +356,10 @@ CRITICAL CONTEXT INSTRUCTIONS:
           return;
         }
 
-        botReply = gracefullyWrapResponse(botReply);
+        botReply = stripActionEmotes(gracefullyWrapResponse(botReply));
 
         const voiceConfigToUse = voiceConfig;
-        const isStudio = (voiceConfigToUse.type === 'Studio') || (voiceConfigToUse.name && voiceConfigToUse.name.includes('Studio'));
-        let selectedVoice = voiceConfigToUse;
-        if (isStudio) {
-          const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
-          if (!validStudioVoices.includes(voiceConfigToUse.name)) {
-            selectedVoice = {
-              languageCodes: ['en-US'],
-              name: 'en-US-Studio-M',
-              ssmlGender: 1,
-              type: 'Studio',
-            };
-          }
-        }
+        const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
 
         const audioFileName = sanitizeFilename(`${botName}_${Date.now()}.mp3`);
         const audioDir = process.env.TTS_TMP_DIR || path.join(process.cwd(), "public", "audio");
@@ -517,27 +424,8 @@ CRITICAL CONTEXT INSTRUCTIONS:
     const voiceConfigToUse = voiceConfig;
     const voiceConfigHash = crypto.createHash("sha256").update(JSON.stringify(voiceConfigToUse)).digest("hex");
     logger.info(`[TTS] Using voice for botName='${botName}', voiceConfigHash=${voiceConfigHash}: ${JSON.stringify(voiceConfigToUse)}`);
-    const isStudio = (voiceConfigToUse.type === 'Studio') || (voiceConfigToUse.name && voiceConfigToUse.name.includes('Studio'));
-    let selectedVoice = voiceConfigToUse;
-    if (isStudio) {
-      const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
-      if (!validStudioVoices.includes(voiceConfigToUse.name)) {
-        selectedVoice = {
-          languageCodes: ['en-US'],
-          name: 'en-US-Studio-M',
-          ssmlGender: 1,
-          type: 'Studio',
-        };
-      }
-    }
-    const pitch = typeof selectedVoice.pitch === 'number' ? selectedVoice.pitch : -13;
-    const rate = typeof selectedVoice.rate === 'number' ? Math.round(selectedVoice.rate * 100) + '%' : '80%';
-    let ssmlText;
-    if (isStudio) {
-      ssmlText = `<speak>${botReply}</speak>`;
-    } else {
-      ssmlText = `<speak><prosody pitch="${pitch}st" rate="${rate}"> ${botReply} </prosody></speak>`;
-    }
+    const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
+    const ssmlText = buildSsml(botReply, selectedVoice);
     const tmpDir = "/tmp";
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });

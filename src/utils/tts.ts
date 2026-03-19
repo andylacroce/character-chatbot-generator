@@ -236,34 +236,6 @@ export async function synthesizeSpeechToFile({
 }
 
 /**
- * Deletes the given list of files if they are .mp3 files.
- * @param {string[]} files - Array of file paths.
- */
-function cleanupTempFiles(files: string[]): void {
-  const baseTmp = process.env.TTS_TMP_DIR || '/tmp/test-tts';
-  const allowedDir = path.resolve(baseTmp);
-  for (const file of files) {
-    // Only allow deletion of .mp3 files within the designated temp directory
-    const resolved = path.resolve(file);
-    if (!file.toLowerCase().endsWith('.mp3')) continue;
-    if (!(resolved.startsWith(allowedDir + path.sep) || resolved === allowedDir)) continue;
-    try {
-      fs.unlinkSync(resolved);
-      logger.info("Audio file deleted", sanitizeLogMeta({
-        event: "audio_cleanup_deleted",
-        file: resolved
-      }));
-    } catch (err) {
-      logger.warn("Audio file delete failed", sanitizeLogMeta({
-        event: "audio_cleanup_failed",
-        file: resolved,
-        error: err instanceof Error ? err.message : String(err)
-      }));
-    }
-  }
-}
-
-/**
  * TEST-ONLY: Reset singletons and allow credential override for testing.
  * @param {(() => GoogleCredentials | unknown) | null} [overrideCredsFn] - Optional override function for credentials.
  */
@@ -277,4 +249,4 @@ export function __resetSingletonsForTest(overrideCredsFn?: (() => GoogleCredenti
   }
 }
 
-export { getGoogleAuthCredentials, cleanupTempFiles };
+export { getGoogleAuthCredentials };

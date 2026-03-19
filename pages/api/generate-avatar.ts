@@ -10,28 +10,17 @@ import logger, { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
 import { sanitizeCharacterName } from "../../src/utils/security";
 import { extractJson } from "../../src/utils/parseClaudeJson";
-import rateLimit from "express-rate-limit";
+import { createRateLimiter } from "../../src/utils/rateLimit";
+import anthropic from "../../src/utils/anthropicClient";
 
-// Rate limiter: 5 requests per minute per IP (avatar generation is expensive)
-const avatarRateLimit = rateLimit({
-  windowMs: 60 * 1000,
-  max: 5,
-  message: {
-    error: "Too many avatar generation requests from this IP, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-           (req.headers['x-real-ip'] as string) ||
-           (req.connection?.remoteAddress) ||
-           (req.socket?.remoteAddress) ||
-           'unknown';
-  },
-});
+/** Rate limiter: 5 requests per minute per IP (avatar generation is expensive). */
+const avatarRateLimit = createRateLimiter(
+  5,
+  "Too many avatar generation requests from this IP, please try again later.",
+);
 
 /**
- * Loads GCP credentials from env var (raw JSON in Vercel, file path locally).
+ * Loads GCP credentials from env var (raw JSON string in Vercel, file path locally).
  */
 function loadGcpCredentials(): Record<string, unknown> {
   const raw = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
@@ -123,9 +112,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let genderOut: string | null = null;
 
   try {
-    const Anthropic = (await import("@anthropic-ai/sdk")).default;
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-
     logEvent("info", "avatar_generate_start", "Avatar generation started", sanitizeLogMeta({ name: sanitizedName }));
 
     // Step 1: Build image prompt using Claude

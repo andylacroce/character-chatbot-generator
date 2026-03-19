@@ -3,11 +3,11 @@
  * Returns service status for monitoring/uptime probes.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
 import { GoogleAuth } from 'google-auth-library';
 import fs from "fs";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
+import anthropic from "../../src/utils/anthropicClient";
 
 /**
  * Next.js API route handler for health checks.
@@ -25,9 +25,6 @@ export default async function handler(
   let claudeStatus = "ok";
   let claudeError = null;
   try {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error("Missing Anthropic API key");
-    const anthropic = new Anthropic({ apiKey });
     const result = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       system: "You are a health check bot.",

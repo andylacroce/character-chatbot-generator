@@ -105,9 +105,8 @@ async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): P
  * If Claude returns an invalid voice name, it will retry with error feedback.
  */
 export async function fetchVoiceConfigFromClaude(name: string, maxRetries = 3): Promise<VoiceConfig> {
-  const Anthropic = (await import('@anthropic-ai/sdk')).default;
   const { getClaudeModel } = await import('./claudeModelSelector');
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  const { default: anthropic } = await import('./anthropicClient');
 
   const systemPrompt = `You are a voice casting expert for Google Text-to-Speech.
 

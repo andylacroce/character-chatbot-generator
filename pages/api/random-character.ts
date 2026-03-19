@@ -4,12 +4,10 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import Anthropic from "@anthropic-ai/sdk";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
 import { extractJson } from "../../src/utils/parseClaudeJson";
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+import anthropic from "../../src/utils/anthropicClient";
 
 // Track all names shown to avoid repetition (resets on server restart)
 const recentNames: string[] = [];
