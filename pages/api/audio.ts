@@ -7,36 +7,23 @@ import fs from "fs";
 import path from "path";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import { getReplyCache } from "../../src/utils/cache";
-import OpenAI from "openai";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
-import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
-import rateLimit from "express-rate-limit";
+import { createRateLimiter } from "../../src/utils/rateLimit";
+import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
+import anthropic from "../../src/utils/anthropicClient";
 
 // Note: deterministic serialization is implemented in pages/api/chat.ts where it's used for audio URL encoding.
 
 // SYSTEM_PROMPT: Generalize to a Character Chatbot Generator persona
 const SYSTEM_PROMPT = `You are a helpful character chatbot. Respond concisely, helpfully, and in a friendly tone. Use the style, knowledge, and quirks of the selected character. Stay in character at all times. Keep responses to one paragraph maximum (100-120 words). Be concise and focused.`;
 
-// Rate limiter: 30 requests per minute per IP (higher than chat since audio files may be replayed)
-const audioRateLimit = rateLimit({
-  windowMs: 60 * 1000, // Rate limit window: 1 minute
-  max: 30, // Limit each IP to 30 requests per window
-  message: {
-    error: "Too many audio requests from this IP, please try again later.",
-  },
-  standardHeaders: true, // Include rate limit info in RateLimit-* response headers
-  legacyHeaders: false, // Disable deprecated X-RateLimit-* headers
-  keyGenerator: (req) => {
-    // Extract client IP across proxies/load balancers for accurate limiting
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-           (req.headers['x-real-ip'] as string) ||
-           (req.connection?.remoteAddress) ||
-           (req.socket?.remoteAddress) ||
-           'unknown';
-  },
-});
+/** Rate limiter: 30 requests per minute per IP (higher than chat since audio files may be replayed). */
+const audioRateLimit = createRateLimiter(
+  30,
+  "Too many audio requests from this IP, please try again later.",
+);
 
 function getOriginalTextForAudio(sanitizedFile: string): string | null {
   const txtFile = sanitizedFile.replace(/\.mp3$/, ".txt");
@@ -116,33 +103,8 @@ async function handler(
           botName,
           voiceConfig
         }));
-        // Determine if Studio voice (robust: check type and name)
-        const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
-        // Fallback: if type is missing, check name pattern
-        // (Covers cases where type is not set on static/dynamic configs)
-        // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
-        let selectedVoice = voiceConfig;
-        // If Studio, ensure only valid Studio voices are used
-        if (isStudio) {
-          const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
-          if (!validStudioVoices.includes(voiceConfig.name)) {
-            // fallback to en-US-Studio-M
-            selectedVoice = {
-              languageCodes: ['en-US'],
-              name: 'en-US-Studio-M',
-              ssmlGender: 1,
-              type: 'Studio',
-            };
-          }
-        }
-        let ssmlText;
-        if (isStudio) {
-          ssmlText = `<speak>${expectedText}</speak>`;
-        } else {
-          const pitchValue = selectedVoice.pitch || 0;
-          const rateValue = selectedVoice.rate || 1.0;
-          ssmlText = `<speak><prosody pitch=\"${pitchValue}st\" rate=\"${Math.round(rateValue * 100)}%\"> ${expectedText} </prosody></speak>`;
-        }
+        const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
+        const ssmlText = buildSsml(expectedText, selectedVoice);
         await synthesizeSpeechToFile({
           text: ssmlText,
           filePath: audioFilePath,
@@ -186,33 +148,8 @@ async function handler(
           txtContent
         }));
         try {
-          // Determine if Studio voice (robust: check type and name)
-          const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
-          // Fallback: if type is missing, check name pattern
-          // (Covers cases where type is not set on static/dynamic configs)
-          // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
-          let selectedVoice = voiceConfig;
-          // If Studio, ensure only valid Studio voices are used
-          if (isStudio) {
-            const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
-            if (!validStudioVoices.includes(voiceConfig.name)) {
-              // fallback to en-US-Studio-M
-              selectedVoice = {
-                languageCodes: ['en-US'],
-                name: 'en-US-Studio-M',
-                ssmlGender: 1,
-                type: 'Studio',
-              };
-            }
-          }
-          let ssmlText;
-          if (isStudio) {
-            ssmlText = `<speak>${expectedText}</speak>`;
-          } else {
-            const pitchValue = selectedVoice.pitch || 0;
-            const rateValue = selectedVoice.rate || 1.0;
-            ssmlText = `<speak><prosody pitch=\"${pitchValue}st\" rate=\"${Math.round(rateValue * 100)}%\"> ${expectedText} </prosody></speak>`;
-          }
+          const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
+          const ssmlText = buildSsml(expectedText as string, selectedVoice);
           await synthesizeSpeechToFile({
             text: ssmlText,
             filePath: audioFilePath,
@@ -246,25 +183,14 @@ async function handler(
         }
         if (originalText) {
           try {
-            const voiceConfig = await getVoiceConfigForCharacter(botName, gender);
-            // Determine if Studio voice (robust: check type and name)
-            const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
-            // Fallback: if type is missing, check name pattern
-            // (Covers cases where type is not set on static/dynamic configs)
-            // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
-            let ssmlText;
-            if (isStudio) {
-              ssmlText = `<speak>${originalText}</speak>`;
-            } else {
-              const pitchValue = voiceConfig.pitch || 0;
-              const rateValue = voiceConfig.rate || 1.0;
-              ssmlText = `<speak><prosody pitch=\"${pitchValue}st\" rate=\"${Math.round(rateValue * 100)}%\"> ${originalText} </prosody></speak>`;
-            }
+            const fetchedVoiceConfig = await getVoiceConfigForCharacter(botName, gender);
+            const selectedVoice = normalizeStudioVoice(fetchedVoiceConfig);
+            const ssmlText = buildSsml(originalText, selectedVoice);
             await synthesizeSpeechToFile({
               text: ssmlText,
               filePath: audioFilePath,
               ssml: true,
-              voice: voiceConfig,
+              voice: selectedVoice,
             });
             triedRegenerate = true;
             normalizedAudioFilePath = checkFileExists(audioFilePath);
@@ -277,67 +203,31 @@ async function handler(
             regenError = err;
           }
         }
-        // If still not found, try full OpenAI+TTS regen up to 3 times
+        // If still not found, try full Claude+TTS regen up to 3 times
         if (!found) {
-          const apiKey = process.env.OPENAI_API_KEY;
-          if (!apiKey) {
-            logEvent("error", "audio_regen_missing_api_key", "Missing OPENAI_API_KEY for audio regen", sanitizeLogMeta({
-              file: sanitizedFile
-            }));
-          } else {
-            const openai = new OpenAI({ apiKey });
-            for (let attempt = 1; attempt <= 3; attempt++) {
+          for (let attempt = 1; attempt <= 3; attempt++) {
               try {
-                logEvent("info", "audio_regen_openai_attempt", "Attempting OpenAI+TTS audio regen", sanitizeLogMeta({
+                logEvent("info", "audio_regen_claude_attempt", "Attempting Claude+TTS audio regen", sanitizeLogMeta({
                   file: sanitizedFile,
                   attempt
                 }));
                 // Use the filename (without .mp3) as the user message if possible
                 const userMessage = sanitizedFile.replace(/\.mp3$/, "");
-                const messages: ChatCompletionMessageParam[] = [
-                  { role: "system", content: SYSTEM_PROMPT },
-                  { role: "user", content: userMessage },
-                ];
-                const result = await openai.chat.completions.create({
-                  model: "gpt-4o",
-                  messages,
+                const result = await anthropic.messages.create({
+                  model: "claude-haiku-4-5-20251001",
+                  system: SYSTEM_PROMPT,
+                  messages: [{ role: "user", content: userMessage }],
                   max_tokens: 150,
                   temperature: 0.8,
-                  response_format: { type: "text" },
                 });
-                const aiReply = result.choices[0]?.message?.content?.trim() ?? "";
-                if (!aiReply) throw new Error("OpenAI returned empty message");
+                const aiReply = result.content[0]?.type === "text" ? result.content[0].text.trim() : "";
+                if (!aiReply) throw new Error("Claude returned empty message");
                 // Save .txt for future regen
                 const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
                 fs.writeFileSync(txtFilePath, aiReply, "utf8");
                 // Now TTS
-                // Determine if Studio voice (robust: check type and name)
-                const isStudio = (voiceConfig as CharacterVoiceConfig).type === 'Studio' || (voiceConfig as CharacterVoiceConfig).name?.includes('Studio');
-                // Fallback: if type is missing, check name pattern
-                // (Covers cases where type is not set on static/dynamic configs)
-                // Already included above, but ensure this logic is used everywhere SSML is generated for TTS
-                let selectedVoice = voiceConfig;
-                // If Studio, ensure only valid Studio voices are used
-                if (isStudio) {
-                  const validStudioVoices = ['en-US-Studio-M', 'en-US-Studio-O'];
-                  if (!validStudioVoices.includes(voiceConfig.name)) {
-                    // fallback to en-US-Studio-M
-                    selectedVoice = {
-                      languageCodes: ['en-US'],
-                      name: 'en-US-Studio-M',
-                      ssmlGender: 1,
-                      type: 'Studio',
-                    };
-                  }
-                }
-                let ssmlText;
-                if (isStudio) {
-                  ssmlText = `<speak>${aiReply}</speak>`;
-                } else {
-                  const pitchValue = selectedVoice.pitch || 0;
-                  const rateValue = selectedVoice.rate || 1.0;
-                  ssmlText = `<speak><prosody pitch=\"${pitchValue}st\" rate=\"${Math.round(rateValue * 100)}%\"> ${aiReply} </prosody></speak>`;
-                }
+                const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
+                const ssmlText = buildSsml(aiReply, selectedVoice);
                 await synthesizeSpeechToFile({
                   text: ssmlText,
                   filePath: audioFilePath,
@@ -346,7 +236,7 @@ async function handler(
                 });
                 normalizedAudioFilePath = checkFileExists(audioFilePath);
                 if (normalizedAudioFilePath) {
-                  logEvent("info", "audio_regen_openai_success", "Audio successfully regenerated via OpenAI+TTS", sanitizeLogMeta({
+                  logEvent("info", "audio_regen_claude_success", "Audio successfully regenerated via Claude+TTS", sanitizeLogMeta({
                     file: sanitizedFile,
                     attempt
                   }));
@@ -354,7 +244,7 @@ async function handler(
                   break;
                 }
               } catch (err) {
-                logEvent("error", "audio_regen_openai_failed", "OpenAI+TTS audio regen failed", sanitizeLogMeta({
+                logEvent("error", "audio_regen_claude_failed", "Claude+TTS audio regen failed", sanitizeLogMeta({
                   file: sanitizedFile,
                   attempt,
                   error: err instanceof Error ? err.message : String(err)
@@ -362,7 +252,6 @@ async function handler(
                 regenError = err;
               }
             }
-          }
         }
       }
       // If we just regenerated, wait for file to appear (retry up to 5 times)

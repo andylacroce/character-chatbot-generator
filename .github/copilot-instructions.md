@@ -14,28 +14,28 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
 - **Big picture (files to inspect first)**
   - UI: `app/` — Next.js 16+ app router and React components live in `app/components/`.
   - Server/API: `pages/api/` — server handlers are authoritative (not serverless edge functions).
-    - `pages/api/chat.ts` is the main complex endpoint (OpenAI calls, summarization, prompt caching, SSE streaming, TTS, continuation detection).
-    - `pages/api/validate-character.ts` — copyright/trademark validation using OpenAI (returns warning/caution/none levels).
+    - `pages/api/chat.ts` is the main complex endpoint (Claude calls, summarization, SSE streaming, TTS, continuation detection).
+    - `pages/api/validate-character.ts` — copyright/trademark validation using Claude (returns warning/caution/none levels).
     - `pages/api/random-character.ts` — generates public domain character suggestions with guardrails against modern copyrighted characters.
   - Auth/Zones: `proxy.ts` — origin validation and `x-api-key` (`API_SECRET`) enforcement for external requests.
-  - Utilities: `src/utils/` — `api.ts`, `tts.ts`, `storage.ts`, `cache.ts`, `logger.ts`, `openaiModelSelector.ts`.
-  - Model Selection: `src/utils/openaiModelSelector.ts` — **Production uses gpt-4o, development uses gpt-4o-mini**.
+  - Utilities: `src/utils/` — `api.ts`, `tts.ts`, `storage.ts`, `cache.ts`, `logger.ts`, `claudeModelSelector.ts`.
+  - Model Selection: `src/utils/claudeModelSelector.ts` — **Production uses claude-opus-4-6, development uses claude-haiku-4-5-20251001**.
 
 - **Client → Server flow (common change path)**
   - Client code (e.g. `app/components/useChatController.ts`) calls `authenticatedFetch('/api/chat', ...)` from `src/utils/api.ts`.
-  - `pages/api/chat.ts` performs OpenAI chat using gpt-4o (prod) or gpt-4o-mini (dev), may summarize when history > 50 messages, and can stream via SSE when `{ stream: true }` is passed.
+  - `pages/api/chat.ts` performs Claude chat using claude-opus-4-6 (prod) or claude-haiku-4-5-20251001 (dev), may summarize when history > 50 messages, and can stream via SSE when `{ stream: true }` is passed.
   - Smart continuation: detects truncated responses, wraps gracefully with "Would you like me to continue?" prompt, and resumes seamlessly when user says "yes".
   - If TTS is requested, server uses `src/utils/tts.ts` and a stable audio cache key (`getAudioCacheKey`) to avoid re-synthesis.
   - **Copyright validation flow**: `useBotCreation.ts` calls `/api/validate-character` before bot creation; if warning/caution level returned, shows `CopyrightWarningModal.tsx` with public domain alternatives from `/api/random-character`.
 
 - **Copyright protection system**
   - `/api/validate-character` — POST endpoint accepting `{ characterName: string }`, returns `{ level: "warning" | "caution" | "none", message?: string, suggestions?: string[] }`.
-    - Uses OpenAI to detect copyrighted/trademarked characters (rate-limited to 30 req/min).
+    - Uses Claude to detect copyrighted/trademarked characters (rate-limited to 30 req/min).
     - "warning": Clear copyright/trademark violation (e.g., Mickey Mouse, Harry Potter).
     - "caution": Possible trademark concern (e.g., Superman, Batman).
     - "none": Safe to use (public domain or generic names).
   - `/api/random-character` — GET endpoint returning `{ suggestions: string[] }` of public domain characters (pre-1928, mythology, historical figures).
-    - Excludes modern copyrighted characters via explicit OpenAI prompt guardrails.
+    - Excludes modern copyrighted characters via explicit Claude prompt guardrails.
   - `CopyrightWarningModal.tsx` — Modal component integrated into `BotCreator.module.css`, displays warning/caution messages with clickable suggestions.
   - Client integration: `useBotCreation.ts` hook handles `validateCharacterName()`, modal state, and suggestion selection via `handleValidationSuggestion()`.
   - **When changing validation logic**: Update both validation API and modal UI, then update tests in `tests/api/validateCharacter.test.ts` and `tests/app/components/CopyrightWarningModal.test.tsx`. Maintain 80%+ branch coverage.
@@ -47,7 +47,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
   - Experimental `optimizeCss` is enabled (Next.js 16). Avoid disabling unless debugging CSS regressions.
 
 - **Security & env**
-  - Required env vars: `OPENAI_API_KEY`, `API_SECRET`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` (or `config/gcp-key.json`).
+  - Required env vars: `ANTHROPIC_API_KEY`, `API_SECRET`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` (or `config/gcp-key.json`), `GOOGLE_CLOUD_PROJECT`.
   - Do NOT commit secrets (there is a `config/gcp-key.json` in repo for local development only — keep it out of VCS in real projects).
   - To add deployment domains, update `allowedOrigins` in `proxy.ts` — this is the canonical place for origin rules.
 
@@ -65,7 +65,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
 - **Tests & mocks**
   - Tests live in `tests/` and run with Jest. Many tests mock `authenticatedFetch` instead of raw `fetch`.
   - TTS tests call `tts.__resetSingletonsForTest()` to avoid cross-test state.
-  - When adding tests for client/server interactions, mock `authenticatedFetch` and any external API (OpenAI, GCP TTS).
+  - When adding tests for client/server interactions, mock `authenticatedFetch` and any external API (Anthropic Claude, GCP TTS).
 
 - **When changing APIs or shapes**
   - If you modify `pages/api/chat.ts` response fields, update `app/components/useChatController.ts`, `ChatMessage` rendering logic, and tests under `tests/`.

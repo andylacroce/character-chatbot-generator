@@ -1,25 +1,14 @@
 # Node
 node_modules/
-.next/
-
-# Env
-.env*
-config/gcp-key.json
-
-# Logs
-# Node
-node_modules/
 
 # Next.js build output
 .next/
-.next/cache/
-
-# Build output
 out/
 dist/
 
 # Environment files and secrets
 .env*
+!.env.example
 config/gcp-key.json
 
 # Logs
@@ -30,7 +19,6 @@ yarn-error.log*
 
 # Test coverage and Jest cache
 coverage/
-.jest/
 .jest-cache/
 .jest-test-results.json
 
@@ -42,7 +30,6 @@ coverage/
 
 # TypeScript build info
 *.tsbuildinfo
-tsconfig.tsbuildinfo
 
 # Next.js auto-generated type definitions
 next-env.d.ts
@@ -60,20 +47,14 @@ Thumbs.db
 
 # Temporary & local artifacts
 tmp/
-tmp/**
 *.tmp
-*.local
 *.bak
 
 # Public generated assets
 public/avatars/*
 
 # Documentation directories
-/docs/
 docs/
 
-# GitHub Actions workflows (do NOT ignore)
-!.github/
-!.github/workflows/
-
 # Local AI agent guidance (keep local overrides out of commits)
+.claude/

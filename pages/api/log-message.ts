@@ -10,41 +10,6 @@ import logger, { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/
 import { escapeHtml } from "../../src/utils/security";
 
 /**
- * Checks if an IP is a valid public IPv4 or IPv6 address.
- * @param {string} ip - The IP address to check.
- * @returns {boolean} True if the IP is public.
- */
-function isValidPublicIp(ip: string): boolean {
-  // Strip port number if present (only applicable to IPv4 addresses)
-  if (/^\d+\.\d+\.\d+\.\d+:\d+$/.test(ip)) {
-    ip = ip.split(":")[0];
-  }
-  // IPv4 address pattern
-  const ipv4 =
-    /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-  // IPv6 address pattern (permissive to match :: and full addresses)
-  const ipv6 = /^([\da-fA-F]{1,4}:){1,7}[\da-fA-F]{1,4}$|^::1$|^::$|^([\da-fA-F]{1,4}:){1,7}:$/;
-  // List of private IPv4 address ranges
-  const privateRanges = [
-    /^10\./,
-    /^127\./,
-    /^169\.254\./,
-    /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
-    /^192\.168\./,
-  ];
-  if (ipv4.test(ip)) {
-    if (privateRanges.some((r) => r.test(ip))) return false;
-    return true;
-  }
-  if (ipv6.test(ip)) {
-    // Exclude IPv6 loopback and link-local addresses
-    if (ip === "::1" || ip.startsWith("fe80:")) return false;
-    return true;
-  }
-  return false;
-}
-
-/**
  * Next.js API route handler for logging chat messages and events to storage (Vercel Blob or local).
  * Includes XSS-safe HTML escaping for logs.
  *
@@ -241,11 +206,5 @@ export default async function handler(
       error: error instanceof Error ? error.message : String(error)
     });
     res.status(500).json({ error: "Internal Server Error", requestId });
-    return;
-    logEvent("warn", "log_api_internal_error_info", "Internal Server Error", sanitizeLogMeta({
-      requestId
-    }));
   }
 }
-
-export { escapeHtml, isValidPublicIp };

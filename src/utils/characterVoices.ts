@@ -1,8 +1,9 @@
 import logger, { sanitizeLogMeta } from "./logger";
+import { extractJson } from "./parseClaudeJson";
 
 /**
- * Character voice configuration using OpenAI structured output → Google TTS pipeline.
- * Minimal code - OpenAI provides exact values, we pass them directly to Google TTS.
+ * Character voice configuration using Claude structured output → Google TTS pipeline.
+ * Minimal code - Claude provides exact values, we pass them directly to Google TTS.
  *
  * @module characterVoices
  */
@@ -54,7 +55,7 @@ function normalizeCharacterName(name: string): string {
 const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
 
 /**
- * Voice configuration from OpenAI (maps directly to Google TTS parameters).
+ * Voice configuration from Claude (maps directly to Google TTS parameters).
  */
 export interface VoiceConfig {
   gender: 'male' | 'female' | 'neutral';
@@ -71,9 +72,9 @@ export interface VoiceConfig {
 async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): Promise<boolean> {
   try {
     const { getTTSClient } = await import('./tts');
-    
+
     const client = getTTSClient();
-    
+
     // Attempt test synthesis to validate voice is available and functional
     const [response] = await client.synthesizeSpeech({
       input: { text: 'test' },
@@ -85,7 +86,7 @@ async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): P
         audioEncoding: 'MP3' as const,
       },
     });
-    
+
     // Audio content returned; voice is valid and usable
     return !!response.audioContent;
   } catch (err) {
@@ -100,14 +101,13 @@ async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): P
 }
 
 /**
- * Fetches complete voice configuration from OpenAI with retry logic.
- * If OpenAI returns an invalid voice name, it will retry with error feedback.
+ * Fetches complete voice configuration from Claude with retry logic.
+ * If Claude returns an invalid voice name, it will retry with error feedback.
  */
-export async function fetchVoiceConfigFromOpenAI(name: string, maxRetries = 3): Promise<VoiceConfig> {
-  const OpenAI = (await import('openai')).default;
-  const { getOpenAIModel } = await import('./openaiModelSelector');
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-  
+export async function fetchVoiceConfigFromClaude(name: string, maxRetries = 3): Promise<VoiceConfig> {
+  const { getClaudeModel } = await import('./claudeModelSelector');
+  const { default: anthropic } = await import('./anthropicClient');
+
   const systemPrompt = `You are a voice casting expert for Google Text-to-Speech.
 
 Return ONLY valid JSON with this exact schema:
@@ -125,24 +125,23 @@ Examples: en-US-Wavenet-D, en-GB-Wavenet-A, de-DE-Wavenet-B, ja-JP-Wavenet-C
 
 CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error feedback about an invalid voice, try a different variant.`;
 
-  const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-    { role: "system", content: systemPrompt },
+  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
     { role: "user", content: `Character: "${name}"\nProvide Google TTS voice configuration as JSON.` }
   ];
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const completion = await openai.chat.completions.create({
-        model: getOpenAIModel("text"),
+      const response = await anthropic.messages.create({
+        model: getClaudeModel("text-simple"),
+        system: systemPrompt,
         messages,
         max_tokens: 150,
         temperature: 0.3,
-        response_format: { type: "json_object" }
       });
 
-      const content = completion.choices[0]?.message?.content?.trim() || '{}';
+      const content = extractJson(response.content[0]?.type === "text" ? response.content[0].text : '{}');
       const config = JSON.parse(content) as VoiceConfig;
-      
+
       // Perform basic schema validation before API call
       const voiceNamePattern = /^[a-z]{2}-[A-Z]{2}-(Wavenet|Neural2|Studio|Standard|Journey|News|Polyglot)-[A-Z]$/;
       if (!config.voiceName || !voiceNamePattern.test(config.voiceName)) {
@@ -162,10 +161,10 @@ CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error f
 
       // Validate using actual Google TTS API (true validation)
       const isValid = await isValidGoogleTTSVoice(config.voiceName, config.languageCode || 'en-US');
-      
+
       if (!isValid) {
         if (attempt < maxRetries) {
-          logger.warn(`Voice validation failed on attempt ${attempt}, asking OpenAI to try another`, sanitizeLogMeta({
+          logger.warn(`Voice validation failed on attempt ${attempt}, asking Claude to try another`, sanitizeLogMeta({
             attempt,
             voiceName: config.voiceName,
             languageCode: config.languageCode
@@ -180,7 +179,7 @@ CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error f
       }
 
       // Voice validation succeeded; configuration is ready
-      logger.info("Valid voice configuration from OpenAI", sanitizeLogMeta({
+      logger.info("Valid voice configuration from Claude", sanitizeLogMeta({
         attempt,
         voiceName: config.voiceName,
         languageCode: config.languageCode
@@ -203,11 +202,11 @@ CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error f
     }
   }
 
-  throw new Error('Failed to get valid voice config from OpenAI');
+  throw new Error('Failed to get valid voice config from Claude');
 }
 
-// Exported helper to normalize OpenAI voice configs for unit testing
-export function normalizeOpenAIConfig(config: Partial<VoiceConfig>) {
+// Exported helper to normalize Claude voice configs for unit testing
+export function normalizeClaudeConfig(config: Partial<VoiceConfig>) {
   return {
     gender: config.gender || 'male',
     languageCode: config.languageCode || 'en-US',
@@ -219,7 +218,7 @@ export function normalizeOpenAIConfig(config: Partial<VoiceConfig>) {
 
 /**
  * Gets voice configuration for a character:
- * Uses OpenAI to get exact Google TTS parameters, then passes them directly.
+ * Uses Claude to get exact Google TTS parameters, then passes them directly.
  */
 export async function getVoiceConfigForCharacter(
   name: string,
@@ -227,23 +226,23 @@ export async function getVoiceConfigForCharacter(
 ): Promise<CharacterVoiceConfig> {
   const normalized = normalizeCharacterName(name);
   const cacheKey = genderOverride ? `${normalized}_${genderOverride}` : normalized;
-  
+
   // Check if voice config is already cached
   if (dynamicVoiceCache[cacheKey]) {
     return dynamicVoiceCache[cacheKey];
   }
-  
+
   let config: CharacterVoiceConfig;
-  
+
   try {
-    // Fetch voice configuration from OpenAI API
-    const voiceConfig = await fetchVoiceConfigFromOpenAI(normalized);
-    
+    // Fetch voice configuration from Claude API
+    const voiceConfig = await fetchVoiceConfigFromClaude(normalized);
+
     // Map gender string to SSML gender enum (apply override if provided)
     const effectiveGender = genderOverride || voiceConfig.gender;
     const ssmlGender = mapGenderToSsml(effectiveGender);
-    
-    // Create voice configuration directly from OpenAI response
+
+    // Create voice configuration directly from Claude response
     config = {
       languageCodes: [voiceConfig.languageCode],
       name: voiceConfig.voiceName,
@@ -252,9 +251,9 @@ export async function getVoiceConfigForCharacter(
       rate: voiceConfig.rate,
       type: detectVoiceType(voiceConfig.voiceName),
     };
-    
-    logger.info("Voice config from OpenAI", sanitizeLogMeta({
-      event: "tts_openai_voice",
+
+    logger.info("Voice config from Claude", sanitizeLogMeta({
+      event: "tts_claude_voice",
       character: normalized,
       genderOverride: genderOverride || 'none',
       voice: config.name,
@@ -268,10 +267,10 @@ export async function getVoiceConfigForCharacter(
       event: "tts_fallback_default",
       error: err instanceof Error ? err.message : String(err)
     }));
-    
+
     config = CHARACTER_VOICE_MAP['Default'];
   }
-  
+
   // Cache the configuration and return
   dynamicVoiceCache[cacheKey] = config;
   return config;

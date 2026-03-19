@@ -1,33 +1,20 @@
 /**
  * API endpoint for validating character names against copyright and trademark concerns.
- * Uses OpenAI to determine if a character is likely protected by copyright or trademark.
+ * Uses Claude to determine if a character is likely protected by copyright or trademark.
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import OpenAI from "openai";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
-import { getOpenAIModel } from "../../src/utils/openaiModelSelector";
-import rateLimit from "express-rate-limit";
+import { getClaudeModel } from "../../src/utils/claudeModelSelector";
+import { createRateLimiter } from "../../src/utils/rateLimit";
+import { extractJson } from "../../src/utils/parseClaudeJson";
+import anthropic from "../../src/utils/anthropicClient";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-
-// Rate limiter: 30 requests per minute per IP
-const validationRateLimit = rateLimit({
-  windowMs: 60 * 1000,
-  max: 30,
-  message: {
-    error: "Too many validation requests from this IP, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-           (req.headers['x-real-ip'] as string) ||
-           (req.connection?.remoteAddress) ||
-           (req.socket?.remoteAddress) ||
-           'unknown';
-  },
-});
+/** Rate limiter: 30 requests per minute per IP. */
+const validationRateLimit = createRateLimiter(
+  30,
+  "Too many validation requests from this IP, please try again later.",
+);
 
 export interface CharacterValidationResult {
   characterName: string;
@@ -60,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { name } = req.body;
-  
+
   if (!name || typeof name !== 'string' || !name.trim()) {
     res.status(400).json({ error: "Valid character name required" });
     return;
@@ -69,14 +56,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const characterName = name.trim();
 
   try {
-    const model = getOpenAIModel("text");
-    
-    const completion = await openai.chat.completions.create({
+    const model = getClaudeModel("text-simple");
+
+    const response = await anthropic.messages.create({
       model,
-      messages: [
-        {
-          role: "system",
-          content: `You are a copyright and trademark expert AI. Analyze character names to determine if they are:
+      system: `You are a copyright and trademark expert AI. Analyze character names to determine if they are:
 1. In the public domain (safe to use)
 2. Protected by copyright/trademark (not safe)
 
@@ -98,8 +82,8 @@ Return ONLY valid JSON with this exact schema:
 warningLevel guide:
 - "none": Clearly public domain (historical figures, ancient mythology, pre-1928 classics)
 - "caution": Uncertain status or lesser-known character
-- "warning": Clearly copyrighted/trademarked (Disney, Marvel, modern franchises, etc.)`
-        },
+- "warning": Clearly copyrighted/trademarked (Disney, Marvel, modern franchises, etc.)`,
+      messages: [
         {
           role: "user",
           content: `Analyze this character name for copyright/trademark concerns: "${characterName}"\n\nProvide validation result as JSON.`
@@ -107,10 +91,9 @@ warningLevel guide:
       ],
       max_tokens: 250,
       temperature: 0.3,
-      response_format: { type: "json_object" }
     });
 
-    const content = completion.choices[0]?.message?.content?.trim() || '{}';
+    const content = extractJson(response.content[0]?.type === "text" ? response.content[0].text : '{}');
     const validation = JSON.parse(content);
 
     const result: CharacterValidationResult = {
@@ -134,7 +117,7 @@ warningLevel guide:
       characterName,
       error: err instanceof Error ? err.message : String(err)
     }));
-    
+
     // On error, default to safe (allow continuation but with caution)
     res.status(200).json({
       characterName,

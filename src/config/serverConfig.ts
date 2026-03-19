@@ -4,19 +4,19 @@ export const AVATAR_TIMEOUT_MS = 60_000; // 60 seconds
 
 // Shared personality template constants
 export const RESPONSE_CONSTRAINTS = `Keep responses under 100 words. Always finish your current thought with proper punctuation before stopping.
-If telling a story, reach a natural pause point or cliffhanger. Never trail off mid-sentence.`;
+If telling a story, reach a natural pause point or cliffhanger. Never trail off mid-sentence.
+Never use action emotes or stage directions (e.g. *smiles*, *narrows eyes*, *laughs*). Speak only in dialogue and prose.`;
 
 /**
- * Generates a character-specific personality prompt using OpenAI.
+ * Generates a character-specific personality prompt using Claude.
  * Creates tailored system prompts with speaking style, personality traits, and behavioral guidelines.
  */
 export async function generatePersonalityPrompt(characterName: string): Promise<string> {
   try {
-    const OpenAI = (await import('openai')).default;
-    const { getOpenAIModel } = await import('../utils/openaiModelSelector');
-    
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-    
+    const { getClaudeModel } = await import('../utils/claudeModelSelector');
+    const { extractJson } = await import('../utils/parseClaudeJson');
+    const { default: anthropic } = await import('../utils/anthropicClient');
+
     const systemPrompt = `You are a character personality expert. Create a detailed system prompt for roleplaying as the given character.
 
 Return ONLY valid JSON with this schema:
@@ -35,18 +35,17 @@ Guidelines:
 - Identify key knowledge areas
 - Describe how they interact with others`;
 
-    const completion = await openai.chat.completions.create({
-      model: getOpenAIModel("text"),
+    const response = await anthropic.messages.create({
+      model: getClaudeModel("text"),  // personality quality affects all chat interactions
+      system: systemPrompt,
       messages: [
-        { role: "system", content: systemPrompt },
         { role: "user", content: `Character: "${characterName}"\n\nProvide character personality configuration as JSON.` }
       ],
       max_tokens: 300,
       temperature: 0.4,
-      response_format: { type: "json_object" }
     });
 
-    const content = completion.choices[0]?.message?.content?.trim() || '{}';
+    const content = extractJson(response.content[0]?.type === "text" ? response.content[0].text : '{}');
     const config = JSON.parse(content);
 
     // Build the system prompt from the structured data
