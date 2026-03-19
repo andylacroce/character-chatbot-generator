@@ -65,7 +65,7 @@ export default async function handler(
         credentials: credentials as Record<string, unknown>,
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],
       });
-      ttsClient = new textToSpeech.TextToSpeechClient({ auth });
+      ttsClient = new textToSpeech.TextToSpeechClient({ auth: auth as never });
     } else {
       logEvent("info", "health_tts_adc_fallback", "Falling back to Application Default Credentials (ADC) for TTS client", sanitizeLogMeta({ requestId }));
       ttsClient = new textToSpeech.TextToSpeechClient();

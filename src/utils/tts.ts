@@ -104,7 +104,7 @@ export function getTTSClient() {
     if (authClient) {
       // Pass GoogleAuth instance to provide required methods (e.g., getUniverseDomain)
       // that the @google-cloud client depends on
-      ttsClient = new textToSpeech.TextToSpeechClient({ auth: authClient });
+      ttsClient = new textToSpeech.TextToSpeechClient({ auth: authClient as never });
     } else {
       // Credentials not provided; client will use Application Default Credentials (ADC)
       logger.info('No explicit Google credentials found; falling back to Application Default Credentials (ADC)');
