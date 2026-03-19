@@ -36,7 +36,7 @@ Guidelines:
 - Describe how they interact with others`;
 
     const response = await anthropic.messages.create({
-      model: getClaudeModel("text"),  // personality quality affects all chat interactions
+      model: getClaudeModel("text-simple"),  // one-time structured JSON task; haiku is sufficient
       system: systemPrompt,
       messages: [
         { role: "user", content: `Character: "${characterName}"\n\nProvide character personality configuration as JSON.` }

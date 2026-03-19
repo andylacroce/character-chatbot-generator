@@ -18,12 +18,15 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
     - `pages/api/validate-character.ts` — copyright/trademark validation using Claude (returns warning/caution/none levels).
     - `pages/api/random-character.ts` — generates public domain character suggestions with guardrails against modern copyrighted characters.
   - Auth/Zones: `proxy.ts` — origin validation and `x-api-key` (`API_SECRET`) enforcement for external requests.
-  - Utilities: `src/utils/` — `api.ts`, `tts.ts`, `storage.ts`, `cache.ts`, `logger.ts`, `claudeModelSelector.ts`.
-  - Model Selection: `src/utils/claudeModelSelector.ts` — **Production uses claude-opus-4-6, development uses claude-haiku-4-5-20251001**.
+  - Utilities: `src/utils/` — `api.ts`, `tts.ts`, `storage.ts`, `cache.ts`, `logger.ts`, `claudeModelSelector.ts`, `anthropicClient.ts` (singleton Anthropic SDK client), `parseClaudeJson.ts`, `voiceHelpers.ts`, `voiceConfigPersistence.ts`, `characterVoices.ts`, `security.ts`, `rateLimit.ts`, `conversationSummarizer.ts`.
+  - Model Selection: `src/utils/claudeModelSelector.ts` — three tiers:
+    - `"text"` (chat responses only): **prod `claude-sonnet-4-6` / dev `claude-haiku-4-5-20251001`**
+    - `"text-simple"` (personality generation, validation, voice config, short lists): always `claude-haiku-4-5-20251001`
+    - `"image"` (avatar): always `imagen-3.0-fast-generate-001` via Vertex AI
 
 - **Client → Server flow (common change path)**
   - Client code (e.g. `app/components/useChatController.ts`) calls `authenticatedFetch('/api/chat', ...)` from `src/utils/api.ts`.
-  - `pages/api/chat.ts` performs Claude chat using claude-opus-4-6 (prod) or claude-haiku-4-5-20251001 (dev), may summarize when history > 50 messages, and can stream via SSE when `{ stream: true }` is passed.
+  - `pages/api/chat.ts` performs Claude chat using `claude-sonnet-4-6` (prod) or `claude-haiku-4-5-20251001` (dev), may summarize when history > 50 messages, and can stream via SSE when `{ stream: true }` is passed. Personality generation (`src/config/serverConfig.ts`) uses `"text-simple"` (always haiku) since it is a one-time structured JSON task.
   - Smart continuation: detects truncated responses, wraps gracefully with "Would you like me to continue?" prompt, and resumes seamlessly when user says "yes".
   - If TTS is requested, server uses `src/utils/tts.ts` and a stable audio cache key (`getAudioCacheKey`) to avoid re-synthesis.
   - **Copyright validation flow**: `useBotCreation.ts` calls `/api/validate-character` before bot creation; if warning/caution level returned, shows `CopyrightWarningModal.tsx` with public domain alternatives from `/api/random-character`.
@@ -45,6 +48,11 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
   - Typical final server payload fields consumed by the client: `{ reply: string, audioFileUrl?: string, done: true }`.
   - If you change those fields, update `useChatController` and all client tests that parse stream frames.
   - Experimental `optimizeCss` is enabled (Next.js 16). Avoid disabling unless debugging CSS regressions.
+
+- **Module system (important — do not regress)**
+  - `package.json` does **not** have `"type": "module"`. Removing it fixed a Vercel `ERR_REQUIRE_ESM` crash where Next.js's CJS serverless launcher could not `require()` API route output files.
+  - `next.config.mjs` (renamed from `.js`) uses an explicit `.mjs` extension so Node.js treats it as ESM without needing a package-level `"type"` field.
+  - Do not add `"type": "module"` back to `package.json`. ESM source files (TypeScript, `import`/`export`) work fine — Next.js/SWC handles compilation.
 
 - **Security & env**
   - Required env vars: `ANTHROPIC_API_KEY`, `API_SECRET`, `GOOGLE_APPLICATION_CREDENTIALS_JSON` (or `config/gcp-key.json`), `GOOGLE_CLOUD_PROJECT`.

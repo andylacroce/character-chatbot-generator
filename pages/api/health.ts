@@ -29,9 +29,9 @@ export default async function handler(
       model: "claude-haiku-4-5-20251001",
       system: "You are a health check bot.",
       messages: [{ role: "user", content: "ping" }],
-      max_tokens: 1,
+      max_tokens: 10,
     });
-    if (!result || !result.content || !result.content[0]) {
+    if (!result?.content?.[0] || result.content[0].type !== "text") {
       throw new Error("No valid Claude response");
     }
   } catch (err: unknown) {

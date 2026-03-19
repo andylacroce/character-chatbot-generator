@@ -186,11 +186,8 @@ describe('random-character API', () => {
         // With Claude, system prompt is top-level `system` param
         const callArgs = mockCreate.mock.calls[0]?.[0];
         const systemPrompt = callArgs?.system;
-        expect(systemPrompt).toContain('TRULY UNIQUE');
-        expect(systemPrompt).toContain('creative');
-        expect(systemPrompt).toContain('CATEGORY DISTRIBUTION');
-        expect(systemPrompt).toContain('predictable');
-        expect(systemPrompt).toContain('lesser-known');
+        expect(systemPrompt).toContain('public domain');
+        expect(systemPrompt).toContain('different culture');
     });
 
     it('requests category diversity in user prompt', async () => {
@@ -208,10 +205,8 @@ describe('random-character API', () => {
         // With Claude, messages[0] is the user message
         const callArgs = mockCreate.mock.calls[0]?.[0];
         const userPrompt = callArgs?.messages?.[0]?.content;
-        expect(userPrompt).toContain('DIFFERENT categories');
-        expect(userPrompt).toContain('creative');
-        expect(userPrompt).toContain('exploratory');
-        expect(userPrompt).toContain('distinct category');
+        expect(userPrompt).toContain('diverse cultures');
+        expect(userPrompt).toContain('public domain');
     });
 
     it('retries once when all suggestions are already in recentNames (line 90)', async () => {

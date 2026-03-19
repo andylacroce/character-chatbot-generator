@@ -18,8 +18,7 @@ function normalizeSuggestions(items: string[]): string[] {
   const normalized: string[] = [];
   for (const item of items) {
     const trimmed = item.trim();
-    if (!trimmed) continue;
-    if (seen.has(trimmed)) continue;
+    if (!trimmed || seen.has(trimmed)) continue;
     seen.add(trimmed);
     normalized.push(trimmed);
   }
@@ -27,32 +26,22 @@ function normalizeSuggestions(items: string[]): string[] {
 }
 
 async function fetchSuggestions(exclusionList: string): Promise<string[]> {
-  const model = getClaudeModel("text-simple");
+  const model = getClaudeModel("text");
   const response = await anthropic.messages.create({
     model,
-    system: `You are a creative name generator for chatbots. Your goal is to provide TRULY UNIQUE and VARIED public domain character suggestions, pulling from all time periods and cultures. Return a JSON object with a single field "suggestions" containing 8 to 10 WELL-KNOWN public domain character names (no explanations). Each call should explore DIFFERENT categories and time periods—do NOT repeat common patterns.
+    system: `You are a character name generator for chatbots. Return a JSON object: { "suggestions": [...] } containing 8–10 well-known public domain character names.
 
-CATEGORY DISTRIBUTION REQUIREMENT:
-- Spread across distinct categories: mythology (any culture), classic literature, historical figures, folklore/legends, early science/arts, ancient heroes, religious texts, epic poetry
-- AVOID clustering similar types (e.g., 2 philosophers, 2 warriors, 2 literary detectives)
+Each name must come from a genuinely different culture, mythology, or tradition — no two from the same one. Span multiple continents and eras. Mix genders, roles, and archetypes freely.
 
-IMPORTANT GUARDRAILS:
-- Only suggest characters that are firmly in the public domain (typically pre-1928 for US works)
-- AVOID any character from modern media, movies, TV shows, video games, or comics created after 1928
-- AVOID characters that are trademarked (e.g., Mickey Mouse, Superman, Harry Potter, Mario, Spider-Man)
-- AVOID the most predictable/popular choices unless explicitly constrained
-- Include lesser-known but still well-recognizable figures to increase variety
-- AVOID obscure or extremely local folk characters; suggestions must be widely recognizable
-
-Return ONLY valid JSON, for example: { "suggestions": ["Cleopatra", "Anansi", "Don Quixote", "Merlin", "Ada Lovelace"] }`,
+Only suggest public domain characters (pre-1928 US works, or mythological/historical figures). No trademarked or modern media characters. Return ONLY valid JSON, no explanations.`,
     messages: [
       {
         role: "user",
-        content: `${exclusionList}Suggest 8 to 10 well-known public domain character names from DIFFERENT categories and time periods as a JSON object with a "suggestions" array. Be creative and exploratory—avoid default/predictable answers. Ensure each suggestion comes from a distinct category. Reply ONLY with valid JSON.`
+        content: `${exclusionList}Suggest 8–10 public domain characters from diverse cultures, eras, and traditions. Each from a different one. Reply ONLY with valid JSON: { "suggestions": [...] }`,
       }
     ],
-    max_tokens: 200,
-    temperature: 0.9,
+    max_tokens: 250,
+    temperature: 1.0,
   });
 
   const raw = extractJson(response.content[0]?.type === "text" ? response.content[0].text : '{}');
@@ -62,28 +51,21 @@ Return ONLY valid JSON, for example: { "suggestions": ["Cleopatra", "Anansi", "D
     : [];
 }
 
-/**
- * Next.js API route handler for generating a random character name using Claude.
- * Tracks all previously shown names to prevent repetition.
- */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
-    logEvent("warn", "random_character_method_not_allowed", "RandomCharacter API method not allowed", sanitizeLogMeta({
-      method: req.method
-    }));
+    logEvent("warn", "random_character_method_not_allowed", "RandomCharacter API method not allowed", sanitizeLogMeta({ method: req.method }));
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
   try {
     const exclusionList = recentNames.length > 0
-      ? `Do NOT suggest any of these recently used names: ${recentNames.join(", ")}. `
+      ? `Do NOT suggest any of these recently used names: ${recentNames.join(", ")}.\n\n`
       : "";
 
     let suggestions = normalizeSuggestions(await fetchSuggestions(exclusionList));
     const fresh = suggestions.filter(s => !recentNames.includes(s));
 
-    // If Claude returned only names we've already shown, retry once with same exclusion list
     if (fresh.length === 0 && suggestions.length > 0) {
       suggestions = normalizeSuggestions(await fetchSuggestions(exclusionList));
     }
@@ -91,29 +73,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const pool = suggestions.filter(s => !recentNames.includes(s));
 
     if (pool.length === 0) {
-      logEvent("error", "random_character_failed", "Failed to generate fresh character suggestions", sanitizeLogMeta({
-        recentNamesCount: recentNames.length
-      }));
+      logEvent("error", "random_character_failed", "Failed to generate fresh character suggestions", sanitizeLogMeta({ recentNamesCount: recentNames.length }));
       res.status(500).json({ error: "Failed to generate character suggestions" });
       return;
     }
 
     const chosen = pool[0];
-
-    // Track all suggestions shown to maximise non-repetition across future calls
     for (const s of pool) {
-      if (!recentNames.includes(s)) {
-        recentNames.push(s);
-      }
+      if (!recentNames.includes(s)) recentNames.push(s);
     }
-    while (recentNames.length > MAX_RECENT_NAMES) {
-      recentNames.shift();
-    }
+    while (recentNames.length > MAX_RECENT_NAMES) recentNames.shift();
 
     logEvent("info", "random_character_generated", "Random character generated", sanitizeLogMeta({
       chosen,
       suggestionsCount: pool.length,
-      recentNamesCount: recentNames.length
+      recentNamesCount: recentNames.length,
     }));
 
     res.status(200).json({ suggestions: pool, name: chosen });

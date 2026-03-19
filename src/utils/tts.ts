@@ -188,42 +188,6 @@ export async function synthesizeSpeechToFile({
         event: "audio_create",
         filePath: safeFile
       }));
-      // Clean up older .mp3 files in temp directory with strict safety checks
-      try {
-        const tmpDirRaw = path.dirname(safeFile);
-        const tmpDir = path.resolve(tmpDirRaw);
-        const systemTmp = path.resolve('/tmp');
-        // Restrict cleanup to system temp directory to prevent unsafe deletions
-        if (tmpDir.startsWith(systemTmp + path.sep) || tmpDir === systemTmp) {
-          const newFile = path.basename(filePath);
-          const files = fs.readdirSync(tmpDir);
-          for (const file of files) {
-            // Target .mp3 files only; skip the newly created audio file
-            if (!file.toLowerCase().endsWith('.mp3') || file === newFile) continue;
-            try {
-              const candidate = path.resolve(path.join(tmpDir, file));
-              // Verify resolved path stays within temp directory boundary
-              if (!(candidate.startsWith(tmpDir + path.sep) || candidate === tmpDir)) continue;
-              fs.unlinkSync(candidate);
-              logger.info("Audio file deleted", sanitizeLogMeta({
-                event: "audio_cleanup_deleted",
-                file: candidate
-              }));
-            } catch (err) {
-              logger.warn("Audio file delete failed", sanitizeLogMeta({
-                event: "audio_cleanup_failed",
-                file,
-                error: err instanceof Error ? err.message : String(err)
-              }));
-            }
-          }
-        }
-      } catch (err) {
-        logger.warn("Audio cleanup error", sanitizeLogMeta({
-          event: "audio_cleanup_error",
-          error: err instanceof Error ? err.message : String(err)
-        }));
-      }
       return;
     } catch (err: unknown) {
       lastError = err;
