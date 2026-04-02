@@ -108,10 +108,11 @@ describe('random-character API', () => {
         await handler(second.req, second.res);
         const secondData = second.res._getJSONData();
 
-        expect(firstData.name).toBe('Alpha');
+        // name is chosen randomly from the pool
+        expect(['Alpha', 'Bravo', 'Charlie', 'Delta']).toContain(firstData.name);
         // Second call returns entirely fresh names — none from the first batch
         expect(secondData.suggestions).toEqual(['Echo', 'Foxtrot', 'Golf', 'Hotel']);
-        expect(secondData.name).toBe('Echo');
+        expect(['Echo', 'Foxtrot', 'Golf', 'Hotel']).toContain(secondData.name);
     });
 
     it('returns 500 when Claude errors', async () => {
@@ -151,7 +152,7 @@ describe('random-character API', () => {
         const first = createMocks({ method: 'GET' });
         await handler(first.req, first.res);
         const firstData = first.res._getJSONData();
-        expect(firstData.name).toBe('Alpha');
+        expect(['Alpha', 'Beta', 'Gamma']).toContain(firstData.name);
 
         // Second call - check exclusion list is in user message (Claude messages[0] is user)
         mockCreate.mockClear();
@@ -168,7 +169,8 @@ describe('random-character API', () => {
         // With Claude, messages[0] is the user message (system is top-level param)
         const callArgs = mockCreate.mock.calls[0]?.[0];
         expect(callArgs?.messages?.[0]?.content).toContain('Do NOT suggest any of these recently used names');
-        expect(callArgs?.messages?.[0]?.content).toContain('Alpha');
+        // firstData.name was randomly chosen from the pool, so it should appear in the exclusion list
+        expect(callArgs?.messages?.[0]?.content).toContain(firstData.name);
     });
 
     it('uses creative and exploratory system prompt', async () => {
@@ -209,7 +211,7 @@ describe('random-character API', () => {
         expect(userPrompt).toContain('public domain');
     });
 
-    it('retries once when all suggestions are already in recentNames (line 90)', async () => {
+    it('returns 500 when all suggestions are already in recentNames', async () => {
         const handler = (await import('../../pages/api/random-character')).default;
 
         // First call: populate recentNames with 'OldA' and 'OldB'
@@ -220,23 +222,16 @@ describe('random-character API', () => {
         await handler(seed.req, seed.res);
         expect(seed.res._getStatusCode()).toBe(200);
 
-        // Second call: first fetch returns only names already in recentNames → retry triggers
+        // Second call: Claude returns only names already in recentNames → pool is empty → 500
         mockCreate.mockResolvedValueOnce({
             content: [{ type: "text", text: JSON.stringify({ suggestions: ['OldA', 'OldB'] }) }]
-        });
-        // Retry fetch returns fresh names
-        mockCreate.mockResolvedValueOnce({
-            content: [{ type: "text", text: JSON.stringify({ suggestions: ['NewC', 'NewD'] }) }]
         });
 
         const second = createMocks({ method: 'GET' });
         await handler(second.req, second.res);
-        expect(second.res._getStatusCode()).toBe(200);
-        const data = second.res._getJSONData();
-        expect(data.suggestions).toContain('NewC');
-        expect(data.name).toBe('NewC');
-        // Two calls were made for the second request (initial + retry)
-        expect(mockCreate).toHaveBeenCalledTimes(3);
+        expect(second.res._getStatusCode()).toBe(500);
+        // Only one call was made for the second request (no retry)
+        expect(mockCreate).toHaveBeenCalledTimes(2);
     });
 
     it('skips empty-string suggestions during normalization (line 23 branch)', async () => {

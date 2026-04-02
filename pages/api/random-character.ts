@@ -29,18 +29,18 @@ async function fetchSuggestions(exclusionList: string): Promise<string[]> {
   const model = getClaudeModel("text");
   const response = await anthropic.messages.create({
     model,
-    system: `You are a character name generator for chatbots. Return a JSON object: { "suggestions": [...] } containing 8–10 well-known public domain character names.
+    system: `You are a character name generator for chatbots. Return a JSON object: { "suggestions": [...] } containing exactly 100 well-known public domain character names.
 
-Each name must come from a genuinely different culture, mythology, or tradition — no two from the same one. Span multiple continents and eras. Mix genders, roles, and archetypes freely.
+Maximize diversity: span as many different cultures, mythologies, traditions, continents, eras, genders, roles, and archetypes as possible. Avoid clustering — do not repeat the same culture or era more than a few times across the full list.
 
 Only suggest public domain characters (pre-1928 US works, or mythological/historical figures). No trademarked or modern media characters. Return ONLY valid JSON, no explanations.`,
     messages: [
       {
         role: "user",
-        content: `${exclusionList}Suggest 8–10 public domain characters from diverse cultures, eras, and traditions. Each from a different one. Reply ONLY with valid JSON: { "suggestions": [...] }`,
+        content: `${exclusionList}Suggest exactly 100 public domain characters spanning as many diverse cultures, eras, and traditions as possible. Reply ONLY with valid JSON: { "suggestions": [...] }`,
       }
     ],
-    max_tokens: 250,
+    max_tokens: 1500,
     temperature: 1.0,
   });
 
@@ -63,13 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? `Do NOT suggest any of these recently used names: ${recentNames.join(", ")}.\n\n`
       : "";
 
-    let suggestions = normalizeSuggestions(await fetchSuggestions(exclusionList));
-    const fresh = suggestions.filter(s => !recentNames.includes(s));
-
-    if (fresh.length === 0 && suggestions.length > 0) {
-      suggestions = normalizeSuggestions(await fetchSuggestions(exclusionList));
-    }
-
+    const suggestions = normalizeSuggestions(await fetchSuggestions(exclusionList));
     const pool = suggestions.filter(s => !recentNames.includes(s));
 
     if (pool.length === 0) {
@@ -78,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    const chosen = pool[0];
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
     for (const s of pool) {
       if (!recentNames.includes(s)) recentNames.push(s);
     }
