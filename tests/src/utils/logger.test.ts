@@ -27,6 +27,12 @@ describe('logger utilities', () => {
     expect((result.arr as string)).toBe('[Array(7)]');
   });
 
+  it('sanitizeLogMeta passes through arrays with 5 or fewer items unchanged', () => {
+    const meta: Record<string, unknown> = { smallArr: [1, 2, 3] };
+    const result = loggerModule.sanitizeLogMeta(meta);
+    expect(result.smallArr).toEqual([1, 2, 3]);
+  });
+
   it('logEvent and logger methods call console methods appropriately', () => {
     const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -46,6 +52,21 @@ describe('logger utilities', () => {
 
     logSpy.mockRestore();
     warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('logger.info and logger.error with non-object meta (scalar)', () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Pass a scalar (non-object) meta: exercises `{ data: meta }` wrapper branch
+    loggerModule.logger.info('info with scalar', 42 as unknown as Record<string, unknown>);
+    expect(logSpy).toHaveBeenCalled();
+
+    loggerModule.logger.error('error with string meta', 'oops' as unknown as Record<string, unknown>);
+    expect(errorSpy).toHaveBeenCalled();
+
+    logSpy.mockRestore();
     errorSpy.mockRestore();
   });
 

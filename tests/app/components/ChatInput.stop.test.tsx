@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ChatInput from "../../../app/components/ChatInput";
 
@@ -84,5 +84,34 @@ describe("ChatInput stop button", () => {
     );
 
     expect(screen.queryByTestId("chat-audio-stop")).not.toBeInTheDocument();
+  });
+
+  it("handleStopAudio skips focus when inputRef.current is null (L38 if[1])", async () => {
+    const onStopAudio = jest.fn();
+    const inputRef = React.createRef<HTMLInputElement>();
+
+    render(
+      <ChatInput
+        input=""
+        setInput={() => {}}
+        onSend={() => {}}
+        onKeyDown={() => {}}
+        loading={false}
+        apiAvailable={true}
+        inputRef={inputRef}
+        audioEnabled={true}
+        onAudioToggle={() => {}}
+        onStopAudio={onStopAudio}
+        isAudioPlaying
+      />
+    );
+
+    const stopBtn = await screen.findByTestId("chat-audio-stop");
+    // Manually null out the ref after render so the focus branch is skipped
+    (inputRef as React.MutableRefObject<HTMLInputElement | null>).current = null;
+    fireEvent.click(stopBtn);
+    expect(onStopAudio).toHaveBeenCalledTimes(1);
+    // inputRef.current was null when clicked, so focus branch is skipped
+    expect(inputRef.current).toBeNull();
   });
 });

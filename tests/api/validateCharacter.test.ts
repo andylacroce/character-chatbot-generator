@@ -270,4 +270,40 @@ describe('validate-character API', () => {
         await handler(req, res);
         expect(res._getStatusCode()).toBe(200);
     });
+
+    it('falls back to empty JSON when Claude returns non-text content type (L96 cond-expr[1])', async () => {
+        mockCreate.mockResolvedValueOnce({
+            content: [{ type: 'image' }]
+        });
+        const handler = (await import('../../pages/api/validate-character')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Test' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        // Falls back to safe defaults when JSON.parse('{}') has no fields
+        expect(res._getJSONData().warningLevel).toBe('none');
+    });
+
+    it('uses default true when isPublicDomain is absent from Claude response (L101 binary-expr[1])', async () => {
+        mockCreate.mockResolvedValueOnce({
+            content: [{
+                type: 'text',
+                text: JSON.stringify({ isSafe: true, warningLevel: 'none' })
+            }]
+        });
+        const handler = (await import('../../pages/api/validate-character')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Test' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        // isPublicDomain is undefined → ?? true → defaults to true
+        expect(res._getJSONData().isPublicDomain).toBe(true);
+    });
+
+    it('covers non-Error thrown in catch (L118 cond-expr[1])', async () => {
+        mockCreate.mockRejectedValueOnce('plain rejection string');
+        const handler = (await import('../../pages/api/validate-character')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Test' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        expect(res._getJSONData().isSafe).toBe(true);
+    });
 });

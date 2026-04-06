@@ -101,4 +101,33 @@ describe('storage migration helper', () => {
     const result = getJSON('nonexistent');
     expect(result).toBeNull();
   });
+
+  it('setVersionedJSON uses default version=1 when not specified', () => {
+    // Exercises the default-arg branch: version = 1
+    const key = 'test-default-version';
+    setVersionedJSON(key, { flag: true });
+    const retrieved = getVersionedJSON<{ flag: boolean }>(key);
+    expect(retrieved).not.toBeNull();
+    expect(retrieved!.v).toBe(1);
+    expect(retrieved!.payload).toEqual({ flag: true });
+  });
+
+  it('migrateToVersioned uses default targetVersion=1 when not specified', () => {
+    // Exercises the default-arg branch: targetVersion = 1
+    const key = 'test-default-target-version';
+    storage.setItem(key, JSON.stringify({ name: 'Alice' }));
+    const result = migrateToVersioned(key);
+    expect(result).not.toBeNull();
+    expect(result!.v).toBe(1);
+    expect(result!.payload).toEqual({ name: 'Alice' });
+  });
+
+  it('removeItem falls back to in-memory when localStorage is unavailable', () => {
+    // Force storageAvailable() to return false by making localStorage.removeItem throw
+    const orig = Storage.prototype.removeItem;
+    Storage.prototype.removeItem = () => { throw new Error('unavailable'); };
+    storage.setItem('fallback-key', 'value');
+    expect(() => storage.removeItem('fallback-key')).not.toThrow();
+    Storage.prototype.removeItem = orig;
+  });
 });

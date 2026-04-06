@@ -69,4 +69,54 @@ describe('characterVoices - helpers and Claude/TTS interactions', () => {
         expect(detectVoiceType('en-US-Neural2-A')).toBe('Neural2');
         expect(detectVoiceType('something-else')).toBe('Standard');
     });
+
+    it('normalizeClaudeConfig falls back to defaults for missing gender, languageCode, voiceName', () => {
+        // Exercises the || fallback branches: gender || "male", languageCode || "en-US", voiceName || ""
+        const cfg = normalizeClaudeConfig({});
+        expect(cfg.gender).toBe('male');
+        expect(cfg.languageCode).toBe('en-US');
+        expect(cfg.voiceName).toBe('');
+        expect(cfg.pitch).toBe(0);
+        expect(cfg.rate).toBe(1.0);
+    });
+
+    it('normalizeClaudeConfig falls back to 0 and 1.0 for non-numeric pitch and rate', () => {
+        // Exercises the typeof !== 'number' branches for pitch and rate
+        const cfg = normalizeClaudeConfig({
+            gender: 'female',
+            languageCode: 'en-GB',
+            voiceName: 'en-GB-Wavenet-A',
+            pitch: 'high' as unknown as number,
+            rate: 'slow' as unknown as number,
+        });
+        expect(cfg.pitch).toBe(0);
+        expect(cfg.rate).toBe(1.0);
+    });
+
+    it('fetchVoiceConfigFromClaude covers non-Error exception in catch (String(err) branch)', async () => {
+        // Throw a non-Error to exercise: err instanceof Error ? ... : String(err)
+        createMock.mockRejectedValue('plain string failure');
+        await expect(fetchVoiceConfigFromClaude('Test Name', 1)).rejects.toBe('plain string failure');
+    });
+
+    it('fetchVoiceConfigFromClaude returns with fallback when content[0] is not text type', async () => {
+        // Non-text content returns '{}' → JSON.parse fails with invalid voice → retries exhaust
+        createMock.mockResolvedValue({
+            content: [{ type: 'image' }]
+        });
+        const ttsClient = { synthesizeSpeech: jest.fn().mockRejectedValue(new Error('voice missing')) };
+        mockGetTTSClient.mockReturnValue(ttsClient);
+        await expect(fetchVoiceConfigFromClaude('Test', 1)).rejects.toThrow();
+    });
+
+    it('isValidGoogleTTSVoice covers non-Error in catch (L93 cond-expr[1])', async () => {
+            // TTS throws a non-Error (string) to trigger String(err) branch in isValidGoogleTTSVoice
+            const ttsClient = { synthesizeSpeech: jest.fn().mockRejectedValue('plain tts failure') };
+            mockGetTTSClient.mockReturnValue(ttsClient);
+            createMock.mockResolvedValue({
+                content: [{ type: 'text', text: '{"voiceName":"en-US-Wavenet-D","languageCode":"en-US","gender":"male","pitch":0,"rate":1}' }]
+            });
+            // All retries will fail validation (TTS throws) → eventually rejects
+            await expect(fetchVoiceConfigFromClaude('Test', 1)).rejects.toThrow();
+        });
 });

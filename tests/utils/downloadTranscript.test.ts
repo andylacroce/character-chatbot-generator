@@ -103,4 +103,31 @@ describe('downloadTranscript', () => {
     await expect(downloadTranscript([])).rejects.toThrow('Browser does not support required APIs for opening new tabs');
     global.URL.createObjectURL = orig;
   });
+
+  it('wraps non-Error network rejections in message string (cond-expr branch)', async () => {
+    fetchMock.mockRejectedValue('plain string error');
+    await expect(downloadTranscript([])).rejects.toThrow('Network error: plain string error');
+  });
+
+  it('wraps non-Error response.text() rejections in message string (cond-expr branch)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: () => { throw 'text read failure string'; },
+    });
+    await expect(downloadTranscript([])).rejects.toThrow('Failed to read response: text read failure string');
+  });
+
+  it('skips revokeObjectURL in setTimeout when URL.revokeObjectURL is unavailable', async () => {
+    const origRevoke = global.URL.revokeObjectURL;
+    // @ts-expect-error test-mock: simulate missing revokeObjectURL
+    global.URL.revokeObjectURL = undefined;
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('<html>test</html>'),
+    });
+    // Should not throw even without revokeObjectURL
+    await expect(downloadTranscript([])).resolves.toBeUndefined();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    global.URL.revokeObjectURL = origRevoke;
+  });
 });

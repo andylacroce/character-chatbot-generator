@@ -86,4 +86,14 @@ describe('cache utility', () => {
         const cache = getCache();
         expect(cache.getReplyCache('foo')).toBeNull();
     });
+    it('cleanupExpiredEntries removes expired entries (L59 if[1])', () => {
+        // Provide a file cache with an expired entry; setReplyCache calls cleanupExpiredEntries
+        const expiredTs = Date.now() - (25 * 60 * 60 * 1000); // 25 hours ago
+        const fileCache = { oldkey: { value: 'old', timestamp: expiredTs } };
+        (fs.existsSync as jest.Mock).mockReturnValue(true);
+        (fs.readFileSync as jest.Mock).mockImplementation(() => JSON.stringify(fileCache));
+        const cache = getCache();
+        // setReplyCache loads file, calls cleanupExpiredEntries; expired entry hits if[1] (false branch)
+        expect(() => cache.setReplyCache('newkey', 'newval')).not.toThrow();
+    });
 });

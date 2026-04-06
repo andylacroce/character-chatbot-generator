@@ -217,4 +217,52 @@ describe('generate-avatar API', () => {
         // Verify Imagen was still called (prompt was trimmed, not aborted)
         expect(mockPredict).toHaveBeenCalled();
     });
+
+    it('returns silhouette when GCP credentials loading fails with a non-Error value', async () => {
+        // Simulate loadGcpCredentials throwing a non-Error (exercises the String(credErr) branch)
+        const fsModule = require('fs');
+        fsModule.readFileSync.mockImplementationOnce(() => { throw 'raw string cred error'; });
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = '';
+        const handler = (await import('../../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Test Character' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        expect(res._getJSONData().avatarUrl).toBe('/silhouette.svg');
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = JSON.stringify({
+            type: 'service_account', project_id: 'test-project',
+            client_email: 'test@test.iam.gserviceaccount.com', private_key: 'fake-key'
+        });
+    });
+
+    it('covers non-Error Imagen failure branch (uses String(err))', async () => {
+        // Throw a plain string (non-Error) from Imagen to exercise String(err) branch
+        mockPredict.mockRejectedValueOnce('plain string error');
+        const handler = (await import('../../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Test Character' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        expect(res._getJSONData().avatarUrl).toBe('/silhouette.svg');
+    });
+
+    it('covers non-Error top-level catch branch', async () => {
+        // Make the anthropic constructor throw a non-Error to enter catch with non-Error
+        mockAnthropicCreate.mockImplementationOnce(() => { throw 42; });
+        const handler = (await import('../../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Test Character' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        expect(res._getJSONData().avatarUrl).toBeTruthy();
+    });
+
+    it('covers non-text content[0] type in prompt generation (uses empty fallback)', async () => {
+        // Returning non-text content forces the fallback branch: content[0]?.type !== "text" → "{}"
+        mockAnthropicCreate.mockResolvedValueOnce({
+            content: [{ type: 'image', source: {} }]
+        });
+        const handler = (await import('../../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Test Character' } });
+        await handler(req, res);
+        // JSON.parse("{}") → promptData with no subject etc, still generates ok
+        expect(res._getStatusCode()).toBe(200);
+    });
 });

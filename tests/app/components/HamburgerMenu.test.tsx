@@ -58,7 +58,6 @@ describe("HamburgerMenu", () => {
     const childButton = screen.getByText(/test button/i);
     fireEvent.click(childButton);
     expect(onClick).toHaveBeenCalled();
-    // Wait for menu to close using waitFor
     await waitFor(() => {
       expect(screen.queryByText(/test button/i)).not.toBeInTheDocument();
     });
@@ -75,7 +74,80 @@ describe("HamburgerMenu", () => {
     fireEvent.keyDown(menuButton, { key: "Enter" });
     expect(screen.getByText(/test button/i)).toBeInTheDocument();
     fireEvent.keyDown(menuButton, { key: "Escape" });
-    // Menu should close (simulate Escape key closing logic if implemented)
-    // If not, this test will help you add it for better accessibility
+  });
+
+  it("pressing Space key opens and closes the menu", () => {
+    render(
+      <HamburgerMenu>
+        <DummyButton />
+      </HamburgerMenu>
+    );
+    const menuButton = screen.getByLabelText(/open menu/i);
+    fireEvent.keyDown(menuButton, { key: " " });
+    expect(screen.getByText(/test button/i)).toBeInTheDocument();
+    fireEvent.keyDown(menuButton, { key: " " });
+    expect(screen.queryByText(/test button/i)).not.toBeInTheDocument();
+  });
+
+  it("non-Enter/non-Space key does not toggle menu", () => {
+    render(
+      <HamburgerMenu>
+        <DummyButton />
+      </HamburgerMenu>
+    );
+    const menuButton = screen.getByLabelText(/open menu/i);
+    fireEvent.keyDown(menuButton, { key: "Tab" });
+    expect(screen.queryByText(/test button/i)).not.toBeInTheDocument();
+  });
+
+  it("non-button element child is passed through unchanged", () => {
+    render(
+      <HamburgerMenu>
+        <span data-testid="non-button-child">Not a button</span>
+      </HamburgerMenu>
+    );
+    const menuButton = screen.getByLabelText(/open menu/i);
+    fireEvent.click(menuButton);
+    expect(screen.getByTestId("non-button-child")).toBeInTheDocument();
+  });
+
+  it("function component child without onClick prop is treated as button-like false branch", () => {
+    function NoClickChild() {
+      return <button data-testid="no-click-btn">No Click</button>;
+    }
+    render(
+      <HamburgerMenu>
+        <NoClickChild />
+      </HamburgerMenu>
+    );
+    const menuButton = screen.getByLabelText(/open menu/i);
+    fireEvent.click(menuButton);
+    expect(screen.getByTestId("no-click-btn")).toBeInTheDocument();
+  });
+
+  it("string child (non-React-element) passes through unchanged (L57 if[0])", () => {
+    render(
+      <HamburgerMenu>
+        {"Text node child"}
+      </HamburgerMenu>
+    );
+    const menuButton = screen.getByLabelText(/open menu/i);
+    fireEvent.click(menuButton);
+    expect(screen.getByText("Text node child")).toBeInTheDocument();
+  });
+
+  it("native button child with no onClick closes menu without error (L68 if[1])", async () => {
+    render(
+      <HamburgerMenu>
+        <button>No Handler</button>
+      </HamburgerMenu>
+    );
+    const menuButton = screen.getByLabelText(/open menu/i);
+    fireEvent.click(menuButton);
+    const childButton = screen.getByText("No Handler");
+    fireEvent.click(childButton);
+    await waitFor(() => {
+      expect(screen.queryByText("No Handler")).not.toBeInTheDocument();
+    });
   });
 });

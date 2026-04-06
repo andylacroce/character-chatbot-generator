@@ -50,4 +50,33 @@ describe("ChatMessage", () => {
     render(<ChatMessage message={message} bot={mockBot} />);
     expect(screen.getByText("No audio")).toBeInTheDocument();
   });
+
+  it("returns null for message with non-string text (truthy message, logs with hasSender=true)", () => {
+    // message is truthy (object), but .text is not a string — exercises the binary-expr where message is truthy
+    const { container } = render(
+      // @ts-expect-error purposely invalid type for text
+      <ChatMessage message={{ text: 123, sender: "User" }} bot={mockBot} />
+    );
+    expect(container.firstChild).toBeNull();
+    expect(logEvent).toHaveBeenCalledWith(
+      "error",
+      "chat_message_invalid",
+      "Invalid message object received",
+      expect.objectContaining({ hasSender: true })
+    );
+  });
+
+  it("returns null for message with non-string sender (truthy message, logs with hasText=true)", () => {
+    const { container } = render(
+      // @ts-expect-error purposely invalid type for sender
+      <ChatMessage message={{ text: "Hello", sender: 42 }} bot={mockBot} />
+    );
+    expect(container.firstChild).toBeNull();
+    expect(logEvent).toHaveBeenCalledWith(
+      "error",
+      "chat_message_invalid",
+      "Invalid message object received",
+      expect.objectContaining({ hasText: true })
+    );
+  });
 });

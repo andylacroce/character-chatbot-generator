@@ -44,6 +44,19 @@ describe('Security Utils', () => {
       expect(decodeHtmlEntities('&#1114112;')).toBe('&#1114112;'); // Code point exceeds max Unicode (0x10FFFF)
     });
 
+    it('should leave surrogate hex code points unchanged', () => {
+      // 0xD800 is in the surrogate range (0xD800–0xDFFF), must be rejected
+      expect(decodeHtmlEntities('&#xD800;')).toBe('&#xD800;');
+      expect(decodeHtmlEntities('&#xDFFF;')).toBe('&#xDFFF;');
+    });
+
+    it('should leave surrogate decimal code points unchanged', () => {
+      // 55296 = 0xD800 (surrogate)
+      expect(decodeHtmlEntities('&#55296;')).toBe('&#55296;');
+      // 57343 = 0xDFFF (surrogate)
+      expect(decodeHtmlEntities('&#57343;')).toBe('&#57343;');
+    });
+
     it('should decode multiple entities in a string', () => {
       expect(decodeHtmlEntities('Tom &amp; Jerry&#39;s show &lt;3')).toBe("Tom & Jerry's show <3");
     });

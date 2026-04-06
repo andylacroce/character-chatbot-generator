@@ -74,4 +74,22 @@ describe('useApiError', () => {
     });
     expect(result.current.error).toBe('Error sending message. Please try again.');
   });
+
+  it('handles response data with non-string error value (L28 if[1] and L35 if[1])', () => {
+    const { result } = renderHook(() => useApiError());
+    act(() => {
+      // data.error is a number, not string: covers typeof errorData.error === "string" false branch
+      // response has no status field: covers typeof status === "number" false branch
+      result.current.handleApiError({ response: { data: { error: 42 } } });
+    });
+    expect(result.current.error).toBe('Error sending message. Please try again.');
+  });
+
+  it('handles response with status below 500 (not 429 or 408) (L44 if[1])', () => {
+    const { result } = renderHook(() => useApiError());
+    act(() => {
+      result.current.handleApiError({ response: { status: 400 } });
+    });
+    expect(result.current.error).toBe('Error sending message. Please try again.');
+  });
 });

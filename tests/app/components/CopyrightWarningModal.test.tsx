@@ -159,6 +159,21 @@ describe('CopyrightWarningModal', () => {
         expect(mockOnCancel).toHaveBeenCalledTimes(1);
     });
 
+    it('does not call onCancel when a non-Escape key is pressed', () => {
+        // Exercises the false branch of if (e.key === 'Escape')
+        render(
+            <CopyrightWarningModal
+                validation={warningValidation}
+                onContinue={mockOnContinue}
+                onCancel={mockOnCancel}
+            />
+        );
+
+        fireEvent.keyDown(window, { key: 'Enter' });
+        fireEvent.keyDown(window, { key: 'Tab' });
+        expect(mockOnCancel).not.toHaveBeenCalled();
+    });
+
     it('prevents body scroll when modal is open', () => {
         const { unmount } = render(
             <CopyrightWarningModal
@@ -201,5 +216,34 @@ describe('CopyrightWarningModal', () => {
         );
 
         expect(screen.queryByText('Suggested alternatives (click to use):')).not.toBeInTheDocument();
+    });
+
+    it('clicking suggestion without onSelectSuggestion still calls onCancel', () => {
+        // onSelectSuggestion is not provided — exercises the if(onSelectSuggestion) false branch
+        render(
+            <CopyrightWarningModal
+                validation={warningValidation}
+                onContinue={mockOnContinue}
+                onCancel={mockOnCancel}
+            />
+        );
+
+        fireEvent.click(screen.getByText('Hercules'));
+        // onCancel must still be called even without onSelectSuggestion
+        expect(mockOnCancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('clicking on modal content (not overlay) does not call onCancel', () => {
+        render(
+            <CopyrightWarningModal
+                validation={warningValidation}
+                onContinue={mockOnContinue}
+                onCancel={mockOnCancel}
+            />
+        );
+
+        // Click on inner text (target !== currentTarget) — exercises handleOverlayClick false branch
+        fireEvent.click(screen.getByText('Copyright/Trademark Warning'));
+        expect(mockOnCancel).not.toHaveBeenCalled();
     });
 });

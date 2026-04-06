@@ -207,4 +207,84 @@ describe('voiceConfigPersistence', () => {
       expect(() => clearVoiceConfig('TestBot')).not.toThrow();
     });
   });
+
+  describe('decodePayload and getCookie branch coverage', () => {
+    it('loadVoiceConfig reads config from cookie when storage returns null (decodePayload truthy raw branch)', () => {
+      // storage returns null/undefined → falls through to cookie path
+      mockStorage.getVersionedJSON.mockReturnValue(null);
+
+      // Encode a valid config into a cookie value manually
+      const config = createMockConfig();
+      const json = JSON.stringify({ v: 1, payload: config });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const encoded = (global as any).btoa(json) as string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (global as any).document.cookie = `voiceConfig-CookieReadBot=${encodeURIComponent(encoded)}`;
+
+      const result = loadVoiceConfig('CookieReadBot');
+
+      // Should have decoded the cookie and returned the config
+      expect(result).not.toBeNull();
+      expect(result?.name).toBe(config.name);
+    });
+
+    it('loadVoiceConfig returns null when cookie value decodes to invalid structure', () => {
+      mockStorage.getVersionedJSON.mockReturnValue(null);
+
+      // Encode an object without "payload" key → decodePayload returns null
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const encoded = (global as any).btoa(JSON.stringify({ v: 1 })) as string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (global as any).document.cookie = `voiceConfig-InvalidBot=${encodeURIComponent(encoded)}`;
+
+      const result = loadVoiceConfig('InvalidBot');
+      expect(result).toBeNull();
+    });
+
+    it('getCookie returns null when document is unavailable (canUseDocument false branch)', () => {
+      mockStorage.getVersionedJSON.mockReturnValue(null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (global as any).document;
+
+      const result = loadVoiceConfig('NoCookieBot');
+      expect(result).toBeNull();
+    });
+
+    it('setCookie is skipped when document is unavailable (canUseDocument false branch)', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (global as any).document;
+
+      // Should not throw even without document
+      const config = createMockConfig();
+      expect(() => persistVoiceConfig('NoCookieBot2', config)).not.toThrow();
+      expect(mockStorage.setVersionedJSON).toHaveBeenCalled();
+    });
+
+    it('encodePayload returns raw JSON when btoa is not a function (cond-expr false branch)', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const origBtoa = (global as any).btoa;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (global as any).btoa;
+
+      const config = createMockConfig();
+      // Should not throw; setCookie receives the raw JSON string (encoded is truthy)
+      expect(() => persistVoiceConfig('NoBtoaBot', config)).not.toThrow();
+      expect(mockStorage.setVersionedJSON).toHaveBeenCalled();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (global as any).btoa = origBtoa;
+    });
+
+    it('persistVoiceConfig skips setCookie when encodePayload returns null (encoded falsy branch)', () => {
+      const config = createMockConfig();
+      // Force encodePayload to throw internally by making JSON.stringify fail (circular ref)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (config as any).circular = config;
+
+      expect(() => persistVoiceConfig('CircularBot', config)).not.toThrow();
+      // Cookie should NOT have been set (setCookie skipped)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((global as any).document.cookie).not.toContain('voiceConfig-CircularBot=');
+    });
+  });
 });

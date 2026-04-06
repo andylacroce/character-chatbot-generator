@@ -291,4 +291,14 @@ describe('random-character API', () => {
         expect(finalRes._getStatusCode()).toBe(200);
         expect(finalRes._getJSONData().name).toBe('FinalName');
     });
+
+    it('returns 500 when Claude throws a non-Error value (cond-expr branch)', async () => {
+        // Throw a plain string (non-Error) to exercise the String(err) branch
+        mockCreate.mockRejectedValueOnce('raw string rejection');
+        const handler = (await import('../../pages/api/random-character')).default;
+        const { req, res } = createMocks({ method: 'GET' });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(500);
+        expect(res._getJSONData()).toEqual({ error: 'Failed to generate random character' });
+    });
 });
