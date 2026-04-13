@@ -58,7 +58,7 @@
     "babel-jest": "^30.2.0",
     "baseline-browser-mapping": "^2.10.17",
     "eslint": "^10.2.0",
-    "eslint-config-next": "^16.2.2",
+    "eslint-config-next": "^16.2.3",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "express": "^5.2.1",
