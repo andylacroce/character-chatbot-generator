@@ -4,3 +4,7 @@ updates:
     directory: "/" # Directory where the package.json or other dependency files are located
     schedule:
       interval: "daily" # Schedule for checking updates (daily, weekly, monthly)
+    ignore:
+      - dependency-name: "eslint"
+        update-types:
+          - "version-update:semver-major"
