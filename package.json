@@ -67,7 +67,7 @@
     "jest-environment-jsdom": "^30.3.0",
     "markdownlint-cli": "^0.48.0",
     "node-mocks-http": "^1.17.2",
-    "postcss": "^8.5.12",
+    "postcss": "^8.5.13",
     "typescript": "^6"
   },
   "overrides": {
