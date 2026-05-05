@@ -28,7 +28,7 @@
     "@vercel/blob": "^2.3.2",
     "@vercel/speed-insights": "^2.0.0",
     "critters": "^0.0.25",
-    "express-rate-limit": "^8.4.1",
+    "express-rate-limit": "^8.5.0",
     "lru-cache": "^11.3.6",
     "next": "^16.2.4",
     "react": "^19.2.0",
