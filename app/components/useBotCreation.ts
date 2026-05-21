@@ -297,12 +297,12 @@ export async function generateBotDataWithProgressCancelable(
         }
     }
     onProgress("avatar");
-    setLoadingMessage("Generating portrait — may take up to a minute");
+    setLoadingMessage("Generating portrait — may take up to 30 seconds");
     let avatarUrl = "/silhouette.svg";
     let gender: string | null = null;
     if (cancelToken?.cancelled) throw new Error("cancelled");
     try {
-        setLoadingMessage("Generating portrait — may take up to a minute");
+        setLoadingMessage("Generating portrait — may take up to 30 seconds");
         const avatarRes = await authenticatedFetch("/api/generate-avatar", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
