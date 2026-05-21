@@ -32,13 +32,8 @@ describe('voiceConfigPersistence', () => {
   });
 
   afterEach(() => {
-    if (originalDocument === undefined) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (global as any).document;
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (global as any).document = originalDocument;
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).document = originalDocument;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (global as any).btoa;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,7 +70,7 @@ describe('voiceConfigPersistence', () => {
 
     it('returns null when document is undefined', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (global as any).document;
+      (global as any).document = undefined;
       mockStorage.getVersionedJSON.mockReturnValue(null);
 
       const result = loadVoiceConfig('TestBot');
@@ -116,7 +111,7 @@ describe('voiceConfigPersistence', () => {
 
     it('handles document being unavailable', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (global as any).document;
+      (global as any).document = undefined;
 
       expect(() => persistVoiceConfig('TestBot', createMockConfig())).not.toThrow();
       expect(mockStorage.setVersionedJSON).toHaveBeenCalled();
@@ -202,7 +197,7 @@ describe('voiceConfigPersistence', () => {
 
     it('handles document being unavailable', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (global as any).document;
+      (global as any).document = undefined;
 
       expect(() => clearVoiceConfig('TestBot')).not.toThrow();
     });
@@ -244,7 +239,7 @@ describe('voiceConfigPersistence', () => {
     it('getCookie returns null when document is unavailable (canUseDocument false branch)', () => {
       mockStorage.getVersionedJSON.mockReturnValue(null);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (global as any).document;
+      (global as any).document = undefined;
 
       const result = loadVoiceConfig('NoCookieBot');
       expect(result).toBeNull();
@@ -252,7 +247,7 @@ describe('voiceConfigPersistence', () => {
 
     it('setCookie is skipped when document is unavailable (canUseDocument false branch)', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (global as any).document;
+      (global as any).document = undefined;
 
       // Should not throw even without document
       const config = createMockConfig();

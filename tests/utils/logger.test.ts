@@ -8,7 +8,7 @@ describe('logger utility', () => {
     it('loads server-side (winston) logger when window is undefined', () => {
         const origWindow = (globalThis as unknown as { window?: Window }).window;
         // Simulate server-side environment by removing window object
-        delete (globalThis as unknown as { window?: Window }).window;
+        (globalThis as unknown as { window?: Window }).window = undefined;
         // Clear cached modules so the logger reinitializes in server context
         jest.resetModules();
         const serverLogger = require('../../src/utils/logger');
@@ -207,7 +207,7 @@ describe('logger utility', () => {
     it('uses winston when available on server', () => {
         // Ensure we're running in a server-like environment for this import
         const origWindow = (globalThis as unknown as { window?: Window }).window;
-        delete (globalThis as unknown as { window?: Window }).window;
+        (globalThis as unknown as { window?: Window }).window = undefined;
 
         // Mock a minimal winston implementation that exposes createLogger
         jest.isolateModules(() => {
@@ -231,7 +231,7 @@ describe('logger utility', () => {
     it('polyfills setImmediate when missing on server', () => {
         const origWindow = (globalThis as unknown as { window?: Window }).window;
         const origSetImmediate = (globalThis as unknown as { setImmediate?: unknown }).setImmediate;
-        delete (globalThis as unknown as { window?: Window }).window;
+        (globalThis as unknown as { window?: Window }).window = undefined;
 
         jest.isolateModules(() => {
             // Ensure setImmediate is missing inside the isolated module context
@@ -257,7 +257,7 @@ describe('logger utility', () => {
 
     it('falls back to browser logger when winston import fails on server', () => {
         const origWindow = (globalThis as unknown as { window?: Window }).window;
-        delete (globalThis as unknown as { window?: Window }).window;
+        (globalThis as unknown as { window?: Window }).window = undefined;
 
         jest.isolateModules(() => {
             // Make requiring winston throw to trigger the fallback
@@ -277,7 +277,7 @@ describe('logger utility', () => {
 
     it('falls back to browser logger when winston.createLogger throws', () => {
         const origWindow = (globalThis as unknown as { window?: Window }).window;
-        delete (globalThis as unknown as { window?: Window }).window;
+        (globalThis as unknown as { window?: Window }).window = undefined;
 
         jest.isolateModules(() => {
             // Mock winston to exist but throw during createLogger initialization

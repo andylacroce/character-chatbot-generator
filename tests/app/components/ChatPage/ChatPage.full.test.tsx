@@ -244,8 +244,7 @@ describe("ChatPage full feature coverage", () => {
 
   it("handles SSR: window is undefined", () => {
     const realWindow = global.window;
-    // @ts-expect-error: simulate SSR
-    delete global.window;
+    (global as unknown as { window?: Window }).window = undefined;
     expect(() => render(<ChatPage bot={mockBot} />)).not.toThrow();
     global.window = realWindow;
   });

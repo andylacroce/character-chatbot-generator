@@ -123,8 +123,7 @@ describe('DarkModeContext', () => {
 
   it('does not throw and defaults to dark mode if window is undefined (SSR)', () => {
     const originalWindow = global.window;
-  // @ts-expect-error test-mock: simulate SSR by removing global window
-  delete global.window;
+  (global as unknown as { window?: Window }).window = undefined;
     let contextValue: { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
     function Consumer() {
       contextValue = useContext(DarkModeContext);
@@ -156,8 +155,7 @@ describe('DarkModeContext', () => {
   it('SSR: else branch in effect does not throw on darkMode change', () => {
     // Simulate SSR: window is undefined
     const originalWindow = global.window;
-  // @ts-expect-error test-mock: simulate SSR by removing global window
-  delete global.window;
+  (global as unknown as { window?: Window }).window = undefined;
     let contextValue: { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
     function Consumer() {
       contextValue = useContext(DarkModeContext);

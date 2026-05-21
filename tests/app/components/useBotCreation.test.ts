@@ -463,7 +463,7 @@ describe('useBotCreation tests', () => {
   // Merged from branches: SSR/window undefined paths
   it('SSR: handleCreate works when window is undefined at start', async () => {
     const originalWindow = (global as unknown as { window?: Window }).window;
-    delete (global as unknown as { window?: Window }).window;
+    (global as unknown as { window?: Window }).window = undefined;
 
     mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ personality: 'brave warrior' }) });
     mockGetVoiceConfig.mockResolvedValue({ name: 'en-US-Wavenet-A', languageCodes: ['en-US'] } as VoiceCfg);
@@ -478,7 +478,7 @@ describe('useBotCreation tests', () => {
 
   it('SSR: handleRandomCharacter sets input when window is undefined', async () => {
     const originalWindow = (global as unknown as { window?: Window }).window;
-    delete (global as unknown as { window?: Window }).window;
+    (global as unknown as { window?: Window }).window = undefined;
 
     mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ name: 'Random Hero' }) });
     const { result } = renderHook(() => useBotCreation(() => {}));
@@ -489,7 +489,7 @@ describe('useBotCreation tests', () => {
 
   it('SSR: handleRandomCharacter handles error with window undefined', async () => {
     const originalWindow = (global as unknown as { window?: Window }).window;
-    delete (global as unknown as { window?: Window }).window;
+    (global as unknown as { window?: Window }).window = undefined;
 
     mockAuthFetch.mockRejectedValue(new Error('API error'));
     const { result } = renderHook(() => useBotCreation(() => {}));
@@ -766,7 +766,7 @@ describe('useBotCreation tests', () => {
 
   it('handleCreate with window undefined during validation', async () => {
     const originalWindow = (global as unknown as { window?: Window }).window;
-    delete (global as unknown as { window?: Window }).window;
+    (global as unknown as { window?: Window }).window = undefined;
 
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === '/api/validate-character') {
@@ -1157,7 +1157,7 @@ describe('useBotCreation tests', () => {
 
   it('validation error logging when window is undefined', async () => {
     const originalWindow = (global as unknown as { window?: Window }).window;
-    delete (global as unknown as { window?: Window }).window;
+    (global as unknown as { window?: Window }).window = undefined;
 
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === '/api/validate-character') {
@@ -1188,7 +1188,7 @@ describe('useBotCreation tests', () => {
 
   it('random character error logging when window is undefined', async () => {
     const originalWindow = (global as unknown as { window?: Window }).window;
-    delete (global as unknown as { window?: Window }).window;
+    (global as unknown as { window?: Window }).window = undefined;
 
     mockAuthFetch.mockRejectedValueOnce(new Error('Network error'));
 
