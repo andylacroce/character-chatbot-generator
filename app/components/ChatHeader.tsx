@@ -82,13 +82,13 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
         </div>
         <div className={styles.headerRight}>
           <a
-            href="https://www.andylacroce.com/"
+            href="https://www.andrewlacroce.com"
             target="_blank"
             rel="noopener noreferrer"
             onClick={onHeaderLinkClick}
             aria-label="Visit Andy Lacroce's website"
           >
-            <Image src="/dexter.webp" alt="Dexter" width={50} height={50} />
+            <Image src="/andrew.png" alt="Andrew" width={50} height={50} />
           </a>
         </div>
       </div>

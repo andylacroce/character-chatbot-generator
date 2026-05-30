@@ -29,17 +29,17 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
         <title>Character Chatbot Generator</title>
         <meta name="description" content="Create and chat with your own AI-powered characters." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/dexter.webp" type="image/webp" />
+        <link rel="icon" href="/andrew.png" type="image/png" />
         {/* Open Graph / Facebook */}
         <meta property="og:title" content="Character Chatbot Generator" />
         <meta property="og:description" content="Create and chat with your own AI-powered characters." />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="/dexter.webp" />
+        <meta property="og:image" content="/andrew.png" />
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Character Chatbot Generator" />
         <meta name="twitter:description" content="Create and chat with your own AI-powered characters." />
-        <meta name="twitter:image" content="/dexter.webp" />
+        <meta name="twitter:image" content="/andrew.png" />
       </head>
       <body>
         <DarkModeProvider>
