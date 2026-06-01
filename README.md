@@ -31,7 +31,7 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - **Avatar Generation**: Claude generates a detailed image prompt; Google Vertex AI Imagen (`imagen-3.0-fast-generate-001`) renders a portrait and returns it as a base64 data URL
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 50 messages
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
-- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 559 passing tests
+- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 592 passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
 

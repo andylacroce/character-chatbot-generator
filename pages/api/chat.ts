@@ -362,7 +362,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
         const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
 
         const audioFileName = sanitizeFilename(`${botName}_${Date.now()}.mp3`);
-        const audioDir = process.env.TTS_TMP_DIR || path.join(process.cwd(), "public", "audio");
+        const audioDir = process.env.TTS_TMP_DIR || "/tmp";
         if (!fs.existsSync(audioDir)) {
           fs.mkdirSync(audioDir, { recursive: true });
         }

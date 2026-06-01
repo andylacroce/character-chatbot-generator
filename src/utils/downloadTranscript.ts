@@ -1,19 +1,19 @@
 /**
- * Utility for displaying chat transcripts in a browser tab via /api/transcript endpoint.
- * Handles browser compatibility, error handling, and content display.
+ * Utility for downloading chat transcripts as HTML files via /api/transcript endpoint.
+ * Handles browser compatibility, error handling, and content download.
  */
 
 import type { Message } from "../types/message";
 import { authenticatedFetch } from "./api";
 
 /**
- * Opens the chat transcript as HTML in a new browser tab by calling the /api/transcript endpoint.
+ * Downloads the chat transcript as an HTML file by calling the /api/transcript endpoint.
  *
- * Validates input, posts messages to the API, and opens the HTML transcript in a new tab.
+ * Validates input, posts messages to the API, and triggers a file download via a hidden anchor element.
  *
  * @param {Array<object>} messages - The array of chat messages to include in the transcript.
  * @param {object} bot - The bot/character information including name and avatarUrl.
- * @returns {Promise<void>} Resolves when the new tab is opened.
+ * @returns {Promise<void>} Resolves when the download is triggered.
  * @throws {Error} If the transcript fetch fails or browser APIs are unavailable.
  */
 export async function downloadTranscript(messages: Array<Record<string, unknown>> | Message[], bot?: { name: string; avatarUrl: string }) {
@@ -55,16 +55,21 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
     throw new Error(`Failed to read response: ${err instanceof Error ? err.message : String(err)}`);
   }
   if (!window.URL || !window.URL.createObjectURL) {
-    throw new Error("Browser does not support required APIs for opening new tabs");
+    throw new Error("Browser does not support required APIs for downloading transcripts");
   }
   const blob = new Blob([htmlContent], { type: "text/html; charset=utf-8" });
   const url = window.URL.createObjectURL(blob);
-  const newWindow = window.open(url, "_blank");
-  if (!newWindow) {
-    // Cleanup unused blob URL since window.open failed
-    window.URL.revokeObjectURL(url);
-    throw new Error("Failed to open new tab - popup blocker may be active or browser security settings prevent it");
-  }
+  const botSlug = bot?.name
+    ? bot.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50)
+    : "chat";
+  const dateStr = now.toISOString().slice(0, 19).replace("T", "-").replace(/:/g, "");
+  const filename = `${botSlug}-transcript-${dateStr}.html`;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
   setTimeout(() => {
     if (window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(url);
   }, typeof process !== 'undefined' && process.env.JEST_WORKER_ID ? 0 : 100);

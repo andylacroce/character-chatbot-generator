@@ -53,9 +53,10 @@ function getGoogleAuthCredentials(): GoogleCredentials | unknown {
   if (process.env.VERCEL_ENV) {
     credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
   } else {
-    const credentialsPath = path.resolve(
-      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
-    );
+    const credRaw = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON as string;
+    const credentialsPath = path.isAbsolute(credRaw)
+      ? path.normalize(credRaw)
+      : path.join(/*turbopackIgnore: true*/ process.cwd(), credRaw);
     credentials = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
   }
   
@@ -147,8 +148,13 @@ export async function synthesizeSpeechToFile({
   audioConfig?: protos.google.cloud.texttospeech.v1.IAudioConfig;
 }): Promise<void> {
   const input = ssml ? { ssml: text } : { text };
-  // Sanitize output path to prevent path traversal attacks
-  const resolvedPath = path.resolve(filePath);
+  // Sanitize output path to prevent path traversal attacks.
+  // Callers must supply an absolute path; path.normalize (not path.resolve) is used
+  // so Turbopack's NFT tracer does not sweep process.cwd() into the bundle.
+  if (!path.isAbsolute(filePath)) {
+    throw new Error('filePath must be an absolute path');
+  }
+  const resolvedPath = path.normalize(filePath);
   const outDir = path.dirname(resolvedPath);
   const systemTmp = path.resolve('/tmp');
   const isMp3 = resolvedPath.toLowerCase().endsWith('.mp3');

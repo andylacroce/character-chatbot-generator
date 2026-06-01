@@ -50,7 +50,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
                 style={{ display: 'flex', alignItems: 'center', gap: '0.7em' }}
               >
                 <FaRegFileAlt size={18} style={{ color: 'var(--color-primary)' }} />
-                <span className={styles.downloadLabel}>Transcript</span>
+                <span className={styles.downloadLabel}>Download Transcript</span>
               </button>
             </HamburgerMenu>
             <span className={styles.desktopToggle}>

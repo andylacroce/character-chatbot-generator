@@ -28,7 +28,7 @@ const audioRateLimit = createRateLimiter(
 function getOriginalTextForAudio(sanitizedFile: string): string | null {
   const txtFile = sanitizedFile.replace(/\.mp3$/, ".txt");
   const txtPathTmp = path.resolve("/tmp", txtFile);
-  const txtPathPublic = path.resolve("public", txtFile);
+  const txtPathPublic = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", txtFile);
   if (fs.existsSync(txtPathTmp)) {
     return fs.readFileSync(txtPathTmp, "utf8");
   }
@@ -73,7 +73,7 @@ async function handler(
   // Only allow filename, not path
   const sanitizedFile = path.basename(file);
   const audioFilePath = path.resolve("/tmp", sanitizedFile);
-  const localFilePath = path.resolve("public", sanitizedFile);
+  const localFilePath = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", sanitizedFile);
   const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
   const checkFileExists = (filePath: string) =>
     fs.existsSync(filePath) ? fs.realpathSync(filePath) : "";
@@ -129,7 +129,7 @@ async function handler(
     if (normalizedAudioFilePath || normalizedLocalFilePath) {
       // Try to find the .txt file in /tmp or /public
       const txtPathTmp = txtFilePath;
-      const txtPathPublic = path.resolve("public", sanitizedFile.replace(/\.mp3$/, ".txt"));
+      const txtPathPublic = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", sanitizedFile.replace(/\.mp3$/, ".txt"));
       if (fs.existsSync(txtPathTmp)) {
         txtContent = fs.readFileSync(txtPathTmp, "utf8");
       } else if (fs.existsSync(txtPathPublic)) {
@@ -267,7 +267,7 @@ async function handler(
 
   // Security: only allow files in /tmp or /public
   const allowedTmp = path.resolve("/tmp");
-  const allowedPublic = path.resolve("public");
+  const allowedPublic = path.join(/*turbopackIgnore: true*/ process.cwd(), "public");
   if (
     normalizedAudioFilePath &&
     !normalizedAudioFilePath.startsWith(allowedTmp) &&

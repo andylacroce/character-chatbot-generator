@@ -4,8 +4,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logEvent, sanitizeLogMeta } from './src/utils/logger';
 
 const allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
+    // Allow any localhost or 127.0.0.1 port for local development
+    /^http:\/\/localhost(:\d+)?\/?$/,
+    /^http:\/\/127\.0\.0\.1(:\d+)?\/?$/,
     'https://character-chatbot-generator.vercel.app',
     // Allow Vercel preview deployments (they have random subdomains)
     /^https:\/\/character-chatbot-generator(?:-git)?-[a-z0-9-]+-andylacroces-projects\.vercel\.app\/?$/,
