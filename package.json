@@ -54,7 +54,7 @@
     "@typescript-eslint/type-utils": "^8.61.1",
     "@typescript-eslint/typescript-estree": "^8.61.1",
     "@typescript-eslint/utils": "^8.61.1",
-    "autoprefixer": "^10.5.1",
+    "autoprefixer": "^10.5.2",
     "babel-jest": "^30.4.1",
     "baseline-browser-mapping": "^2.10.38",
     "eslint": "^9.39.4",
