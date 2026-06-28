@@ -14,6 +14,7 @@
 import textToSpeech, { protos } from "@google-cloud/text-to-speech";
 import { GoogleAuth } from 'google-auth-library';
 import fs from "fs";
+import os from "os";
 import path from "path";
 import logger, { sanitizeLogMeta } from "./logger";
 import sanitizeFilename from "sanitize-filename";
@@ -156,7 +157,7 @@ export async function synthesizeSpeechToFile({
   }
   const resolvedPath = path.normalize(filePath);
   const outDir = path.dirname(resolvedPath);
-  const systemTmp = path.resolve('/tmp');
+  const systemTmp = os.tmpdir();
   const isMp3 = resolvedPath.toLowerCase().endsWith('.mp3');
   if (!isMp3) {
     throw new Error('Output file must have .mp3 extension');

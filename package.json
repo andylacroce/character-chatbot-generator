@@ -72,6 +72,7 @@
   },
   "overrides": {
     "undici": "^6.23.0",
-    "postcss": "^8.5.15"
+    "postcss": "^8.5.15",
+    "js-yaml": "^4.3.0"
   }
 }

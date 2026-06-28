@@ -121,6 +121,30 @@ if (typeof window === 'undefined') {
 }
 
 /**
+ * Converts an Error (or any thrown value) into a plain serializable object
+ * so JSON.stringify captures message, name, stack, and enumerable fields.
+ */
+function serializeError(err: unknown): unknown {
+  if (err instanceof Error) {
+    return {
+      message: err.message,
+      name: err.name,
+      stack: err.stack,
+      ...Object.fromEntries(Object.entries(err)),
+    };
+  }
+  return err;
+}
+
+function serializeMeta(meta: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(meta)) {
+    result[key] = value instanceof Error ? serializeError(value) : value;
+  }
+  return result;
+}
+
+/**
  * Generates a unique request ID for tracing logs across services.
  * @returns {string} A UUID string.
  */
@@ -158,12 +182,12 @@ export const logger = {
     loggerInstance.log('info', message, sanitizedMeta);
   },
   warn: (message: string, meta?: Record<string, unknown> | unknown) => {
-    const sanitizedMeta = typeof meta === 'object' && meta !== null ? meta as Record<string, unknown> : { data: meta };
-    loggerInstance.log('warn', message, sanitizedMeta);
+    const raw = typeof meta === 'object' && meta !== null ? meta as Record<string, unknown> : { data: meta };
+    loggerInstance.log('warn', message, serializeMeta(raw));
   },
   error: (message: string, meta?: Record<string, unknown> | unknown) => {
-    const sanitizedMeta = typeof meta === 'object' && meta !== null ? meta as Record<string, unknown> : { data: meta };
-    loggerInstance.log('error', message, sanitizedMeta);
+    const raw = typeof meta === 'object' && meta !== null ? meta as Record<string, unknown> : { data: meta };
+    loggerInstance.log('error', message, serializeMeta(raw));
   },
   log: (level: string, message: string, meta?: Record<string, unknown>) => loggerInstance.log(level, message, meta),
 };

@@ -11,6 +11,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import sanitizeFilename from "sanitize-filename";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import ipinfo from "ipinfo";
 import logger, { generateRequestId } from "../../src/utils/logger";
@@ -45,7 +46,7 @@ const AUDIO_FILE_MAX_AGE = 24 * 60 * 60 * 1000; // Delete audio files older than
 
 function cleanupOldAudioFiles() {
   try {
-    const tmpDir = "/tmp";
+    const tmpDir = os.tmpdir();
     if (!fs.existsSync(tmpDir)) return;
 
     const files = fs.readdirSync(tmpDir);
@@ -275,7 +276,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
       logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfigToUse)}`);
       const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
       const ssmlText = buildSsml(cachedReply, selectedVoice);
-      const tmpDir = "/tmp";
+      const tmpDir = os.tmpdir();
       if (!fs.existsSync(tmpDir)) {
         fs.mkdirSync(tmpDir, { recursive: true });
       }
@@ -362,7 +363,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
         const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
 
         const audioFileName = sanitizeFilename(`${botName}_${Date.now()}.mp3`);
-        const audioDir = process.env.TTS_TMP_DIR || "/tmp";
+        const audioDir = process.env.TTS_TMP_DIR || os.tmpdir();
         if (!fs.existsSync(audioDir)) {
           fs.mkdirSync(audioDir, { recursive: true });
         }
@@ -426,7 +427,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
     logger.info(`[TTS] Using voice for botName='${botName}', voiceConfigHash=${voiceConfigHash}: ${JSON.stringify(voiceConfigToUse)}`);
     const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
     const ssmlText = buildSsml(botReply, selectedVoice);
-    const tmpDir = "/tmp";
+    const tmpDir = os.tmpdir();
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
     }

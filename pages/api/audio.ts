@@ -4,6 +4,7 @@
  */
 
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import { getReplyCache } from "../../src/utils/cache";
@@ -27,7 +28,7 @@ const audioRateLimit = createRateLimiter(
 
 function getOriginalTextForAudio(sanitizedFile: string): string | null {
   const txtFile = sanitizedFile.replace(/\.mp3$/, ".txt");
-  const txtPathTmp = path.resolve("/tmp", txtFile);
+  const txtPathTmp = path.join(os.tmpdir(),txtFile);
   const txtPathPublic = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", txtFile);
   if (fs.existsSync(txtPathTmp)) {
     return fs.readFileSync(txtPathTmp, "utf8");
@@ -72,7 +73,7 @@ async function handler(
   }
   // Only allow filename, not path
   const sanitizedFile = path.basename(file);
-  const audioFilePath = path.resolve("/tmp", sanitizedFile);
+  const audioFilePath = path.join(os.tmpdir(),sanitizedFile);
   const localFilePath = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", sanitizedFile);
   const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
   const checkFileExists = (filePath: string) =>
@@ -266,7 +267,7 @@ async function handler(
   }
 
   // Security: only allow files in /tmp or /public
-  const allowedTmp = path.resolve("/tmp");
+  const allowedTmp = os.tmpdir();
   const allowedPublic = path.join(/*turbopackIgnore: true*/ process.cwd(), "public");
   if (
     normalizedAudioFilePath &&
