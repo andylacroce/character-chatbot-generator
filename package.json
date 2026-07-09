@@ -68,7 +68,7 @@
     "markdownlint-cli": "^0.49.0",
     "node-mocks-http": "^1.18.0",
     "postcss": "^8.5.15",
-    "typescript": "^6"
+    "typescript": "^7"
   },
   "overrides": {
     "undici": "^6.23.0",
