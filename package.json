@@ -51,7 +51,7 @@
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.64.0",
     "@typescript-eslint/parser": "^8.64.0",
-    "@typescript-eslint/type-utils": "^8.62.1",
+    "@typescript-eslint/type-utils": "^8.65.0",
     "@typescript-eslint/typescript-estree": "^8.64.0",
     "@typescript-eslint/utils": "^8.64.0",
     "autoprefixer": "^10.5.4",
