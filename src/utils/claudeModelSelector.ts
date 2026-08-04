@@ -1,13 +1,13 @@
 /**
- * Model selection utility for Claude API and Google Imagen calls.
+ * Model selection utility for Claude API and Google Gemini image calls.
  *
  * Three tiers:
  *  "text"        — Quality-sensitive tasks (chat, personality generation).
  *                  Prod: claude-sonnet-4-6  Dev: claude-haiku-4-5-20251001
  *  "text-simple" — Simple structured tasks (validation, name lists, voice config, etc.).
  *                  Always: claude-haiku-4-5-20251001
- *  "image"       — Avatar generation via Vertex AI Imagen.
- *                  Always: imagen-3.0-fast-generate-001
+ *  "image"       — Avatar generation via Vertex AI Gemini image generation.
+ *                  Always: gemini-3.1-flash-lite-image
  */
 
 export function getClaudeModel(type: "text"): string;
@@ -29,9 +29,9 @@ export function getClaudeModel(type: "text" | "text-simple" | "image"): string |
     }
 
     if (type === "image") {
-        // Imagen 3 Fast: ~50% cheaper than Imagen 3 standard with negligible
-        // quality difference for character portrait generation.
-        return { primary: "imagen-3.0-fast-generate-001" };
+        // Imagen legacy endpoints are being retired; Gemini 3.1 Flash Lite Image is
+        // the cost-conscious GA replacement (Google migration deadline: 2026-08-17).
+        return { primary: "gemini-3.1-flash-lite-image" };
     }
 
     throw new Error(`Unknown model type: ${type}`);

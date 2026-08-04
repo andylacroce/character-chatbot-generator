@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
-    "@google-cloud/aiplatform": "^6.11.0",
     "@google-cloud/text-to-speech": "^6.4.1",
+    "@google/genai": "^2.15.0",
     "@trendmicro/react-toggle-switch": "^0.5.7",
     "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.6.0",

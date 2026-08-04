@@ -13,23 +13,18 @@ jest.mock('@anthropic-ai/sdk', () => ({
     __esModule: true
 }));
 
-const mockPredict = jest.fn().mockResolvedValue([{
-    predictions: [{
-        structValue: {
-            fields: {
-                bytesBase64Encoded: { stringValue: fakeB64 }
-            }
+const mockGenerateContent = jest.fn().mockResolvedValue({
+    candidates: [{
+        content: {
+            parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }]
         }
     }]
-}]);
+});
 
-jest.mock('@google-cloud/aiplatform', () => ({
-    PredictionServiceClient: jest.fn().mockImplementation(() => ({
-        predict: mockPredict
-    })),
-    helpers: {
-        toValue: (obj: unknown) => obj
-    }
+jest.mock('@google/genai', () => ({
+    GoogleGenAI: jest.fn().mockImplementation(() => ({
+        models: { generateContent: mockGenerateContent }
+    }))
 }));
 
 jest.mock('fs', () => ({
@@ -44,7 +39,7 @@ jest.mock('fs', () => ({
 
 jest.mock("../../src/utils/claudeModelSelector", () => ({
     getClaudeModel: (type: "text" | "text-simple" | "image") => {
-        if (type === "image") return { primary: "imagen-3.0-fast-generate-001" };
+        if (type === "image") return { primary: "gemini-3.1-flash-lite-image" };
         return "claude-haiku-4-5-20251001";
     }
 }));
@@ -73,15 +68,13 @@ describe('generate-avatar API', () => {
         mockAnthropicCreate.mockResolvedValue({
             content: [{ type: "text", text: '{"subject":"tall detective","artStyle":"photorealistic","composition":"headshot","iconicElements":"deerstalker hat","negativePrompts":"no duplicates","gender":"male"}' }]
         });
-        mockPredict.mockResolvedValue([{
-            predictions: [{
-                structValue: {
-                    fields: {
-                        bytesBase64Encoded: { stringValue: fakeB64 }
-                    }
+        mockGenerateContent.mockResolvedValue({
+            candidates: [{
+                content: {
+                    parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }]
                 }
             }]
-        }]);
+        });
     });
 
     afterAll(() => {
@@ -134,10 +127,10 @@ describe('generate-avatar API', () => {
         expect(data.gender).toBe('male');
     });
 
-    it('returns silhouette fallback when Imagen returns no image data', async () => {
-        mockPredict.mockResolvedValueOnce([{
-            predictions: [{ structValue: { fields: {} } }]
-        }]);
+    it('returns silhouette fallback when Gemini returns no image data', async () => {
+        mockGenerateContent.mockResolvedValueOnce({
+            candidates: [{ content: { parts: [] } }]
+        });
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
         await handler(req, res);
@@ -146,8 +139,8 @@ describe('generate-avatar API', () => {
         expect(data.avatarUrl).toBe('/silhouette.svg');
     });
 
-    it('returns silhouette fallback when Imagen fails with an error', async () => {
-        mockPredict.mockRejectedValueOnce(new Error('Vertex AI error'));
+    it('returns silhouette fallback when Gemini fails with an error', async () => {
+        mockGenerateContent.mockRejectedValueOnce(new Error('Vertex AI error'));
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
         await handler(req, res);
@@ -157,15 +150,9 @@ describe('generate-avatar API', () => {
     });
 
     it('returns silhouette fallback when safety filter is triggered', async () => {
-        mockPredict.mockResolvedValueOnce([{
-            predictions: [{
-                structValue: {
-                    fields: {
-                        safetyFilteredReason: { stringValue: 'sensitive_content' }
-                    }
-                }
-            }]
-        }]);
+        mockGenerateContent.mockResolvedValueOnce({
+            candidates: [{ finishReason: 'IMAGE_SAFETY', content: { parts: [] } }]
+        });
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
         await handler(req, res);
@@ -179,7 +166,7 @@ describe('generate-avatar API', () => {
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
         await handler(req, res);
-        // Should still attempt Imagen with fallback prompt
+        // Should still attempt Gemini image generation with fallback prompt
         expect(res._getStatusCode()).toBe(200);
         const data = res._getJSONData();
         expect(data.avatarUrl).toBeTruthy();
@@ -214,8 +201,8 @@ describe('generate-avatar API', () => {
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Test Character' } });
         await handler(req, res);
         expect(res._getStatusCode()).toBe(200);
-        // Verify Imagen was still called (prompt was trimmed, not aborted)
-        expect(mockPredict).toHaveBeenCalled();
+        // Verify Gemini was still called (prompt was trimmed, not aborted)
+        expect(mockGenerateContent).toHaveBeenCalled();
     });
 
     it('returns silhouette when GCP credentials loading fails with a non-Error value', async () => {
@@ -234,9 +221,9 @@ describe('generate-avatar API', () => {
         });
     });
 
-    it('covers non-Error Imagen failure branch (uses String(err))', async () => {
-        // Throw a plain string (non-Error) from Imagen to exercise String(err) branch
-        mockPredict.mockRejectedValueOnce('plain string error');
+    it('covers non-Error Gemini failure branch (uses String(err))', async () => {
+        // Throw a plain string (non-Error) from Gemini to exercise String(err) branch
+        mockGenerateContent.mockRejectedValueOnce('plain string error');
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Test Character' } });
         await handler(req, res);

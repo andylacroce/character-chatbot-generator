@@ -101,13 +101,14 @@ describe('generate-avatar API', () => {
                 default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
                 __esModule: true
             }));
-            jest.doMock('@google-cloud/aiplatform', () => ({
-                PredictionServiceClient: jest.fn().mockImplementation(() => ({
-                    predict: jest.fn().mockResolvedValue([{
-                        predictions: [{ structValue: { fields: { bytesBase64Encoded: { stringValue: fakeB64 } } } }]
-                    }])
-                })),
-                helpers: { toValue: (obj: unknown) => obj }
+            jest.doMock('@google/genai', () => ({
+                GoogleGenAI: jest.fn().mockImplementation(() => ({
+                    models: {
+                        generateContent: jest.fn().mockResolvedValue({
+                            candidates: [{ content: { parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }] } }]
+                        })
+                    }
+                }))
             }));
             jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
             jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
@@ -121,7 +122,7 @@ describe('generate-avatar API', () => {
         });
     });
 
-    it('returns silhouette when Imagen returns no image data', async () => {
+    it('returns silhouette when Gemini returns no image data', async () => {
         await jest.isolateModulesAsync(async () => {
             jest.resetModules();
 
@@ -132,11 +133,14 @@ describe('generate-avatar API', () => {
                 default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
                 __esModule: true
             }));
-            jest.doMock('@google-cloud/aiplatform', () => ({
-                PredictionServiceClient: jest.fn().mockImplementation(() => ({
-                    predict: jest.fn().mockResolvedValue([{ predictions: [{ structValue: { fields: {} } }] }])
-                })),
-                helpers: { toValue: (obj: unknown) => obj }
+            jest.doMock('@google/genai', () => ({
+                GoogleGenAI: jest.fn().mockImplementation(() => ({
+                    models: {
+                        generateContent: jest.fn().mockResolvedValue({
+                            candidates: [{ content: { parts: [] } }]
+                        })
+                    }
+                }))
             }));
             jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
             jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
@@ -150,7 +154,7 @@ describe('generate-avatar API', () => {
         });
     });
 
-    it('returns silhouette when Imagen throws an error', async () => {
+    it('returns silhouette when Gemini throws an error', async () => {
         await jest.isolateModulesAsync(async () => {
             jest.resetModules();
 
@@ -161,11 +165,12 @@ describe('generate-avatar API', () => {
                 default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
                 __esModule: true
             }));
-            jest.doMock('@google-cloud/aiplatform', () => ({
-                PredictionServiceClient: jest.fn().mockImplementation(() => ({
-                    predict: jest.fn().mockRejectedValue(new Error('Vertex AI error'))
-                })),
-                helpers: { toValue: (obj: unknown) => obj }
+            jest.doMock('@google/genai', () => ({
+                GoogleGenAI: jest.fn().mockImplementation(() => ({
+                    models: {
+                        generateContent: jest.fn().mockRejectedValue(new Error('Vertex AI error'))
+                    }
+                }))
             }));
             jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
             jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
@@ -190,13 +195,14 @@ describe('generate-avatar API', () => {
                 default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
                 __esModule: true
             }));
-            jest.doMock('@google-cloud/aiplatform', () => ({
-                PredictionServiceClient: jest.fn().mockImplementation(() => ({
-                    predict: jest.fn().mockResolvedValue([{
-                        predictions: [{ structValue: { fields: { safetyFilteredReason: { stringValue: 'sensitive_content' } } } }]
-                    }])
-                })),
-                helpers: { toValue: (obj: unknown) => obj }
+            jest.doMock('@google/genai', () => ({
+                GoogleGenAI: jest.fn().mockImplementation(() => ({
+                    models: {
+                        generateContent: jest.fn().mockResolvedValue({
+                            candidates: [{ finishReason: 'IMAGE_SAFETY', content: { parts: [] } }]
+                        })
+                    }
+                }))
             }));
             jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
             jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
@@ -207,7 +213,7 @@ describe('generate-avatar API', () => {
             const res = makeRes();
             await handler(req, res);
             expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ avatarUrl: '/silhouette.svg' }));
-            expect(mockLogEvent).toHaveBeenCalledWith('warn', 'avatar_imagen_safety_filtered', 'Imagen safety filter triggered', expect.any(Object));
+            expect(mockLogEvent).toHaveBeenCalledWith('warn', 'avatar_gemini_safety_filtered', 'Gemini image safety filter triggered', expect.any(Object));
         });
     });
 
@@ -220,13 +226,14 @@ describe('generate-avatar API', () => {
                 default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
                 __esModule: true
             }));
-            jest.doMock('@google-cloud/aiplatform', () => ({
-                PredictionServiceClient: jest.fn().mockImplementation(() => ({
-                    predict: jest.fn().mockResolvedValue([{
-                        predictions: [{ structValue: { fields: { bytesBase64Encoded: { stringValue: fakeB64 } } } }]
-                    }])
-                })),
-                helpers: { toValue: (obj: unknown) => obj }
+            jest.doMock('@google/genai', () => ({
+                GoogleGenAI: jest.fn().mockImplementation(() => ({
+                    models: {
+                        generateContent: jest.fn().mockResolvedValue({
+                            candidates: [{ content: { parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }] } }]
+                        })
+                    }
+                }))
             }));
             jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
             jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
@@ -261,13 +268,14 @@ describe('generate-avatar API', () => {
                 default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
                 __esModule: true
             }));
-            jest.doMock('@google-cloud/aiplatform', () => ({
-                PredictionServiceClient: jest.fn().mockImplementation(() => ({
-                    predict: jest.fn().mockResolvedValue([{
-                        predictions: [{ structValue: { fields: { bytesBase64Encoded: { stringValue: fakeB64 } } } }]
-                    }])
-                })),
-                helpers: { toValue: (obj: unknown) => obj }
+            jest.doMock('@google/genai', () => ({
+                GoogleGenAI: jest.fn().mockImplementation(() => ({
+                    models: {
+                        generateContent: jest.fn().mockResolvedValue({
+                            candidates: [{ content: { parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }] } }]
+                        })
+                    }
+                }))
             }));
             jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
             jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
@@ -346,19 +354,16 @@ describe('generate-avatar API', () => {
             const mockCreate = jest.fn().mockResolvedValueOnce({
                 content: [{ type: 'text', text: JSON.stringify({ subject: longSubject, gender: null }) }]
             });
-            let capturedInstance: unknown;
-            jest.doMock('@google-cloud/aiplatform', () => ({
-                PredictionServiceClient: jest.fn().mockImplementation(() => {
-                    capturedInstance = {
-                        predict: jest.fn().mockImplementation((_params: { instances: unknown[] }) => {
-                            return Promise.resolve([{
-                                predictions: [{ structValue: { fields: { bytesBase64Encoded: { stringValue: fakeB64 } } } }]
-                            }]);
+            jest.doMock('@google/genai', () => ({
+                GoogleGenAI: jest.fn().mockImplementation(() => ({
+                    models: {
+                        generateContent: jest.fn().mockImplementation(() => {
+                            return Promise.resolve({
+                                candidates: [{ content: { parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }] } }]
+                            });
                         })
-                    };
-                    return capturedInstance;
-                }),
-                helpers: { toValue: (obj: unknown) => obj }
+                    }
+                }))
             }));
             jest.doMock('@anthropic-ai/sdk', () => ({
                 default: function AnthropicMock() { return { messages: { create: mockCreate } }; },

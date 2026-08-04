@@ -51,12 +51,12 @@ describe('getClaudeModel', () => {
     });
 
     describe('"image" type', () => {
-        it('returns imagen-3.0-fast-generate-001 in any environment', () => {
+        it('returns gemini-3.1-flash-lite-image in any environment', () => {
             setEnv({ NODE_ENV: 'production', VERCEL_ENV: undefined });
-            expect(getClaudeModel('image')).toEqual({ primary: 'imagen-3.0-fast-generate-001' });
+            expect(getClaudeModel('image')).toEqual({ primary: 'gemini-3.1-flash-lite-image' });
 
             setEnv({ NODE_ENV: 'development', VERCEL_ENV: undefined });
-            expect(getClaudeModel('image')).toEqual({ primary: 'imagen-3.0-fast-generate-001' });
+            expect(getClaudeModel('image')).toEqual({ primary: 'gemini-3.1-flash-lite-image' });
         });
     });
 

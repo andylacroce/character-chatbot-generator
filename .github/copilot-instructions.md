@@ -22,7 +22,7 @@ Purpose: give an AI coding agent the minimal, actionable knowledge to make safe,
   - Model Selection: `src/utils/claudeModelSelector.ts` — three tiers:
     - `"text"` (chat responses only): **prod `claude-sonnet-4-6` / dev `claude-haiku-4-5-20251001`**
     - `"text-simple"` (personality generation, validation, voice config, short lists): always `claude-haiku-4-5-20251001`
-    - `"image"` (avatar): always `imagen-3.0-fast-generate-001` via Vertex AI
+    - `"image"` (avatar): always `gemini-3.1-flash-lite-image` via Vertex AI
 
 - **Client → Server flow (common change path)**
   - Client code (e.g. `app/components/useChatController.ts`) calls `authenticatedFetch('/api/chat', ...)` from `src/utils/api.ts`.

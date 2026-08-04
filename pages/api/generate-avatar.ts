@@ -1,6 +1,7 @@
 /**
  * API endpoint for generating character avatar images.
- * Uses Claude to build a detailed image prompt, then Google Vertex AI Imagen to generate the image.
+ * Uses Claude to build a detailed image prompt, then Google Vertex AI Gemini image
+ * generation to render the image.
  * Accepts POST requests with a character name and returns a base64 data URL.
  */
 
@@ -32,53 +33,55 @@ function loadGcpCredentials(): Record<string, unknown> {
 }
 
 /**
- * Calls Google Vertex AI Imagen to generate an image from a prompt.
+ * Calls Google Vertex AI Gemini image generation to generate an image from a prompt.
  * Returns a base64 data URL string, or null if generation fails.
  */
-async function generateImageWithImagen(
+async function generateImageWithGemini(
   prompt: string,
   credentials: Record<string, unknown>,
   projectId: string,
 ): Promise<string | null> {
-  const { PredictionServiceClient, helpers } = await import("@google-cloud/aiplatform");
+  const { GoogleGenAI } = await import("@google/genai");
 
-  const client = new PredictionServiceClient({
-    apiEndpoint: "us-central1-aiplatform.googleapis.com",
-    credentials,
+  const client = new GoogleGenAI({
+    vertexai: true,
+    project: projectId,
+    // Gemini image models are only served from the "global" endpoint, unlike
+    // the legacy Imagen predict API which used a regional (us-central1) endpoint.
+    location: "global",
+    googleAuthOptions: { credentials },
   });
 
   const modelId = getClaudeModel("image").primary;
-  const endpoint = `projects/${projectId}/locations/us-central1/publishers/google/models/${modelId}`;
 
-  logEvent("info", "avatar_imagen_call", "Calling Vertex AI Imagen", sanitizeLogMeta({ endpoint, prompt: prompt.slice(0, 100) }));
+  logEvent("info", "avatar_gemini_call", "Calling Vertex AI Gemini image generation", sanitizeLogMeta({ model: modelId, prompt: prompt.slice(0, 100) }));
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const predictResponse = await (client.predict({
-    endpoint,
-    instances: [helpers.toValue({ prompt }) as any],
-    parameters: helpers.toValue({
-      sampleCount: 1,
-      aspectRatio: "1:1",
-      safetyFilterLevel: "block_few",
-      personGeneration: "allow_all",
-    }) as any,
-  }) as unknown as Promise<[any, unknown, unknown]>);
-  /* eslint-enable @typescript-eslint/no-explicit-any */
-  const [response] = predictResponse;
+  const response = await client.models.generateContent({
+    model: modelId,
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: {
+      responseModalities: ["IMAGE"],
+      imageConfig: { aspectRatio: "1:1", personGeneration: "ALLOW_ALL" },
+    },
+  });
 
-  const prediction = response.predictions?.[0];
+  const candidate = response.candidates?.[0];
 
-  // Check for safety filter
-  const safetyReason = prediction?.structValue?.fields?.safetyFilteredReason?.stringValue;
-  if (safetyReason) {
-    logEvent("warn", "avatar_imagen_safety_filtered", "Imagen safety filter triggered", sanitizeLogMeta({ safetyReason }));
+  // Check for safety filtering, either on the prompt or the generated candidate.
+  const blockReason = response.promptFeedback?.blockReason;
+  const finishReason = candidate?.finishReason;
+  const safetyBlocked = Boolean(blockReason) || (typeof finishReason === "string" && /SAFETY|PROHIBITED/i.test(finishReason));
+  if (safetyBlocked) {
+    logEvent("warn", "avatar_gemini_safety_filtered", "Gemini image safety filter triggered", sanitizeLogMeta({ blockReason, finishReason }));
     return null;
   }
 
-  const b64 = prediction?.structValue?.fields?.bytesBase64Encoded?.stringValue;
+  const imagePart = candidate?.content?.parts?.find((part) => part.inlineData?.data);
+  const b64 = imagePart?.inlineData?.data;
   if (!b64) return null;
 
-  return `data:image/png;base64,${b64}`;
+  const mimeType = imagePart.inlineData?.mimeType || "image/png";
+  return `data:${mimeType};base64,${b64}`;
 }
 
 /**
@@ -161,7 +164,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       logEvent("info", "avatar_prompt_fallback", "Using fallback image prompt", sanitizeLogMeta({ prompt }));
     }
 
-    // Step 2: Generate image using Vertex AI Imagen
+    // Step 2: Generate image using Vertex AI Gemini image generation
     const projectId = process.env.GOOGLE_CLOUD_PROJECT;
     if (!projectId) {
       logEvent("error", "avatar_missing_project", "Missing GOOGLE_CLOUD_PROJECT env var");
@@ -178,20 +181,20 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       return;
     }
 
-    logEvent("info", "avatar_imagen_start", "Attempting image generation with Imagen", sanitizeLogMeta({ prompt: prompt.slice(0, 100) }));
+    logEvent("info", "avatar_gemini_start", "Attempting image generation with Gemini", sanitizeLogMeta({ prompt: prompt.slice(0, 100) }));
 
     let avatarUrl: string | null = null;
     try {
-      avatarUrl = await generateImageWithImagen(prompt, credentials, projectId);
+      avatarUrl = await generateImageWithGemini(prompt, credentials, projectId);
       if (avatarUrl) {
-        logEvent("info", "avatar_imagen_success", "Image generated successfully with Imagen");
+        logEvent("info", "avatar_gemini_success", "Image generated successfully with Gemini");
       }
     } catch (err) {
-      logEvent("error", "avatar_imagen_error", "Vertex AI Imagen error", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
+      logEvent("error", "avatar_gemini_error", "Vertex AI Gemini image generation error", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
     }
 
     if (!avatarUrl) {
-      logEvent("warn", "avatar_imagen_failed", "Imagen returned no image, using silhouette");
+      logEvent("warn", "avatar_gemini_failed", "Gemini returned no image, using silhouette");
       res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
       return;
     }
