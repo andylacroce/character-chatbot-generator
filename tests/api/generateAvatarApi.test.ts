@@ -140,7 +140,7 @@ describe('generate-avatar API', () => {
     });
 
     it('returns silhouette fallback when Gemini fails with an error', async () => {
-        mockGenerateContent.mockRejectedValueOnce(new Error('Vertex AI error'));
+        mockGenerateContent.mockRejectedValueOnce(new Error('Gemini API error'));
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
         await handler(req, res);

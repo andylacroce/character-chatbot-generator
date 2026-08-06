@@ -48,7 +48,7 @@ Three tiers, chosen by call site, not by any runtime cost heuristic:
 
 - `"text"` — chat replies only. `claude-sonnet-4-6` in prod, `claude-haiku-4-5-20251001` in dev.
 - `"text-simple"` — one-shot structured JSON tasks (personality generation, character validation, voice config, suggestion lists). Always `claude-haiku-4-5-20251001`, prod or dev.
-- `"image"` — avatar prompts render via `gemini-3.1-flash-lite-image` on Vertex AI (not Claude).
+- `"image"` — avatar prompts render via `gemini-3.1-flash-lite-image` on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI; not Claude).
 
 All Claude calls go through the singleton client in `src/utils/anthropicClient.ts`.
 
@@ -64,7 +64,7 @@ Changing this flow touches both the API and modal, plus `tests/api/validateChara
 
 ### Avatar generation (`pages/api/generate-avatar.ts`)
 
-Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description prompt from the character name, then Vertex AI Gemini image generation (via the `@google/genai` SDK's `generateContent`, not the legacy Imagen `predict` API) renders a square PNG returned as a base64 data URL (no external image hosting). Requires the service account to have `roles/aiplatform.user` and `aiplatform.googleapis.com` enabled on `GOOGLE_CLOUD_PROJECT`. Rate-limited to 5 req/min/IP since image generation calls are comparatively expensive.
+Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description prompt from the character name, then Gemini image generation on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI; via the `@google/genai` SDK's `generateContent`, not the legacy Imagen `predict` API) renders a square PNG returned as a base64 data URL (no external image hosting). Requires the service account to have `roles/aiplatform.user` and `aiplatform.googleapis.com` enabled on `GOOGLE_CLOUD_PROJECT`. Rate-limited to 5 req/min/IP since image generation calls are comparatively expensive.
 
 ### Client-side storage
 

@@ -168,7 +168,7 @@ describe('generate-avatar API', () => {
             jest.doMock('@google/genai', () => ({
                 GoogleGenAI: jest.fn().mockImplementation(() => ({
                     models: {
-                        generateContent: jest.fn().mockRejectedValue(new Error('Vertex AI error'))
+                        generateContent: jest.fn().mockRejectedValue(new Error('Gemini API error'))
                     }
                 }))
             }));

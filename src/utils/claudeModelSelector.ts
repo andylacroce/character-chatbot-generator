@@ -6,7 +6,8 @@
  *                  Prod: claude-sonnet-4-6  Dev: claude-haiku-4-5-20251001
  *  "text-simple" — Simple structured tasks (validation, name lists, voice config, etc.).
  *                  Always: claude-haiku-4-5-20251001
- *  "image"       — Avatar generation via Vertex AI Gemini image generation.
+ *  "image"       — Avatar generation via Gemini image generation on Google Cloud's
+ *                  Gemini Enterprise Agent Platform (formerly Vertex AI).
  *                  Always: gemini-3.1-flash-lite-image
  */
 

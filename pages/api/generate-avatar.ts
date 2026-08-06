@@ -1,7 +1,7 @@
 /**
  * API endpoint for generating character avatar images.
- * Uses Claude to build a detailed image prompt, then Google Vertex AI Gemini image
- * generation to render the image.
+ * Uses Claude to build a detailed image prompt, then Gemini image generation on
+ * Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI) to render the image.
  * Accepts POST requests with a character name and returns a base64 data URL.
  */
 
@@ -33,7 +33,8 @@ function loadGcpCredentials(): Record<string, unknown> {
 }
 
 /**
- * Calls Google Vertex AI Gemini image generation to generate an image from a prompt.
+ * Calls Gemini image generation on Google Cloud's Gemini Enterprise Agent Platform
+ * (formerly Vertex AI) to generate an image from a prompt.
  * Returns a base64 data URL string, or null if generation fails.
  */
 async function generateImageWithGemini(
@@ -54,7 +55,7 @@ async function generateImageWithGemini(
 
   const modelId = getClaudeModel("image").primary;
 
-  logEvent("info", "avatar_gemini_call", "Calling Vertex AI Gemini image generation", sanitizeLogMeta({ model: modelId, prompt: prompt.slice(0, 100) }));
+  logEvent("info", "avatar_gemini_call", "Calling Gemini image generation", sanitizeLogMeta({ model: modelId, prompt: prompt.slice(0, 100) }));
 
   const response = await client.models.generateContent({
     model: modelId,
@@ -164,7 +165,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       logEvent("info", "avatar_prompt_fallback", "Using fallback image prompt", sanitizeLogMeta({ prompt }));
     }
 
-    // Step 2: Generate image using Vertex AI Gemini image generation
+    // Step 2: Generate image using Gemini image generation
     const projectId = process.env.GOOGLE_CLOUD_PROJECT;
     if (!projectId) {
       logEvent("error", "avatar_missing_project", "Missing GOOGLE_CLOUD_PROJECT env var");
@@ -190,7 +191,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
         logEvent("info", "avatar_gemini_success", "Image generated successfully with Gemini");
       }
     } catch (err) {
-      logEvent("error", "avatar_gemini_error", "Vertex AI Gemini image generation error", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
+      logEvent("error", "avatar_gemini_error", "Gemini image generation error", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
     }
 
     if (!avatarUrl) {

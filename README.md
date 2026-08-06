@@ -8,7 +8,7 @@ app/
 pages/api/           # API routes (chat, audio, health, transcript)
    chat.ts            # Main chat endpoint with streaming & summarization
    audio.ts           # TTS audio generation
-   generate-avatar.ts # Avatar generation via Claude + Vertex AI Gemini image generation
+   generate-avatar.ts # Avatar generation via Claude + Gemini image generation (Gemini Enterprise Agent Platform, formerly Vertex AI)
    validate-character.ts # Copyright/trademark validation
    random-character.ts   # Public domain character suggestions
 src/
@@ -28,7 +28,7 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with streaming responses and conversation summarization
 - **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
-- **Avatar Generation**: Claude generates a detailed image prompt; Google Vertex AI Gemini image generation (`gemini-3.1-flash-lite-image`) renders a portrait and returns it as a base64 data URL
+- **Avatar Generation**: Claude generates a detailed image prompt; Gemini image generation (`gemini-3.1-flash-lite-image`) on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI) renders a portrait and returns it as a base64 data URL
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 50 messages
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 592 passing tests
@@ -40,7 +40,7 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - Node.js ≥18
 - npm or yarn
 - Anthropic API key
-- Google Cloud service account with Text-to-Speech and Vertex AI APIs enabled
+- Google Cloud service account with Text-to-Speech and Gemini Enterprise Agent Platform (formerly Vertex AI) APIs enabled
 
 ## Quickstart (Local Development)
 
@@ -68,7 +68,7 @@ TTS_TMP_DIR=/custom/temp/path
 
 1. **Google Cloud Setup**
 
-   - Create a GCP service account with Text-to-Speech and Vertex AI APIs enabled
+   - Create a GCP service account with Text-to-Speech and Gemini Enterprise Agent Platform (formerly Vertex AI) APIs enabled
    - Grant the service account the `roles/aiplatform.user` role for Gemini image generation
    - Download the JSON key file
    - Place it at `config/gcp-key.json` or paste contents into `GOOGLE_APPLICATION_CREDENTIALS_JSON`
@@ -125,7 +125,7 @@ npm run ci
 - `ANTHROPIC_API_KEY` — Anthropic API key for chat and avatar prompt generation
 - `API_SECRET` — Server-side API secret for request authorization
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON` — Path to GCP JSON key or full JSON content
-- `GOOGLE_CLOUD_PROJECT` — GCP project ID for Vertex AI Gemini image generation
+- `GOOGLE_CLOUD_PROJECT` — GCP project ID for Gemini image generation (Gemini Enterprise Agent Platform, formerly Vertex AI)
 
 ### Optional
 
@@ -137,13 +137,13 @@ npm run ci
 When a character chatbot is created, the app generates a portrait avatar automatically:
 
 1. **Prompt generation** — Claude (`claude-haiku-4-5-20251001`) receives the character name and produces a detailed, safe-for-work image prompt describing appearance, era, and artistic style.
-2. **Image rendering** — The prompt is sent to Google Vertex AI Gemini image generation (`gemini-3.1-flash-lite-image`) which returns a square PNG as a base64 data URL.
+2. **Image rendering** — The prompt is sent to Gemini image generation (`gemini-3.1-flash-lite-image`) on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI) which returns a square PNG as a base64 data URL.
 3. **Display** — The data URL is rendered directly in the UI; no external image hosting is required.
 
 ### Requirements
 
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON` must reference a service account with `roles/aiplatform.user` granted in the GCP project.
-- `GOOGLE_CLOUD_PROJECT` must be set to the project where the Vertex AI API is enabled.
+- `GOOGLE_CLOUD_PROJECT` must be set to the project where the Gemini Enterprise Agent Platform (formerly Vertex AI) API is enabled.
 - The `aiplatform.googleapis.com` API must be enabled in that project.
 
 ### Rate limit
