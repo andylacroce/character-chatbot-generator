@@ -20,7 +20,7 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.115.0",
+    "@anthropic-ai/sdk": "^0.116.0",
     "@google-cloud/text-to-speech": "^6.4.1",
     "@google/genai": "^2.16.0",
     "@trendmicro/react-toggle-switch": "^0.5.7",
