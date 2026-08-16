@@ -126,20 +126,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const textModel = getClaudeModel("text-simple");
       const promptResponse = await anthropic.messages.create({
         model: textModel,
-        system: `You are an expert at creating concise, unambiguous image-generation prompts for text-to-image models. Produce a deterministic prompt for a single-person portrait suitable for photorealistic rendering. The prompt must explicitly forbid multiple photos, collages, side-by-side images, reflections, split/composite images, multiple exposures, or any duplicates. Also instruct against text overlays, watermarks, logos, captions, or any extraneous elements. When the character is a real person or a known fictional character, prioritize an *accurate likeness*: capture distinctive facial features, hair, skin tone, and iconic details. For photorealism include camera/lens, lighting, and background guidance as appropriate. Always return only the requested JSON fields and do not add commentary.`,
+        system: `You are an expert at creating concise, unambiguous image-generation prompts for text-to-image models. Produce a deterministic prompt for a single-person portrait suitable for illustrated/stylized rendering. The prompt must explicitly forbid multiple photos, collages, side-by-side images, reflections, split/composite images, multiple exposures, or any duplicates. Also instruct against text overlays, watermarks, logos, captions, or any extraneous elements. You must NEVER request an accurate likeness of a real person (no actor, celebrity, or public figure's actual face or identity) and must NEVER request an exact reproduction of a copyrighted character's specific design (exact costume, logo, or studio-owned visual design). Instead, describe a generic archetype evoked by the name (e.g., broad build, era-appropriate style, general vibe/personality) using original, non-infringing details — enough to be thematically recognizable without copying a specific person's face or a specific copyrighted design. For original characters, invent a unique appearance with clear defining details. Always return only the requested JSON fields and do not add commentary.`,
         messages: [
           {
             role: "user",
-            content: `Create an image generation prompt for ${sanitizedName}.
+            content: `Create an image generation prompt for a character loosely inspired by "${sanitizedName}".
 
-${sanitizedName.toLowerCase().includes('original character') || sanitizedName.toLowerCase().includes('oc ') ? 'This is an original character — create a unique appearance with clear defining details.' : 'If this is a known character or real person, describe their canonical/real appearance with specific, verifiable distinctive features. Match their real likeness as closely as possible.'}
+${sanitizedName.toLowerCase().includes('original character') || sanitizedName.toLowerCase().includes('oc ') ? 'This is an original character — create a unique appearance with clear defining details.' : 'Do not depict this as a real person or reproduce a specific copyrighted design. Describe a generic, original interpretation that evokes the general archetype/vibe (e.g., role, era, broad style) without copying any real individual\'s actual face/identity or any studio-owned character design.'}
 
 Return JSON with these fields (strict JSON only; do not add extra commentary):
-- subject: concise physical description matching canonical/real appearance (200 chars max). Include age range, ethnicity if relevant, and distinguishing facial features.
-- artStyle: visual style (e.g., photorealistic, studio headshot) (50 chars max)
+- subject: concise physical description of an original/generic character (200 chars max). Include age range and general style; do not describe a specific real person's face or an exact copyrighted design.
+- artStyle: visual style (e.g., stylized illustration, digital painting) (50 chars max). Avoid "photorealistic" for real people or copyrighted characters.
 - composition: framing and pose guidance (e.g., close-up headshot, 3/4 view) (100 chars max)
-- iconicElements: signature props, clothing, or background elements tied to the character (100 chars max)
-- negativePrompts: explicit exclusions to ensure a single, realistic portrait (150 chars max). Must include: "no collage, no side-by-side photos, no multiple people, single face only, no reflections, no double exposures, no duplicates, no text, no watermark, no logo, no extra limbs, no extra hands, no extra faces".
+- iconicElements: generic props, clothing, or background elements evoking the theme without copying a specific copyrighted design (100 chars max)
+- negativePrompts: explicit exclusions to ensure a single, original portrait (150 chars max). Must include: "no collage, no side-by-side photos, no multiple people, single face only, no reflections, no double exposures, no duplicates, no text, no watermark, no logo, no extra limbs, no extra hands, no extra faces, not a real person, no celebrity likeness, no exact copyrighted design".
 - gender: character's gender (for voice matching)`
           }
         ],
@@ -152,7 +152,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
 
       genderOut = promptData.gender || null;
 
-      prompt = `Accurate likeness of ${sanitizedName}. ${promptData.subject || ""}. ${promptData.iconicElements || ""}. ${promptData.composition || ""}. Style: ${promptData.artStyle || "photorealistic"}. Match canonical appearance exactly. single, solo, alone, centered, close-up portrait, no other people. Exclude: ${promptData.negativePrompts || "multiple people, extra faces, duplicates"}`.trim();
+      prompt = `Original, stylized character illustration loosely inspired by the name "${sanitizedName}", not a depiction of any real person and not an exact reproduction of any copyrighted character design. ${promptData.subject || ""}. ${promptData.iconicElements || ""}. ${promptData.composition || ""}. Style: ${promptData.artStyle || "stylized illustration"}. single, solo, alone, centered, close-up portrait, no other people. Exclude: ${promptData.negativePrompts || "multiple people, extra faces, duplicates, real person likeness, exact copyrighted design"}`.trim();
 
       if (prompt.length > 1000) {
         prompt = prompt.slice(0, 1000);
@@ -161,7 +161,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       logEvent("info", "avatar_prompt_generated", "Generated image prompt", sanitizeLogMeta({ prompt, gender: genderOut }));
     } catch (promptErr) {
       logger.warn("Failed to generate dynamic image prompt, using fallback:", { error: promptErr });
-      prompt = `Accurate photorealistic likeness of ${sanitizedName}. Match canonical/real appearance precisely (face, hair, skin tone, and iconic features). Single subject, one person, one face; high-resolution head-and-shoulders portrait (frontal or 3/4) with neutral background and even soft lighting. Do NOT create collages, side-by-side photos, split/composite images, reflections, or duplicates. Exclude text, watermarks, logos, extra limbs, extra faces, or any compositing.`;
+      prompt = `Original, stylized character illustration loosely inspired by the name "${sanitizedName}", depicting a generic archetype rather than any real person's actual likeness or any specific copyrighted character design. Single subject, one person, one face; head-and-shoulders portrait (frontal or 3/4) with neutral background and even soft lighting. Do NOT create collages, side-by-side photos, split/composite images, reflections, or duplicates. Exclude text, watermarks, logos, extra limbs, extra faces, real-person likeness, exact copyrighted designs, or any compositing.`;
       logEvent("info", "avatar_prompt_fallback", "Using fallback image prompt", sanitizeLogMeta({ prompt }));
     }
 
