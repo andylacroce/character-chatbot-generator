@@ -22,7 +22,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
     "@google-cloud/text-to-speech": "^7.0.0",
-    "@google/genai": "^2.16.0",
+    "@google/genai": "^2.17.1",
     "@trendmicro/react-toggle-switch": "^0.5.7",
     "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.7.0",
