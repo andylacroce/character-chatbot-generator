@@ -15,6 +15,54 @@ import anthropic from "../../src/utils/anthropicClient";
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
+ *
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Check Claude and Google TTS service health
+ *     description: For uptime/monitoring probes. Always returns JSON, never throws.
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: All services healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 requestId:
+ *                   type: string
+ *       500:
+ *         description: One or more services unhealthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: error
+ *                 claude:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                     error:
+ *                       type: string
+ *                       nullable: true
+ *                 tts:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                     error:
+ *                       type: string
+ *                       nullable: true
+ *                 requestId:
+ *                   type: string
  */
 export default async function handler(
   req: import("next").NextApiRequest,

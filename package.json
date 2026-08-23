@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "predev": "npm run docs:api",
+    "build": "npm run docs:api && next build",
     "ci": "npm run lint -- --max-warnings=0 && npm run lint:md && npm run type-check && npm run test:coverage && npm run build",
-    "vercel-build": "next build",
+    "vercel-build": "npm run docs:api && next build",
+    "docs:api": "node scripts/generate-openapi.cjs",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
@@ -23,6 +25,7 @@
     "@anthropic-ai/sdk": "^0.117.1",
     "@google-cloud/text-to-speech": "^7.0.0",
     "@google/genai": "^2.17.1",
+    "@scalar/nextjs-api-reference": "^0.11.16",
     "@trendmicro/react-toggle-switch": "^0.5.7",
     "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.0",
@@ -49,6 +52,7 @@
     "@types/jest": "^30.0.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@types/swagger-jsdoc": "^6.0.4",
     "@typescript-eslint/eslint-plugin": "^8.67.0",
     "@typescript-eslint/parser": "^8.67.0",
     "@typescript-eslint/type-utils": "^8.67.0",
@@ -68,6 +72,7 @@
     "markdownlint-cli": "^0.49.1",
     "node-mocks-http": "^1.18.1",
     "postcss": "^8.5.15",
+    "swagger-jsdoc": "^6.3.0",
     "typescript": "^6"
   },
   "overrides": {

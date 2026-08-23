@@ -23,6 +23,44 @@ const personalityRateLimit = createRateLimiter({
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
+ *
+ * @swagger
+ * /generate-personality:
+ *   post:
+ *     summary: Generate a character personality prompt
+ *     description: Rate limited to 20 requests/minute/IP.
+ *     tags: [Character]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Sherlock Holmes
+ *     responses:
+ *       200:
+ *         description: Generated personality prompt
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 personality:
+ *                   type: string
+ *                 correctedName:
+ *                   type: string
+ *       400:
+ *         description: Valid name required, or invalid character name
+ *       405:
+ *         description: Method not allowed
+ *       429:
+ *         description: Rate limit exceeded
+ *       500:
+ *         description: Failed to generate personality prompt
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

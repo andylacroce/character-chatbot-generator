@@ -122,6 +122,16 @@ Use a single command to run lint, TypeScript type-check, tests with coverage, an
 npm run ci
 ```
 
+## API Documentation
+
+Every API route is documented with OpenAPI (Swagger) via `@swagger` JSDoc comments in `pages/api/*.ts`. Run the app locally and open:
+
+```text
+http://localhost:3000/reference
+```
+
+for an interactive reference (Scalar). The underlying spec is generated into `public/openapi.json` by `npm run docs:api`, which also runs automatically before `dev` and `build` — it isn't committed, so regenerate it after changing any route's annotations. Adding a new route means adding a `@swagger` block to its handler; nothing else needs wiring up.
+
 ## Environment Variables
 
 ### Required

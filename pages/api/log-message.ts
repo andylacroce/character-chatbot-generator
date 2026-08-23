@@ -16,6 +16,53 @@ import { escapeHtml } from "../../src/utils/security";
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
+ *
+ * @swagger
+ * /log-message:
+ *   post:
+ *     summary: Log a chat message or event
+ *     description: >
+ *       Stores an HTML-escaped, control-character-stripped log line via Vercel Blob
+ *       (if VERCEL_BLOB_READ_WRITE_TOKEN is set) or a local file under tmp/logs.
+ *     tags: [Logging]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [sender, text, sessionId, sessionDatetime]
+ *             properties:
+ *               sender:
+ *                 type: string
+ *                 maxLength: 100
+ *               text:
+ *                 type: string
+ *                 maxLength: 2000
+ *               sessionId:
+ *                 type: string
+ *                 maxLength: 100
+ *               sessionDatetime:
+ *                 type: string
+ *                 maxLength: 30
+ *     responses:
+ *       200:
+ *         description: Logged successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 requestId:
+ *                   type: string
+ *       400:
+ *         description: Missing or invalid fields
+ *       405:
+ *         description: Method not allowed
+ *       500:
+ *         description: Internal server error
  */
 export default async function handler(
   req: import("next").NextApiRequest,

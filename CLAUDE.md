@@ -16,6 +16,7 @@ npm run test                   # jest
 npm run test:watch
 npm run test:coverage           # jest --coverage (enforces 80% global threshold — see jest.config.cjs)
 npm run analyze                  # ANALYZE=true next build (bundle analysis)
+npm run docs:api                  # regenerate public/openapi.json from @swagger JSDoc comments; runs automatically before dev/build
 npm run ci                        # lint --max-warnings=0 && lint:md && type-check && test:coverage && build — run this before considering work done
 ```
 
@@ -69,6 +70,10 @@ Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description 
 ### Client-side storage
 
 `src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Known keys: `chatbot-bot`, `chatbot-history-<bot.name>`, `voiceConfig-<bot.name>` (versioned — use the versioned helpers in `storage.ts`, never write the shape directly), `audioEnabled`, `darkMode`, `bot-session-id`. Never store secrets or PII here; it's client-side only.
+
+### API documentation
+
+Every `pages/api/*.ts` handler carries a `@swagger` JSDoc block (OpenAPI 3.0). `npm run docs:api` (`scripts/generate-openapi.cjs`, via `swagger-jsdoc`) reads those comments and writes `public/openapi.json` — a gitignored, build-time artifact, not something to hand-edit or commit. It runs automatically before `dev`/`build`/`vercel-build`; run it directly after touching a route's annotations. `app/reference/route.ts` serves the interactive UI (`@scalar/nextjs-api-reference`) at `/reference`, reading that same static file — deliberately not scanning route source at request time, since Vercel's serverless bundler doesn't reliably ship raw `.ts` alongside compiled output. The route lives outside `pages/api`, so it isn't subject to `proxy.ts` auth. `swagger-jsdoc`'s glob resolution doesn't match backslash-separated paths, so the script normalizes to forward slashes before passing them in — same class of Windows/POSIX path bug as elsewhere in this repo; keep that in mind if `docs:api` starts reporting 0 documented paths locally.
 
 ### Module system (do not regress)
 

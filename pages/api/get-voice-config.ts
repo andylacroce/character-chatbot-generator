@@ -14,6 +14,40 @@ import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
+ *
+ * @swagger
+ * /get-voice-config:
+ *   post:
+ *     summary: Get a character's TTS voice configuration
+ *     tags: [Voice]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Sherlock Holmes
+ *               gender:
+ *                 type: string
+ *                 nullable: true
+ *                 example: male
+ *     responses:
+ *       200:
+ *         description: Voice configuration for the character
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Name required
+ *       405:
+ *         description: Method not allowed
+ *       500:
+ *         description: Failed to get voice config
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

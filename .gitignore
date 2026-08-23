@@ -52,6 +52,7 @@ tmp/
 
 # Public generated assets
 public/avatars/*
+public/openapi.json
 
 # Documentation directories
 docs/

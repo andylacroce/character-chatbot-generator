@@ -11,6 +11,30 @@ import characterNames from "../../src/data/characterNames";
 const recentNames: string[] = [];
 const MAX_RECENT_NAMES = 100;
 
+/**
+ * @swagger
+ * /random-character:
+ *   get:
+ *     summary: Get a random public-domain character name
+ *     description: >
+ *       Picks from a static in-process list (pre-1928/mythology/historical figures)
+ *       without repeating a name until the whole list has been shown this session.
+ *       No LLM call.
+ *     tags: [Character]
+ *     responses:
+ *       200:
+ *         description: A character name
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 name:
+ *                   type: string
+ *                   example: Sherlock Holmes
+ *       405:
+ *         description: Method not allowed
+ */
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     logEvent("warn", "random_character_method_not_allowed", "RandomCharacter API method not allowed", sanitizeLogMeta({ method: req.method }));

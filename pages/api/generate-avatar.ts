@@ -88,6 +88,51 @@ async function generateImageWithGemini(
 
 /**
  * Next.js API route handler for generating a character avatar image.
+ *
+ * @swagger
+ * /generate-avatar:
+ *   post:
+ *     summary: Generate a character avatar image
+ *     description: >
+ *       Two-stage: Claude writes an SFW image-description prompt, then Gemini
+ *       image generation (Google Cloud's Gemini Enterprise Agent Platform) renders
+ *       a square PNG returned as a base64 data URL. Rate limited to 5 requests/
+ *       minute/IP since image generation is comparatively expensive. Falls back to
+ *       `/silhouette.svg` (still a 200 response) on any generation failure, missing
+ *       GOOGLE_CLOUD_PROJECT, or a safety filter trigger — it never surfaces a 5xx
+ *       for a failed generation.
+ *     tags: [Character]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Sherlock Holmes
+ *     responses:
+ *       200:
+ *         description: Avatar URL (a base64 data URL, or the silhouette fallback)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 avatarUrl:
+ *                   type: string
+ *                   example: /silhouette.svg
+ *                 gender:
+ *                   type: string
+ *                   nullable: true
+ *       400:
+ *         description: Valid name required, or invalid character name
+ *       405:
+ *         description: Method not allowed
+ *       429:
+ *         description: Rate limit exceeded
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

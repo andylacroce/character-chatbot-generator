@@ -15,6 +15,31 @@ import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
+ *
+ * @swagger
+ * /delete-audio:
+ *   get:
+ *     summary: Delete a temporary audio file
+ *     description: >
+ *       Cleanup after TTS playback. Only a bare filename under the system temp
+ *       directory may be targeted — paths and `..` segments are rejected.
+ *     tags: [Audio]
+ *     parameters:
+ *       - in: query
+ *         name: file
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: reply-123.mp3
+ *     responses:
+ *       200:
+ *         description: File deleted
+ *       400:
+ *         description: Invalid file specified
+ *       404:
+ *         description: File not found
+ *       500:
+ *         description: Error deleting file
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { file } = req.query;

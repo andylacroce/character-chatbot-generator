@@ -66,6 +66,64 @@ function getOriginalTextForAudio(sanitizedFile: string): string | null {
   return null;
 }
 
+/**
+ * @swagger
+ * /audio:
+ *   get:
+ *     summary: Fetch (and, if necessary, regenerate) a synthesized audio reply
+ *     description: >
+ *       Serves an MP3 from the system temp directory or /public. If the file is
+ *       missing, or the `text` param doesn't match the cached `.txt` sidecar, the
+ *       audio is resynthesized on demand — from the provided text, a cached reply,
+ *       or (as a last resort) a fresh Claude+TTS round trip keyed off the filename.
+ *       Only files resolving inside the temp dir or /public are ever served. Rate
+ *       limited to 30 requests/minute/IP.
+ *     tags: [Audio]
+ *     parameters:
+ *       - in: query
+ *         name: file
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: a1b2c3.mp3
+ *       - in: query
+ *         name: text
+ *         schema:
+ *           type: string
+ *         description: Expected reply text; triggers regeneration on mismatch.
+ *       - in: query
+ *         name: botName
+ *         schema:
+ *           type: string
+ *           default: Character
+ *       - in: query
+ *         name: gender
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: voiceConfig
+ *         schema:
+ *           type: string
+ *         description: URL-encoded JSON CharacterVoiceConfig.
+ *     responses:
+ *       200:
+ *         description: MP3 audio content
+ *         content:
+ *           audio/mpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: File parameter is required
+ *       403:
+ *         description: Resolved path escapes the allowed temp/public roots
+ *       404:
+ *         description: File not found after all regeneration attempts
+ *       429:
+ *         description: Rate limit exceeded
+ *       500:
+ *         description: Error reading file
+ */
 async function handler(
   req: import("next").NextApiRequest,
   res: import("next").NextApiResponse,

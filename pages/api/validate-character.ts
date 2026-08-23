@@ -29,6 +29,56 @@ export interface CharacterValidationResult {
 /**
  * Next.js API route handler for validating character names.
  * Returns whether the character is safe to use or if copyright/trademark concerns exist.
+ *
+ * @swagger
+ * /validate-character:
+ *   post:
+ *     summary: Validate a character name for copyright/trademark concerns
+ *     description: >
+ *       Uses Claude to classify the name as public-domain-safe, cautionary, or a
+ *       clear violation. Rate limited to 30 requests/minute/IP. On an internal
+ *       error, responds 200 with warningLevel "none" rather than blocking creation.
+ *     tags: [Character]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Mickey Mouse
+ *     responses:
+ *       200:
+ *         description: Validation result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 characterName:
+ *                   type: string
+ *                 isPublicDomain:
+ *                   type: boolean
+ *                 isSafe:
+ *                   type: boolean
+ *                 warningLevel:
+ *                   type: string
+ *                   enum: [none, caution, warning]
+ *                 reason:
+ *                   type: string
+ *                 suggestions:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       400:
+ *         description: Valid character name required
+ *       405:
+ *         description: Method not allowed
+ *       429:
+ *         description: Rate limit exceeded
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {

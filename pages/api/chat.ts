@@ -165,6 +165,83 @@ function gracefullyWrapResponse(response: string): string {
 /**
  * Next.js API route handler for chat requests.
  * Handles user input, calls Claude, and returns the character chatbot's reply and audio.
+ *
+ * @swagger
+ * /chat:
+ *   post:
+ *     summary: Send a chat message and get the character's reply
+ *     description: >
+ *       Calls Claude for an in-character reply and synthesizes TTS audio. History
+ *       beyond 20 messages is summarized before the call. Identical
+ *       (botName, personality, recent history, message) requests are served from
+ *       an in-memory cache. Rate limited to 10 requests/minute/IP. When
+ *       `stream: true`, the response is `text/event-stream` instead of JSON — see
+ *       the two response bodies below.
+ *     tags: [Chat]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [message, voiceConfig]
+ *             properties:
+ *               message:
+ *                 type: string
+ *               personality:
+ *                 type: string
+ *               botName:
+ *                 type: string
+ *                 default: Character
+ *               gender:
+ *                 type: string
+ *               conversationHistory:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     sender:
+ *                       type: string
+ *                     text:
+ *                       type: string
+ *               voiceConfig:
+ *                 type: object
+ *               stream:
+ *                 type: boolean
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: >
+ *           JSON reply (default), or a text/event-stream of
+ *           `data: {"chunk": string, "done": false}` frames followed by a final
+ *           `data: {"reply": string, "audioFileUrl": string, "done": true}` frame
+ *           when `stream: true`.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 reply:
+ *                   type: string
+ *                 audioFileUrl:
+ *                   type: string
+ *                 cached:
+ *                   type: boolean
+ *                 requestId:
+ *                   type: string
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Message or voice config missing
+ *       405:
+ *         description: Method not allowed
+ *       408:
+ *         description: Request timed out (20s)
+ *       429:
+ *         description: Rate limit exceeded
+ *       500:
+ *         description: Claude or TTS call failed
  */
 async function handler(
   req: NextApiRequest,

@@ -29,6 +29,60 @@ const transcriptRateLimit = createRateLimiter({
  * @param {NextApiRequest} req - The API request object.
  * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
+ *
+ * @swagger
+ * /transcript:
+ *   post:
+ *     summary: Generate a downloadable chat transcript
+ *     description: >
+ *       Renders the given messages as a styled, self-contained HTML document
+ *       (all text HTML-escaped). Body size limit 10MB, message count limit
+ *       10000, total messages payload limit 5MB. Rate limited to 10 requests/
+ *       minute/IP.
+ *     tags: [Transcript]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [messages]
+ *             properties:
+ *               messages:
+ *                 type: array
+ *                 maxItems: 10000
+ *                 items:
+ *                   type: object
+ *                   required: [sender, text]
+ *                   properties:
+ *                     sender:
+ *                       type: string
+ *                     text:
+ *                       type: string
+ *               bot:
+ *                 type: object
+ *                 nullable: true
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   avatarUrl:
+ *                     type: string
+ *               exportedAt:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: HTML transcript document
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid request body
+ *       405:
+ *         description: Method not allowed
+ *       429:
+ *         description: Rate limit exceeded
  */
 export default async function handler(
   req: NextApiRequest,
