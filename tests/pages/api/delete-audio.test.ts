@@ -1,3 +1,4 @@
+import path from 'path';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 const mockAccess = jest.fn();
@@ -38,7 +39,7 @@ describe('delete-audio API', () => {
         const res = makeRes();
         await handler(makeReq('reply-123.mp3'), res);
 
-        expect(mockUnlink).toHaveBeenCalledWith('/tmp/reply-123.mp3');
+        expect(mockUnlink).toHaveBeenCalledWith(path.join('/tmp', 'reply-123.mp3'));
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith({ message: 'File deleted' });
     });

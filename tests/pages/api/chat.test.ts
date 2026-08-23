@@ -1,3 +1,4 @@
+import path from 'path';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 const mockSynthesizeSpeechToFile = jest.fn();
@@ -524,7 +525,7 @@ describe('chat API', () => {
 
             expect(mockFs.mkdirSync).toHaveBeenCalledWith('/tmp/custom-tts', { recursive: true });
             expect(mockSynthesizeSpeechToFile).toHaveBeenCalledWith(
-                expect.objectContaining({ filePath: expect.stringContaining('/tmp/custom-tts/'), ssml: false }),
+                expect.objectContaining({ filePath: expect.stringContaining(path.normalize('/tmp/custom-tts') + path.sep), ssml: false }),
             );
         });
 

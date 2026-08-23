@@ -138,7 +138,7 @@ describe('tts', () => {
             mockReadFileSync.mockReturnValueOnce(JSON.stringify(CREDS));
 
             expect(tts.getGoogleAuthCredentials()).toEqual(CREDS);
-            expect(mockReadFileSync).toHaveBeenCalledWith('/secrets/sa.json', 'utf8');
+            expect(mockReadFileSync).toHaveBeenCalledWith(path.normalize('/secrets/sa.json'), 'utf8');
         });
 
         it('resolves a relative credentials path against the working directory', () => {
