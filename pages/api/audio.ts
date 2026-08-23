@@ -21,10 +21,37 @@ import anthropic from "../../src/utils/anthropicClient";
 const SYSTEM_PROMPT = `You are a helpful character chatbot. Respond concisely, helpfully, and in a friendly tone. Use the style, knowledge, and quirks of the selected character. Stay in character at all times. Keep responses to one paragraph maximum (100-120 words). Be concise and focused.`;
 
 /** Rate limiter: 30 requests per minute per IP (higher than chat since audio files may be replayed). */
-const audioRateLimit = createRateLimiter(
-  30,
-  "Too many audio requests from this IP, please try again later.",
-);
+const audioRateLimit = createRateLimiter({
+  name: "audio",
+  max: 30,
+  message: "Too many audio requests from this IP, please try again later.",
+});
+
+/**
+ * Resolves symlinks in a directory path so it can be compared against a realpath()'d
+ * file path. On macOS os.tmpdir() is /var/folders/... while realpath() returns
+ * /private/var/folders/..., so comparing against the raw root would reject every
+ * legitimate file. Falls back to the original path if the directory cannot be resolved.
+ */
+function realRoot(dir: string): string {
+  try {
+    return fs.realpathSync(dir);
+  } catch {
+    return dir;
+  }
+}
+
+/**
+ * True when a realpath()'d file lies outside the given root directory.
+ * An empty path means "no such file", which is not an escape.
+ */
+function escapesRoot(resolved: string, root: string): boolean {
+  if (!resolved) return false;
+  const real = realRoot(root);
+  const within = (base: string) =>
+    resolved === base || resolved.startsWith(base + path.sep);
+  return !within(real) && !within(root);
+}
 
 function getOriginalTextForAudio(sanitizedFile: string): string | null {
   const txtFile = sanitizedFile.replace(/\.mp3$/, ".txt");
@@ -266,14 +293,16 @@ async function handler(
     }
   }
 
-  // Security: only allow files in /tmp or /public
+  // Security: only allow files in /tmp or /public.
+  // Each resolved path is checked independently: joining them with && meant the
+  // guard only fired when BOTH paths were set and BOTH escaped their root, so a
+  // symlink inside the temp directory that realpathSync followed elsewhere would
+  // have been served (the sibling path is an empty string in that case).
   const allowedTmp = os.tmpdir();
   const allowedPublic = path.join(/*turbopackIgnore: true*/ process.cwd(), "public");
   if (
-    normalizedAudioFilePath &&
-    !normalizedAudioFilePath.startsWith(allowedTmp) &&
-    normalizedLocalFilePath &&
-    !normalizedLocalFilePath.startsWith(allowedPublic)
+    escapesRoot(normalizedAudioFilePath, allowedTmp) ||
+    escapesRoot(normalizedLocalFilePath, allowedPublic)
   ) {
     logEvent("warn", "audio_forbidden", "Audio API forbidden: access forbidden for file", sanitizeLogMeta({
       file: sanitizedFile

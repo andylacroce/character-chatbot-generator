@@ -15,10 +15,11 @@ import { createRateLimiter } from "../../src/utils/rateLimit";
 import anthropic from "../../src/utils/anthropicClient";
 
 /** Rate limiter: 5 requests per minute per IP (avatar generation is expensive). */
-const avatarRateLimit = createRateLimiter(
-  5,
-  "Too many avatar generation requests from this IP, please try again later.",
-);
+const avatarRateLimit = createRateLimiter({
+  name: "avatar",
+  max: 5,
+  message: "Too many avatar generation requests from this IP, please try again later.",
+});
 
 /**
  * Loads GCP credentials from env var (raw JSON string in Vercel, file path locally).

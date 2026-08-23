@@ -77,7 +77,11 @@ Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description 
 ## Environment variables
 
 Required: `ANTHROPIC_API_KEY`, `API_SECRET` (checked by `proxy.ts`), `GOOGLE_APPLICATION_CREDENTIALS_JSON` (path or raw JSON), `GOOGLE_CLOUD_PROJECT`.
-Optional: `VERCEL_BLOB_READ_WRITE_TOKEN` (enables Vercel Blob logging), `TTS_TMP_DIR` (defaults to system temp).
+Optional: `VERCEL_BLOB_READ_WRITE_TOKEN` (enables Vercel Blob logging), `TTS_TMP_DIR` (defaults to system temp), `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) to share rate-limit counters across instances.
+
+### Rate limiting
+
+`createRateLimiter({ name, max, message, windowMs? })` in `src/utils/rateLimit.ts` wraps every limited route. `name` is required and namespaces the counter (`rl:<name>:<ip>`) — a shared store is shared across routes, so without it `/api/chat` and `/api/audio` would draw down the same budget. With no Redis env vars configured the limiter uses `express-rate-limit`'s in-process MemoryStore, which is correct for local dev and per-instance on Vercel; with them set, `src/utils/rateLimitStore.ts` backs it with an Upstash-compatible Redis REST store and the limits become global. Store outages fail open (`passOnStoreError`) — the limiter throttles, `proxy.ts` authenticates.
 
 ## Testing conventions
 

@@ -17,10 +17,11 @@ export const config = {
 };
 
 /** Rate limiter: 10 requests per minute per IP to prevent transcript generation abuse. */
-const transcriptRateLimit = createRateLimiter(
-  10,
-  "Too many transcript requests from this IP, please try again later.",
-);
+const transcriptRateLimit = createRateLimiter({
+  name: "transcript",
+  max: 10,
+  message: "Too many transcript requests from this IP, please try again later.",
+});
 
 /**
  * Next.js API route handler for generating and downloading chat transcripts.
