@@ -1,4 +1,5 @@
 import { createRateLimiter, getClientIp } from '../../src/utils/rateLimit';
+import { createRateLimitStore, RedisRestStore } from '../../src/utils/rateLimitStore';
 import type { NextApiRequest } from 'next';
 
 function makeReq(overrides: Partial<NextApiRequest> = {}): NextApiRequest {
@@ -45,13 +46,55 @@ describe('getClientIp', () => {
 // ---------------------------------------------------------------------------
 
 describe('createRateLimiter', () => {
+  const OLD_ENV = process.env;
+
+  beforeEach(() => {
+    process.env = { ...OLD_ENV };
+    delete process.env.KV_REST_API_URL;
+    delete process.env.KV_REST_API_TOKEN;
+    delete process.env.UPSTASH_REDIS_REST_URL;
+    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  });
+
+  afterAll(() => {
+    process.env = OLD_ENV;
+  });
+
   it('returns a middleware function', () => {
-    const limiter = createRateLimiter(10, 'Too many requests');
+    const limiter = createRateLimiter({ name: 'test', max: 10, message: 'Too many requests' });
     expect(typeof limiter).toBe('function');
   });
 
   it('accepts a custom windowMs', () => {
-    const limiter = createRateLimiter(5, 'Too many requests', 30 * 1000);
+    const limiter = createRateLimiter({
+      name: 'test-window',
+      max: 5,
+      message: 'Too many requests',
+      windowMs: 30 * 1000,
+    });
     expect(typeof limiter).toBe('function');
+  });
+
+  it('uses the in-process store when no shared store is configured', () => {
+    // Local development path: no Redis env vars, so express-rate-limit keeps its
+    // own MemoryStore and `npm run dev` needs no extra infrastructure.
+    expect(createRateLimitStore('test')).toBeUndefined();
+  });
+
+  it('uses the shared store when Redis is configured', () => {
+    process.env.KV_REST_API_URL = 'https://redis.example';
+    process.env.KV_REST_API_TOKEN = 'token';
+
+    const store = createRateLimitStore('chat');
+    expect(store).toBeInstanceOf(RedisRestStore);
+    expect(store?.localKeys).toBe(false);
+  });
+
+  it('namespaces counters per route so routes do not share a budget', () => {
+    process.env.KV_REST_API_URL = 'https://redis.example';
+    process.env.KV_REST_API_TOKEN = 'token';
+
+    expect(createRateLimitStore('chat')?.prefix).toBe('rl:chat:');
+    expect(createRateLimitStore('audio')?.prefix).toBe('rl:audio:');
   });
 });

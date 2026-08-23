@@ -31,10 +31,11 @@ if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
 }
 
 /** Rate limiter for chat endpoint: 10 requests per minute per IP. */
-const chatRateLimit = createRateLimiter(
-  10,
-  "Too many chat requests from this IP, please try again later.",
-);
+const chatRateLimit = createRateLimiter({
+  name: "chat",
+  max: 10,
+  message: "Too many chat requests from this IP, please try again later.",
+});
 
 /**
  * Periodic cleanup of audio files from /tmp to prevent disk bloat.

@@ -11,10 +11,11 @@ import { extractJson } from "../../src/utils/parseClaudeJson";
 import anthropic from "../../src/utils/anthropicClient";
 
 /** Rate limiter: 30 requests per minute per IP. */
-const validationRateLimit = createRateLimiter(
-  30,
-  "Too many validation requests from this IP, please try again later.",
-);
+const validationRateLimit = createRateLimiter({
+  name: "validate-character",
+  max: 30,
+  message: "Too many validation requests from this IP, please try again later.",
+});
 
 export interface CharacterValidationResult {
   characterName: string;

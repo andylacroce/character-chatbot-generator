@@ -44,6 +44,18 @@ const customJestConfig = {
   testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
   verbose: true,
   collectCoverage: true, // Enable coverage reports
+  // Without this, coverage is only measured over files some test happens to import,
+  // so an entirely untested module (proxy.ts once was one) costs nothing against the
+  // threshold below. Enumerate the shipped source instead so the percentage is
+  // measured against the real denominator.
+  collectCoverageFrom: [
+    "app/**/*.{ts,tsx}",
+    "pages/**/*.{ts,tsx}",
+    "src/**/*.{ts,tsx}",
+    "proxy.ts",
+    "!**/*.d.ts",
+    "!**/node_modules/**",
+  ],
   coverageDirectory: "<rootDir>/coverage",
   coverageThreshold: {
     global: {

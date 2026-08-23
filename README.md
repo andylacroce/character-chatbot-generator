@@ -64,6 +64,10 @@ GOOGLE_CLOUD_PROJECT=your_gcp_project_id
 # Optional:
 VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_token
 TTS_TMP_DIR=/custom/temp/path
+# Optional, deployment only: makes API rate limits global instead of per-instance.
+# Leave unset locally — the in-process limiter is the right fit for one dev server.
+KV_REST_API_URL=https://your-store.upstash.io
+KV_REST_API_TOKEN=your_rest_token
 ```
 
 1. **Google Cloud Setup**
@@ -131,6 +135,7 @@ npm run ci
 
 - `VERCEL_BLOB_READ_WRITE_TOKEN` — Enables logging to Vercel Blob storage
 - `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
+- `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Redis REST endpoint (Vercel KV / Marketplace Redis) used to share API rate-limit counters across serverless instances. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` work too. With neither pair set, limits fall back to an in-process counter, which is per-instance on Vercel and exactly right for local development.
 
 ## Avatar Generation
 
@@ -159,7 +164,7 @@ Multi-layered protection for all API endpoints:
 - **Route Protection**: All `/api/*` endpoints secured via proxy middleware
 - **Request Logging**: Failed authentication attempts logged for monitoring
 
-**Custom Domains**: Update `allowedOrigins` in `proxy.ts` when deploying to custom domains.
+**Custom Domains**: Update `allowedHosts` in `proxy.ts` when deploying to custom domains.
 
 ## Storage (Client-Side)
 

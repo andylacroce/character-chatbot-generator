@@ -10,10 +10,11 @@ import { createRateLimiter } from "../../src/utils/rateLimit";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 
 /** Rate limiter: 20 requests per minute per IP (personality generation is lightweight). */
-const personalityRateLimit = createRateLimiter(
-  20,
-  "Too many personality generation requests from this IP, please try again later.",
-);
+const personalityRateLimit = createRateLimiter({
+  name: "personality",
+  max: 20,
+  message: "Too many personality generation requests from this IP, please try again later.",
+});
 
 /**
  * Next.js API route handler for generating a character personality prompt using Claude.
