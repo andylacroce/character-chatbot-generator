@@ -24,12 +24,6 @@ import { summarizeConversation, buildClaudeMessages, type ClaudeMessage } from "
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 import anthropic from "../../src/utils/anthropicClient";
 
-if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-  throw new Error(
-    "Missing GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable",
-  );
-}
-
 /** Rate limiter for chat endpoint: 10 requests per minute per IP. */
 const chatRateLimit = createRateLimiter({
   name: "chat",

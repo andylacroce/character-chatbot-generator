@@ -1,3 +1,26 @@
+// The API reference at /reference (@scalar/nextjs-api-reference) loads its UI
+// bundle from jsdelivr and renders inline <style> tags, so script-src/style-src
+// need to allow that CDN and 'unsafe-inline'. This isn't a nonce-based CSP —
+// Next's App Router relies on inline scripts to hydrate RSC payloads, and wiring
+// a per-request nonce through cleanly is a separate, larger change — so
+// script-src keeps 'unsafe-inline' too. Still meaningfully narrows the attack
+// surface versus no CSP: blocks framing, arbitrary object/embed, and any script,
+// style, image, or fetch target outside this explicit allowlist.
+const isDev = process.env.NODE_ENV !== 'production';
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net${isDev ? " 'unsafe-eval'" : ''}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+  "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:",
+  "img-src 'self' data: https:",
+  "media-src 'self'",
+  "connect-src 'self' https://cdn.jsdelivr.net",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -29,6 +52,10 @@ const nextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=()',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: contentSecurityPolicy,
           },
         ],
       },

@@ -1,5 +1,6 @@
 import path from 'path';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import handlerDefault from '../../../pages/api/chat';
 
 const mockSynthesizeSpeechToFile = jest.fn();
 jest.mock('../../../src/utils/tts', () => ({
@@ -72,10 +73,7 @@ jest.mock('../../../src/config/serverConfig', () => ({
     generatePersonalityPrompt: () => 'default personality',
 }));
 
-// chat.ts throws at import time without this, so the env has to be set before the
-// require below — an `import` would be hoisted above the assignment.
-process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = JSON.stringify({ client_email: 'a@b.c', private_key: 'k' });
-const handler = require('../../../pages/api/chat').default as (
+const handler = handlerDefault as (
     req: NextApiRequest,
     res: NextApiResponse,
 ) => Promise<void>;
