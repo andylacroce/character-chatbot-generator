@@ -159,7 +159,7 @@ Multi-layered protection for all API endpoints:
 - **Route Protection**: All `/api/*` endpoints secured via proxy middleware
 - **Request Logging**: Failed authentication attempts logged for monitoring
 
-**Custom Domains**: Update `allowedOrigins` in `proxy.ts` when deploying to custom domains.
+**Custom Domains**: Update `allowedHosts` in `proxy.ts` when deploying to custom domains.
 
 ## Storage (Client-Side)
 

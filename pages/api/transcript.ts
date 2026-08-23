@@ -227,14 +227,24 @@ export default async function handler(
   logger.info(`[Transcript API] 200 OK: Transcript sent for display, messages=${messages.length}`);
 }
 
-/** Helper function to validate avatar URL format for security */
+/**
+ * Helper function to validate avatar URL format for security.
+ *
+ * Scheme detection is done on the `scheme:` prefix rather than on `://`, because
+ * scheme-only URLs such as `javascript:alert(1)` have no authority component and
+ * would otherwise be mistaken for a relative path and rendered as-is.
+ */
 export function isValidAvatarUrl(url: string): boolean {
-  if (typeof url !== 'string') return false;
+  if (typeof url !== 'string' || url === '') return false;
   // Allow absolute paths starting with /
   if (url.startsWith('/')) return true;
-  // Allow relative URLs without protocol (e.g., 'silhouette.svg')
-  if (!url.includes('://')) return true;
-  // For full URLs, validate protocol is safe (https only)
+  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.\-]*:/.test(url);
+  // Allow relative URLs without a scheme (e.g., 'silhouette.svg')
+  if (!hasScheme) return true;
+  // Generated avatars are inlined as base64 image data URLs by /api/generate-avatar.
+  // SVG is excluded: it is the one image type that can carry markup of its own.
+  if (/^data:image\/(?:png|jpe?g|gif|webp|avif);base64,/i.test(url)) return true;
+  // For full URLs, validate the protocol is safe
   try {
     const parsed = new URL(url);
     return parsed.protocol === 'http:' || parsed.protocol === 'https:';
