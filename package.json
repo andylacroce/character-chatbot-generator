@@ -22,7 +22,7 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.117.1",
+    "@anthropic-ai/sdk": "^0.120.0",
     "@google-cloud/text-to-speech": "^7.0.0",
     "@google/genai": "^2.17.1",
     "@scalar/nextjs-api-reference": "^0.11.16",
