@@ -69,6 +69,7 @@
     "autoprefixer": "^10.5.4",
     "babel-jest": "^30.4.1",
     "baseline-browser-mapping": "^2.11.18",
+    "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.2",
