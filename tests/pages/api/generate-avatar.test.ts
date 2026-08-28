@@ -478,4 +478,209 @@ describe('generate-avatar API', () => {
             expect(res.json).toHaveBeenCalled();
         });
     });
+
+    describe('avatar cache (global, shared across users and environments)', () => {
+        function mockDbWith(lookupResult: unknown[]) {
+            const mockWhere = jest.fn().mockResolvedValue(lookupResult);
+            const mockFrom = jest.fn(() => ({ where: mockWhere }));
+            const mockSelect = jest.fn(() => ({ from: mockFrom }));
+            const mockOnConflictDoUpdate = jest.fn().mockResolvedValue(undefined);
+            const mockValues = jest.fn(() => ({ onConflictDoUpdate: mockOnConflictDoUpdate }));
+            const mockInsert = jest.fn(() => ({ values: mockValues }));
+            const mockDb = { select: mockSelect, insert: mockInsert };
+            jest.doMock('../../../src/db/client', () => ({ getDb: () => mockDb }));
+            return { mockWhere, mockSelect, mockInsert, mockValues, mockOnConflictDoUpdate };
+        }
+
+        it('returns a cache hit immediately, without calling Claude or Gemini', async () => {
+            await jest.isolateModulesAsync(async () => {
+                jest.resetModules();
+                process.env.DATABASE_URL = 'postgres://user:pass@host/db';
+
+                const { mockSelect } = mockDbWith([{ avatarUrl: 'https://blob.example.com/cached.png', gender: 'male' }]);
+
+                const mockCreate = jest.fn();
+                jest.doMock('@anthropic-ai/sdk', () => ({
+                    default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
+                    __esModule: true
+                }));
+                const mockGenerateContent = jest.fn();
+                jest.doMock('@google/genai', () => ({
+                    GoogleGenAI: jest.fn().mockImplementation(() => ({ models: { generateContent: mockGenerateContent } }))
+                }));
+                jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+                jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
+                jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+                const handler = require('../../../pages/api/generate-avatar').default;
+                const req = { method: 'POST', body: { name: 'Cached Character' } } as Partial<NextApiRequest> as NextApiRequest;
+                const res = makeRes();
+                await handler(req, res);
+
+                expect(res.json).toHaveBeenCalledWith({ avatarUrl: 'https://blob.example.com/cached.png', gender: 'male' });
+                expect(mockSelect).toHaveBeenCalled();
+                expect(mockCreate).not.toHaveBeenCalled();
+                expect(mockGenerateContent).not.toHaveBeenCalled();
+            });
+        });
+
+        it('caches a successful generation for reuse', async () => {
+            await jest.isolateModulesAsync(async () => {
+                jest.resetModules();
+                process.env.DATABASE_URL = 'postgres://user:pass@host/db';
+
+                const { mockInsert, mockValues } = mockDbWith([]);
+
+                const mockCreate = jest.fn().mockResolvedValueOnce({
+                    content: [{ type: 'text', text: JSON.stringify({ subject: 's', gender: 'female' }) }]
+                });
+                jest.doMock('@anthropic-ai/sdk', () => ({
+                    default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
+                    __esModule: true
+                }));
+                jest.doMock('@google/genai', () => ({
+                    GoogleGenAI: jest.fn().mockImplementation(() => ({
+                        models: {
+                            generateContent: jest.fn().mockResolvedValue({
+                                candidates: [{ content: { parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }] } }]
+                            })
+                        }
+                    }))
+                }));
+                jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+                jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
+                jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+                const handler = require('../../../pages/api/generate-avatar').default;
+                const req = { method: 'POST', body: { name: 'New Character' } } as Partial<NextApiRequest> as NextApiRequest;
+                const res = makeRes();
+                await handler(req, res);
+
+                expect(mockInsert).toHaveBeenCalled();
+                expect(mockValues).toHaveBeenCalledWith(expect.objectContaining({
+                    characterName: 'new character',
+                    gender: 'female',
+                }));
+            });
+        });
+
+        it('does not cache the /silhouette.svg fallback', async () => {
+            await jest.isolateModulesAsync(async () => {
+                jest.resetModules();
+                process.env.DATABASE_URL = 'postgres://user:pass@host/db';
+
+                const { mockInsert } = mockDbWith([]);
+
+                const mockCreate = jest.fn().mockResolvedValueOnce({
+                    content: [{ type: 'text', text: JSON.stringify({ subject: 's', gender: null }) }]
+                });
+                jest.doMock('@anthropic-ai/sdk', () => ({
+                    default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
+                    __esModule: true
+                }));
+                jest.doMock('@google/genai', () => ({
+                    GoogleGenAI: jest.fn().mockImplementation(() => ({
+                        models: { generateContent: jest.fn().mockResolvedValue({ candidates: [{ content: { parts: [] } }] }) }
+                    }))
+                }));
+                jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+                jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
+                jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+                const handler = require('../../../pages/api/generate-avatar').default;
+                const req = { method: 'POST', body: { name: 'NoImage' } } as Partial<NextApiRequest> as NextApiRequest;
+                const res = makeRes();
+                await handler(req, res);
+
+                expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ avatarUrl: '/silhouette.svg' }));
+                expect(mockInsert).not.toHaveBeenCalled();
+            });
+        });
+
+        it('proceeds to generate normally when the cache lookup fails', async () => {
+            await jest.isolateModulesAsync(async () => {
+                jest.resetModules();
+                process.env.DATABASE_URL = 'postgres://user:pass@host/db';
+
+                const mockWhere = jest.fn().mockRejectedValue(new Error('db down'));
+                const mockFrom = jest.fn(() => ({ where: mockWhere }));
+                const mockSelect = jest.fn(() => ({ from: mockFrom }));
+                const mockOnConflictDoUpdate = jest.fn().mockResolvedValue(undefined);
+                const mockValues = jest.fn(() => ({ onConflictDoUpdate: mockOnConflictDoUpdate }));
+                const mockInsert = jest.fn(() => ({ values: mockValues }));
+                jest.doMock('../../../src/db/client', () => ({ getDb: () => ({ select: mockSelect, insert: mockInsert }) }));
+
+                const mockCreate = jest.fn().mockResolvedValueOnce({
+                    content: [{ type: 'text', text: JSON.stringify({ subject: 's', gender: null }) }]
+                });
+                jest.doMock('@anthropic-ai/sdk', () => ({
+                    default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
+                    __esModule: true
+                }));
+                jest.doMock('@google/genai', () => ({
+                    GoogleGenAI: jest.fn().mockImplementation(() => ({
+                        models: {
+                            generateContent: jest.fn().mockResolvedValue({
+                                candidates: [{ content: { parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }] } }]
+                            })
+                        }
+                    }))
+                }));
+                jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+                jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
+                jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+                const handler = require('../../../pages/api/generate-avatar').default;
+                const req = { method: 'POST', body: { name: 'FallbackAfterLookupFail' } } as Partial<NextApiRequest> as NextApiRequest;
+                const res = makeRes();
+                await handler(req, res);
+
+                const result = (res.json as jest.Mock).mock.calls[0][0];
+                expect(result.avatarUrl).toMatch(/^data:image\/png;base64,/);
+            });
+        });
+
+        it('still returns the generated avatar when the cache write fails', async () => {
+            await jest.isolateModulesAsync(async () => {
+                jest.resetModules();
+                process.env.DATABASE_URL = 'postgres://user:pass@host/db';
+
+                const mockWhere = jest.fn().mockResolvedValue([]);
+                const mockFrom = jest.fn(() => ({ where: mockWhere }));
+                const mockSelect = jest.fn(() => ({ from: mockFrom }));
+                const mockOnConflictDoUpdate = jest.fn().mockRejectedValue(new Error('db down'));
+                const mockValues = jest.fn(() => ({ onConflictDoUpdate: mockOnConflictDoUpdate }));
+                const mockInsert = jest.fn(() => ({ values: mockValues }));
+                jest.doMock('../../../src/db/client', () => ({ getDb: () => ({ select: mockSelect, insert: mockInsert }) }));
+
+                const mockCreate = jest.fn().mockResolvedValueOnce({
+                    content: [{ type: 'text', text: JSON.stringify({ subject: 's', gender: null }) }]
+                });
+                jest.doMock('@anthropic-ai/sdk', () => ({
+                    default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
+                    __esModule: true
+                }));
+                jest.doMock('@google/genai', () => ({
+                    GoogleGenAI: jest.fn().mockImplementation(() => ({
+                        models: {
+                            generateContent: jest.fn().mockResolvedValue({
+                                candidates: [{ content: { parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }] } }]
+                            })
+                        }
+                    }))
+                }));
+                jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+                jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
+                jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+                const handler = require('../../../pages/api/generate-avatar').default;
+                const req = { method: 'POST', body: { name: 'WriteFails' } } as Partial<NextApiRequest> as NextApiRequest;
+                const res = makeRes();
+                await handler(req, res);
+
+                const result = (res.json as jest.Mock).mock.calls[0][0];
+                expect(result.avatarUrl).toMatch(/^data:image\/png;base64,/);
+            });
+        });
+    });
 });

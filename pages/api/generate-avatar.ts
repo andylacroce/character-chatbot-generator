@@ -8,6 +8,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { put } from "@vercel/blob";
+import { eq } from "drizzle-orm";
 import crypto from "crypto";
 import fs from "fs";
 import logger, { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
@@ -16,6 +17,8 @@ import { sanitizeCharacterName } from "../../src/utils/security";
 import { extractJson } from "../../src/utils/parseClaudeJson";
 import { createRateLimiter } from "../../src/utils/rateLimit";
 import anthropic from "../../src/utils/anthropicClient";
+import { getDb } from "../../src/db/client";
+import { avatarCache } from "../../src/db/schema";
 
 /** Rate limiter: 5 requests per minute per IP (avatar generation is expensive). */
 const avatarRateLimit = createRateLimiter({
@@ -119,6 +122,54 @@ async function persistAvatarToBlob(dataUrl: string): Promise<string> {
   }
 }
 
+/** Cache key: lowercased so "Sherlock Holmes" and "sherlock holmes" share a hit. */
+function avatarCacheKey(sanitizedName: string): string {
+  return sanitizedName.toLowerCase();
+}
+
+/**
+ * Looks up a previously-generated avatar shared across every user (and guests) by
+ * character name — Gemini image generation is comparatively expensive, so a name
+ * generated once is reused from then on. Returns null on a miss, when no
+ * DATABASE_URL is configured, or on any DB error — caching is a cost optimization,
+ * never a requirement for avatar generation to work.
+ */
+async function getCachedAvatar(sanitizedName: string): Promise<{ avatarUrl: string; gender: string | null } | null> {
+  if (!process.env.DATABASE_URL) return null;
+  try {
+    const rows = await getDb()
+      .select()
+      .from(avatarCache)
+      .where(eq(avatarCache.characterName, avatarCacheKey(sanitizedName)));
+    const row = rows[0];
+    return row ? { avatarUrl: row.avatarUrl, gender: row.gender } : null;
+  } catch (err) {
+    logEvent("error", "avatar_cache_lookup_failed", "Avatar cache lookup failed", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
+    return null;
+  }
+}
+
+/**
+ * Stores a successfully-generated avatar in the shared cache. Never called with the
+ * `/silhouette.svg` fallback — caching a failure would permanently deny a name a
+ * real portrait even after a transient Gemini outage resolves. Best-effort: a
+ * failure here doesn't fail the request, since the caller already has their avatar.
+ */
+async function cacheAvatar(sanitizedName: string, avatarUrl: string, gender: string | null): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    await getDb()
+      .insert(avatarCache)
+      .values({ characterName: avatarCacheKey(sanitizedName), avatarUrl, gender })
+      .onConflictDoUpdate({
+        target: avatarCache.characterName,
+        set: { avatarUrl, gender },
+      });
+  } catch (err) {
+    logEvent("error", "avatar_cache_write_failed", "Avatar cache write failed", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
+  }
+}
+
 /**
  * Next.js API route handler for generating a character avatar image.
  *
@@ -194,6 +245,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const sanitizedName = sanitizeCharacterName(name);
   if (!sanitizedName) {
     res.status(400).json({ error: "Invalid character name" });
+    return;
+  }
+
+  const cached = await getCachedAvatar(sanitizedName);
+  if (cached) {
+    logEvent("info", "avatar_cache_hit", "Reusing cached avatar", sanitizeLogMeta({ name: sanitizedName }));
+    res.status(200).json({ avatarUrl: cached.avatarUrl, gender: cached.gender });
     return;
   }
 
@@ -285,6 +343,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       return;
     }
 
+    await cacheAvatar(sanitizedName, avatarUrl, genderOut);
     res.status(200).json({ avatarUrl, gender: genderOut });
     return;
   } catch (e) {
