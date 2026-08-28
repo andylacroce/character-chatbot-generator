@@ -44,6 +44,74 @@ describe('auth/authOptions', () => {
         });
     });
 
+    describe('preview stub provider', () => {
+        it('is absent when VERCEL_ENV is not "preview"', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                delete process.env.VERCEL_ENV;
+                const { authOptions } = require('../../../src/auth/authOptions');
+                expect(authOptions.providers).toHaveLength(1);
+                expect(authOptions.providers.some((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub')).toBe(false);
+            });
+        });
+
+        it('is absent in production even if VERCEL_ENV were somehow "production"', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                process.env.VERCEL_ENV = 'production';
+                const { authOptions } = require('../../../src/auth/authOptions');
+                expect(authOptions.providers.some((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub')).toBe(false);
+            });
+        });
+
+        it('is present when VERCEL_ENV is "preview"', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                process.env.VERCEL_ENV = 'preview';
+                const { authOptions } = require('../../../src/auth/authOptions');
+                expect(authOptions.providers).toHaveLength(2);
+                expect(authOptions.providers.some((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub')).toBe(true);
+            });
+        });
+
+        it('authorize() returns an ephemeral identity for a valid email on preview', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                process.env.VERCEL_ENV = 'preview';
+                const { authOptions } = require('../../../src/auth/authOptions');
+                const stub = authOptions.providers.find((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const user = await (stub as any).options.authorize({ email: 'Test@Example.com  ' });
+                expect(user).toEqual({ id: 'test@example.com', email: 'test@example.com', name: 'test' });
+            });
+        });
+
+        it('authorize() rejects a missing email', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                process.env.VERCEL_ENV = 'preview';
+                const { authOptions } = require('../../../src/auth/authOptions');
+                const stub = authOptions.providers.find((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const user = await (stub as any).options.authorize({});
+                expect(user).toBeNull();
+            });
+        });
+
+        it('authorize() rejects even if VERCEL_ENV changed after the provider was built', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                process.env.VERCEL_ENV = 'preview';
+                const { authOptions } = require('../../../src/auth/authOptions');
+                const stub = authOptions.providers.find((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub');
+                process.env.VERCEL_ENV = 'production';
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const user = await (stub as any).options.authorize({ email: 'test@example.com' });
+                expect(user).toBeNull();
+            });
+        });
+    });
+
     it('uses the JWT session strategy', async () => {
         await jest.isolateModulesAsync(async () => {
             delete process.env.DATABASE_URL;
