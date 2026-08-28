@@ -238,25 +238,29 @@ describe('chat API', () => {
             );
         });
 
-        it('returns 500 when speech synthesis fails', async () => {
+        it('still returns the text reply (without audio) when speech synthesis fails', async () => {
+            // Audio is an enhancement, not a requirement — a TTS failure (e.g. a
+            // mismatched voice config) shouldn't discard an already-generated reply.
             claudeSays('Greetings, traveller.');
             mockFs.existsSync.mockReturnValue(false);
             mockSynthesizeSpeechToFile.mockRejectedValueOnce(new Error('tts exploded'));
             const res = makeRes();
             await handler(makeReq(), res);
 
-            expect(res.status).toHaveBeenCalledWith(500);
-            expect(res.json).toHaveBeenCalledWith({ error: 'Google Cloud TTS failed', details: 'tts exploded' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({ reply: 'Greetings, traveller.', requestId: 'generated-id' });
+            expect(mockLogger.error).toHaveBeenCalledWith('Text-to-Speech API error:', expect.any(Object));
         });
 
-        it('stringifies a non-Error synthesis failure', async () => {
+        it('still returns the text reply when a non-Error synthesis failure occurs', async () => {
             claudeSays('Greetings, traveller.');
             mockFs.existsSync.mockReturnValue(false);
             mockSynthesizeSpeechToFile.mockRejectedValueOnce({ code: 7 });
             const res = makeRes();
             await handler(makeReq(), res);
 
-            expect(res.json).toHaveBeenCalledWith({ error: 'Google Cloud TTS failed', details: '{"code":7}' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({ reply: 'Greetings, traveller.', requestId: 'generated-id' });
         });
 
         it('creates the temp directory when it is missing', async () => {
@@ -429,15 +433,15 @@ describe('chat API', () => {
             expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ cached: true }));
         });
 
-        it('returns 500 when synthesizing a cached reply fails', async () => {
+        it('still returns the cached reply (without audio) when synthesis fails', async () => {
             mockGetReplyCache.mockReturnValue('A cached greeting.');
             mockFs.existsSync.mockReturnValue(false);
             mockSynthesizeSpeechToFile.mockRejectedValueOnce(new Error('tts exploded'));
             const res = makeRes();
             await handler(makeReq(), res);
 
-            expect(res.status).toHaveBeenCalledWith(500);
-            expect(res.json).toHaveBeenCalledWith({ error: 'Google Cloud TTS failed', details: 'tts exploded' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({ reply: 'A cached greeting.', cached: true, requestId: 'generated-id' });
         });
 
         it('still answers when the cached sidecar text file cannot be read', async () => {
@@ -476,6 +480,22 @@ describe('chat API', () => {
             expect(final.audioFileUrl).toContain('/api/audio?file=');
             expect(res.end).toHaveBeenCalled();
             expect(mockSetReplyCache).toHaveBeenCalled();
+        });
+
+        it('still sends the final reply (without an audio URL) when TTS fails mid-stream', async () => {
+            // The text was already fully streamed to the client at this point — a
+            // TTS-only failure here is caught separately from genuine stream errors
+            // below, so it doesn't discard the reply the client already has.
+            mockStream.mockReturnValueOnce(streamOf(['Greetings, ', 'traveller.']));
+            mockSynthesizeSpeechToFile.mockRejectedValueOnce(new Error('tts exploded'));
+            const res = makeRes();
+            await handler(makeReq({ stream: true }), res);
+
+            const final = sseFrames(res).pop();
+            // JSON.stringify drops an undefined audioFileUrl entirely, so the parsed
+            // frame has no such key at all rather than an explicit undefined/null.
+            expect(final).toEqual({ reply: 'Greetings, traveller.', done: true });
+            expect(res.end).toHaveBeenCalled();
         });
 
         it('strips action emotes from the assembled reply', async () => {

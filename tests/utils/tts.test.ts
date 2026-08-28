@@ -12,7 +12,7 @@ jest.mock('@google-cloud/text-to-speech', () => ({
         google: {
             cloud: {
                 texttospeech: {
-                    v1: { SsmlVoiceGender: { MALE: 1, FEMALE: 2 }, AudioEncoding: { MP3: 2 } },
+                    v1: { SsmlVoiceGender: { MALE: 1, FEMALE: 2, NEUTRAL: 3 }, AudioEncoding: { MP3: 2 } },
                 },
             },
         },
@@ -282,6 +282,56 @@ describe('tts', () => {
                 await expect(
                     tts.synthesizeSpeechToFile({ text: 'hi', filePath: OUT }),
                 ).rejects.toThrow('TTS API response is missing audioContent');
+            });
+        });
+
+        describe('gender mismatch self-heal', () => {
+            it('retries once with the corrected ssmlGender parsed from a gender-mismatch error, without consuming the transient-failure budget', async () => {
+                mockSynthesizeSpeech.mockRejectedValueOnce(
+                    new Error('Requested male voice, but voice en-US-Neural2-C is a female voice.'),
+                );
+                audioReturned();
+
+                await tts.synthesizeSpeechToFile({
+                    text: 'hi',
+                    filePath: OUT,
+                    voice: { languageCodes: ['en-US'], name: 'en-US-Neural2-C', ssmlGender: 1 },
+                });
+
+                expect(mockSynthesizeSpeech).toHaveBeenCalledTimes(2);
+                expect(mockSynthesizeSpeech.mock.calls[1][0].voice.ssmlGender).toBe(2); // FEMALE
+                expect(mockWriteFileSync).toHaveBeenCalled();
+            });
+
+            it('only self-heals once, then falls back to the normal retry budget if it still fails', async () => {
+                mockSynthesizeSpeech
+                    .mockRejectedValueOnce(
+                        new Error('Requested male voice, but voice en-US-Neural2-C is a female voice.'),
+                    )
+                    .mockRejectedValueOnce(new Error('still broken'));
+                audioReturned();
+
+                await tts.synthesizeSpeechToFile({
+                    text: 'hi',
+                    filePath: OUT,
+                    voice: { languageCodes: ['en-US'], name: 'en-US-Neural2-C', ssmlGender: 1 },
+                });
+
+                expect(mockSynthesizeSpeech).toHaveBeenCalledTimes(3);
+                expect(mockWriteFileSync).toHaveBeenCalled();
+            });
+
+            it('does not treat an unrelated error as a gender mismatch', async () => {
+                mockSynthesizeSpeech.mockRejectedValue(new Error('network error'));
+
+                await expect(
+                    tts.synthesizeSpeechToFile({
+                        text: 'hi',
+                        filePath: OUT,
+                        voice: { languageCodes: ['en-US'], name: 'en-US-Neural2-C', ssmlGender: 1 },
+                    }),
+                ).rejects.toThrow('network error');
+                expect(mockSynthesizeSpeech).toHaveBeenCalledTimes(3);
             });
         });
     });

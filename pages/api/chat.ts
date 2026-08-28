@@ -375,9 +375,11 @@ CRITICAL CONTEXT INSTRUCTIONS:
           fs.writeFileSync(txtFilePath, cachedReply, "utf8");
           setReplyCache(audioFileName, cachedReply);
         } catch (error) {
+          // Audio is an enhancement, not a requirement — the reply text is already
+          // known-good (it's cached), so a TTS failure shouldn't discard it. Same
+          // reasoning as the non-streaming and streaming paths below.
           logger.error("Text-to-Speech API error (cache hit):", { error });
-          const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-          res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+          res.status(200).json({ reply: cachedReply, cached: true, requestId });
           return;
         }
       }
@@ -450,13 +452,23 @@ CRITICAL CONTEXT INSTRUCTIONS:
         }
         const audioFilePath = path.join(audioDir, audioFileName);
 
-        await synthesizeSpeechToFile({
-          text: botReply,
-          filePath: audioFilePath,
-          ssml: false,
-          voice: selectedVoice,
-        });
-        const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
+        // Audio is an enhancement, not a requirement — botReply is already fully
+        // streamed to the client at this point, so a TTS-only failure (caught here,
+        // separately from the outer catch below which is for genuine Claude/stream
+        // failures) still finalizes the frame with the text, just without audio,
+        // rather than discarding an already-successful reply.
+        let audioFileUrl: string | undefined;
+        try {
+          await synthesizeSpeechToFile({
+            text: botReply,
+            filePath: audioFilePath,
+            ssml: false,
+            voice: selectedVoice,
+          });
+          audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
+        } catch (ttsError) {
+          logger.error("Text-to-Speech API error (streaming):", { error: ttsError });
+        }
 
         res.write(`data: ${JSON.stringify({ reply: botReply, audioFileUrl, done: true })}\n\n`);
         res.end();
@@ -528,9 +540,19 @@ CRITICAL CONTEXT INSTRUCTIONS:
         fs.writeFileSync(txtFilePath, botReply, "utf8");
         setReplyCache(audioFileName, botReply);
       } catch (error) {
+        // Audio is an enhancement, not a requirement — Claude already generated a
+        // perfectly good text reply above; a TTS failure (e.g. a mismatched voice
+        // config) shouldn't discard it and fail the whole request. This matters
+        // most for the very first message in a conversation (the intro), where a
+        // TTS-only failure used to surface as "failed to generate intro", forcing
+        // the user to recreate the bot even though the actual text was fine.
         logger.error("Text-to-Speech API error:", { error });
-        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+        setReplyCache(cacheKey, botReply);
+        logger.info(
+          `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`,
+        );
+        logger.info(`[Chat API] 200 OK: Reply sent without audio (TTS failed) | requestId=${requestId}`);
+        res.status(200).json({ reply: botReply, requestId });
         return;
       }
     }

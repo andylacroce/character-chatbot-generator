@@ -16,7 +16,9 @@ import { authenticatedFetch } from "../../src/utils/api";
 import styles from "./styles/BotCreator.module.css";
 import DarkModeToggle from "./DarkModeToggle";
 import AuthControl from "./AuthControl";
+import ResumeBotDropdown from "./ResumeBotDropdown";
 import DisclaimerModal from "./DisclaimerModal";
+import CharacterInfoModal from "./CharacterInfoModal";
 import { useBotCreation } from "./useBotCreation";
 import { CopyrightWarningModal } from "./CopyrightWarningModal";
 
@@ -73,6 +75,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   const [MAX_AVATAR_SECONDS, setMaxAvatarSeconds] = useState<number | null>(null);
   const [hasAutoSubmitted, setHasAutoSubmitted] = useState<boolean>(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
+  const [showCharacterInfoModal, setShowCharacterInfoModal] = useState(false);
 
   useEffect(() => {
     if (nameFromUrl && !input.trim()) {
@@ -171,12 +174,15 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
             <div className={styles.instructionsFunctional}>
               Enter a character name or click the <b>dice</b> button for a random suggestion, then press the <b>arrow</b> button to generate your character.
             </div>
-            <div>
-              Create a chatbot character using well-known public domain figures from classic literature, mythology, or historical figures. Characters from copyrighted or trademarked modern media will trigger a warning.
-            </div>
-            <div className={styles.instructionsTip}>
-              Examples: Sherlock Holmes, Dracula, Cleopatra, Robin Hood, Leonardo da Vinci, or create your own original character.
-            </div>
+            <button
+              type="button"
+              aria-label="Which characters can I create?"
+              onClick={() => setShowCharacterInfoModal(true)}
+              className={styles.instructionsTip}
+              style={{ background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer", textDecoration: "underline" }}
+            >
+              Which characters can I create?
+            </button>
           </div>
         )}
         {randomizing && (
@@ -217,6 +223,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           </div>
         )}
         {error && <div className={styles.error}>{error}</div>}
+        {!isBusy && <ResumeBotDropdown onSelect={onBotCreated} />}
         <div className={styles.toggleRow}>
           <DarkModeToggle className={styles.darkModeToggle} />
           <AuthControl className={styles.darkModeToggle} />
@@ -233,6 +240,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
         </button>
       </div>
       <DisclaimerModal show={showDisclaimerModal} onClose={() => setShowDisclaimerModal(false)} />
+      <CharacterInfoModal show={showCharacterInfoModal} onClose={() => setShowCharacterInfoModal(false)} />
 
       {showValidationModal && validationResult && (
         <CopyrightWarningModal

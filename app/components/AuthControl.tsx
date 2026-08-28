@@ -67,9 +67,19 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
         className={className}
         aria-label="Sign out"
         onClick={() => signOut()}
+        style={{ minWidth: 0, maxWidth: "100%" }}
       >
-        <FaSignOutAlt size={16} style={{ color: "var(--color-accent)" }} />
-        <span style={{ fontSize: "0.92rem", marginLeft: "0.18em" }}>
+        <FaSignOutAlt size={16} style={{ color: "var(--color-accent)", flexShrink: 0 }} />
+        <span
+          style={{
+            fontSize: "0.92rem",
+            marginLeft: "0.18em",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+          }}
+        >
           {session.user.name ? `Sign out (${session.user.name})` : "Sign out"}
         </span>
       </button>
