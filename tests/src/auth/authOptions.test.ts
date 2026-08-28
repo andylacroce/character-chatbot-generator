@@ -1,0 +1,100 @@
+// authOptions.ts statically imports @auth/drizzle-adapter, which ships pure ESM and
+// pulls in drizzle-orm transitively — neither is on Jest's transformIgnorePatterns
+// allowlist (kept narrow, matching this repo's convention of mocking external SDKs at
+// the boundary rather than executing them for real). Mock both unconditionally so the
+// real ESM modules are never parsed by Jest, regardless of which test runs.
+const fakeDb = { __db: true };
+jest.mock('../../../src/db/client', () => ({ getDb: () => fakeDb }));
+const fakeAdapter = { __adapter: true };
+const mockDrizzleAdapter = jest.fn().mockReturnValue(fakeAdapter);
+jest.mock('@auth/drizzle-adapter', () => ({ DrizzleAdapter: (...args: unknown[]) => mockDrizzleAdapter(...args) }));
+
+describe('auth/authOptions', () => {
+    const OLD_ENV = process.env;
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        process.env = { ...OLD_ENV };
+    });
+
+    afterAll(() => {
+        process.env = OLD_ENV;
+    });
+
+    it('has no adapter when DATABASE_URL is not configured', async () => {
+        await jest.isolateModulesAsync(async () => {
+            delete process.env.DATABASE_URL;
+            const { authOptions } = require('../../../src/auth/authOptions');
+            expect(authOptions.adapter).toBeUndefined();
+            expect(mockDrizzleAdapter).not.toHaveBeenCalled();
+        });
+    });
+
+    it('attaches a Drizzle adapter when DATABASE_URL is configured', async () => {
+        await jest.isolateModulesAsync(async () => {
+            process.env.DATABASE_URL = 'postgres://user:pass@host/db';
+
+            const { authOptions } = require('../../../src/auth/authOptions');
+
+            expect(authOptions.adapter).toBe(fakeAdapter);
+            expect(mockDrizzleAdapter).toHaveBeenCalledWith(fakeDb, expect.objectContaining({
+                usersTable: expect.anything(),
+                accountsTable: expect.anything(),
+            }));
+        });
+    });
+
+    it('uses the JWT session strategy', async () => {
+        await jest.isolateModulesAsync(async () => {
+            delete process.env.DATABASE_URL;
+            const { authOptions } = require('../../../src/auth/authOptions');
+            expect(authOptions.session).toEqual({ strategy: 'jwt' });
+        });
+    });
+
+    describe('callbacks', () => {
+        it('jwt callback copies user.id onto token.sub when a user is present', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                const { authOptions } = require('../../../src/auth/authOptions');
+                const token = { sub: undefined } as { sub?: string };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const result = await (authOptions.callbacks as any).jwt({ token, user: { id: 'user-123' } });
+                expect(result.sub).toBe('user-123');
+            });
+        });
+
+        it('jwt callback leaves token unchanged when no user is present', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                const { authOptions } = require('../../../src/auth/authOptions');
+                const token = { sub: 'existing-sub' };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const result = await (authOptions.callbacks as any).jwt({ token });
+                expect(result.sub).toBe('existing-sub');
+            });
+        });
+
+        it('session callback copies token.sub onto session.user.id', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                const { authOptions } = require('../../../src/auth/authOptions');
+                const session = { user: { email: 'a@b.com' } } as { user: { email: string; id?: string } };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const result = await (authOptions.callbacks as any).session({ session, token: { sub: 'user-123' } });
+                expect(result.user.id).toBe('user-123');
+            });
+        });
+
+        it('session callback is a no-op when there is no session.user', async () => {
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                const { authOptions } = require('../../../src/auth/authOptions');
+                const session = {} as { user?: { id?: string } };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const result = await (authOptions.callbacks as any).session({ session, token: { sub: 'user-123' } });
+                expect(result.user).toBeUndefined();
+            });
+        });
+    });
+});

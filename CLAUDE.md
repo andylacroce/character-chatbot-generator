@@ -71,6 +71,14 @@ Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description 
 
 `src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Known keys: `chatbot-bot`, `chatbot-history-<bot.name>`, `voiceConfig-<bot.name>` (versioned — use the versioned helpers in `storage.ts`, never write the shape directly), `audioEnabled`, `darkMode`, `bot-session-id`. Never store secrets or PII here; it's client-side only.
 
+### Account persistence (in progress)
+
+The app is migrating toward optional user accounts with server-persisted bots/chat history, staged as additive phases — guest (no account) usage must keep working unchanged throughout.
+
+- **Phase 1 (done):** `pages/api/generate-avatar.ts` uploads generated avatars to Vercel Blob and returns a durable URL when `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` is configured; otherwise falls back to a base64 data URL (unchanged prior behavior).
+- **Phase 2 (done):** Auth.js (`next-auth@4` — stable; v5/"Auth.js" is still beta and its simplified `auth()` helper is App-Router-only, which doesn't fit this repo's Pages-Router-authoritative API convention) with Google sign-in only, JWT sessions (no `sessions` table). `src/auth/authOptions.ts` holds the config; `pages/api/auth/[...nextauth].ts` mounts it — this route intentionally lives in `pages/api` (unlike `/reference`) since Auth.js v4's Pages Router integration is a direct default-export handler, not an App Router route handler. `src/db/schema.ts` (Drizzle, Postgres via Neon) defines just `users`/`accounts` so far. `src/db/client.ts` exports `getDb()`, a lazily-constructed singleton — it must never connect at module import time, since `next build` bundles (but never executes) API route handlers, and constructing eagerly would break the build whenever `DATABASE_URL` is unset. The Drizzle adapter in `authOptions.ts` is likewise only attached when `DATABASE_URL` is set — same degrade-gracefully shape as the Blob token and the Upstash rate-limit store. Use `src/utils/getSessionUserId.ts` in any future Pages Router handler that needs to know the signed-in user — never trust a client-supplied user id, same trust boundary `proxy.ts` enforces for request origin. Schema changes are applied locally via `npm run db:push` (Drizzle Kit, not part of `npm run ci` since it mutates external state).
+- **Not yet built:** `bots`/`messages` tables, row-scoped persistence in `pages/api/chat.ts`, and UI sign-in.
+
 ### API documentation
 
 Every `pages/api/*.ts` handler carries a `@swagger` JSDoc block (OpenAPI 3.0). `npm run docs:api` (`scripts/generate-openapi.cjs`, via `swagger-jsdoc`) reads those comments and writes `public/openapi.json` — a gitignored, build-time artifact, not something to hand-edit or commit. It runs automatically before `dev`/`build`/`vercel-build`; run it directly after touching a route's annotations. `app/reference/route.ts` serves the interactive UI (`@scalar/nextjs-api-reference`) at `/reference`, reading that same static file — deliberately not scanning route source at request time, since Vercel's serverless bundler doesn't reliably ship raw `.ts` alongside compiled output. The route lives outside `pages/api`, so it isn't subject to `proxy.ts` auth. `swagger-jsdoc`'s glob resolution doesn't match backslash-separated paths, so the script normalizes to forward slashes before passing them in — same class of Windows/POSIX path bug as elsewhere in this repo; keep that in mind if `docs:api` starts reporting 0 documented paths locally.
@@ -82,7 +90,7 @@ Every `pages/api/*.ts` handler carries a `@swagger` JSDoc block (OpenAPI 3.0). `
 ## Environment variables
 
 Required: `ANTHROPIC_API_KEY`, `API_SECRET` (checked by `proxy.ts`), `GOOGLE_APPLICATION_CREDENTIALS_JSON` (path or raw JSON), `GOOGLE_CLOUD_PROJECT`.
-Optional: `VERCEL_BLOB_READ_WRITE_TOKEN` (enables Vercel Blob logging), `TTS_TMP_DIR` (defaults to system temp), `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) to share rate-limit counters across instances.
+Optional: `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` (enables Vercel Blob logging and durable avatar URLs), `TTS_TMP_DIR` (defaults to system temp), `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) to share rate-limit counters across instances, `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (enables account sign-in and persistence — see "Account persistence" above; the app is fully functional as a guest with none of these set).
 
 ### Rate limiting
 
