@@ -375,14 +375,17 @@ describe("useChatController additional branches (merged)", () => {
         expect(result.current).toBeDefined();
     });
 
-    it("handles invalid JSON for saved history gracefully", () => {
+    it("handles invalid JSON for saved history gracefully", async () => {
         const chatHistoryKey = `chatbot-history-${baseBot.name}`;
         mockStorage.getItem.mockImplementation((key: string) => (key === chatHistoryKey ? "invalid{" : null));
         const { result } = renderHook(() => useChatController(baseBot));
         expect(result.current.messages).toEqual([]);
+        // Empty messages triggers the intro-generation effect; flush it within act()
+        // so its eventual state update doesn't land after this test has returned.
+        await act(async () => { await new Promise(res => setTimeout(res, 10)); });
     });
 
-    it("sets up visualViewport listener when available", () => {
+    it("sets up visualViewport listener when available", async () => {
         Object.defineProperty(window, 'visualViewport', {
             value: {
                 addEventListener: jest.fn(),
@@ -394,6 +397,9 @@ describe("useChatController additional branches (merged)", () => {
         });
         const { result } = renderHook(() => useChatController(baseBot));
         expect(result.current).toBeDefined();
+        // Empty messages triggers the intro-generation effect; flush it within act()
+        // so its eventual state update doesn't land after this test has returned.
+        await act(async () => { await new Promise(res => setTimeout(res, 10)); });
     });
 
     it('visualViewport focus/blur sets CSS pad and classes', async () => {
@@ -425,6 +431,10 @@ describe("useChatController additional branches (merged)", () => {
         mockStorage.getItem.mockImplementation((key: string) => (key === chatHistoryKey ? JSON.stringify([{ sender: 'x', text: 'y' }]) : null));
 
         const { result } = renderHook(() => useChatController(baseBot));
+        // The intro-generation effect's messages.length===0 check can still see the
+        // pre-history-load render on first mount; flush within act() regardless so
+        // any resulting state update doesn't land outside an act() boundary.
+        await act(async () => { await new Promise(res => setTimeout(res, 10)); });
 
         // Attach a real input element so focus/blur handlers run
         const inputEl = document.createElement('input');
@@ -703,8 +713,11 @@ describe("useChatController additional branches (merged)", () => {
         expect(result.current.error).toBe('Error sending message. Please try again.');
     });
 
-    it('handleAudioToggle toggles audio, persists preference, and focuses input', () => {
+    it('handleAudioToggle toggles audio, persists preference, and focuses input', async () => {
         const { result } = renderHook(() => useChatController(mockBot));
+        // Empty messages triggers the intro-generation effect; flush it within act()
+        // so its eventual state update doesn't land after this test has returned.
+        await act(async () => { await new Promise(res => setTimeout(res, 10)); });
         // Provide an input element and audioRef to simulate real DOM
         const inputEl = document.createElement('input');
         document.body.appendChild(inputEl);
@@ -950,10 +963,13 @@ describe("useChatController additional branches (merged)", () => {
         expect(mockPersistVoiceConfig).toHaveBeenCalledWith(baseBot.name, fetchedConfig);
     });
 
-    it('handleAudioToggle tolerates storage.setItem throwing', () => {
+    it('handleAudioToggle tolerates storage.setItem throwing', async () => {
         // Make storage.setItem throw to exercise catch path
         (storage as jest.Mocked<typeof storage>).setItem.mockImplementation(() => { throw new Error('no space'); });
         const { result } = renderHook(() => useChatController(mockBot));
+        // Empty messages triggers the intro-generation effect; flush it within act()
+        // so its eventual state update doesn't land after this test has returned.
+        await act(async () => { await new Promise(res => setTimeout(res, 10)); });
 
         // Provide an input element and audioRef to simulate real DOM
         const inputEl = document.createElement('input');

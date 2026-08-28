@@ -49,7 +49,7 @@ describe('useChatController additional small branches', () => {
     renderHook(() => useChatController(baseBot));
 
     // Allow hook effects to run
-    await new Promise((r) => setTimeout(r, 20));
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
 
     // Because last played hash matches, playAudio should not be called
     expect(mockPlayAudio).not.toHaveBeenCalled();
@@ -107,6 +107,9 @@ describe('useChatController additional small branches', () => {
 
   it('handleHeaderLinkClick focuses the input when present', async () => {
     const { result } = renderHook(() => useChatController(baseBot));
+    // Empty messages triggers the intro-generation effect; flush it within act()
+    // so its eventual state update doesn't land after this test has returned.
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
 
     // Attach input element to DOM and to the ref
     const inputEl = document.createElement('input');
@@ -144,6 +147,10 @@ describe('useChatController additional small branches', () => {
     };
 
     const { result } = renderHook(() => useChatController(baseBot));
+    // The intro-generation effect can still see the pre-history-load render on
+    // first mount; flush within act() regardless so any resulting state update
+    // doesn't land outside an act() boundary.
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
 
     // Assign chat element and make it scrolled to top
     const chatEl = document.createElement('div');

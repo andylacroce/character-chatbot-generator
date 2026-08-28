@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import ChatHeader from '@/app/components/ChatHeader';
 import { Bot } from '@/app/components/BotCreator';
 
@@ -25,10 +25,15 @@ describe('ChatHeader', () => {
     jest.clearAllMocks();
   });
 
-  it('renders bot name and avatar', () => {
+  it('renders bot name and avatar', async () => {
     render(<ChatHeader {...defaultProps} />);
     expect(screen.getByText('Gandalf')).toBeInTheDocument();
     expect(screen.getByAltText('Gandalf')).toBeInTheDocument();
+    // ChatHeader lazy-loads ModalImageViewer via next/dynamic; flush that one-time
+    // resolution within act() so it doesn't land outside an act() boundary. Next's
+    // dynamic loader caches the resolved module, so later tests in this file never
+    // hit this gap again.
+    await act(async () => { await new Promise((res) => setTimeout(res, 0)); });
   });
 
   it('calls onBackToCharacterCreation when back button is clicked', () => {

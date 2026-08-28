@@ -66,6 +66,10 @@ describe('useChatController viewport and focus behavior', () => {
 
     // Render with attached refs so effect runs with refs present
     const { getByTestId, unmount } = require('@testing-library/react').render(React.createElement(TestHost, { botProp: baseBot }));
+    // The intro-generation effect can still see the pre-history-load render on
+    // first mount; flush within act() regardless so any resulting state update
+    // doesn't land outside an act() boundary.
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
 
     // Grab elements and make scrollHeight predictable
     const chatEl = getByTestId('chat');
@@ -137,7 +141,7 @@ describe('useChatController viewport and focus behavior', () => {
     });
 
     // Wait for health check to resolve
-    await new Promise((r) => setTimeout(r, 60));
+    await act(async () => { await new Promise((r) => setTimeout(r, 60)); });
 
     // Focus should not have been called because element is not in the document
     expect(focusSpy).not.toHaveBeenCalled();
@@ -178,6 +182,14 @@ describe('useChatController viewport and focus behavior', () => {
 
     const { getByTestId, unmount } = require('@testing-library/react').render(React.createElement(TestHost, { botProp: baseBot }));
 
+    // The intro-generation effect can still see the pre-history-load render on
+
+    // first mount; flush within act() regardless so any resulting state update
+
+    // doesn't land outside an act() boundary.
+
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+
     const chatEl = getByTestId('chat');
     Object.defineProperty(chatEl, 'scrollHeight', { value: 2000, configurable: true });
     chatEl.scrollTop = 0;
@@ -214,6 +226,14 @@ describe('useChatController viewport and focus behavior', () => {
     };
 
     const { getByTestId, unmount } = require('@testing-library/react').render(React.createElement(TestHost, { botProp: baseBot }));
+
+    // The intro-generation effect can still see the pre-history-load render on
+
+    // first mount; flush within act() regardless so any resulting state update
+
+    // doesn't land outside an act() boundary.
+
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
     const inputEl = getByTestId('input') as HTMLInputElement;
 
     // Set a pad and class as if focused

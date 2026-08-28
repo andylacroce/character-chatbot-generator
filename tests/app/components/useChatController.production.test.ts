@@ -36,6 +36,13 @@ describe('useChatController production and mobile branches', () => {
     const origEnv = process.env.NODE_ENV;
     (process.env as unknown as { NODE_ENV?: string }).NODE_ENV = 'production';
 
+    const { result } = renderHook(() => useChatController(baseBot));
+    // Flush the intro-generation effect against the default (empty-reply) mock
+    // *before* installing the call-counting /api/chat mock below — otherwise the
+    // intro's own request would consume the "first call rejects" slot meant for
+    // sendMessage's retry path.
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+
     // First call to /api/chat will reject to trigger retry; second will succeed
     let call = 0;
     mockAuthenticatedFetch.mockImplementation((url: string) => {
@@ -47,8 +54,6 @@ describe('useChatController production and mobile branches', () => {
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
-
-    const { result } = renderHook(() => useChatController(baseBot));
 
     // spy on global setTimeout and make callbacks immediate so test does not wait
     const setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((cb: (...args: unknown[]) => void, _delay?: number) => { cb(); return 0 as unknown as NodeJS.Timeout; });
@@ -97,7 +102,7 @@ describe('useChatController production and mobile branches', () => {
     Object.defineProperty(window, 'innerHeight', { value: 600, configurable: true });
 
     // advance timers for the delayed handler; use real timers but force immediate execution of timeouts
-    await new Promise((r) => setTimeout(r, 100));
+    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
 
     // Assert that scrollTo was invoked and CSS var set
     expect(scrollSpy).toHaveBeenCalledWith(0, document.body.scrollHeight);

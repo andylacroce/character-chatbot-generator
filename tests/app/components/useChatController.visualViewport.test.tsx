@@ -77,7 +77,7 @@ describe('useChatController visualViewport keyboard handling', () => {
     });
 
     // Wait for the 50ms timeout in the hook
-    await new Promise(res => setTimeout(res, 80));
+    await act(async () => { await new Promise(res => setTimeout(res, 80)); });
 
     const pad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
     expect(pad).toBeTruthy();
@@ -89,14 +89,14 @@ describe('useChatController visualViewport keyboard handling', () => {
     });
 
     // Wait a tick for blur cleanup
-    await new Promise(res => setTimeout(res, 10));
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
 
   const clearedPad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
   expect(['', '0px']).toContain(clearedPad);
     expect(document.documentElement.classList.contains('mobile-keyboard-open')).toBe(false);
   });
 
-  it('renders safely when visualViewport is undefined', () => {
+  it('renders safely when visualViewport is undefined', async () => {
     (global as unknown as { visualViewport?: VisualViewport }).visualViewport = undefined;
     (global as unknown as { innerHeight?: number }).innerHeight = 800;
 
@@ -112,6 +112,9 @@ describe('useChatController visualViewport keyboard handling', () => {
 
     const { getByTestId } = render(<Harness />);
     expect(getByTestId('chat')).toBeTruthy();
+    // Empty messages triggers the intro-generation effect; flush it within act()
+    // so its eventual state update doesn't land after this test has returned.
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
   });
 
   it('does not add keyboard padding when heightDiff is zero', async () => {
@@ -145,7 +148,7 @@ describe('useChatController visualViewport keyboard handling', () => {
       inputEl.dispatchEvent(new Event('focus'));
     });
 
-    await new Promise(res => setTimeout(res, 80));
+    await act(async () => { await new Promise(res => setTimeout(res, 80)); });
 
     const pad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
     expect(['', '0px']).toContain(pad);
