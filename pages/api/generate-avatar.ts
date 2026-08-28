@@ -2,10 +2,13 @@
  * API endpoint for generating character avatar images.
  * Uses Claude to build a detailed image prompt, then Gemini image generation on
  * Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI) to render the image.
- * Accepts POST requests with a character name and returns a base64 data URL.
+ * Accepts POST requests with a character name and returns either a durable Vercel Blob
+ * URL (when a Blob token is configured) or a base64 data URL (fallback).
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
+import { put } from "@vercel/blob";
+import crypto from "crypto";
 import fs from "fs";
 import logger, { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
@@ -87,6 +90,36 @@ async function generateImageWithGemini(
 }
 
 /**
+ * Uploads a base64 data URL image to Vercel Blob and returns its durable public URL.
+ * Falls back to returning the original data URL when no Blob token is configured (local
+ * dev with no Blob store set up) or if the upload itself fails, so avatar generation
+ * never fails outright over storage.
+ */
+async function persistAvatarToBlob(dataUrl: string): Promise<string> {
+  const blobToken = process.env.VERCEL_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+  if (!blobToken) return dataUrl;
+
+  const match = /^data:(image\/\w+);base64,(.+)$/.exec(dataUrl);
+  if (!match) return dataUrl;
+  const [, mimeType, base64Data] = match;
+  const ext = mimeType.split("/")[1] || "png";
+
+  try {
+    const buffer = Buffer.from(base64Data, "base64");
+    const blob = await put(`avatars/${crypto.randomUUID()}.${ext}`, buffer, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: mimeType,
+      token: blobToken,
+    });
+    return blob.url;
+  } catch (err) {
+    logEvent("error", "avatar_blob_upload_failed", "Failed to upload avatar to Blob, using data URL", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
+    return dataUrl;
+  }
+}
+
+/**
  * Next.js API route handler for generating a character avatar image.
  *
  * @swagger
@@ -96,9 +129,12 @@ async function generateImageWithGemini(
  *     description: >
  *       Two-stage: Claude writes an SFW image-description prompt, then Gemini
  *       image generation (Google Cloud's Gemini Enterprise Agent Platform) renders
- *       a square PNG returned as a base64 data URL. Rate limited to 5 requests/
- *       minute/IP since image generation is comparatively expensive. Falls back to
- *       `/silhouette.svg` (still a 200 response) on any generation failure, missing
+ *       a square PNG. When a Vercel Blob token (VERCEL_BLOB_READ_WRITE_TOKEN or
+ *       BLOB_READ_WRITE_TOKEN) is configured, the image is uploaded to Blob and a
+ *       durable URL is returned; otherwise (e.g. local dev with no Blob store) it
+ *       falls back to a base64 data URL. Rate limited to 5 requests/minute/IP since
+ *       image generation is comparatively expensive. Falls back to `/silhouette.svg`
+ *       (still a 200 response) on any generation failure, missing
  *       GOOGLE_CLOUD_PROJECT, or a safety filter trigger — it never surfaces a 5xx
  *       for a failed generation.
  *     tags: [Character]
@@ -115,7 +151,9 @@ async function generateImageWithGemini(
  *                 example: Sherlock Holmes
  *     responses:
  *       200:
- *         description: Avatar URL (a base64 data URL, or the silhouette fallback)
+ *         description: >
+ *           Avatar URL — a durable Vercel Blob URL when Blob is configured, a base64
+ *           data URL otherwise, or the silhouette fallback on generation failure
  *         content:
  *           application/json:
  *             schema:
@@ -235,6 +273,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       avatarUrl = await generateImageWithGemini(prompt, credentials, projectId);
       if (avatarUrl) {
         logEvent("info", "avatar_gemini_success", "Image generated successfully with Gemini");
+        avatarUrl = await persistAvatarToBlob(avatarUrl);
       }
     } catch (err) {
       logEvent("error", "avatar_gemini_error", "Gemini image generation error", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));

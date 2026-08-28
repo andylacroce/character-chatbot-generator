@@ -65,7 +65,7 @@ Changing this flow touches both the API and modal, plus `tests/api/validateChara
 
 ### Avatar generation (`pages/api/generate-avatar.ts`)
 
-Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description prompt from the character name, then Gemini image generation on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI; via the `@google/genai` SDK's `generateContent`, not the legacy Imagen `predict` API) renders a square PNG returned as a base64 data URL (no external image hosting). Requires the service account to have `roles/aiplatform.user` and `aiplatform.googleapis.com` enabled on `GOOGLE_CLOUD_PROJECT`. Rate-limited to 5 req/min/IP since image generation calls are comparatively expensive.
+Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description prompt from the character name, then Gemini image generation on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI; via the `@google/genai` SDK's `generateContent`, not the legacy Imagen `predict` API) renders a square PNG. If `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` is set, the image is uploaded to Vercel Blob (`avatars/<uuid>.<ext>`, public access) and a durable Blob URL is returned; otherwise (no token configured, e.g. local dev with no Blob store) it falls back to a base64 data URL, unchanged from prior behavior. Blob upload failures don't fail the request — they fall back to the data URL too. Requires the service account to have `roles/aiplatform.user` and `aiplatform.googleapis.com` enabled on `GOOGLE_CLOUD_PROJECT`. Rate-limited to 5 req/min/IP since image generation calls are comparatively expensive.
 
 ### Client-side storage
 
