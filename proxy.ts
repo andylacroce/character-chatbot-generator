@@ -52,6 +52,16 @@ function isAllowedOrigin(value: string): boolean {
 }
 
 export function proxy(req: NextRequest) {
+    // Auth.js's own routes (sign-in, OAuth callback, session, CSRF token) are protected
+    // by their own signed, httpOnly state/CSRF cookies, not this app's origin/API-key
+    // scheme. The callback in particular is a top-level browser navigation *from* the
+    // OAuth provider (e.g. accounts.google.com), so it arrives with that provider's own
+    // Referer/Origin and can never carry a first-party one or this app's API key.
+    const { pathname } = new URL(req.url);
+    if (pathname.startsWith('/api/auth/')) {
+        return NextResponse.next();
+    }
+
     // Check API_SECRET at runtime instead of build time
     const apiSecret = process.env.API_SECRET;
     if (!apiSecret) {

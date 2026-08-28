@@ -84,6 +84,41 @@ describe("proxy", () => {
         expect(config.matcher).toEqual(["/api/:path*"]);
     });
 
+    describe("Auth.js routes", () => {
+        it.each([
+            "/api/auth/signin",
+            "/api/auth/signin/google",
+            "/api/auth/callback/google",
+            "/api/auth/session",
+            "/api/auth/csrf",
+        ])("bypasses the origin/API-key check for %s", (path) => {
+            // The OAuth callback in particular arrives as a top-level navigation from
+            // accounts.google.com — a real, non-first-party Referer with no API key,
+            // which is exactly what the rest of this proxy would otherwise reject.
+            const res = proxy(
+                makeRequest({
+                    method: "GET",
+                    url: `${PROD_ORIGIN}${path}`,
+                    headers: { referer: "https://accounts.google.com/" },
+                }),
+            );
+
+            expect(allowed(res)).toBe(true);
+        });
+
+        it("does not bypass a look-alike path outside /api/auth/", () => {
+            const res = proxy(
+                makeRequest({
+                    method: "POST",
+                    url: `${PROD_ORIGIN}/api/authorize-payment`,
+                    headers: { referer: "https://accounts.google.com/" },
+                }),
+            );
+
+            expect(res.status).toBe(401);
+        });
+    });
+
     it("fails closed with 500 when API_SECRET is not configured", () => {
         delete process.env.API_SECRET;
         const res = proxy(makeRequest({ headers: { origin: PROD_ORIGIN } }));
