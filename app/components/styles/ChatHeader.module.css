@@ -117,7 +117,7 @@
   border-radius: 7px;
   background: var(--button-bg);
   color: var(--send-button-text);
-  box-shadow: 0 2px 8px var(--button-shadow, #e3e3e3);
+  box-shadow: 0 2px 8px var(--button-shadow);
   border: none;
   transition: background 0.2s, box-shadow 0.2s;
   cursor: pointer;
@@ -132,7 +132,7 @@
 
 .downloadTranscriptLink:hover {
   background: var(--button-hover-bg);
-  box-shadow: 0 4px 16px var(--button-shadow-hover, #bdbdbd);
+  box-shadow: 0 4px 16px var(--button-shadow-hover);
 }
 
 .toggleLabel {

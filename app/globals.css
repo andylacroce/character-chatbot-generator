@@ -19,49 +19,44 @@
 @import "./darkmode.css";
 
 :root {
-  /* Material Design 3 inspired light palette with foresty earth tones */
-  /* Clean off-white background for better readability */
-  --color-background: #f5f7f5;
-  /* soft mist */
+  /* Earthy, true-complementary light palette: Clay (terracotta, primary) and Deep
+     Teal (secondary/accent) sit opposite each other on the color wheel, pulled from
+     natural materials rather than synthetic/neon tones. Moss/Rust (success/error)
+     are hue-separated from both so status states never read as "just another
+     accent". Warm sandy neutrals throughout, not cool gray. */
+  --color-background: #f7f4ef;
+  /* Cloud */
   --color-surface: #ffffff;
-  /* clean white surface */
-  --color-surface-variant: #e8f0ea;
-  /* pale moss surface */
-  --color-outline: #6b8570;
-  /* sage outline with better contrast */
-  --color-text: #1a2420;
-  /* deeper forest text for better contrast */
-  --color-text-secondary: #3d4f3d;
-  /* darker muted pine */
-  --color-primary: #2d5a3d;
-  /* deeper forest green for better contrast */
+  --color-surface-variant: #efe6de;
+  /* pale sand surface */
+  --color-outline: #9c8f7d;
+  /* muted warm-neutral outline */
+  --color-text: #18160f;
+  /* Ink */
+  --color-text-secondary: #5c5245;
+  /* muted warm-brown-gray */
+  --color-primary: #af5a3f;
+  /* Clay */
   --color-on-primary: #ffffff;
-  /* pure white on primary for WCAG AA */
-  --color-primary-container: #c8e0c2;
-  /* light moss container, slightly darker */
-  --color-on-primary-container: #1a2420;
-  /* deep green on container */
-  --color-secondary: #4d7550;
-  /* deeper muted fern for better contrast */
+  --color-primary-container: #f1ddd3;
+  /* light clay container */
+  --color-on-primary-container: #18160f;
+  --color-secondary: #33595e;
+  /* deeper Teal for on-white contrast */
   --color-on-secondary: #ffffff;
-  /* pure white on secondary */
-  --color-secondary-container: #e5f2e5;
-  /* lighter container for contrast */
-  --color-on-secondary-container: #1a2420;
-  /* deep text on secondary container */
-  --color-accent: #7fb357;
-  /* vibrant leaf accent with better visibility */
-  --color-error: #c44240;
-  /* slightly brighter for visibility */
+  --color-secondary-container: #dbe7e6;
+  /* light teal container */
+  --color-on-secondary-container: #18160f;
+  --color-accent: #3d6e73;
+  /* Deep Teal */
+  --color-error: #8b3a3a;
+  /* Rust */
   --color-on-error: #ffffff;
-  /* pure white on error */
-  --color-success: #3d7a5a;
-  /* deeper success green */
+  --color-success: #5a7d4a;
+  /* Moss */
   --color-on-success: #ffffff;
-  --color-warning: #d69a4a;
-  /* warmer, more visible warning */
-  --color-on-warning: #1a2420;
-  /* dark text on warning */
+  --color-warning: #b8863f;
+  --color-on-warning: #18160f;
   --color-sender: var(--color-primary);
   --card-body-bg: var(--color-surface);
   --chatbox-background: var(--color-background);
@@ -69,27 +64,22 @@
   --bot-message-bg: var(--color-secondary-container);
   --bot-sender: var(--color-secondary);
   --button-bg: var(--color-primary);
-  --button-hover-bg: #234a2f;
-  /* darker on hover */
-  --disabled-bg: #e0e6e0;
-  /* more visible disabled state */
-  --disabled-text: #6b8570;
-  /* better contrast for disabled text */
+  --button-hover-bg: #8a4630;
+  /* Clay, deeper */
+  --disabled-bg: #e9e2d8;
+  --disabled-text: #a89a87;
   --send-button-bg: var(--color-accent);
-  --send-button-hover-bg: #6a9e47;
-  /* darker accent on hover */
-  --send-button-text: #1a2420;
+  --send-button-hover-bg: #2c5257;
+  /* Deep Teal, deeper */
+  --send-button-text: #ffffff;
   --input-bg: var(--color-surface-variant);
   --input-text: var(--color-text);
-  --input-placeholder: #6b8570;
-  /* darker placeholder for readability */
-  --scrollbar-bg: #e8f0ea;
-  --scrollbar-thumb: #4d7550;
-  /* more visible scrollbar */
-  --button-shadow: rgba(29, 90, 61, 0.15);
-  /* subtle green shadow */
-  --button-shadow-hover: rgba(29, 90, 61, 0.25);
-  /* stronger shadow on hover */
+  --input-placeholder: #a89a87;
+  --scrollbar-bg: #efe6de;
+  --scrollbar-thumb: #33595e;
+  --button-shadow: rgba(175, 90, 63, 0.15);
+  /* clay-tinted shadow */
+  --button-shadow-hover: rgba(175, 90, 63, 0.25);
   --chat-message-font-size: 1.2rem;
   --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif';
   --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif';
@@ -299,8 +289,8 @@ body,
   Use class selectors to override library styles as needed.
 */
 [class*="toggle-switch---switch"][class*="checked"] [class*="toggle-switch---toggle"] {
-  background-color: #2e7d32 !important;
-  border-color: #1b5e20 !important;
+  background-color: var(--color-primary) !important;
+  border-color: var(--button-hover-bg) !important;
 }
 
 [class*="toggle-switch---switch"] [class*="toggle-switch---toggle"] {

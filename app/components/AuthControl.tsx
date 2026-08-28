@@ -68,7 +68,7 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
         aria-label="Sign out"
         onClick={() => signOut()}
       >
-        <FaSignOutAlt size={16} style={{ color: "var(--color-accent, #1e7f6c)" }} />
+        <FaSignOutAlt size={16} style={{ color: "var(--color-accent)" }} />
         <span style={{ fontSize: "0.92rem", marginLeft: "0.18em" }}>
           {session.user.name ? `Sign out (${session.user.name})` : "Sign out"}
         </span>
@@ -84,7 +84,7 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
       onClick={handleSignIn}
       disabled={!providerIds || providerIds.length === 0}
     >
-      <FaGoogle size={16} style={{ color: "var(--color-accent, #1e7f6c)" }} />
+      <FaGoogle size={16} style={{ color: "var(--color-accent)" }} />
       <span style={{ fontSize: "0.92rem", marginLeft: "0.18em" }}>Sign in</span>
     </button>
   );

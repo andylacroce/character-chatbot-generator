@@ -49,7 +49,7 @@
   font-size: 2.1rem;
   font-family: var(--font-primary), sans-serif;
   font-weight: 800;
-  color: var(--color-text, #e6e7e9);
+  color: var(--color-text);
   margin-bottom: 0.7rem;
   margin-top: 0.1rem;
   letter-spacing: -1px;
@@ -100,7 +100,7 @@
 .input:focus {
   border-color: var(--color-primary);
   border-width: 2px;
-  box-shadow: 0 0 0 3px rgba(45, 90, 61, 0.15), 0 2px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 3px rgba(175, 90, 63, 0.15), 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .input:disabled {
@@ -163,7 +163,7 @@
   background: var(--button-hover-bg);
   border-color: var(--color-primary);
   color: var(--color-on-primary);
-  box-shadow: 0 0 0 3px rgba(45, 90, 61, 0.15), 0 4px 16px var(--button-shadow-hover);
+  box-shadow: 0 0 0 3px rgba(92, 74, 114, 0.15), 0 4px 16px var(--button-shadow-hover);
 }
 
 .randomButton {
@@ -195,27 +195,11 @@
   }
 }
 
-.dark .createButton,
-.dark .randomButton {
-  background: var(--button-bg, #3a3a5a) !important;
-  border: 2px solid #bfae7c !important;
-  color: #fff !important;
-}
-
-.dark .createButton:hover:not(:disabled),
-.dark .randomButton:hover:not(:disabled),
-.dark .createButton:focus:not(:disabled),
-.dark .randomButton:focus:not(:disabled) {
-  background: #2d3952 !important;
-  border-color: #bfae7c !important;
-  color: #fff !important;
-}
-
 .buttonSpinner {
   width: 1.1em;
   height: 1.1em;
-  border: 2.5px solid #b0b8c9;
-  border-top: 2.5px solid var(--color-primary, #7fa7c7);
+  border: 2.5px solid var(--disabled-bg);
+  border-top: 2.5px solid var(--color-primary);
   border-radius: 50%;
   display: inline-block;
   margin-right: 0.5em;
@@ -279,7 +263,7 @@
 }
 
 .error {
-  color: var(--error-text, #e57373);
+  color: var(--color-error);
   margin-top: 0.7rem;
   font-size: 1.01rem;
   font-family: var(--font-primary), sans-serif;
@@ -429,7 +413,7 @@
   font-size: 1.25rem;
   font-weight: 700;
   margin: 0 0 0.9rem 0;
-  color: var(--color-primary, #bfae7c);
+  color: var(--color-primary);
   font-family: var(--font-secondary), var(--font-primary), sans-serif;
 }
 
@@ -551,7 +535,7 @@
 }
 
 .cautionIcon {
-  color: #ffc107;
+  color: var(--color-accent);
 }
 
 /* --- Modal Title --- */
@@ -659,9 +643,9 @@
 }
 
 .continueButton:hover {
-  background: #d4963f;
+  background: #9c6f30;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(225, 169, 95, 0.4);
+  box-shadow: 0 4px 12px rgba(184, 134, 63, 0.4);
 }
 
 /* --- Disclaimer --- */

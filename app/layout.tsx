@@ -30,7 +30,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
         <title>Character Chatbot Generator</title>
         <meta name="description" content="Create and chat with your own AI-powered characters." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/andrew.png" type="image/png" />
+        <link rel="icon" href="/silhouette.svg" type="image/svg+xml" />
         {/* Open Graph / Facebook */}
         <meta property="og:title" content="Character Chatbot Generator" />
         <meta property="og:description" content="Create and chat with your own AI-powered characters." />

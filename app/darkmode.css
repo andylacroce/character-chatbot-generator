@@ -1,47 +1,37 @@
 .dark {
-  /* Material Design 3 inspired dark palette with foresty earth tones */
-  --color-background: #131a16 !important;
-  /* deeper forest night for better contrast */
-  --color-surface: #1f2922 !important;
-  /* dark pine surface */
-  --color-surface-variant: #293529 !important;
-  /* muted forest stone */
-  --color-outline: #6b8570 !important;
-  /* visible sage outline */
-  --color-text: #f0f5f1 !important;
-  /* brighter pale moss text for readability */
-  --color-text-secondary: #a8b8a8 !important;
-  /* brighter soft sage */
-  --color-primary: #7fa885 !important;
-  /* brighter muted fern for better visibility */
-  --color-on-primary: #131a16 !important;
-  /* deep forest on primary */
-  --color-primary-container: #3d6b4b !important;
-  /* forest green container */
-  --color-on-primary-container: #f0f5f1 !important;
-  /* bright text on container */
-  --color-secondary: #b5d39d !important;
-  /* brighter leaf accent for visibility */
-  --color-on-secondary: #1f2922 !important;
-  /* dark text on bright secondary */
-  --color-secondary-container: #4a7a5f !important;
-  /* deeper container for contrast */
-  --color-on-secondary-container: #f0f5f1 !important;
-  /* bright text on secondary container */
-  --color-accent: #c5e0bd !important;
-  /* brighter moss accent */
-  --color-error: #e57373 !important;
-  /* brighter error for visibility */
-  --color-on-error: #1f2922 !important;
-  /* dark text on error */
-  --color-success: #90c070 !important;
-  /* brighter success */
-  --color-on-success: #1f2922 !important;
-  /* dark text on success */
-  --color-warning: #f4c67a !important;
-  /* brighter warning */
-  --color-on-warning: #1f2922 !important;
-  /* dark text on warning */
+  /* Earthy, true-complementary dark palette — same Clay/Deep Teal pair as light
+     mode, lightened toward the surface for pop against a near-black warm-neutral
+     ground rather than a colored-tinted one. */
+  --color-background: #151209 !important;
+  /* Ink, darkest */
+  --color-surface: #211d15 !important;
+  --color-surface-variant: #2c2620 !important;
+  --color-outline: #9c8f7d !important;
+  --color-text: #f5f1ea !important;
+  /* Cloud */
+  --color-text-secondary: #bcae9a !important;
+  --color-primary: #d68a6c !important;
+  /* Clay, lightened for dark-mode contrast */
+  --color-on-primary: #18160f !important;
+  --color-primary-container: #8a4630 !important;
+  /* Clay, deeper */
+  --color-on-primary-container: #f5f1ea !important;
+  --color-secondary: #7bb0b5 !important;
+  /* Deep Teal, lightened */
+  --color-on-secondary: #12211f !important;
+  --color-secondary-container: #2c5257 !important;
+  /* Deep Teal, deeper */
+  --color-on-secondary-container: #f5f1ea !important;
+  --color-accent: #8fc4c8 !important;
+  /* Teal, brighter accent */
+  --color-error: #c97a72 !important;
+  /* Rust, lightened */
+  --color-on-error: #211d15 !important;
+  --color-success: #8fb37a !important;
+  /* Moss, lightened */
+  --color-on-success: #211d15 !important;
+  --color-warning: #dab06a !important;
+  --color-on-warning: #211d15 !important;
   --color-sender: var(--color-primary) !important;
   --card-body-bg: var(--color-surface-variant) !important;
   --chatbox-background: var(--color-surface) !important;
@@ -49,26 +39,22 @@
   --bot-message-bg: var(--color-secondary-container) !important;
   --bot-sender: var(--color-secondary) !important;
   --button-bg: var(--color-primary) !important;
-  --button-hover-bg: #90b895 !important;
-  /* brighter on hover for visibility */
-  --disabled-bg: #293529 !important;
-  --disabled-text: #6b8570 !important;
-  /* better contrast for disabled */
+  --button-hover-bg: #e6a688 !important;
+  /* Clay, brighter on hover */
+  --disabled-bg: #2c2620 !important;
+  --disabled-text: #9c8f7d !important;
   --send-button-bg: var(--color-accent) !important;
-  --send-button-hover-bg: #a8c7a0 !important;
-  /* visible hover state */
-  --send-button-text: #1f2922 !important;
+  --send-button-hover-bg: #a3d4d7 !important;
+  /* Teal, brighter on hover */
+  --send-button-text: #12211f !important;
   --input-bg: var(--color-surface-variant) !important;
   --input-text: var(--color-text) !important;
-  --input-placeholder: #a8b8a8 !important;
-  /* brighter placeholder */
-  --scrollbar-bg: #293529 !important;
-  --scrollbar-thumb: #7fa885 !important;
-  /* more visible scrollbar */
+  --input-placeholder: #bcae9a !important;
+  --scrollbar-bg: #2c2620 !important;
+  --scrollbar-thumb: #d68a6c !important;
   --button-shadow: rgba(0, 0, 0, 0.3) !important;
-  /* subtle dark shadow */
-  --button-shadow-hover: rgba(127, 168, 133, 0.25) !important;
-  /* green tinted shadow on hover */
+  --button-shadow-hover: rgba(214, 138, 108, 0.25) !important;
+  /* clay-tinted shadow on hover */
   --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
   --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
 }
