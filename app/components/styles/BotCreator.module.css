@@ -287,15 +287,21 @@
 
 .toggleRow {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6em;
   width: 100%;
   margin-top: 1.2em;
   margin-bottom: 0.5em;
 }
 
 .darkModeToggle {
-  margin: 0 auto !important;
+  /* !important: DarkModeToggle also always applies ChatHeader.module.css's own
+     .darkModeToggle class internally, which sets margin-left: auto — that fights
+     this row's justify-content: space-between across two buttons. Override wins
+     regardless of the two modules' relative bundling order. */
+  margin: 0 !important;
   background: var(--button-bg);
   border: none;
   cursor: pointer;
@@ -343,40 +349,130 @@
 
 .instructionsCentered {
   text-align: center;
-  margin: 0.7rem 0 0.6rem 0;
-  font-size: 1.08rem;
+  margin: 0.9rem 0 0.7rem 0;
+  font-size: 1rem;
+  line-height: 1.6;
   color: var(--color-text);
   font-family: var(--font-primary), sans-serif;
   display: flex;
   flex-direction: column;
-  gap: 0.3em;
+  gap: 0.9em;
   align-items: center;
   justify-content: center;
 }
 
 .instructionsTip {
-  color: #7fa7c7;
+  color: var(--color-accent);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  opacity: 0.9;
+}
+
+.instructionsFunctional {
+  font-weight: 500;
   font-size: 0.98rem;
-  margin-top: 0.3em;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  color: var(--color-on-primary-container);
+  background: var(--color-primary-container);
+  border-radius: 10px;
+  padding: 0.75em 1.1em;
 }
 
 .disclaimer {
-  font-size: 0.85em;
-  color: #666;
-  font-style: italic;
-  margin-top: 0.1em;
+  font-size: 0.82rem;
+  color: var(--color-text);
+  opacity: 0.6;
+  margin-top: 0.2em;
   margin-bottom: 0.5em;
   text-align: center;
   line-height: 1.5;
+  letter-spacing: 0.01em;
   max-width: 420px;
   margin-left: auto;
   margin-right: auto;
-  opacity: 0.92;
 }
 
-.dark .disclaimer {
-  color: #aaa;
-  opacity: 0.85;
+.disclaimerBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+.disclaimerModal {
+  position: relative;
+  background: var(--card-body-bg);
+  color: var(--color-text);
+  font-family: var(--font-primary);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  padding: 2.2rem 1.75rem 1.75rem 1.75rem;
+  max-width: 460px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.disclaimerTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.9rem 0;
+  color: var(--color-primary, #bfae7c);
+  font-family: var(--font-secondary), var(--font-primary), sans-serif;
+}
+
+.disclaimerText {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.disclaimerCloseButton {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.8rem;
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #888;
+  cursor: pointer;
+  padding: 0.2rem;
+  transition: color 0.2s;
+}
+
+.disclaimerCloseButton:hover,
+.disclaimerCloseButton:focus {
+  color: #c00;
+  outline: none;
+}
+
+@media (max-width: 600px) {
+  .disclaimerModal {
+    padding: 2rem 1.25rem 1.25rem 1.25rem;
+    max-width: 100%;
+  }
+
+  .disclaimerTitle {
+    font-size: 1.1rem;
+  }
+
+  .disclaimerText {
+    font-size: 0.88rem;
+  }
 }
 
 /* =============================

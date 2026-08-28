@@ -32,6 +32,18 @@ const nextConfig = {
     optimizeCss: true,
   },
   serverExternalPackages: ['winston'],
+  images: {
+    // Avatars uploaded to Vercel Blob (pages/api/generate-avatar.ts) come back as
+    // <random-store-id>.public.blob.vercel-storage.com URLs — the store id varies
+    // per Blob store (local dev vs. prod use different tokens/stores), so this has
+    // to be a wildcard rather than one fixed hostname.
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+      },
+    ],
+  },
   // Performance optimizations
   compress: true,
   poweredByHeader: false,
