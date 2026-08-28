@@ -55,7 +55,7 @@
     "@types/react-dom": "^19.2.5",
     "@types/swagger-jsdoc": "^6.0.4",
     "@typescript-eslint/eslint-plugin": "^8.67.0",
-    "@typescript-eslint/parser": "^8.67.0",
+    "@typescript-eslint/parser": "^8.68.0",
     "@typescript-eslint/type-utils": "^8.68.0",
     "@typescript-eslint/typescript-estree": "^8.68.0",
     "@typescript-eslint/utils": "^8.68.0",
