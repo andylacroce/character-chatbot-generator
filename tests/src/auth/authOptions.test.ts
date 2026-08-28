@@ -45,13 +45,14 @@ describe('auth/authOptions', () => {
     });
 
     describe('preview stub provider', () => {
-        it('is absent when VERCEL_ENV is not "preview"', async () => {
+        it('is absent when VERCEL_ENV is not "preview", leaving Google as the only provider', async () => {
             await jest.isolateModulesAsync(async () => {
                 delete process.env.DATABASE_URL;
                 delete process.env.VERCEL_ENV;
                 const { authOptions } = require('../../../src/auth/authOptions');
                 expect(authOptions.providers).toHaveLength(1);
                 expect(authOptions.providers.some((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub')).toBe(false);
+                expect(authOptions.providers.some((p: { id: string }) => p.id === 'google')).toBe(true);
             });
         });
 
@@ -64,13 +65,16 @@ describe('auth/authOptions', () => {
             });
         });
 
-        it('is present when VERCEL_ENV is "preview"', async () => {
+        it('replaces Google entirely (not adds alongside) when VERCEL_ENV is "preview"', async () => {
             await jest.isolateModulesAsync(async () => {
                 delete process.env.DATABASE_URL;
                 process.env.VERCEL_ENV = 'preview';
                 const { authOptions } = require('../../../src/auth/authOptions');
-                expect(authOptions.providers).toHaveLength(2);
+                // Google is excluded on preview: it has no client_id configured there and
+                // would just fail with SIGNIN_OAUTH_ERROR if offered alongside the stub.
+                expect(authOptions.providers).toHaveLength(1);
                 expect(authOptions.providers.some((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub')).toBe(true);
+                expect(authOptions.providers.some((p: { id: string }) => p.id === 'google')).toBe(false);
             });
         });
 

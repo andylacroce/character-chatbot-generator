@@ -9,10 +9,11 @@
  * Google's OAuth redirect URI is exact-match only (no wildcards), so real Google
  * sign-in can only ever work on the one static production domain — not Vercel preview
  * deployments, whose URL changes on every push. On preview (VERCEL_ENV === "preview"
- * — set by Vercel itself, never client-controlled), a stub Credentials provider stands
- * in instead: an unverified, ephemeral identity (no DB write — NextAuth's adapter
- * hooks aren't invoked for Credentials sign-ins anyway) good enough to exercise
- * signed-in UI on a preview deployment without a real OAuth round-trip.
+ * — set by Vercel itself, never client-controlled), Google is swapped out entirely for
+ * a stub Credentials provider: an unverified, ephemeral identity (no DB write —
+ * NextAuth's adapter hooks aren't invoked for Credentials sign-ins anyway) good enough
+ * to exercise signed-in UI on a preview deployment. Swapped, not added alongside —
+ * Google has no client_id configured on preview and would just fail if offered there.
  */
 
 import type { NextAuthOptions } from "next-auth";
@@ -28,15 +29,8 @@ const adapter = process.env.DATABASE_URL
 
 const isPreview = process.env.VERCEL_ENV === "preview";
 
-const providers: NextAuthOptions["providers"] = [
-  GoogleProvider({
-    clientId: process.env.GOOGLE_CLIENT_ID || "",
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-  }),
-];
-
-if (isPreview) {
-  providers.push(
+const providers: NextAuthOptions["providers"] = isPreview
+  ? [
     CredentialsProvider({
       id: "preview-stub",
       name: "Preview (no real login)",
@@ -52,8 +46,13 @@ if (isPreview) {
         return { id: email, email, name: email.split("@")[0] };
       },
     }),
-  );
-}
+  ]
+  : [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
+  ];
 
 export const authOptions: NextAuthOptions = {
   adapter,
