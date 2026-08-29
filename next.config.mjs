@@ -22,8 +22,9 @@ const contentSecurityPolicy = [
   // form-action against that final redirect target too, not just the form's own action
   // URL, so each provider's origin has to be explicitly allowed here or the redirect is
   // silently blocked with no visible error. Extend this list when adding another OAuth
-  // provider — this bit Facebook's rollout too before it was caught here.
-  "form-action 'self' https://accounts.google.com https://www.facebook.com",
+  // provider — this bit Facebook's rollout before it was caught here, and was removed
+  // again when Facebook sign-in itself was disabled (see authOptions.ts).
+  "form-action 'self' https://accounts.google.com",
   "frame-ancestors 'none'",
 ].join('; ');
 

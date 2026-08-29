@@ -27,7 +27,7 @@ export default function DataDeletionPage() {
       </div>
 
       <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>If you signed in with Google or Facebook</h2>
+        <h2 className={styles.sectionTitle}>If you signed in with Google</h2>
         <p>
           To request deletion of your account, saved characters, and chat history, email{" "}
           <a href="mailto:andy.lacroce@gmail.com?subject=Data%20deletion%20request">andy.lacroce@gmail.com</a>{" "}

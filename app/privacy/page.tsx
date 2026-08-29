@@ -43,7 +43,7 @@ export default function PrivacyPage() {
 
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>Information we collect if you sign in</h2>
-        <p>Signing in with Google or Facebook is optional. If you sign in, we store:</p>
+        <p>Signing in with Google is optional. If you sign in, we store:</p>
         <ul>
           <li><strong>Account info</strong>: the name, email address, and profile image your sign-in provider shares with us.</li>
           <li><strong>Characters you create</strong>: name, personality description, generated portrait, and voice settings.</li>
@@ -62,7 +62,7 @@ export default function PrivacyPage() {
         <ul>
           <li><strong>Anthropic</strong> — generates in-character replies from your messages.</li>
           <li><strong>Google Cloud</strong> — synthesizes voice audio (Text-to-Speech) and generates character portraits (Gemini image generation).</li>
-          <li><strong>Google / Facebook</strong> — if you choose to sign in, for authentication only.</li>
+          <li><strong>Google</strong> — if you choose to sign in, for authentication only.</li>
           <li><strong>Neon</strong> — hosts the database that stores signed-in users&apos; accounts, characters, and chat history.</li>
           <li><strong>Vercel</strong> — hosts the app, stores generated avatar images, and provides basic, non-advertising traffic analytics (page views and performance, not individual tracking or ad targeting).</li>
         </ul>

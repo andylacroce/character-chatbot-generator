@@ -45,31 +45,27 @@ describe('auth/authOptions', () => {
     });
 
     describe('preview stub provider', () => {
-        it('is absent when VERCEL_ENV is not "preview", leaving Google and Facebook as the real providers', async () => {
+        it('is absent when VERCEL_ENV is not "preview", leaving Google as the real provider', async () => {
             await jest.isolateModulesAsync(async () => {
                 delete process.env.DATABASE_URL;
                 delete process.env.VERCEL_ENV;
                 const { authOptions } = require('../../../src/auth/authOptions');
-                expect(authOptions.providers).toHaveLength(2);
+                expect(authOptions.providers).toHaveLength(1);
                 expect(authOptions.providers.some((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub')).toBe(false);
                 expect(authOptions.providers.some((p: { id: string }) => p.id === 'google')).toBe(true);
-                expect(authOptions.providers.some((p: { id: string }) => p.id === 'facebook')).toBe(true);
             });
         });
 
-        it('allows linking Google and Facebook to the same account by matching email', async () => {
-            // Deliberate opt-in (see authOptions.ts's doc comment) — without this, signing in
-            // with a second provider on an email that already has an account throws NextAuth's
-            // OAuthAccountNotLinked error instead of signing the user into their existing account.
+        it('sets allowDangerousEmailAccountLinking on Google', async () => {
+            // Deliberate opt-in (see authOptions.ts's doc comment) — kept even with a single
+            // provider so re-adding a second one later doesn't need to revisit this decision.
             await jest.isolateModulesAsync(async () => {
                 delete process.env.DATABASE_URL;
                 delete process.env.VERCEL_ENV;
                 const { authOptions } = require('../../../src/auth/authOptions');
                 type ProviderWithOptions = { id: string; options?: { allowDangerousEmailAccountLinking?: boolean } };
                 const google = authOptions.providers.find((p: ProviderWithOptions) => p.id === 'google');
-                const facebook = authOptions.providers.find((p: ProviderWithOptions) => p.id === 'facebook');
                 expect(google.options.allowDangerousEmailAccountLinking).toBe(true);
-                expect(facebook.options.allowDangerousEmailAccountLinking).toBe(true);
             });
         });
 
@@ -82,17 +78,16 @@ describe('auth/authOptions', () => {
             });
         });
 
-        it('replaces Google and Facebook entirely (not adds alongside) when VERCEL_ENV is "preview"', async () => {
+        it('replaces Google entirely (not adds alongside) when VERCEL_ENV is "preview"', async () => {
             await jest.isolateModulesAsync(async () => {
                 delete process.env.DATABASE_URL;
                 process.env.VERCEL_ENV = 'preview';
                 const { authOptions } = require('../../../src/auth/authOptions');
-                // Google and Facebook are excluded on preview: neither has credentials
-                // configured there and would just fail if offered alongside the stub.
+                // Google is excluded on preview: it has no credentials configured there
+                // and would just fail if offered alongside the stub.
                 expect(authOptions.providers).toHaveLength(1);
                 expect(authOptions.providers.some((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub')).toBe(true);
                 expect(authOptions.providers.some((p: { id: string }) => p.id === 'google')).toBe(false);
-                expect(authOptions.providers.some((p: { id: string }) => p.id === 'facebook')).toBe(false);
             });
         });
 
