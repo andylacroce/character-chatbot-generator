@@ -11,10 +11,14 @@ pages/api/           # API routes (chat, audio, health, transcript)
    generate-avatar.ts # Avatar generation via Claude + Gemini image generation (Gemini Enterprise Agent Platform, formerly Vertex AI)
    validate-character.ts # Copyright/trademark validation
    random-character.ts   # Public domain character suggestions
+   bots.ts            # List/persist a signed-in user's characters (optional)
+   messages.ts        # List a signed-in user's chat history for one character (optional)
 src/
    utils/             # Utilities (TTS, logger, cache, security)
    types/             # TypeScript type definitions
    config/            # Configuration files
+   db/                # Drizzle schema + client (optional account persistence)
+   auth/              # Auth.js configuration (Google sign-in)
 tests/               # Jest test suite (80%+ branch coverage)
 proxy.ts             # API authentication middleware (Next.js 16)
 ```
@@ -29,9 +33,10 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
 - **Avatar Generation**: Claude generates a detailed image prompt; Gemini image generation (`gemini-3.1-flash-lite-image`) on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI) renders a portrait and returns it as a base64 data URL
-- **Smart Context Management**: Automatic conversation summarization when history exceeds 50 messages
+- **Smart Context Management**: Automatic conversation summarization when history exceeds 20 messages, with a rolling summary checkpoint for signed-in users so long conversations stay cheap
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
-- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 592 passing tests
+- **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
+- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 900+ passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
 
@@ -143,9 +148,10 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 
 ### Optional
 
-- `VERCEL_BLOB_READ_WRITE_TOKEN` — Enables logging to Vercel Blob storage
+- `VERCEL_BLOB_READ_WRITE_TOKEN` (or `BLOB_READ_WRITE_TOKEN`) — Enables logging to Vercel Blob storage, and durable Blob-hosted avatar URLs instead of base64 data URLs
 - `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Redis REST endpoint (Vercel KV / Marketplace Redis) used to share API rate-limit counters across serverless instances. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` work too. With neither pair set, limits fall back to an in-process counter, which is per-instance on Vercel and exactly right for local development.
+- `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — Enables optional account sign-in and server-side persistence (see [Account Persistence](#account-persistence-optional) below). The app is fully functional as a guest with none of these set.
 
 ## Avatar Generation
 
@@ -176,9 +182,43 @@ Multi-layered protection for all API endpoints:
 
 **Custom Domains**: Update `allowedHosts` in `proxy.ts` when deploying to custom domains.
 
+## Account Persistence (Optional)
+
+The app is fully usable as a guest — nothing below is required. When `DATABASE_URL` +
+`NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` are set, users can sign in
+with Google to save their characters and chat history server-side (Neon Postgres via
+Drizzle ORM), so both survive across devices and browser sessions:
+
+- **Sign-in**: A landing-page-only control (`AuthControl`) using Auth.js (`next-auth@4`,
+  JWT sessions, no `sessions` table). On Vercel preview deployments, an unverified stub
+  provider stands in for Google, since Google's OAuth redirect matching can't follow
+  per-push preview URLs.
+- **Characters**: Created or resumed characters are saved to a `bots` table
+  (`POST`/`GET /api/bots`) once signed in. `ResumeBotDropdown` on the landing page lists a
+  signed-in user's saved characters, most recently updated first.
+- **Chat history**: Once a character is saved, `/api/chat` becomes the source of truth for
+  its personality and message history instead of trusting the client on every request, and
+  persists each turn to a `messages` table. A rolling summarization checkpoint keeps long
+  conversations cheap — most turns reuse the existing summary instead of re-summarizing from
+  scratch. `GET /api/messages` lets the chat UI catch up with the server's copy on load.
+- **Avatar cost sharing**: Generated portraits are cached globally by character name
+  (`avatar_cache` table), shared across every user (guest or signed-in) and environment,
+  since image generation is the most expensive call in the app.
+- **Copyright-warning overrides are never persisted**: if a user proceeds past a
+  copyright/trademark warning anyway, that character and its portrait are never saved to the
+  shared avatar cache, Vercel Blob, or the user's own account — it works for that session
+  only, exactly like a guest's.
+- **Schema changes**: apply locally with `npm run db:push` (Drizzle Kit) after pulling
+  changes to `src/db/schema.ts`. Not part of `npm run ci`, since it mutates external state.
+
+See `CLAUDE.md`'s "Account persistence" section for the full phase-by-phase design notes.
+
 ## Storage (Client-Side)
 
-Uses safe storage wrapper at `src/utils/storage.ts` with localStorage and in-memory fallback.
+Uses safe storage wrapper at `src/utils/storage.ts` with localStorage and in-memory fallback
+— this is the only storage a guest ever uses, and stays the fast-loading cache for a
+signed-in user too (the server is the durable copy; see
+[Account Persistence](#account-persistence-optional) above).
 
 **Storage Keys**:
 

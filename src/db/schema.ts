@@ -18,9 +18,15 @@
  * `users`/`accounts` (a signed-in identity is the same person regardless of which
  * environment they're using) or `avatar_cache` (an intentionally global,
  * environment-agnostic cost optimization, not user data).
+ *
+ * `messages` persists per-bot chat history (phase 3c) — see pages/api/chat.ts, which
+ * becomes the source of truth for personality/history for a signed-in user's saved
+ * character instead of trusting the client-supplied conversationHistory on every
+ * request. `bots.summary`/`summarizedThroughMessageId` is the rolling summarization
+ * checkpoint that keeps that source-of-truth switch cheap on long conversations.
  */
 
-import { pgTable, text, timestamp, integer, primaryKey, jsonb, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, serial, primaryKey, jsonb, unique } from "drizzle-orm/pg-core";
 import type { CharacterVoiceConfig } from "../utils/characterVoices";
 
 export const users = pgTable("users", {
@@ -64,11 +70,39 @@ export const bots = pgTable(
     gender: text("gender"),
     voiceConfig: jsonb("voice_config").$type<CharacterVoiceConfig | null>(),
     environment: text("environment").notNull(),
+    // Rolling summarization checkpoint (phase 3c): `summary` folds in every message up to
+    // and including `summarizedThroughMessageId`, so a chat turn only ever needs to
+    // summarize the messages after that point, not the whole history from scratch. Both
+    // null until a conversation first exceeds the summarization threshold.
+    summary: text("summary"),
+    summarizedThroughMessageId: integer("summarized_through_message_id"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   },
   (table) => [unique("bots_user_name_env_unique").on(table.userId, table.name, table.environment)],
 );
+
+/**
+ * Per-bot chat history (phase 3c). `id` is a serial int (not a uuid like the other
+ * tables) specifically so it can double as the summarization checkpoint's ordering key —
+ * `bots.summarizedThroughMessageId` is a plain "> this id" comparison. Not
+ * environment-scoped directly: it inherits scoping through `botId`'s FK to an
+ * already-environment-scoped `bots` row. Audio is deliberately never persisted per
+ * message — see CLAUDE.md's account-persistence non-goals; it regenerates on demand from
+ * the message text and the bot's stored `voiceConfig`.
+ */
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  botId: text("bot_id")
+    .notNull()
+    .references(() => bots.id, { onDelete: "cascade" }),
+  // Exactly the client's Message.sender: the bot's name for a bot reply, "User" for the
+  // user's turn — stored verbatim rather than a generic role enum so no translation is
+  // needed at either the read (client display) or write (chat.ts) boundary.
+  sender: text("sender").notNull(),
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
 
 /**
  * Global avatar cache, keyed by lowercased character name — shared across every

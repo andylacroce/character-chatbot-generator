@@ -4,6 +4,12 @@ import ChatPage from "../../../app/components/ChatPage";
 import { Bot } from "../../../app/components/BotCreator";
 import "@testing-library/jest-dom";
 
+// The server-history reconciliation effect needs a next-auth session status; default to
+// unauthenticated so it's a no-op and this file's existing assertions are unaffected.
+jest.mock("next-auth/react", () => ({
+  useSession: () => ({ data: null, status: "unauthenticated" }),
+}));
+
 // Mock authenticatedFetch
 const mockAuthenticatedFetch = jest.fn();
 jest.mock("../../../src/utils/api", () => ({

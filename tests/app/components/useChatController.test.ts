@@ -1,6 +1,13 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import type { Bot } from "../../../app/components/BotCreator";
 
+// The server-history reconciliation effect needs a next-auth session status; default to
+// unauthenticated so it's a no-op and this file's existing assertions are unaffected.
+// See useChatController.messagesReconciliation.test.ts for the authenticated-path tests.
+jest.mock("next-auth/react", () => ({
+    useSession: () => ({ data: null, status: "unauthenticated" }),
+}));
+
 // Mock logger - define mocks first
 const mockLogEvent = jest.fn();
 const mockSanitizeLogMeta = jest.fn((meta: unknown) => meta);

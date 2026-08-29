@@ -6,6 +6,12 @@ import "@testing-library/jest-dom";
 import { downloadTranscript } from "../../../../src/utils/downloadTranscript";
 import userEvent from "@testing-library/user-event";
 
+// The server-history reconciliation effect needs a next-auth session status; default to
+// unauthenticated so it's a no-op and this file's existing assertions are unaffected.
+jest.mock("next-auth/react", () => ({
+  useSession: () => ({ data: null, status: "unauthenticated" }),
+}));
+
 // Mock authenticatedFetch instead of axios
 const mockAuthenticatedFetch = jest.fn();
 jest.mock("../../../../src/utils/api", () => ({

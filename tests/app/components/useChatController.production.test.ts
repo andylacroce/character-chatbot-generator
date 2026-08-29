@@ -4,6 +4,12 @@ import { render } from '@testing-library/react';
 import { useChatController } from '../../../app/components/useChatController';
 import storage from '../../../src/utils/storage';
 
+// The server-history reconciliation effect needs a next-auth session status; default to
+// unauthenticated so it's a no-op and this file's existing assertions are unaffected.
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({ data: null, status: 'unauthenticated' }),
+}));
+
 const mockPlayAudio = jest.fn();
 const mockStopAudio = jest.fn();
 const mockAudioRef = { current: { muted: false } } as unknown as React.RefObject<HTMLAudioElement>;

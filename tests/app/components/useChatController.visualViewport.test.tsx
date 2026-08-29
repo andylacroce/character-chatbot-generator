@@ -1,5 +1,11 @@
 import { render, act } from '@testing-library/react';
 
+// The server-history reconciliation effect needs a next-auth session status; default to
+// unauthenticated so it's a no-op and this file's existing assertions are unaffected.
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({ data: null, status: 'unauthenticated' }),
+}));
+
 // Mock storage and audio player
 jest.mock('../../../src/utils/storage', () => ({
   getItem: jest.fn(() => null),
