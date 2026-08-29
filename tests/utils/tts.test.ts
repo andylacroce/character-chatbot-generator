@@ -207,6 +207,31 @@ describe('tts', () => {
             expect(mockSynthesizeSpeech.mock.calls[0][0].voice.languageCode).toBe('en-GB');
         });
 
+        it('strips ssmlGender when it is NEUTRAL and a specific voice name is given, since Google rejects that combination outright', async () => {
+            audioReturned();
+            await tts.synthesizeSpeechToFile({
+                text: 'hello',
+                filePath: OUT,
+                voice: { languageCodes: ['en-US'], name: 'en-US-Neural2-C', ssmlGender: 3 },
+            });
+
+            const { voice } = mockSynthesizeSpeech.mock.calls[0][0];
+            expect(voice.name).toBe('en-US-Neural2-C');
+            expect(voice.ssmlGender).toBeUndefined();
+            expect(mockSynthesizeSpeech).toHaveBeenCalledTimes(1);
+        });
+
+        it('keeps a non-neutral ssmlGender alongside a specific voice name', async () => {
+            audioReturned();
+            await tts.synthesizeSpeechToFile({
+                text: 'hello',
+                filePath: OUT,
+                voice: { languageCodes: ['en-US'], name: 'en-US-Neural2-C', ssmlGender: 2 },
+            });
+
+            expect(mockSynthesizeSpeech.mock.calls[0][0].voice.ssmlGender).toBe(2);
+        });
+
         describe('output path safety', () => {
             it('rejects a relative path', async () => {
                 await expect(

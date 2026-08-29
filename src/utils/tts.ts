@@ -198,6 +198,16 @@ export async function synthesizeSpeechToFile({
     languageCode: (voice.languageCodes && voice.languageCodes[0]) || "en-GB",
   };
   delete apiVoice.languageCodes;
+  if (apiVoice.name && apiVoice.ssmlGender === protos.google.cloud.texttospeech.v1.SsmlVoiceGender.NEUTRAL) {
+    // Google's synthesizeSpeech API rejects ssmlGender: NEUTRAL outright
+    // ("3 INVALID_ARGUMENT: Gender neutral voices are not supported.") whenever a
+    // specific voice `name` is also given — discovered live via a character
+    // (Nefertem) whose Claude-generated voiceConfig legitimately came back
+    // "neutral". The name alone already identifies the voice unambiguously, so
+    // ssmlGender is redundant in that case; drop it rather than fail every
+    // request for any character with a neutral-gendered voiceConfig.
+    delete apiVoice.ssmlGender;
+  }
   const request: protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
     input,
     voice: apiVoice,
