@@ -12,7 +12,8 @@ jest.mock('../../../src/utils/getSessionUserId', () => ({
     getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 
-const mockOrderBy = jest.fn();
+const mockLimit = jest.fn();
+const mockOrderBy = jest.fn(() => ({ limit: mockLimit }));
 const mockWhere = jest.fn(() => ({ orderBy: mockOrderBy }));
 const mockFrom = jest.fn(() => ({ where: mockWhere }));
 const mockSelect = jest.fn(() => ({ from: mockFrom }));
@@ -30,7 +31,7 @@ describe('bots API', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         process.env = { ...OLD_ENV, DATABASE_URL: 'postgres://user:pass@host/db' };
-        mockOrderBy.mockResolvedValue([]);
+        mockLimit.mockResolvedValue([]);
         mockOnConflictDoUpdate.mockResolvedValue(undefined);
     });
 
@@ -85,7 +86,7 @@ describe('bots API', () => {
 
         it('lists the signed-in user\'s bots, most recently updated first', async () => {
             const rows = [{ id: 'b1', name: 'Dracula' }, { id: 'b2', name: 'Cleopatra' }];
-            mockOrderBy.mockResolvedValueOnce(rows);
+            mockLimit.mockResolvedValueOnce(rows);
             const handler = (await import('../../../pages/api/bots')).default;
             const { req, res } = createMocks({ method: 'GET' });
             await handler(req, res);
@@ -94,8 +95,15 @@ describe('bots API', () => {
             expect(mockFrom).toHaveBeenCalled();
         });
 
+        it('caps the query at the 50 most recently updated characters', async () => {
+            const handler = (await import('../../../pages/api/bots')).default;
+            const { req, res } = createMocks({ method: 'GET' });
+            await handler(req, res);
+            expect(mockLimit).toHaveBeenCalledWith(50);
+        });
+
         it('returns 500 when the query fails', async () => {
-            mockOrderBy.mockRejectedValueOnce(new Error('db down'));
+            mockLimit.mockRejectedValueOnce(new Error('db down'));
             const handler = (await import('../../../pages/api/bots')).default;
             const { req, res } = createMocks({ method: 'GET' });
             await handler(req, res);

@@ -49,7 +49,7 @@ describe('ResumeBotDropdown', () => {
         await waitFor(() => expect(container.firstChild).toBeNull());
     });
 
-    it('renders a dropdown of saved characters, each labeled with a relative last-updated time, and calls onSelect with the mapped Bot shape', async () => {
+    it('renders a "Previously" list of saved characters, each labeled with a relative last-updated time, and calls onSelect with the mapped Bot shape', async () => {
         mockUseSession.mockReturnValue({ data: { user: { id: 'u1' } }, status: 'authenticated' });
         const bots = [
             { id: 'b1', name: 'Dracula', personality: 'A vampire.', avatarUrl: 'https://blob.example.com/d.png', gender: 'male', voiceConfig: { languageCodes: ['en-US'], name: 'v1', ssmlGender: 1 }, updatedAt: new Date(Date.now() - 3 * 60000).toISOString() },
@@ -59,11 +59,13 @@ describe('ResumeBotDropdown', () => {
 
         render(<ResumeBotDropdown onSelect={mockOnSelect} />);
 
-        const select = await screen.findByLabelText('Continue a previous conversation');
-        expect(screen.getByText('Dracula — a few minutes ago')).toBeInTheDocument();
-        expect(screen.getByText('Cleopatra — 2 hours ago')).toBeInTheDocument();
+        expect(await screen.findByText('Previously')).toBeInTheDocument();
+        expect(screen.getByText('Dracula')).toBeInTheDocument();
+        expect(screen.getByText('a few minutes ago')).toBeInTheDocument();
+        expect(screen.getByText('Cleopatra')).toBeInTheDocument();
+        expect(screen.getByText('2 hours ago')).toBeInTheDocument();
 
-        fireEvent.change(select, { target: { value: 'b1' } });
+        fireEvent.click(screen.getByText('Dracula'));
         expect(mockOnSelect).toHaveBeenCalledWith({
             name: 'Dracula',
             personality: 'A vampire.',
@@ -83,7 +85,8 @@ describe('ResumeBotDropdown', () => {
 
         render(<ResumeBotDropdown onSelect={mockOnSelect} />);
 
-        expect(await screen.findByText('Robin Hood — yesterday')).toBeInTheDocument();
+        expect(await screen.findByText('Robin Hood')).toBeInTheDocument();
+        expect(screen.getByText('yesterday')).toBeInTheDocument();
     });
 
     it('falls back to /silhouette.svg when the saved avatarUrl is null', async () => {
@@ -93,23 +96,49 @@ describe('ResumeBotDropdown', () => {
         });
 
         render(<ResumeBotDropdown onSelect={mockOnSelect} />);
-        const select = await screen.findByLabelText('Continue a previous conversation');
-        fireEvent.change(select, { target: { value: 'b2' } });
+        fireEvent.click(await screen.findByText('Cleopatra'));
 
         expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({ avatarUrl: '/silhouette.svg' }));
     });
 
-    it('ignores a change event for an unknown option value', async () => {
+    it('shows no "more" toggle when there are exactly 5 saved characters', async () => {
         mockUseSession.mockReturnValue({ data: { user: { id: 'u1' } }, status: 'authenticated' });
-        mockAuthenticatedFetch.mockResolvedValue({
-            json: async () => ({ bots: [{ id: 'b1', name: 'Dracula', personality: 'A vampire.', avatarUrl: null, gender: null, voiceConfig: null, updatedAt: new Date().toISOString() }] }),
-        });
+        const bots = Array.from({ length: 5 }, (_, i) => ({
+            id: `b${i}`, name: `Character ${i}`, personality: 'p', avatarUrl: null, gender: null, voiceConfig: null, updatedAt: new Date().toISOString(),
+        }));
+        mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ bots }) });
 
         render(<ResumeBotDropdown onSelect={mockOnSelect} />);
-        const select = await screen.findByLabelText('Continue a previous conversation');
-        fireEvent.change(select, { target: { value: 'nonexistent' } });
+        await screen.findByText('Character 0');
 
-        expect(mockOnSelect).not.toHaveBeenCalled();
+        bots.forEach((b) => expect(screen.getByText(b.name)).toBeInTheDocument());
+        expect(screen.queryByText(/Show \d+ more/)).not.toBeInTheDocument();
+    });
+
+    it('truncates to 5 rows behind a "Show N more" toggle when there are more than 5 saved characters, and expands/collapses on click', async () => {
+        mockUseSession.mockReturnValue({ data: { user: { id: 'u1' } }, status: 'authenticated' });
+        const bots = Array.from({ length: 7 }, (_, i) => ({
+            id: `b${i}`, name: `Character ${i}`, personality: 'p', avatarUrl: null, gender: null, voiceConfig: null, updatedAt: new Date().toISOString(),
+        }));
+        mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ bots }) });
+
+        render(<ResumeBotDropdown onSelect={mockOnSelect} />);
+        await screen.findByText('Character 0');
+
+        for (let i = 0; i < 5; i++) expect(screen.getByText(`Character ${i}`)).toBeInTheDocument();
+        expect(screen.queryByText('Character 5')).not.toBeInTheDocument();
+        expect(screen.queryByText('Character 6')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Show 2 more'));
+
+        expect(screen.getByText('Character 5')).toBeInTheDocument();
+        expect(screen.getByText('Character 6')).toBeInTheDocument();
+        expect(screen.getByText('Show less')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Show less'));
+
+        expect(screen.queryByText('Character 5')).not.toBeInTheDocument();
+        expect(screen.getByText('Show 2 more')).toBeInTheDocument();
     });
 
     it('clears the list and re-fetches nothing further once the session drops to unauthenticated', async () => {
@@ -119,7 +148,7 @@ describe('ResumeBotDropdown', () => {
         });
 
         const { rerender, container } = render(<ResumeBotDropdown onSelect={mockOnSelect} />);
-        await screen.findByLabelText('Continue a previous conversation');
+        await screen.findByText('Dracula');
 
         mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
         rerender(<ResumeBotDropdown onSelect={mockOnSelect} />);

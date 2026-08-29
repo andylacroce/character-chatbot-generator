@@ -35,6 +35,9 @@ interface ResumeBotDropdownProps {
   onSelect: (bot: Bot) => void;
 }
 
+/** Rows shown before collapsing behind a "Show N more" toggle. */
+const VISIBLE_LIMIT = 5;
+
 /** Formats an ISO timestamp as a friendly relative time (e.g. "a few minutes ago", "yesterday"). */
 function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -54,10 +57,12 @@ function formatRelativeTime(iso: string): string {
 const ResumeBotDropdown: React.FC<ResumeBotDropdownProps> = ({ onSelect }) => {
   const { status } = useSession();
   const [bots, setBots] = useState<PersistedBot[] | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") {
       setBots(null);
+      setExpanded(false);
       return;
     }
     let mounted = true;
@@ -76,9 +81,7 @@ const ResumeBotDropdown: React.FC<ResumeBotDropdownProps> = ({ onSelect }) => {
 
   if (status !== "authenticated" || !bots || bots.length === 0) return null;
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selected = bots.find((b) => b.id === e.target.value);
-    if (!selected) return;
+  const handleSelect = (selected: PersistedBot) => {
     onSelect({
       name: selected.name,
       personality: selected.personality,
@@ -88,23 +91,33 @@ const ResumeBotDropdown: React.FC<ResumeBotDropdownProps> = ({ onSelect }) => {
     });
   };
 
+  const hasMore = bots.length > VISIBLE_LIMIT;
+  const visibleBots = expanded ? bots : bots.slice(0, VISIBLE_LIMIT);
+
   return (
-    <div className={styles.inputGroup} data-testid="resume-bot-dropdown">
-      <select
-        className={styles.input}
-        aria-label="Continue a previous conversation"
-        defaultValue=""
-        onChange={handleChange}
-      >
-        <option value="" disabled>
-          Continue a previous conversation
-        </option>
-        {bots.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.name} — {formatRelativeTime(b.updatedAt)}
-          </option>
-        ))}
-      </select>
+    <div className={styles.tocSection} data-testid="resume-bot-dropdown">
+      <p className={styles.tocLabel}>Previously</p>
+      {visibleBots.map((b) => (
+        <button
+          key={b.id}
+          type="button"
+          className={styles.tocRow}
+          onClick={() => handleSelect(b)}
+        >
+          <span className={styles.tocName}>{b.name}</span>
+          <span className={styles.tocDots} aria-hidden="true" />
+          <span className={styles.tocTime}>{formatRelativeTime(b.updatedAt)}</span>
+        </button>
+      ))}
+      {hasMore && (
+        <button
+          type="button"
+          className={styles.tocToggle}
+          onClick={() => setExpanded((e) => !e)}
+        >
+          {expanded ? "Show less" : `Show ${bots.length - VISIBLE_LIMIT} more`}
+        </button>
+      )}
     </div>
   );
 };

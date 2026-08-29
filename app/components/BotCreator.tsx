@@ -9,9 +9,8 @@
  * @module BotCreator
  */
 
-import React, { useRef, useEffect, useContext, useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { DarkModeContext } from "./DarkModeContext";
 import { authenticatedFetch } from "../../src/utils/api";
 import styles from "./styles/BotCreator.module.css";
 import DarkModeToggle from "./DarkModeToggle";
@@ -28,6 +27,10 @@ interface Bot {
   avatarUrl: string;
   voiceConfig: import("../../src/utils/characterVoices").CharacterVoiceConfig | null;
   gender?: string | null;
+  // True when created past a copyright warning/caution the user chose to override.
+  // Never persisted server-side (shared avatar cache, Blob, or this user's own bots
+  // row) — see useBotCreation.ts and app/index.tsx's handleBotCreated.
+  skipPersistence?: boolean;
 }
 
 interface BotCreatorProps {
@@ -42,7 +45,7 @@ const progressSteps = [
   },
   {
     key: "avatar",
-    label: "Generating portrait — this may take a minute"
+    label: "Generating portrait, this may take a minute"
   },
   {
     key: "voice",
@@ -53,7 +56,6 @@ const progressSteps = [
 
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreator = false }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { darkMode } = useContext(DarkModeContext);
   const searchParams = useSearchParams();
   const nameFromUrl = searchParams?.get('name') || null;
   const {
@@ -117,74 +119,72 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
 
   return (
     <>
+      <header className={styles.masthead}>
+        <span className={styles.mastheadWord}>Character Chatbot Generator</span>
+        <div className={styles.mastheadUtility}>
+          <DarkModeToggle className={styles.ghostIcon} hideLabel />
+          <AuthControl className={styles.ghostAuth} />
+        </div>
+      </header>
       <form
         onSubmit={handleCreate}
         className={styles.formContainer}
         autoComplete="off"
       >
-        <h1 className={styles.mainHeading}>Character Chatbot Generator</h1>
-        <div className={styles.inputGroup}>
+        <div className={styles.hero}>
+          <p className={styles.kicker}>Begin a conversation</p>
+          <h1 className={styles.headline}>Who will you bring to life?</h1>
+          <p className={styles.subhead}>
+            Any figure from public domain literature, myth, or history, or invent someone entirely your own.
+          </p>
+        </div>
+
+        <div className={styles.inputRow + (isBusy ? ' ' + styles.hideMobile : '')}>
           <input
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Enter a name"
-            className={styles.input + (darkMode ? ' dark' : '')}
+            className={styles.inputField}
             disabled={loading}
             data-testid="bot-creator-input"
             aria-label="Character name"
             maxLength={36}
             ref={inputRef}
           />
-        </div>
-        <div className={styles.buttonRow + (isBusy ? ' ' + styles.hideMobile : '')}>
-          <button
-            type="button"
-            className={styles.randomButton}
-            disabled={isBusy}
-            aria-label="Choose a random character name"
-            onClick={handleRandomCharacter}
-          >
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style={{ display: 'block' }}>
-              <rect x="5" y="5" width="18" height="18" rx="4" stroke="currentColor" strokeWidth="2" fill="none" />
-              <circle cx="9.5" cy="9.5" r="2" fill="currentColor" />
-              <circle cx="18.5" cy="9.5" r="2" fill="currentColor" />
-              <circle cx="9.5" cy="18.5" r="2" fill="currentColor" />
-              <circle cx="18.5" cy="18.5" r="2" fill="currentColor" />
-              <circle cx="14" cy="14" r="2" fill="currentColor" />
-            </svg>
-            <span style={{ display: 'none' }}>🎲</span>
-          </button>
-          <button
-            type="submit"
-            className={styles.createButton}
-            disabled={isBusy}
-            data-testid="bot-creator-button"
-            aria-label="Create character"
-          >
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-              <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none" />
-              <path d="M10 14h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <path d="M15 11l3 3-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </div>
-        {!(loading || randomizing || validating) && (
-          <div className={styles.instructionsCentered}>
-            <div className={styles.instructionsFunctional}>
-              Enter a character name or click the <b>dice</b> button for a random suggestion, then press the <b>arrow</b> button to generate your character.
-            </div>
+          <div className={styles.textLinks}>
             <button
               type="button"
-              aria-label="Which characters can I create?"
-              onClick={() => setShowCharacterInfoModal(true)}
-              className={styles.instructionsTip}
-              style={{ background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer", textDecoration: "underline" }}
+              className={styles.textLink}
+              disabled={isBusy}
+              aria-label="Choose a random character name"
+              onClick={handleRandomCharacter}
             >
-              Which characters can I create?
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                <rect x="3" y="3" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.6" fill="none" />
+                <circle cx="7" cy="7" r="1.15" fill="currentColor" />
+                <circle cx="13" cy="7" r="1.15" fill="currentColor" />
+                <circle cx="7" cy="13" r="1.15" fill="currentColor" />
+                <circle cx="13" cy="13" r="1.15" fill="currentColor" />
+                <circle cx="10" cy="10" r="1.15" fill="currentColor" />
+              </svg>
+              Random
+            </button>
+            <button
+              type="submit"
+              className={styles.textLinkPrimary}
+              disabled={isBusy}
+              data-testid="bot-creator-button"
+              aria-label="Create character"
+            >
+              Create
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                <path d="M6 10h8M11 7l3 3-3 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           </div>
-        )}
+        </div>
+
         {randomizing && (
           <div className={styles.progressContainer} data-testid="bot-creator-progress">
             <span className={styles.genericSpinner} aria-label="Loading" />
@@ -208,37 +208,37 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
             </div>
             <button
               type="button"
-              className={styles.createButton}
-              style={{ marginTop: 16, maxWidth: 48, minWidth: 48, minHeight: 48, maxHeight: 48, width: 48, height: 48, borderRadius: '50%' }}
+              className={styles.textLink}
               aria-label="Cancel"
               onClick={handleCancel}
             >
-              {/* Modern X/cancel SVG icon */}
-              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                <circle cx="14" cy="14" r="13" stroke="currentColor" strokeWidth="2" fill="none" />
-                <path d="M9.5 9.5l9 9M18.5 9.5l-9 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              <span style={{ display: 'none' }}>Cancel</span>
+              Cancel
             </button>
           </div>
         )}
         {error && <div className={styles.error}>{error}</div>}
+
         {!isBusy && <ResumeBotDropdown onSelect={onBotCreated} />}
-        <div className={styles.toggleRow}>
-          <DarkModeToggle className={styles.darkModeToggle} />
-          <AuthControl className={styles.darkModeToggle} />
+
+        <div className={styles.footerLinks}>
+          <button
+            type="button"
+            aria-label="Which characters can I create?"
+            onClick={() => setShowCharacterInfoModal(true)}
+            className={styles.footerLink}
+          >
+            Which characters can I create?
+          </button>
+          <button
+            type="button"
+            aria-label="Read disclaimer"
+            onClick={() => setShowDisclaimerModal(true)}
+            className={styles.footerLink}
+          >
+            Disclaimer
+          </button>
         </div>
       </form>
-      <div className={styles.disclaimer}>
-        <button
-          type="button"
-          aria-label="Read disclaimer"
-          onClick={() => setShowDisclaimerModal(true)}
-          style={{ background: "none", border: "none", padding: 0, font: "inherit", color: "inherit", cursor: "pointer", textDecoration: "underline" }}
-        >
-          Disclaimer
-        </button>
-      </div>
       <DisclaimerModal show={showDisclaimerModal} onClose={() => setShowDisclaimerModal(false)} />
       <CharacterInfoModal show={showCharacterInfoModal} onClose={() => setShowCharacterInfoModal(false)} />
 

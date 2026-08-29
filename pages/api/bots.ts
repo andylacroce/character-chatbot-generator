@@ -75,7 +75,9 @@ const botsRateLimit = createRateLimiter({
  *         description: Failed to save character
  *   get:
  *     summary: List the signed-in user's persisted characters, most recently updated first
- *     description: Guests and deployments with no DATABASE_URL get an empty list, not an error.
+ *     description: >
+ *       Guests and deployments with no DATABASE_URL get an empty list, not an error.
+ *       Capped at the 50 most recently updated characters.
  *     tags: [Bots]
  *     responses:
  *       200:
@@ -123,7 +125,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .select()
         .from(bots)
         .where(and(eq(bots.userId, userId), eq(bots.environment, environment)))
-        .orderBy(desc(bots.updatedAt));
+        .orderBy(desc(bots.updatedAt))
+        .limit(50);
       res.status(200).json({ bots: rows });
     } catch (err) {
       logger.error("Failed to list bots:", { error: err });
