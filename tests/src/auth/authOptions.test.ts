@@ -45,14 +45,15 @@ describe('auth/authOptions', () => {
     });
 
     describe('preview stub provider', () => {
-        it('is absent when VERCEL_ENV is not "preview", leaving Google as the only provider', async () => {
+        it('is absent when VERCEL_ENV is not "preview", leaving Google and Facebook as the real providers', async () => {
             await jest.isolateModulesAsync(async () => {
                 delete process.env.DATABASE_URL;
                 delete process.env.VERCEL_ENV;
                 const { authOptions } = require('../../../src/auth/authOptions');
-                expect(authOptions.providers).toHaveLength(1);
+                expect(authOptions.providers).toHaveLength(2);
                 expect(authOptions.providers.some((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub')).toBe(false);
                 expect(authOptions.providers.some((p: { id: string }) => p.id === 'google')).toBe(true);
+                expect(authOptions.providers.some((p: { id: string }) => p.id === 'facebook')).toBe(true);
             });
         });
 
@@ -65,16 +66,17 @@ describe('auth/authOptions', () => {
             });
         });
 
-        it('replaces Google entirely (not adds alongside) when VERCEL_ENV is "preview"', async () => {
+        it('replaces Google and Facebook entirely (not adds alongside) when VERCEL_ENV is "preview"', async () => {
             await jest.isolateModulesAsync(async () => {
                 delete process.env.DATABASE_URL;
                 process.env.VERCEL_ENV = 'preview';
                 const { authOptions } = require('../../../src/auth/authOptions');
-                // Google is excluded on preview: it has no client_id configured there and
-                // would just fail with SIGNIN_OAUTH_ERROR if offered alongside the stub.
+                // Google and Facebook are excluded on preview: neither has credentials
+                // configured there and would just fail if offered alongside the stub.
                 expect(authOptions.providers).toHaveLength(1);
                 expect(authOptions.providers.some((p: { id: string; options?: { id?: string } }) => (p.options?.id ?? p.id) === 'preview-stub')).toBe(true);
                 expect(authOptions.providers.some((p: { id: string }) => p.id === 'google')).toBe(false);
+                expect(authOptions.providers.some((p: { id: string }) => p.id === 'facebook')).toBe(false);
             });
         });
 

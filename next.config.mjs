@@ -17,12 +17,13 @@ const contentSecurityPolicy = [
   "connect-src 'self' https://cdn.jsdelivr.net",
   "object-src 'none'",
   "base-uri 'self'",
-  // Auth.js's sign-in page submits a real <form> to /api/auth/signin/google, which the
-  // server 302s onward to Google's consent screen. Chrome enforces form-action against
-  // that final redirect target too, not just the form's own action URL, so Google's
-  // origin has to be explicitly allowed here or the redirect is silently blocked with
-  // no visible error. Extend this list when adding another OAuth provider.
-  "form-action 'self' https://accounts.google.com",
+  // Auth.js's sign-in page submits a real <form> to /api/auth/signin/<provider>, which
+  // the server 302s onward to that provider's consent screen. Chrome enforces
+  // form-action against that final redirect target too, not just the form's own action
+  // URL, so each provider's origin has to be explicitly allowed here or the redirect is
+  // silently blocked with no visible error. Extend this list when adding another OAuth
+  // provider — this bit Facebook's rollout too before it was caught here.
+  "form-action 'self' https://accounts.google.com https://www.facebook.com",
   "frame-ancestors 'none'",
 ].join('; ');
 

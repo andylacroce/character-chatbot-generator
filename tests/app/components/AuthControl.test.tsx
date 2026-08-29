@@ -14,6 +14,14 @@ jest.mock('next-auth/react', () => ({
     getProviders: () => mockGetProviders(),
 }));
 
+// Real react-icons render indistinguishable <svg> markup — stand in distinguishable
+// elements so the single-vs-multi-provider icon swap in AuthControl is actually testable.
+jest.mock('react-icons/fa', () => ({
+    FaGoogle: () => <span data-testid="icon-google" />,
+    FaSignInAlt: () => <span data-testid="icon-signin-generic" />,
+    FaSignOutAlt: () => <span data-testid="icon-signout" />,
+}));
+
 describe('AuthControl', () => {
     beforeEach(() => {
         jest.clearAllMocks();
@@ -67,6 +75,32 @@ describe('AuthControl', () => {
 
         fireEvent.click(screen.getByLabelText('Sign in'));
         expect(mockSignIn).toHaveBeenCalledWith();
+    });
+
+    it("shows Google's icon when it is the single active provider", async () => {
+        mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
+        render(<AuthControl />);
+        await waitFor(() => expect(screen.getByTestId('icon-google')).toBeInTheDocument());
+        expect(screen.queryByTestId('icon-signin-generic')).not.toBeInTheDocument();
+    });
+
+    it('shows a generic icon (not Google\'s) once more than one provider is configured, since a click opens the picker rather than going straight to Google', async () => {
+        mockGetProviders.mockResolvedValue({
+            google: { id: 'google', name: 'Google' },
+            facebook: { id: 'facebook', name: 'Facebook' },
+        });
+        mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
+        render(<AuthControl />);
+        await waitFor(() => expect(screen.getByTestId('icon-signin-generic')).toBeInTheDocument());
+        expect(screen.queryByTestId('icon-google')).not.toBeInTheDocument();
+    });
+
+    it('shows a generic icon (not Google\'s) for the preview stub, since it never actually signs in via Google', async () => {
+        mockGetProviders.mockResolvedValue({ 'preview-stub': { id: 'preview-stub', name: 'Preview (no real login)' } });
+        mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
+        render(<AuthControl />);
+        await waitFor(() => expect(screen.getByTestId('icon-signin-generic')).toBeInTheDocument());
+        expect(screen.queryByTestId('icon-google')).not.toBeInTheDocument();
     });
 
     it('disables the Sign in button until providers have loaded', () => {

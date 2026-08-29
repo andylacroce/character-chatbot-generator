@@ -1,23 +1,28 @@
 /**
- * NextAuth (v4) configuration: Google sign-in, JWT sessions.
+ * NextAuth (v4) configuration: Google + Facebook sign-in, JWT sessions.
  *
  * The Drizzle adapter is only attached when DATABASE_URL is configured — same
  * degrade-gracefully shape as VERCEL_BLOB_READ_WRITE_TOKEN and the Upstash rate-limit
  * store elsewhere in this repo. Without it, sign-in still works (JWT session, no DB
- * write); with it, a `users`/`accounts` row is created/linked on first sign-in.
+ * write); with it, a `users`/`accounts` row is created/linked on first sign-in — the
+ * adapter's `accounts` table is keyed by (provider, provider_account_id), so Google and
+ * Facebook coexist there without any provider-specific handling.
  *
- * Google's OAuth redirect URI is exact-match only (no wildcards), so real Google
+ * Both providers' OAuth redirect URIs are exact-match only (no wildcards), so real
  * sign-in can only ever work on the one static production domain — not Vercel preview
  * deployments, whose URL changes on every push. On preview (VERCEL_ENV === "preview"
- * — set by Vercel itself, never client-controlled), Google is swapped out entirely for
+ * — set by Vercel itself, never client-controlled), both are swapped out entirely for
  * a stub Credentials provider: an unverified, ephemeral identity (no DB write —
  * NextAuth's adapter hooks aren't invoked for Credentials sign-ins anyway) good enough
  * to exercise signed-in UI on a preview deployment. Swapped, not added alongside —
- * Google has no client_id configured on preview and would just fail if offered there.
+ * neither has credentials configured on preview and would just fail if offered there.
+ * With two real providers now available outside preview, `AuthControl.tsx` falls back to
+ * Auth.js's own picker page instead of guessing which one the user wants.
  */
 
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import FacebookProvider from "next-auth/providers/facebook";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { getDb } from "../db/client";
@@ -51,6 +56,10 @@ const providers: NextAuthOptions["providers"] = isPreview
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID || "",
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
     }),
   ];
 
