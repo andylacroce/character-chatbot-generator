@@ -17,7 +17,14 @@ const contentSecurityPolicy = [
   "connect-src 'self' https://cdn.jsdelivr.net",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // Auth.js's sign-in page submits a real <form> to /api/auth/signin/<provider>, which
+  // the server 302s onward to that provider's consent screen. Chrome enforces
+  // form-action against that final redirect target too, not just the form's own action
+  // URL, so each provider's origin has to be explicitly allowed here or the redirect is
+  // silently blocked with no visible error. Extend this list when adding another OAuth
+  // provider — this bit Facebook's rollout before it was caught here, and was removed
+  // again when Facebook sign-in itself was disabled (see authOptions.ts).
+  "form-action 'self' https://accounts.google.com",
   "frame-ancestors 'none'",
 ].join('; ');
 
@@ -27,6 +34,18 @@ const nextConfig = {
     optimizeCss: true,
   },
   serverExternalPackages: ['winston'],
+  images: {
+    // Avatars uploaded to Vercel Blob (pages/api/generate-avatar.ts) come back as
+    // <random-store-id>.public.blob.vercel-storage.com URLs — the store id varies
+    // per Blob store (local dev vs. prod use different tokens/stores), so this has
+    // to be a wildcard rather than one fixed hostname.
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+      },
+    ],
+  },
   // Performance optimizations
   compress: true,
   poweredByHeader: false,

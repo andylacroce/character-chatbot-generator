@@ -62,7 +62,7 @@ describe('characterVoices - helpers and Claude/TTS interactions', () => {
 
     it('mapGenderToSsml and detectVoiceType work', () => {
         expect(mapGenderToSsml('female')).toBe(2);
-        expect(mapGenderToSsml('neutral')).toBe(0);
+        expect(mapGenderToSsml('neutral')).toBe(3);
         expect(mapGenderToSsml('male')).toBe(1);
         expect(detectVoiceType('en-US-Studio-A')).toBe('Studio');
         expect(detectVoiceType('en-US-Wavenet-A')).toBe('Wavenet');

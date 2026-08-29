@@ -3,6 +3,7 @@
  * Handles message history, retries, intro generation, transcript export, and audio playback toggling.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSession as useAuthSession } from "next-auth/react";
 import { downloadTranscript } from "../../src/utils/downloadTranscript";
 import { authenticatedFetch } from "../../src/utils/api";
 import { useSession } from "./useSession";
@@ -186,6 +187,33 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         lastPlayedAudioHashRef.current = null;
 
     }, [bot.name, setError]); // Only depend on bot.name to avoid unnecessary resets
+
+    // Reconcile with server-persisted history (phase 3c). Local storage stays the fast,
+    // instant-load cache for the common case; the server is the durable source of truth for
+    // a signed-in user's saved character. Only adopts the server's list when it's strictly
+    // longer than what's already loaded — the new-device / cleared-storage case — so this
+    // never regresses a longer local list and never blocks the initial render. Guests (no
+    // session) and a character that was never saved server-side both just get [] back from
+    // the endpoint, a no-op.
+    const { status: authStatus } = useAuthSession();
+    useEffect(() => {
+        if (authStatus !== 'authenticated') return;
+        let mounted = true;
+        authenticatedFetch(`/api/messages?botName=${encodeURIComponent(bot.name)}`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (!mounted || !Array.isArray(data?.messages)) return;
+                const serverMessages: Message[] = data.messages.filter((m: unknown): m is Message =>
+                    m !== null && typeof m === 'object' &&
+                    typeof (m as Message).text === 'string' && typeof (m as Message).sender === 'string'
+                );
+                setMessages((current) => (serverMessages.length > current.length ? serverMessages : current));
+            })
+            .catch(() => {
+                // Best-effort — local storage already has whatever this device has seen.
+            });
+        return () => { mounted = false; };
+    }, [bot.name, authStatus]);
 
     // Reset and hydrate voice config when bot changes
     useEffect(() => {

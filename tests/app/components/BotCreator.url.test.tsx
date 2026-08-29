@@ -8,6 +8,15 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
 }));
 
+// BotCreator renders AuthControl, which needs a SessionProvider ancestor
+// (next-auth throws otherwise) — mock the hook directly instead.
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({ data: null, status: 'unauthenticated' }),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  getProviders: () => Promise.resolve({ google: { id: 'google', name: 'Google' } }),
+}));
+
 describe('BotCreator URL parameter functionality', () => {
     beforeEach(() => {
         // Reset search params
@@ -59,13 +68,36 @@ describe('BotCreator URL parameter functionality', () => {
         });
     });
 
+    it('opens and closes the disclaimer modal from the Disclaimer link', async () => {
+        render(<BotCreator onBotCreated={() => {}} />);
+        // Flush the component's on-mount config fetch before interacting, so its
+        // pending setMaxAvatarSeconds() doesn't land after the test's act() scope closes.
+        await screen.findByLabelText('Character name');
+
+        expect(screen.queryByTestId('disclaimer-modal-backdrop')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText('Read disclaimer'));
+        expect(screen.getByTestId('disclaimer-modal-backdrop')).toBeInTheDocument();
+        expect(screen.getByText(/entertainment purposes only/i)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText('Close disclaimer'));
+        expect(screen.queryByTestId('disclaimer-modal-backdrop')).not.toBeInTheDocument();
+    });
+
+    it('renders the Sign in control alongside the dark mode toggle', async () => {
+        render(<BotCreator onBotCreated={() => {}} />);
+        await screen.findByLabelText('Character name');
+        expect(screen.getByLabelText('Sign in')).toBeInTheDocument();
+    });
+
     it('handles config fetch error gracefully', async () => {
         global.fetch = jest.fn(() => Promise.reject(new Error('Network error')));
-        
+
         render(<BotCreator onBotCreated={() => {}} />);
-        
+
         // Should render without crashing despite config fetch failure
         expect(screen.getByLabelText('Character name')).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByLabelText('Sign in')).not.toBeDisabled());
     });
 
     it('displays elapsed time during avatar generation', async () => {

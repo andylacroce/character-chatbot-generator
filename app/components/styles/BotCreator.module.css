@@ -1,242 +1,273 @@
 /* =============================
    BotCreator.module.css
-   - Styles for the BotCreator form, progress UI, and instructions
+   - Styles for the BotCreator landing page: masthead, hero, form, and modals
    - Uses CSS variables from globals.css for theme consistency
    - Designed for accessibility and responsive layout
    ============================= */
 
-/*
-  BotCreator.module.css
-  Styles for the BotCreator loading/progress UI and form
-*/
+/* Fraunces carries the editorial voice of the headline and the name input;
+   everything else stays on the app's existing Inter (--font-primary). */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
+
+/* ===== Masthead ===== */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.6rem;
+  border-bottom: 1px solid var(--color-outline);
+  font-family: var(--font-primary), sans-serif;
+}
+
+.mastheadWord {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.mastheadUtility {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  /* Without this, a narrow mobile viewport lets .masthead's space-between
+     squeeze this flex item below its content width, wrapping "Sign in" into
+     two lines instead of letting the (already-wrapping) title text take the
+     width pressure. */
+  flex-shrink: 0;
+}
+
+.ghostIcon {
+  /* Overrides DarkModeToggle's own ChatHeader.module.css .darkModeToggle class
+     (chip background, margin-left: auto) so it reads as a minimal masthead icon
+     instead of the chat header's labeled button. */
+  margin: 0 !important;
+  background: none !important;
+  border: none !important;
+  padding: 0.2rem !important;
+  min-height: 0 !important;
+  box-shadow: none !important;
+  color: var(--color-text-secondary);
+}
+
+.ghostIcon:hover,
+.ghostIcon:focus {
+  background: none !important;
+  color: var(--color-accent);
+  box-shadow: none !important;
+  outline: none;
+}
+
+.ghostAuth {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.ghostAuth:hover,
+.ghostAuth:focus {
+  color: var(--color-primary);
+  outline: none;
+}
+
+.ghostAuth:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== Page / form shell ===== */
 
 .formContainer {
-  background: var(--card-body-bg);
+  background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-primary), sans-serif;
-  border-radius: 14px;
-  border: 2px solid var(--color-primary);
-  box-shadow: none;
-  padding: 1.7rem 1.2rem 1.2rem 1.2rem;
-  margin: 4vh auto 4vh auto;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 0;
+  justify-content: center;
   width: 100%;
-  max-width: 430px;
+  max-width: 480px;
   box-sizing: border-box;
-  justify-content: center;
-  margin-left: auto;
-  margin-right: auto;
-  position: relative;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 3rem;
 }
 
 @media (max-width: 600px) {
+  .masthead {
+    padding: 0.8rem 1.1rem;
+  }
+
   .formContainer {
-    padding-left: 2vw;
-    padding-right: 2vw;
-    margin-left: 3vw;
-    margin-right: 3vw;
-    max-width: 94vw;
-    width: auto;
-    padding-top: 1.1rem;
-    padding-bottom: 1.1rem;
+    max-width: 100%;
+    padding: 2rem 1.1rem 2.2rem;
   }
 }
 
-.mainHeading {
-  font-size: 2.1rem;
-  font-family: var(--font-primary), sans-serif;
-  font-weight: 800;
-  color: var(--color-text, #e6e7e9);
-  margin-bottom: 0.7rem;
-  margin-top: 0.1rem;
-  letter-spacing: -1px;
-  position: relative;
-  z-index: 1;
+/* ===== Hero ===== */
+
+.hero {
   text-align: center;
-}
-
-/* Removed decorative accent above the title */
-.formContainer::before {
-  display: none;
-}
-
-.inputGroup {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
   width: 100%;
-  gap: 0.4rem;
-  margin-bottom: 0.7rem;
-  justify-content: center;
+  margin-bottom: 2rem;
 }
 
-@media (max-width: 600px) {
-  .inputGroup {
-    flex-direction: column;
-    gap: 0.4rem;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-  }
+.kicker {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  margin: 0 0 0.9rem;
 }
 
-.input {
+.headline {
+  font-family: 'Fraunces', var(--font-secondary), var(--font-primary), serif;
+  font-weight: 500;
+  font-size: clamp(1.9rem, 5vw, 2.5rem);
+  line-height: 1.15;
+  margin: 0 0 0.9rem;
+  color: var(--color-text);
+  text-wrap: balance;
+}
+
+.subhead {
+  color: var(--color-text-secondary);
+  line-height: 1.65;
+  font-size: 0.98rem;
+  margin: 0 auto;
+  max-width: 40ch;
+}
+
+/* ===== Name input + actions ===== */
+
+.inputRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  width: 100%;
+  border-bottom: 1.5px solid var(--color-text);
+  padding-bottom: 0.6rem;
+  margin-bottom: 1.4rem;
+}
+
+.inputField {
   flex: 1 1 0;
-  padding: 0.85rem 1.1rem;
-  font-size: 1.13rem;
-  border-radius: 8px;
-  border: 1.5px solid var(--color-primary);
-  background: var(--input-bg) !important;
-  color: var(--input-text);
-  font-family: var(--font-primary), sans-serif;
+  min-width: 0;
+  border: none;
+  background: none;
   outline: none;
-  transition: border 0.18s, box-shadow 0.18s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  -webkit-appearance: none;
+  appearance: none;
+  font-family: 'Fraunces', var(--font-secondary), var(--font-primary), serif;
+  font-size: 1.35rem;
+  color: var(--color-text);
 }
 
-.input:focus {
-  border-color: var(--color-primary);
-  border-width: 2px;
-  box-shadow: 0 0 0 3px rgba(45, 90, 61, 0.15), 0 2px 12px rgba(0, 0, 0, 0.1);
+.inputField::placeholder {
+  color: var(--input-placeholder);
+  font-style: italic;
 }
 
-.input:disabled {
-  background: var(--disabled-bg);
+.inputField:disabled {
   color: var(--disabled-text);
-  opacity: 0.85;
   cursor: not-allowed;
 }
 
-.input::placeholder {
-  color: var(--input-placeholder);
-  opacity: 1;
+.textLinks {
+  display: flex;
+  gap: 1rem;
+  flex: none;
 }
 
-.createButton,
-.randomButton {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
-  min-height: 48px;
-  max-width: 48px;
-  max-height: 48px;
-  padding: 0;
-  border-radius: 50%;
-  border: 2px solid var(--color-primary);
-  border-style: solid !important;
-  background: var(--button-bg);
-  color: var(--color-on-primary);
+.textLink,
+.textLinkPrimary {
+  background: none;
+  border: none;
+  cursor: pointer;
   font-family: var(--font-primary), sans-serif;
-  font-size: 1.35rem;
-  font-weight: 700;
-  box-shadow: none;
-  transition: background 0.18s, border-color 0.18s, box-shadow 0.18s;
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 0.2rem 0;
   display: flex;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  cursor: pointer;
-  margin: 0;
+  gap: 0.32rem;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+  transition: color 0.15s ease;
+}
+
+.textLinkPrimary {
+  color: var(--color-primary);
+}
+
+.textLink:hover:not(:disabled),
+.textLink:focus:not(:disabled) {
+  color: var(--color-text);
   outline: none;
 }
 
-.createButton:active,
-.randomButton:active {
-  transform: scale(0.97);
+.textLinkPrimary:hover:not(:disabled),
+.textLinkPrimary:focus:not(:disabled) {
+  color: var(--button-hover-bg);
+  outline: none;
 }
 
-.createButton:disabled,
-.randomButton:disabled {
-  background: var(--disabled-bg);
-  color: var(--disabled-text);
-  border-color: var(--disabled-bg);
+.textLink:disabled,
+.textLinkPrimary:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-.createButton:hover:not(:disabled),
-.randomButton:hover:not(:disabled),
-.createButton:focus:not(:disabled),
-.randomButton:focus:not(:disabled) {
-  background: var(--button-hover-bg);
-  border-color: var(--color-primary);
-  color: var(--color-on-primary);
-  box-shadow: 0 0 0 3px rgba(45, 90, 61, 0.15), 0 4px 16px var(--button-shadow-hover);
+.hideMobile {
+  display: none !important;
 }
 
-.randomButton {
-  margin-left: 0;
-  border-style: solid !important;
-  background: var(--button-bg);
-  color: var(--color-on-primary);
-}
-
-@media (max-width: 600px) {
-  .inputGroup {
+@media (max-width: 480px) {
+  /* Stacking the row into a column left .inputRow's border-bottom (still set
+     above, on .inputRow itself) sitting below *both* the input and the
+     Random/Create row instead of hugging the input — the underline no longer
+     reads as this input's own, and the name text visually "floats" far above
+     it. Move the rule to the input itself so the underline stays right under
+     the text it's actually for; Random/Create then sit below that line. */
+  .inputRow {
     flex-direction: column;
-    gap: 0.7rem;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    gap: 0.6rem;
+    border-bottom: none;
+    padding-bottom: 0;
   }
 
-  .createButton,
-  .randomButton {
-    width: 48px;
-    height: 48px;
-    min-width: 48px;
-    min-height: 48px;
-    max-width: 48px;
-    max-height: 48px;
-    margin: 0;
-    padding: 0;
+  .inputField {
+    border-bottom: 1.5px solid var(--color-text);
+    padding-bottom: 0.5rem;
+  }
+
+  .textLinks {
+    justify-content: flex-end;
   }
 }
 
-.dark .createButton,
-.dark .randomButton {
-  background: var(--button-bg, #3a3a5a) !important;
-  border: 2px solid #bfae7c !important;
-  color: #fff !important;
-}
-
-.dark .createButton:hover:not(:disabled),
-.dark .randomButton:hover:not(:disabled),
-.dark .createButton:focus:not(:disabled),
-.dark .randomButton:focus:not(:disabled) {
-  background: #2d3952 !important;
-  border-color: #bfae7c !important;
-  color: #fff !important;
-}
-
-.buttonSpinner {
-  width: 1.1em;
-  height: 1.1em;
-  border: 2.5px solid #b0b8c9;
-  border-top: 2.5px solid var(--color-primary, #7fa7c7);
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 0.5em;
-  animation: spin 0.9s linear infinite;
-}
+/* ===== Progress / error ===== */
 
 .progressContainer {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
   margin-top: 0.7rem;
   margin-bottom: 0.7rem;
   min-height: 80px;
-}
-
-.progressSpinner {
-  width: 38px;
-  height: 38px;
-  margin-bottom: 0.7rem;
-  animation: spin 1.1s linear infinite;
 }
 
 .genericSpinner {
@@ -269,114 +300,235 @@
   font-family: var(--font-primary), sans-serif;
 }
 
-.progressDescription {
-  font-size: 0.98rem;
-  color: var(--color-text);
-  text-align: center;
-  max-width: 320px;
-  margin: 0 auto;
-  font-family: var(--font-primary), sans-serif;
-}
-
 .error {
-  color: var(--error-text, #e57373);
+  color: var(--color-error);
   margin-top: 0.7rem;
   font-size: 1.01rem;
   font-family: var(--font-primary), sans-serif;
 }
 
-.toggleRow {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+/* ===== Resume ("Previously") list ===== */
+
+.tocSection {
   width: 100%;
-  margin-top: 1.2em;
-  margin-bottom: 0.5em;
+  margin-bottom: 1.6rem;
 }
 
-.darkModeToggle {
-  margin: 0 auto !important;
-  background: var(--button-bg);
+.tocLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  margin: 0 0 0.7rem;
+}
+
+.tocRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: 100%;
+  background: none;
   border: none;
   cursor: pointer;
-  padding: 0.22em 0.7em;
-  border-radius: 3px;
-  color: var(--send-button-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.92rem;
-  gap: 0.15em;
-  font-weight: 600;
-  min-height: 28px;
-  min-width: 0;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
-}
-
-.darkModeToggle:hover,
-.darkModeToggle:focus {
-  background: var(--button-hover-bg);
-  color: var(--send-button-text);
-  outline: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
-}
-
-.dark .darkModeToggle {
-  color: var(--color-primary);
-  background: var(--button-bg);
-}
-
-.buttonRow {
-  display: flex;
-  flex-direction: row;
-  gap: 1.1rem;
-  justify-content: center;
-  align-items: center;
-  margin-top: 0.3rem;
-  width: 100%;
-}
-
-.hideMobile {
-  display: none !important;
-}
-
-.instructionsCentered {
-  text-align: center;
-  margin: 0.7rem 0 0.6rem 0;
-  font-size: 1.08rem;
-  color: var(--color-text);
   font-family: var(--font-primary), sans-serif;
+  padding: 0.45rem 0;
+  text-align: left;
+}
+
+.tocRow:focus {
+  outline: none;
+}
+
+.tocRow:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.tocName {
+  font-size: 0.94rem;
+  font-weight: 500;
+  color: var(--color-text);
+  transition: color 0.15s ease;
+}
+
+.tocRow:hover .tocName,
+.tocRow:focus .tocName {
+  color: var(--color-primary);
+}
+
+.tocDots {
+  flex: 1;
+  border-bottom: 1px dotted var(--color-outline);
+  margin-bottom: 0.3rem;
+}
+
+.tocTime {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tocToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  padding: 0.5rem 0 0.2rem;
+}
+
+.tocToggle:hover,
+.tocToggle:focus {
+  color: var(--color-primary);
+  outline: none;
+}
+
+/* ===== Footer links ===== */
+
+.footerLinks {
   display: flex;
-  flex-direction: column;
-  gap: 0.3em;
+  gap: 1.2rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+}
+
+.footerLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  padding: 0.2rem 0;
+}
+
+.footerLink:hover,
+.footerLink:focus {
+  color: var(--color-text);
+  outline: none;
+}
+
+/* =============================
+   DISCLAIMER / CHARACTER-INFO MODAL STYLES
+   Shared by DisclaimerModal and CharacterInfoModal
+   ============================= */
+
+.disclaimerBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  display: flex;
   align-items: center;
   justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
 }
 
-.instructionsTip {
-  color: #7fa7c7;
-  font-size: 0.98rem;
-  margin-top: 0.3em;
+.disclaimerModal {
+  position: relative;
+  background: var(--card-body-bg);
+  color: var(--color-text);
+  font-family: var(--font-primary);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  padding: 2.2rem 1.75rem 1.75rem 1.75rem;
+  max-width: 460px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  text-align: left;
+  box-sizing: border-box;
 }
 
-.disclaimer {
-  font-size: 0.85em;
-  color: #666;
-  font-style: italic;
-  margin-top: 0.1em;
-  margin-bottom: 0.5em;
-  text-align: center;
-  line-height: 1.5;
-  max-width: 420px;
-  margin-left: auto;
-  margin-right: auto;
-  opacity: 0.92;
+.disclaimerTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.9rem 0;
+  color: var(--color-primary);
+  font-family: var(--font-secondary), var(--font-primary), sans-serif;
 }
 
-.dark .disclaimer {
-  color: #aaa;
-  opacity: 0.85;
+.disclaimerText {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.disclaimerCloseButton {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.8rem;
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #888;
+  cursor: pointer;
+  padding: 0.2rem;
+  transition: color 0.2s;
+}
+
+.disclaimerCloseButton:hover,
+.disclaimerCloseButton:focus {
+  color: #c00;
+  outline: none;
+}
+
+@media (max-width: 600px) {
+  .disclaimerModal {
+    padding: 2rem 1.25rem 1.25rem 1.25rem;
+    max-width: 100%;
+  }
+
+  .disclaimerTitle {
+    font-size: 1.1rem;
+  }
+
+  .disclaimerText {
+    font-size: 0.88rem;
+  }
+}
+
+/* =============================
+   SIGN-IN MODAL STYLES
+   Reuses .disclaimerBackdrop/.disclaimerModal/.disclaimerCloseButton above.
+   ============================= */
+
+.googleSignInButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 0.75rem 1.25rem;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--card-body-bg);
+  border: 1px solid var(--color-outline);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.googleSignInButton:hover,
+.googleSignInButton:focus {
+  background: var(--color-primary-container);
+  transform: translateY(-1px);
+  outline: none;
 }
 
 /* =============================
@@ -455,7 +607,7 @@
 }
 
 .cautionIcon {
-  color: #ffc107;
+  color: var(--color-accent);
 }
 
 /* --- Modal Title --- */
@@ -563,9 +715,9 @@
 }
 
 .continueButton:hover {
-  background: #d4963f;
+  background: #9c6f30;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(225, 169, 95, 0.4);
+  box-shadow: 0 4px 12px rgba(184, 134, 63, 0.4);
 }
 
 /* --- Disclaimer --- */

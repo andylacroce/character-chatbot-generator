@@ -9,6 +9,7 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import sanitizeFilename from "sanitize-filename";
+import { and, asc, eq, gt } from "drizzle-orm";
 import { synthesizeSpeechToFile } from "../../src/utils/tts";
 import fs from "fs";
 import os from "os";
@@ -23,6 +24,11 @@ import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
 import { summarizeConversation, buildClaudeMessages, type ClaudeMessage } from "../../src/utils/conversationSummarizer";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 import anthropic from "../../src/utils/anthropicClient";
+import { getSessionUserId } from "../../src/utils/getSessionUserId";
+import { getCurrentEnvironment } from "../../src/utils/environment";
+import { getDb } from "../../src/db/client";
+import { bots, messages as messagesTable } from "../../src/db/schema";
+import { sanitizeCharacterName } from "../../src/utils/security";
 
 /** Rate limiter for chat endpoint: 10 requests per minute per IP. */
 const chatRateLimit = createRateLimiter({
@@ -91,6 +97,107 @@ function getAudioCacheKey(text: string, voiceConfig: object) {
     .digest('hex');
 }
 
+type BotRow = typeof bots.$inferSelect;
+type MessageRow = typeof messagesTable.$inferSelect;
+
+/**
+ * Looks up a signed-in user's saved character by name, scoped to the current environment —
+ * the same `(user_id, name, environment)` unique index pages/api/bots.ts relies on. Returns
+ * null for a guest, no DATABASE_URL, no match (including a copyright-warning-override
+ * character, which is never saved — see CopyrightWarningModal), or any DB error, so the
+ * caller can fall through to today's fully client-authoritative behavior. Never throws.
+ */
+async function lookupBot(userId: string, botName: string): Promise<BotRow | null> {
+  if (!process.env.DATABASE_URL) return null;
+  try {
+    const sanitizedName = sanitizeCharacterName(botName);
+    if (!sanitizedName) return null;
+    const rows = await getDb()
+      .select()
+      .from(bots)
+      .where(and(
+        eq(bots.userId, userId),
+        eq(bots.name, sanitizedName),
+        eq(bots.environment, getCurrentEnvironment()),
+      ));
+    return rows[0] ?? null;
+  } catch (err) {
+    logger.error("Failed to look up bot for chat persistence:", { error: err });
+    return null;
+  }
+}
+
+/**
+ * Messages for a bot since the last summarization checkpoint (or all of them, if the
+ * conversation has never been summarized), oldest first. Returns [] on any DB error so a
+ * lookup failure degrades to an empty-history turn rather than failing the request.
+ */
+async function fetchUnsummarizedMessages(botId: string, summarizedThroughMessageId: number | null): Promise<MessageRow[]> {
+  if (!process.env.DATABASE_URL) return [];
+  try {
+    return await getDb()
+      .select()
+      .from(messagesTable)
+      .where(
+        summarizedThroughMessageId != null
+          ? and(eq(messagesTable.botId, botId), gt(messagesTable.id, summarizedThroughMessageId))
+          : eq(messagesTable.botId, botId)
+      )
+      .orderBy(asc(messagesTable.id));
+  } catch (err) {
+    logger.error("Failed to fetch unsummarized messages:", { error: err });
+    return [];
+  }
+}
+
+/**
+ * Persists one chat turn (the user's message and the bot's reply) for a saved character.
+ * Best-effort — a write failure here must never fail or discard an already-generated reply,
+ * same resilience pattern as the TTS and avatar-cache persistence elsewhere in this API.
+ */
+async function persistChatTurn(botId: string, userMessage: string, botName: string, botReply: string): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    await getDb().insert(messagesTable).values([
+      { botId, sender: "User", text: userMessage },
+      { botId, sender: botName, text: botReply },
+    ]);
+  } catch (err) {
+    logger.error("Failed to persist chat turn:", { error: err });
+  }
+}
+
+/** Persists a new rolling summarization checkpoint onto the bot's row. Best-effort. */
+async function persistSummaryCheckpoint(botId: string, summary: string, throughMessageId: number): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  try {
+    await getDb()
+      .update(bots)
+      .set({ summary, summarizedThroughMessageId: throughMessageId, updatedAt: new Date() })
+      .where(eq(bots.id, botId));
+  } catch (err) {
+    logger.error("Failed to persist summary checkpoint:", { error: err });
+  }
+}
+
+/**
+ * Persists a completed chat turn and, if this turn advanced the summarization checkpoint,
+ * that too. A no-op for a guest or unsaved character (`botRow` null). Never throws — both
+ * underlying writes already catch and log their own errors.
+ */
+async function finalizeChatPersistence(
+  botRow: BotRow | null,
+  userMessage: string,
+  botName: string,
+  botReply: string,
+  checkpoint: { summary: string; throughMessageId: number } | null,
+): Promise<void> {
+  if (!botRow) return;
+  await persistChatTurn(botRow.id, userMessage, botName, botReply);
+  if (checkpoint) {
+    await persistSummaryCheckpoint(botRow.id, checkpoint.summary, checkpoint.throughMessageId);
+  }
+}
 
 /**
  * Checks if the given object is a valid Claude messages response.
@@ -170,7 +277,10 @@ function gracefullyWrapResponse(response: string): string {
  *       (botName, personality, recent history, message) requests are served from
  *       an in-memory cache. Rate limited to 10 requests/minute/IP. When
  *       `stream: true`, the response is `text/event-stream` instead of JSON — see
- *       the two response bodies below.
+ *       the two response bodies below. For a signed-in user's saved character, the
+ *       server ignores the request's `personality`/`conversationHistory` in favor
+ *       of its own stored copy and message history, and persists each turn — see
+ *       CLAUDE.md's account-persistence phase 3c. Guests are unaffected.
  *     tags: [Chat]
  *     requestBody:
  *       required: true
@@ -265,7 +375,7 @@ async function handler(
     }
 
     const userMessage = req.body.message;
-    const personality = req.body.personality || generatePersonalityPrompt("a character chatbot");
+    const requestPersonality = req.body.personality || generatePersonalityPrompt("a character chatbot");
     const botName = req.body.botName || "Character";
     const gender = req.body.gender;
     const conversationHistory = req.body.conversationHistory || [];
@@ -283,6 +393,16 @@ async function handler(
       return;
     }
 
+    // For a signed-in user's saved character, the server becomes the source of truth for
+    // personality/history instead of trusting the client-supplied values on every request —
+    // same rationale as bot ownership in pages/api/bots.ts. Guests, no DATABASE_URL, or a
+    // character never saved server-side (e.g. a copyright-warning override — see
+    // CopyrightWarningModal, never persisted at all) fall through to today's fully
+    // client-authoritative behavior, unchanged below.
+    const userId = await getSessionUserId(req, res);
+    const botRow = userId ? await lookupBot(userId, botName) : null;
+    const personality = botRow ? botRow.personality : requestPersonality;
+
     // Get user IP for logging/location
     const userIp = Array.isArray(req.headers["x-forwarded-for"])
       ? req.headers["x-forwarded-for"][0]
@@ -299,11 +419,39 @@ async function handler(
 
     const timestamp = new Date().toISOString();
 
-    // Implement conversation summarization when history exceeds 20 messages
+    // Conversation summarization keeps the context window manageable once history exceeds
+    // 20 messages. For a saved character (botRow), this reads from the messages table and
+    // maintains a rolling checkpoint (bots.summary/summarizedThroughMessageId) so a typical
+    // turn reuses the existing summary for free instead of re-summarizing from scratch —
+    // see finalizeChatPersistence below, called from every response path, which is what
+    // actually commits newSummaryCheckpoint once the reply is ready. Everyone else (guests,
+    // no DATABASE_URL, an unsaved character) keeps today's client-history-based behavior
+    // exactly as before.
     let conversationSummary: string | undefined;
     let limitedHistory = conversationHistory;
+    let newSummaryCheckpoint: { summary: string; throughMessageId: number } | null = null;
 
-    if (conversationHistory.length > 20) {
+    if (botRow) {
+      const unsummarized = await fetchUnsummarizedMessages(botRow.id, botRow.summarizedThroughMessageId);
+      if (unsummarized.length > 20) {
+        const toSummarize = unsummarized.slice(0, -20);
+        const toKeep = unsummarized.slice(-20);
+        const oldMessages: ClaudeMessage[] = toSummarize.map((m) => ({
+          role: m.sender === botName ? "assistant" : "user",
+          content: m.text,
+        }));
+        conversationSummary = await summarizeConversation(anthropic, oldMessages, botName, botRow.summary);
+        newSummaryCheckpoint = {
+          summary: conversationSummary,
+          throughMessageId: toSummarize[toSummarize.length - 1].id,
+        };
+        limitedHistory = toKeep.map((m) => (m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`));
+        logger.info(`[Chat API] Summarized ${toSummarize.length} old messages (checkpoint) | requestId=${requestId}`);
+      } else {
+        conversationSummary = botRow.summary || undefined;
+        limitedHistory = unsummarized.map((m) => (m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`));
+      }
+    } else if (conversationHistory.length > 20) {
       const recentHistory = conversationHistory.slice(-20);
       const oldHistory = conversationHistory.slice(0, -20);
 
@@ -375,9 +523,12 @@ CRITICAL CONTEXT INSTRUCTIONS:
           fs.writeFileSync(txtFilePath, cachedReply, "utf8");
           setReplyCache(audioFileName, cachedReply);
         } catch (error) {
+          // Audio is an enhancement, not a requirement — the reply text is already
+          // known-good (it's cached), so a TTS failure shouldn't discard it. Same
+          // reasoning as the non-streaming and streaming paths below.
           logger.error("Text-to-Speech API error (cache hit):", { error });
-          const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-          res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+          res.status(200).json({ reply: cachedReply, cached: true, requestId });
+          await finalizeChatPersistence(botRow, userMessage, botName, cachedReply, newSummaryCheckpoint);
           return;
         }
       }
@@ -390,12 +541,14 @@ CRITICAL CONTEXT INSTRUCTIONS:
         logger.error("Failed to ensure .txt file for audio reply (cache hit):", { error: err });
       }
       const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
-      return res.status(200).json({
+      res.status(200).json({
         reply: cachedReply,
         audioFileUrl,
         cached: true,
         requestId
       });
+      await finalizeChatPersistence(botRow, userMessage, botName, cachedReply, newSummaryCheckpoint);
+      return;
     }
 
     // Timeout to avoid hanging
@@ -450,19 +603,30 @@ CRITICAL CONTEXT INSTRUCTIONS:
         }
         const audioFilePath = path.join(audioDir, audioFileName);
 
-        await synthesizeSpeechToFile({
-          text: botReply,
-          filePath: audioFilePath,
-          ssml: false,
-          voice: selectedVoice,
-        });
-        const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
+        // Audio is an enhancement, not a requirement — botReply is already fully
+        // streamed to the client at this point, so a TTS-only failure (caught here,
+        // separately from the outer catch below which is for genuine Claude/stream
+        // failures) still finalizes the frame with the text, just without audio,
+        // rather than discarding an already-successful reply.
+        let audioFileUrl: string | undefined;
+        try {
+          await synthesizeSpeechToFile({
+            text: botReply,
+            filePath: audioFilePath,
+            ssml: false,
+            voice: selectedVoice,
+          });
+          audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
+        } catch (ttsError) {
+          logger.error("Text-to-Speech API error (streaming):", { error: ttsError });
+        }
 
         res.write(`data: ${JSON.stringify({ reply: botReply, audioFileUrl, done: true })}\n\n`);
         res.end();
 
         setReplyCache(cacheKey, botReply);
         logger.info(`${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`);
+        await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint);
         return;
       } catch (streamErr) {
         logger.error("Streaming error:", { error: streamErr });
@@ -528,9 +692,20 @@ CRITICAL CONTEXT INSTRUCTIONS:
         fs.writeFileSync(txtFilePath, botReply, "utf8");
         setReplyCache(audioFileName, botReply);
       } catch (error) {
+        // Audio is an enhancement, not a requirement — Claude already generated a
+        // perfectly good text reply above; a TTS failure (e.g. a mismatched voice
+        // config) shouldn't discard it and fail the whole request. This matters
+        // most for the very first message in a conversation (the intro), where a
+        // TTS-only failure used to surface as "failed to generate intro", forcing
+        // the user to recreate the bot even though the actual text was fine.
         logger.error("Text-to-Speech API error:", { error });
-        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-        res.status(500).json({ error: "Google Cloud TTS failed", details: errorMessage });
+        setReplyCache(cacheKey, botReply);
+        logger.info(
+          `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`,
+        );
+        logger.info(`[Chat API] 200 OK: Reply sent without audio (TTS failed) | requestId=${requestId}`);
+        res.status(200).json({ reply: botReply, requestId });
+        await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint);
         return;
       }
     }
@@ -553,6 +728,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
       audioFileUrl,
       requestId
     });
+    await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint);
     return;
   } catch (error) {
     logger.error(`API error | requestId=${requestId}:`, { error });

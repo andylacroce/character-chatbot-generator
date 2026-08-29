@@ -6,6 +6,11 @@ import { authenticatedFetch } from '../../../src/utils/api';
 
 jest.mock('../../../app/components/api_getVoiceConfigForCharacter');
 jest.mock('../../../src/utils/api');
+// The server-history reconciliation effect needs a next-auth session status; default to
+// unauthenticated so it's a no-op and this file's existing assertions are unaffected.
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({ data: null, status: 'unauthenticated' }),
+}));
 
 const mockGetVoice = api_getVoiceConfigForCharacter as jest.MockedFunction<typeof api_getVoiceConfigForCharacter>;
 const mockAuth = authenticatedFetch as jest.MockedFunction<typeof authenticatedFetch>;

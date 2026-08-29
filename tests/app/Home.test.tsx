@@ -62,6 +62,16 @@ jest.mock('../../src/utils/getValidBotFromStorage', () => ({
   getValidBotFromStorage: jest.fn(),
 }));
 
+const mockUseSession = jest.fn();
+jest.mock('next-auth/react', () => ({
+  useSession: () => mockUseSession(),
+}));
+
+const mockAuthenticatedFetch = jest.fn();
+jest.mock('../../src/utils/api', () => ({
+  authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...args),
+}));
+
 import Home from '../../app/index';
 
 describe('Home component URL parameter functionality', () => {
@@ -78,6 +88,8 @@ describe('Home component URL parameter functionality', () => {
     jest.clearAllMocks();
     mockBotCreatorOnBotCreated = null;
     mockChatPageOnBackToCreation = null;
+    mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
+    mockAuthenticatedFetch.mockResolvedValue({ ok: true, json: async () => ({ persisted: true }) });
     // Reset search params
     mockSearchParams.delete('name');
     // Mock localStorage
@@ -163,6 +175,126 @@ describe('Home component URL parameter functionality', () => {
       expect(mockStorage.setItem).toHaveBeenCalledWith('chatbot-bot-timestamp', expect.any(String));
       expect(mockStorage.setVersionedJSON).toHaveBeenCalledWith(`voiceConfig-${newBot.name}`, newBot.voiceConfig, 1);
       expect(screen.getByTestId('chat-page')).toBeInTheDocument();
+    });
+  });
+
+  it('does not persist to the server when the bot is created as a guest', async () => {
+    mockGetValidBotFromStorage.mockReturnValue(null);
+    mockUseSession.mockReturnValue({ data: null, status: 'unauthenticated' });
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(mockBotCreatorOnBotCreated).not.toBeNull();
+    });
+
+    const newBot: Bot = {
+      name: 'GuestBot',
+      personality: 'cheerful',
+      avatarUrl: '/new-avatar.jpg',
+      voiceConfig: null,
+    };
+
+    await act(async () => {
+      mockBotCreatorOnBotCreated!(newBot);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-page')).toBeInTheDocument();
+    });
+    expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
+  });
+
+  it('persists the bot to the server when signed in', async () => {
+    mockGetValidBotFromStorage.mockReturnValue(null);
+    mockUseSession.mockReturnValue({ data: { user: { id: 'user-1' } }, status: 'authenticated' });
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(mockBotCreatorOnBotCreated).not.toBeNull();
+    });
+
+    const newBot: Bot = {
+      name: 'SignedInBot',
+      personality: 'cheerful',
+      avatarUrl: '/new-avatar.jpg',
+      gender: 'female',
+      voiceConfig: { name: 'en-US-Wavenet-D', languageCodes: ['en-US'], ssmlGender: 2, pitch: 0, rate: 1.0, type: 'Wavenet' },
+    };
+
+    await act(async () => {
+      mockBotCreatorOnBotCreated!(newBot);
+    });
+
+    await waitFor(() => {
+      expect(mockAuthenticatedFetch).toHaveBeenCalledWith('/api/bots', expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newBot.name,
+          personality: newBot.personality,
+          avatarUrl: newBot.avatarUrl,
+          gender: newBot.gender,
+          voiceConfig: newBot.voiceConfig,
+        }),
+      }));
+    });
+  });
+
+  it('does not persist a character created past an overridden copyright warning, even when signed in', async () => {
+    mockGetValidBotFromStorage.mockReturnValue(null);
+    mockUseSession.mockReturnValue({ data: { user: { id: 'user-1' } }, status: 'authenticated' });
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(mockBotCreatorOnBotCreated).not.toBeNull();
+    });
+
+    const overriddenBot: Bot = {
+      name: 'Mickey Mouse',
+      personality: 'mischievous',
+      avatarUrl: 'data:image/png;base64,abc',
+      voiceConfig: null,
+      skipPersistence: true,
+    };
+
+    await act(async () => {
+      mockBotCreatorOnBotCreated!(overriddenBot);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-page')).toBeInTheDocument();
+    });
+    expect(mockAuthenticatedFetch).not.toHaveBeenCalledWith('/api/bots', expect.anything());
+  });
+
+  it('does not crash bot creation when the persist call rejects', async () => {
+    mockGetValidBotFromStorage.mockReturnValue(null);
+    mockUseSession.mockReturnValue({ data: { user: { id: 'user-1' } }, status: 'authenticated' });
+    mockAuthenticatedFetch.mockRejectedValue(new Error('network down'));
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(mockBotCreatorOnBotCreated).not.toBeNull();
+    });
+
+    const newBot: Bot = {
+      name: 'FlakyNetworkBot',
+      personality: 'cheerful',
+      avatarUrl: '/new-avatar.jpg',
+      voiceConfig: null,
+    };
+
+    await act(async () => {
+      mockBotCreatorOnBotCreated!(newBot);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-page')).toBeInTheDocument();
+      expect(mockStorage.setJSON).toHaveBeenCalledWith('chatbot-bot', newBot);
     });
   });
 

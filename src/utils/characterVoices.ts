@@ -21,13 +21,17 @@ export interface CharacterVoiceConfig {
 }
 
 /**
- * Google TTS gender enum.
+ * Google TTS gender enum. Values must match
+ * @google-cloud/text-to-speech's actual SsmlVoiceGender proto enum
+ * (SSML_VOICE_GENDER_UNSPECIFIED=0, MALE=1, FEMALE=2, NEUTRAL=3) — this object
+ * previously had NEUTRAL and UNSPECIFIED transposed (0 and 3 swapped), so any
+ * "neutral"-gender character silently sent UNSPECIFIED to Google instead.
  */
 export const SSML_GENDER = {
-  NEUTRAL: 0,
+  UNSPECIFIED: 0,
   MALE: 1,
   FEMALE: 2,
-  UNSPECIFIED: 3,
+  NEUTRAL: 3,
 };
 
 /**
@@ -104,7 +108,7 @@ async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): P
  * Fetches complete voice configuration from Claude with retry logic.
  * If Claude returns an invalid voice name, it will retry with error feedback.
  */
-export async function fetchVoiceConfigFromClaude(name: string, maxRetries = 3): Promise<VoiceConfig> {
+export async function fetchVoiceConfigFromClaude(name: string, maxRetries = 3, genderHint?: string | null): Promise<VoiceConfig> {
   const { getClaudeModel } = await import('./claudeModelSelector');
   const { default: anthropic } = await import('./anthropicClient');
 
@@ -123,10 +127,15 @@ Voice naming pattern: <locale>-<type>-<letter>
 Types: Wavenet, Neural2, Studio (US only), Standard
 Examples: en-US-Wavenet-D, en-GB-Wavenet-A, de-DE-Wavenet-B, ja-JP-Wavenet-C
 
-CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error feedback about an invalid voice, try a different variant.`;
+CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error feedback about an invalid voice, try a different variant.
+CRITICAL: The "gender" field you return MUST match the actual gender of the specific "voiceName" you pick — Google TTS rejects a request when they disagree, so never return a voice name and a gender label that describe different voices.`;
+
+  const genderHintText = genderHint
+    ? ` This character's gender is understood to be "${genderHint}" — pick a voiceName whose actual Google TTS gender matches, and set the "gender" field to match that same voice (not necessarily "${genderHint}" verbatim, if no well-known voice fits).`
+    : '';
 
   const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
-    { role: "user", content: `Character: "${name}"\nProvide Google TTS voice configuration as JSON.` }
+    { role: "user", content: `Character: "${name}"\nProvide Google TTS voice configuration as JSON.${genderHintText}` }
   ];
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -235,12 +244,15 @@ export async function getVoiceConfigForCharacter(
   let config: CharacterVoiceConfig;
 
   try {
-    // Fetch voice configuration from Claude API
-    const voiceConfig = await fetchVoiceConfigFromClaude(normalized);
-
-    // Map gender string to SSML gender enum (apply override if provided)
-    const effectiveGender = genderOverride || voiceConfig.gender;
-    const ssmlGender = mapGenderToSsml(effectiveGender);
+    // Fetch voice configuration from Claude API. genderOverride is passed through as a
+    // hint to the SAME call that picks voiceName, rather than applied afterward — a
+    // voice name and its ssmlGender must describe the same voice or Google TTS rejects
+    // the request outright, so ssmlGender always has to come from whatever gender
+    // Claude reports for the voice it actually picked, never from an independently
+    // guessed override applied after the fact (that's how a mismatch like "male"
+    // ssmlGender paired with an actually-female-only voice name used to happen).
+    const voiceConfig = await fetchVoiceConfigFromClaude(normalized, undefined, genderOverride);
+    const ssmlGender = mapGenderToSsml(voiceConfig.gender);
 
     // Create voice configuration directly from Claude response
     config = {

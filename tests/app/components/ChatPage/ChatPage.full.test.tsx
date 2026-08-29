@@ -6,6 +6,12 @@ import "@testing-library/jest-dom";
 import { downloadTranscript } from "../../../../src/utils/downloadTranscript";
 import userEvent from "@testing-library/user-event";
 
+// The server-history reconciliation effect needs a next-auth session status; default to
+// unauthenticated so it's a no-op and this file's existing assertions are unaffected.
+jest.mock("next-auth/react", () => ({
+  useSession: () => ({ data: null, status: "unauthenticated" }),
+}));
+
 // Mock authenticatedFetch instead of axios
 const mockAuthenticatedFetch = jest.fn();
 jest.mock("../../../../src/utils/api", () => ({
@@ -55,10 +61,27 @@ describe("ChatPage full feature coverage", () => {
     localStorage.clear();
   });
 
+  afterEach(async () => {
+    // Several tests intentionally don't wait out every in-flight timer (health
+    // check, intro generation) before finishing. Flush stragglers within act()
+    // here so they can't resolve during a *later* test and misattribute an
+    // "update not wrapped in act()" warning to it. This is draining a queue, not
+    // asserting anything — a real test's own assertions have already run by now,
+    // so a stray error surfacing only during this drain (e.g. a DOM property a
+    // given test didn't bother mocking, now touched by an unrelated effect) is
+    // swallowed rather than failing an otherwise-passing test.
+    try {
+      await act(async () => { await new Promise((res) => setTimeout(res, 20)); });
+    } catch { /* draining stragglers only; see comment above */ }
+  });
+
   it("renders and focuses input after health check", async () => {
     render(<ChatPage bot={mockBot} />);
     const input = await screen.findByRole("textbox");
     expect(input).toHaveFocus();
+    // Empty messages triggers the intro-generation effect; flush it within act()
+    // so its eventual state update doesn't land after this test has returned.
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
   });
 
   it("toggles audio and persists preference", async () => {
@@ -216,9 +239,12 @@ describe("ChatPage full feature coverage", () => {
   });
 
 
-  it("handleScroll: does nothing if chatBoxRef.current is null", () => {
+  it("handleScroll: does nothing if chatBoxRef.current is null", async () => {
     render(<ChatPage bot={mockBot} />);
     // No assertion needed, just coverage
+    // Empty messages triggers the intro-generation effect; flush it within act()
+    // so its eventual state update doesn't land after this test has returned.
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
   });
 
   it("handleScroll: does nothing if not at top or all messages visible", async () => {
@@ -229,31 +255,41 @@ describe("ChatPage full feature coverage", () => {
       fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
     }
     const chatBox = screen.getByTestId("chat-messages-container");
+    let scrollTopValue = 10;
     Object.defineProperty(chatBox, "scrollTop", {
-      get: () => 10,
+      get: () => scrollTopValue,
+      // A real setter (not just a fixed-return getter) so a later, unrelated
+      // scroll-to-bottom effect writing to scrollTop doesn't throw.
+      set: (v: number) => { scrollTopValue = v; },
       configurable: true
     });
     fireEvent.scroll(chatBox);
-    Object.defineProperty(chatBox, "scrollTop", {
-      get: () => 0,
-      configurable: true
-    });
+    scrollTopValue = 0;
     fireEvent.scroll(chatBox);
     // No assertion needed, just coverage
+    // Several messages were just sent; flush the scroll-to-bottom effect's timer
+    // within act() so it doesn't land during a later test.
+    await act(async () => { await new Promise((res) => setTimeout(res, 20)); });
   });
 
-  it("handles SSR: window is undefined", () => {
+  it("handles SSR: window is undefined", async () => {
     const realWindow = global.window;
     (global as unknown as { window?: Window }).window = undefined;
     expect(() => render(<ChatPage bot={mockBot} />)).not.toThrow();
     global.window = realWindow;
+    // Empty messages triggers the intro-generation effect; flush it within act()
+    // so its eventual state update doesn't land after this test has returned.
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
   });
 
-  it("handles missing localStorage gracefully", () => {
+  it("handles missing localStorage gracefully", async () => {
     const realLocalStorage = global.localStorage;
     // @ts-expect-error: simulate missing localStorage
     delete global.localStorage;
     expect(() => render(<ChatPage bot={mockBot} />)).not.toThrow();
     global.localStorage = realLocalStorage;
+    // Empty messages triggers the intro-generation effect; flush it within act()
+    // so its eventual state update doesn't land after this test has returned.
+    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
   });
 });

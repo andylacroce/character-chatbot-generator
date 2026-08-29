@@ -8,6 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { DarkModeProvider } from "./components/DarkModeContext";
+import Providers from "./components/Providers";
 
 /**
  * Root layout component that wraps the entire application.
@@ -29,7 +30,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
         <title>Character Chatbot Generator</title>
         <meta name="description" content="Create and chat with your own AI-powered characters." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/andrew.png" type="image/png" />
+        <link rel="icon" href="/silhouette.svg" type="image/svg+xml" />
         {/* Open Graph / Facebook */}
         <meta property="og:title" content="Character Chatbot Generator" />
         <meta property="og:description" content="Create and chat with your own AI-powered characters." />
@@ -42,12 +43,14 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
         <meta name="twitter:image" content="/andrew.png" />
       </head>
       <body>
-        <DarkModeProvider>
-          {/* Removed .container wrapper to allow sticky positioning to work */}
-          {children}
-          <Analytics />
-          <SpeedInsights />
-        </DarkModeProvider>
+        <Providers>
+          <DarkModeProvider>
+            {/* Removed .container wrapper to allow sticky positioning to work */}
+            {children}
+            <Analytics />
+            <SpeedInsights />
+          </DarkModeProvider>
+        </Providers>
       </body>
     </html>
   );

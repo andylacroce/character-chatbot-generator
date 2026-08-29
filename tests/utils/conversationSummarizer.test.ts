@@ -109,4 +109,31 @@ describe('summarizeConversation', () => {
     const result = await summarizeConversation(anthropic as any, messages, 'Bot');
     expect(result).toBe('Previous conversation covered various topics.');
   });
+
+  describe('priorSummary (phase 3c rolling checkpoint)', () => {
+    it('folds an existing summary into the prompt when given one', async () => {
+      const anthropic = makeAnthropic('An updated summary.');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await summarizeConversation(anthropic as any, messages, 'Bot', 'Summary of everything before this.');
+      const callArg = (anthropic.messages.create as jest.Mock).mock.calls[0][0];
+      expect(callArg.messages[0].content).toContain('Summary of everything before this.');
+      expect(callArg.messages[0].content).toContain('Newer messages to fold in:');
+    });
+
+    it('omits the prior-summary framing when none is given', async () => {
+      const anthropic = makeAnthropic('summary');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await summarizeConversation(anthropic as any, messages, 'Bot');
+      const callArg = (anthropic.messages.create as jest.Mock).mock.calls[0][0];
+      expect(callArg.messages[0].content).not.toContain('Newer messages to fold in:');
+    });
+
+    it('omits the prior-summary framing when explicitly null', async () => {
+      const anthropic = makeAnthropic('summary');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await summarizeConversation(anthropic as any, messages, 'Bot', null);
+      const callArg = (anthropic.messages.create as jest.Mock).mock.calls[0][0];
+      expect(callArg.messages[0].content).not.toContain('Newer messages to fold in:');
+    });
+  });
 });

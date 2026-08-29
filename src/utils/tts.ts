@@ -117,6 +117,29 @@ export function getTTSClient() {
 }
 
 /**
+ * Google's synthesizeSpeech API rejects a request when a voice's `name` and
+ * `ssmlGender` describe different voices, with a message like "Requested male
+ * voice, but voice en-US-Neural2-C is a female voice." — the message itself
+ * names the voice's real gender. This lets an already-persisted, pre-fix
+ * voiceConfig (mismatched ssmlGender saved before the characterVoices.ts fix)
+ * self-heal at synthesis time by retrying once with the corrected gender,
+ * rather than failing every time it's used.
+ * @returns {number | null} The corrected SsmlVoiceGender enum value, or null if
+ *   the error doesn't match Google's gender-mismatch message format.
+ */
+function extractCorrectedSsmlGender(err: unknown): protos.google.cloud.texttospeech.v1.SsmlVoiceGender | null {
+  const message = err instanceof Error ? err.message : String(err);
+  const match = message.match(/requested \w+ voice, but voice \S+ is a (\w+) voice/i);
+  if (!match) return null;
+  const gender = match[1].toLowerCase();
+  const { SsmlVoiceGender } = protos.google.cloud.texttospeech.v1;
+  if (gender === 'male') return SsmlVoiceGender.MALE;
+  if (gender === 'female') return SsmlVoiceGender.FEMALE;
+  if (gender === 'neutral') return SsmlVoiceGender.NEUTRAL;
+  return null;
+}
+
+/**
  * Synthesizes speech from text and writes the result to a file.
  * Retries up to 3 times on failure. Cleans up old audio files in the same directory.
  *
@@ -175,6 +198,16 @@ export async function synthesizeSpeechToFile({
     languageCode: (voice.languageCodes && voice.languageCodes[0]) || "en-GB",
   };
   delete apiVoice.languageCodes;
+  if (apiVoice.name && apiVoice.ssmlGender === protos.google.cloud.texttospeech.v1.SsmlVoiceGender.NEUTRAL) {
+    // Google's synthesizeSpeech API rejects ssmlGender: NEUTRAL outright
+    // ("3 INVALID_ARGUMENT: Gender neutral voices are not supported.") whenever a
+    // specific voice `name` is also given — discovered live via a character
+    // (Nefertem) whose Claude-generated voiceConfig legitimately came back
+    // "neutral". The name alone already identifies the voice unambiguously, so
+    // ssmlGender is redundant in that case; drop it rather than fail every
+    // request for any character with a neutral-gendered voiceConfig.
+    delete apiVoice.ssmlGender;
+  }
   const request: protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
     input,
     voice: apiVoice,
@@ -182,9 +215,15 @@ export async function synthesizeSpeechToFile({
   };
   const client = getTTSClient();
 
-  // Retry synthesis with exponential backoff on transient failures
+  // Retry synthesis with exponential backoff on transient failures. A gender
+  // mismatch (voice `name` vs `ssmlGender` disagree) is not transient — it fails
+  // identically every time — so it's corrected and retried separately, once,
+  // without consuming the transient-failure attempt budget below.
   let lastError: unknown = null;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  let genderCorrected = false;
+  let attempt = 1;
+  const maxAttempts = 3;
+  while (attempt <= maxAttempts) {
     try {
       const [response] = await client.synthesizeSpeech(request);
       if (!response || !response.audioContent) {
@@ -198,7 +237,22 @@ export async function synthesizeSpeechToFile({
       return;
     } catch (err: unknown) {
       lastError = err;
-      if (attempt < 3) {
+      if (!genderCorrected) {
+        const correctedGender = extractCorrectedSsmlGender(err);
+        if (correctedGender !== null && request.voice && request.voice.ssmlGender !== correctedGender) {
+          logger.warn("TTS gender mismatch detected; retrying with corrected ssmlGender", sanitizeLogMeta({
+            event: "tts_gender_self_heal",
+            voiceName: apiVoice.name,
+            previousGender: request.voice.ssmlGender,
+            correctedGender,
+          }));
+          request.voice.ssmlGender = correctedGender;
+          genderCorrected = true;
+          continue;
+        }
+      }
+      attempt++;
+      if (attempt <= maxAttempts) {
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
