@@ -1,6 +1,12 @@
 import { renderHook, act } from '@testing-library/react';
 import { useChatController } from '../../../app/components/useChatController';
 
+// The server-history reconciliation effect needs a next-auth session status; default to
+// unauthenticated so it's a no-op and this file's existing assertions are unaffected.
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({ data: null, status: 'unauthenticated' }),
+}));
+
 const mockAuthenticatedFetch = jest.fn();
 jest.mock('../../../src/utils/api', () => ({ authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])) }));
 

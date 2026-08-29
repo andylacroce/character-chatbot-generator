@@ -1,6 +1,60 @@
 import path from 'path';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { bots as botsTable, messages as messagesTable } from '../../../src/db/schema';
 import handlerDefault from '../../../pages/api/chat';
+
+// Phase 3c: chat.ts looks up a signed-in user's saved character before deciding whether to
+// trust the client-supplied personality/history or the server's own copy. Defaults to a
+// guest (no session) so every existing test below is unaffected; the
+// 'signed-in saved character (phase 3c)' describe block below overrides this per test.
+const mockGetSessionUserId = jest.fn();
+jest.mock('../../../src/utils/getSessionUserId', () => ({
+    getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
+}));
+
+// select().from(botsTable).where(...) resolves directly; select().from(messagesTable)
+// .where(...).orderBy(...) needs one more chained call — distinguished by table identity
+// (both `chat.ts` and this file import the same schema module instance, so `===` holds).
+let mockBotRows: unknown[] = [];
+let mockMessageRows: unknown[] = [];
+const mockInsertValues = jest.fn().mockResolvedValue(undefined);
+const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+const mockUpdateSet = jest.fn(() => ({ where: mockUpdateWhere }));
+const mockDb = {
+    select: jest.fn(() => ({
+        from: jest.fn((table: unknown) => {
+            if (table === messagesTable) {
+                return { where: jest.fn(() => ({ orderBy: jest.fn().mockResolvedValue(mockMessageRows) })) };
+            }
+            return { where: jest.fn().mockResolvedValue(mockBotRows) };
+        }),
+    })),
+    insert: jest.fn(() => ({ values: mockInsertValues })),
+    update: jest.fn(() => ({ set: mockUpdateSet })),
+};
+jest.mock('../../../src/db/client', () => ({ getDb: () => mockDb }));
+
+function makeBotRow(overrides: Partial<typeof botsTable.$inferSelect> = {}): typeof botsTable.$inferSelect {
+    return {
+        id: 'bot-1',
+        userId: 'user-1',
+        name: 'Ada',
+        personality: 'From the DB: brilliant and precise.',
+        avatarUrl: null,
+        gender: null,
+        voiceConfig: null,
+        environment: 'development',
+        summary: null,
+        summarizedThroughMessageId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...overrides,
+    };
+}
+
+function makeMessageRow(id: number, sender: string, text: string): typeof messagesTable.$inferSelect {
+    return { id, botId: 'bot-1', sender, text, createdAt: new Date() };
+}
 
 const mockSynthesizeSpeechToFile = jest.fn();
 jest.mock('../../../src/utils/tts', () => ({
@@ -132,6 +186,12 @@ describe('chat API', () => {
         mockGetReplyCache.mockReturnValue(undefined);
         mockIpinfo.mockResolvedValue({ city: 'London', region: 'England', country: 'GB' });
         mockSynthesizeSpeechToFile.mockResolvedValue(undefined);
+        // Guest by default — see the phase 3c describe block for the signed-in path.
+        mockGetSessionUserId.mockResolvedValue(null);
+        mockBotRows = [];
+        mockMessageRows = [];
+        mockInsertValues.mockResolvedValue(undefined);
+        mockUpdateWhere.mockResolvedValue(undefined);
     });
 
     afterAll(() => jest.useRealTimers());
@@ -238,25 +298,29 @@ describe('chat API', () => {
             );
         });
 
-        it('returns 500 when speech synthesis fails', async () => {
+        it('still returns the text reply (without audio) when speech synthesis fails', async () => {
+            // Audio is an enhancement, not a requirement — a TTS failure (e.g. a
+            // mismatched voice config) shouldn't discard an already-generated reply.
             claudeSays('Greetings, traveller.');
             mockFs.existsSync.mockReturnValue(false);
             mockSynthesizeSpeechToFile.mockRejectedValueOnce(new Error('tts exploded'));
             const res = makeRes();
             await handler(makeReq(), res);
 
-            expect(res.status).toHaveBeenCalledWith(500);
-            expect(res.json).toHaveBeenCalledWith({ error: 'Google Cloud TTS failed', details: 'tts exploded' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({ reply: 'Greetings, traveller.', requestId: 'generated-id' });
+            expect(mockLogger.error).toHaveBeenCalledWith('Text-to-Speech API error:', expect.any(Object));
         });
 
-        it('stringifies a non-Error synthesis failure', async () => {
+        it('still returns the text reply when a non-Error synthesis failure occurs', async () => {
             claudeSays('Greetings, traveller.');
             mockFs.existsSync.mockReturnValue(false);
             mockSynthesizeSpeechToFile.mockRejectedValueOnce({ code: 7 });
             const res = makeRes();
             await handler(makeReq(), res);
 
-            expect(res.json).toHaveBeenCalledWith({ error: 'Google Cloud TTS failed', details: '{"code":7}' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({ reply: 'Greetings, traveller.', requestId: 'generated-id' });
         });
 
         it('creates the temp directory when it is missing', async () => {
@@ -429,15 +493,15 @@ describe('chat API', () => {
             expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ cached: true }));
         });
 
-        it('returns 500 when synthesizing a cached reply fails', async () => {
+        it('still returns the cached reply (without audio) when synthesis fails', async () => {
             mockGetReplyCache.mockReturnValue('A cached greeting.');
             mockFs.existsSync.mockReturnValue(false);
             mockSynthesizeSpeechToFile.mockRejectedValueOnce(new Error('tts exploded'));
             const res = makeRes();
             await handler(makeReq(), res);
 
-            expect(res.status).toHaveBeenCalledWith(500);
-            expect(res.json).toHaveBeenCalledWith({ error: 'Google Cloud TTS failed', details: 'tts exploded' });
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(res.json).toHaveBeenCalledWith({ reply: 'A cached greeting.', cached: true, requestId: 'generated-id' });
         });
 
         it('still answers when the cached sidecar text file cannot be read', async () => {
@@ -476,6 +540,22 @@ describe('chat API', () => {
             expect(final.audioFileUrl).toContain('/api/audio?file=');
             expect(res.end).toHaveBeenCalled();
             expect(mockSetReplyCache).toHaveBeenCalled();
+        });
+
+        it('still sends the final reply (without an audio URL) when TTS fails mid-stream', async () => {
+            // The text was already fully streamed to the client at this point — a
+            // TTS-only failure here is caught separately from genuine stream errors
+            // below, so it doesn't discard the reply the client already has.
+            mockStream.mockReturnValueOnce(streamOf(['Greetings, ', 'traveller.']));
+            mockSynthesizeSpeechToFile.mockRejectedValueOnce(new Error('tts exploded'));
+            const res = makeRes();
+            await handler(makeReq({ stream: true }), res);
+
+            const final = sseFrames(res).pop();
+            // JSON.stringify drops an undefined audioFileUrl entirely, so the parsed
+            // frame has no such key at all rather than an explicit undefined/null.
+            expect(final).toEqual({ reply: 'Greetings, traveller.', done: true });
+            expect(res.end).toHaveBeenCalled();
         });
 
         it('strips action emotes from the assembled reply', async () => {
@@ -544,6 +624,171 @@ describe('chat API', () => {
 
             const frames = sseFrames(res);
             expect(frames.filter((f) => f.done === false)).toEqual([{ chunk: 'Greetings.', done: false }]);
+        });
+    });
+
+    describe('signed-in saved character (phase 3c)', () => {
+        const OLD_DATABASE_URL = process.env.DATABASE_URL;
+
+        beforeEach(() => {
+            mockGetSessionUserId.mockResolvedValue('user-1');
+            process.env.DATABASE_URL = 'postgres://user:pass@host/db';
+        });
+
+        afterAll(() => {
+            process.env.DATABASE_URL = OLD_DATABASE_URL;
+        });
+
+        it('falls through to the client-supplied personality/history when this user has no saved bot with this name', async () => {
+            mockBotRows = []; // no matching bots row
+            claudeSays('Greetings.');
+            await handler(makeReq({ personality: 'A client-supplied persona.' }), makeRes());
+
+            expect(mockCreate.mock.calls[0][0].system).toContain('A client-supplied persona.');
+            // No bot row means fetchUnsummarizedMessages is never reached.
+            expect(mockDb.select).toHaveBeenCalledTimes(1);
+        });
+
+        it("uses the saved character's own personality and message history instead of the client-supplied values", async () => {
+            mockBotRows = [makeBotRow({ personality: 'From the DB: brilliant and precise.' })];
+            mockMessageRows = [makeMessageRow(1, 'User', 'hi'), makeMessageRow(2, 'Ada', 'hello')];
+            claudeSays('Greetings.');
+            await handler(makeReq({ personality: 'A client-supplied persona.', conversationHistory: ['User: ignored'] }), makeRes());
+
+            const { system, messages } = mockCreate.mock.calls[0][0];
+            expect(system).toContain('From the DB: brilliant and precise.');
+            expect(system).not.toContain('A client-supplied persona.');
+            expect(messages).toEqual([
+                { role: 'user', content: 'hi' },
+                { role: 'assistant', content: 'hello' },
+                { role: 'user', content: 'Hello' }, // makeReq's default message
+            ]);
+        });
+
+        it('reuses the existing checkpoint summary, without calling the summarizer, when unsummarized history is small', async () => {
+            mockBotRows = [makeBotRow({ summary: 'Prior context.', summarizedThroughMessageId: 5 })];
+            mockMessageRows = [makeMessageRow(6, 'User', 'hi'), makeMessageRow(7, 'Ada', 'hello')];
+            claudeSays('Greetings.');
+            await handler(makeReq(), makeRes());
+
+            expect(mockSummarizeConversation).not.toHaveBeenCalled();
+            expect(mockCreate.mock.calls[0][0].system).toContain('<conversation_summary>\nPrior context.\n</conversation_summary>');
+        });
+
+        it('summarizes the oldest unsummarized messages once there are more than 20, and persists a new checkpoint', async () => {
+            mockBotRows = [makeBotRow({ summary: 'Old summary.', summarizedThroughMessageId: null })];
+            mockMessageRows = Array.from({ length: 25 }, (_, i) => makeMessageRow(i + 1, i % 2 === 0 ? 'User' : 'Ada', `turn ${i}`));
+            mockSummarizeConversation.mockResolvedValueOnce('An updated summary.');
+            claudeSays('Greetings.');
+            await handler(makeReq(), makeRes());
+
+            expect(mockSummarizeConversation).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.arrayContaining([expect.objectContaining({ content: 'turn 0' })]),
+                'Ada',
+                'Old summary.',
+            );
+            const { system, messages } = mockCreate.mock.calls[0][0];
+            expect(system).toContain('<conversation_summary>\nAn updated summary.\n</conversation_summary>');
+            // 20 retained turns (ids 6-25) plus the new user message.
+            expect(messages).toHaveLength(21);
+            expect(mockUpdateSet).toHaveBeenCalledWith(expect.objectContaining({
+                summary: 'An updated summary.',
+                summarizedThroughMessageId: 5, // id of the last message folded into the summary
+            }));
+        });
+
+        it("persists the user's message and the bot's reply after a successful turn", async () => {
+            mockBotRows = [makeBotRow()];
+            claudeSays('Greetings, traveller.');
+            await handler(makeReq({ message: 'Hello there' }), makeRes());
+
+            expect(mockInsertValues).toHaveBeenCalledWith([
+                { botId: 'bot-1', sender: 'User', text: 'Hello there' },
+                { botId: 'bot-1', sender: 'Ada', text: 'Greetings, traveller.' },
+            ]);
+        });
+
+        it('persists the turn on a cache hit too', async () => {
+            mockBotRows = [makeBotRow()];
+            mockGetReplyCache.mockReturnValue('A cached greeting.');
+            mockFs.existsSync.mockReturnValue(true);
+            mockFs.readFileSync.mockReturnValue('A cached greeting.');
+            await handler(makeReq({ message: 'Hello there' }), makeRes());
+
+            expect(mockInsertValues).toHaveBeenCalledWith([
+                { botId: 'bot-1', sender: 'User', text: 'Hello there' },
+                { botId: 'bot-1', sender: 'Ada', text: 'A cached greeting.' },
+            ]);
+        });
+
+        it('persists the streamed reply once the stream completes', async () => {
+            mockBotRows = [makeBotRow()];
+            mockStream.mockReturnValueOnce(streamOf(['Greetings, ', 'traveller.']));
+            await handler(makeReq({ stream: true, message: 'Hello there' }), makeRes());
+
+            expect(mockInsertValues).toHaveBeenCalledWith([
+                { botId: 'bot-1', sender: 'User', text: 'Hello there' },
+                { botId: 'bot-1', sender: 'Ada', text: 'Greetings, traveller.' },
+            ]);
+        });
+
+        it('never persists anything for a guest', async () => {
+            mockGetSessionUserId.mockResolvedValue(null);
+            claudeSays('Greetings.');
+            await handler(makeReq(), makeRes());
+
+            expect(mockDb.select).not.toHaveBeenCalled();
+            expect(mockInsertValues).not.toHaveBeenCalled();
+        });
+
+        it('still answers normally when the bot lookup fails', async () => {
+            (mockDb.select as jest.Mock).mockImplementationOnce(() => ({
+                from: jest.fn(() => ({ where: jest.fn().mockRejectedValue(new Error('db down')) })),
+            }));
+            claudeSays('Greetings.');
+            const res = makeRes();
+            await handler(makeReq(), res);
+
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(mockLogger.error).toHaveBeenCalledWith('Failed to look up bot for chat persistence:', expect.any(Object));
+        });
+
+        it('still answers normally, using an empty history, when fetching unsummarized messages fails', async () => {
+            mockBotRows = [makeBotRow()];
+            (mockDb.select as jest.Mock)
+                .mockImplementationOnce(() => ({ from: jest.fn(() => ({ where: jest.fn().mockResolvedValue(mockBotRows) })) })) // bot lookup
+                .mockImplementationOnce(() => ({ from: jest.fn(() => ({ where: jest.fn(() => ({ orderBy: jest.fn().mockRejectedValue(new Error('db down')) })) })) })); // messages fetch
+            claudeSays('Greetings.');
+            const res = makeRes();
+            await handler(makeReq(), res);
+
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(mockLogger.error).toHaveBeenCalledWith('Failed to fetch unsummarized messages:', expect.any(Object));
+        });
+
+        it('still answers normally when persisting a new summary checkpoint fails', async () => {
+            mockBotRows = [makeBotRow({ summary: 'Old summary.', summarizedThroughMessageId: null })];
+            mockMessageRows = Array.from({ length: 25 }, (_, i) => makeMessageRow(i + 1, i % 2 === 0 ? 'User' : 'Ada', `turn ${i}`));
+            mockSummarizeConversation.mockResolvedValueOnce('An updated summary.');
+            mockUpdateWhere.mockRejectedValueOnce(new Error('db down'));
+            claudeSays('Greetings.');
+            const res = makeRes();
+            await handler(makeReq(), res);
+
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(mockLogger.error).toHaveBeenCalledWith('Failed to persist summary checkpoint:', expect.any(Object));
+        });
+
+        it('still answers normally when persisting the chat turn fails', async () => {
+            mockBotRows = [makeBotRow()];
+            mockInsertValues.mockRejectedValueOnce(new Error('db down'));
+            claudeSays('Greetings.');
+            const res = makeRes();
+            await handler(makeReq(), res);
+
+            expect(res.status).toHaveBeenCalledWith(200);
+            expect(mockLogger.error).toHaveBeenCalledWith('Failed to persist chat turn:', expect.any(Object));
         });
     });
 });

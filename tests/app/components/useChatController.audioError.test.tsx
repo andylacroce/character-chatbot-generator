@@ -1,6 +1,12 @@
 import { renderHook, act } from '@testing-library/react';
 import type { Bot } from '../../../app/components/BotCreator';
 
+// The server-history reconciliation effect needs a next-auth session status; default to
+// unauthenticated so it's a no-op and this file's existing assertions are unaffected.
+jest.mock('next-auth/react', () => ({
+  useSession: () => ({ data: null, status: 'unauthenticated' }),
+}));
+
 // Mock storage so getItem/setItem behave predictably
 jest.mock('../../../src/utils/storage', () => ({
   getItem: jest.fn(() => null),

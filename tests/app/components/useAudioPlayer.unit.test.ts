@@ -14,7 +14,10 @@ describe('useAudioPlayer', () => {
 
     const { result } = renderHook(() => useAudioPlayer(audioEnabledRef, audioRef, sourceRef));
 
-    const res = await result.current.playAudio('https://example.test/audio.mp3');
+    let res!: Awaited<ReturnType<typeof result.current.playAudio>>;
+    await act(async () => {
+      res = await result.current.playAudio('https://example.test/audio.mp3');
+    });
 
     // Should return audio element but muted
     expect(res).not.toBeNull();
@@ -36,7 +39,10 @@ describe('useAudioPlayer', () => {
 
     const { result } = renderHook(() => useAudioPlayer(audioEnabledRef, audioRef, sourceRef));
 
-    const returned = await result.current.playAudio('https://example.test/some.mp3');
+    let returned!: Awaited<ReturnType<typeof result.current.playAudio>>;
+    await act(async () => {
+      returned = await result.current.playAudio('https://example.test/some.mp3');
+    });
     expect(returned).toBe(dummy);
     expect(playFn).toHaveBeenCalled();
 
@@ -60,7 +66,9 @@ describe('useAudioPlayer', () => {
 
     const { result } = renderHook(() => useAudioPlayer(audioEnabledRef, audioRef, sourceRef));
 
-    await result.current.playAudio('https://example.test/ab.mp3', controller.signal);
+    await act(async () => {
+      await result.current.playAudio('https://example.test/ab.mp3', controller.signal);
+    });
 
     // behaviour: because the abort handler is invoked before audioRef is set,
     // audioRef will be set afterwards; ensure it ends up populated with our dummy

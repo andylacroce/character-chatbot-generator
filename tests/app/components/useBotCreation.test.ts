@@ -708,6 +708,13 @@ describe('useBotCreation tests', () => {
     expect(result.current.showValidationModal).toBe(false);
     // User override should have produced a validation override log
     expect(mockLogEvent).toHaveBeenCalledWith('info', 'bot_validation_override', 'User chose to proceed despite warning', expect.any(Object));
+    // Overriding a copyright warning must never reach the shared avatar cache, Blob
+    // storage, or this user's own bots row — see useBotCreation.ts and app/index.tsx.
+    expect(onBotCreated).toHaveBeenCalledWith(expect.objectContaining({ skipPersistence: true }));
+    const avatarCall = mockAuthFetch.mock.calls.find((c) => c[0] === '/api/generate-avatar');
+    expect(JSON.parse((avatarCall as unknown as [string, { body: string }])[1].body)).toEqual(
+      expect.objectContaining({ skipPersistence: true })
+    );
   });
 
   it('handleValidationCancel closes modal without creating bot', async () => {

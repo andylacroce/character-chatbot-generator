@@ -201,6 +201,18 @@ describe('CopyrightWarningModal', () => {
         expect(screen.getByText(/By continuing, you acknowledge potential copyright or trademark concerns/i)).toBeInTheDocument();
     });
 
+    it('warns that the character will not be saved or downloadable', () => {
+        render(
+            <CopyrightWarningModal
+                validation={warningValidation}
+                onContinue={mockOnContinue}
+                onCancel={mockOnCancel}
+            />
+        );
+
+        expect(screen.getByText(/will not be saved to your account/i)).toBeInTheDocument();
+    });
+
     it('does not render suggestions section when suggestions array is empty', () => {
         const validationNoSuggestions: CharacterValidationResult = {
             ...warningValidation,

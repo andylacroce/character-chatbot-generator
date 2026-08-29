@@ -11,7 +11,11 @@ import { getClaudeModel } from "./claudeModelSelector";
 export type ClaudeMessage = { role: "user" | "assistant"; content: string };
 
 /**
- * Summarizes a set of conversation messages into a short paragraph.
+ * Summarizes a set of conversation messages into a short paragraph. When `priorSummary` is
+ * given (the rolling checkpoint summary on `bots`, see pages/api/chat.ts), it's folded in as
+ * prior context so the new summary compounds the old one instead of discarding everything
+ * summarized before — each call only ever has to summarize the messages since the last
+ * checkpoint, not the conversation from scratch.
  * Falls back to a generic placeholder on error so the calling code never
  * has to handle a rejection.
  */
@@ -19,17 +23,22 @@ export async function summarizeConversation(
   anthropic: Anthropic,
   messages: ClaudeMessage[],
   botName: string,
+  priorSummary?: string | null,
 ): Promise<string> {
   try {
     const conversationText = messages
       .map((m) => `${m.role === "user" ? "User" : botName}: ${m.content}`)
       .join("\n");
 
+    const userContent = priorSummary
+      ? `Summary of the conversation so far:\n${priorSummary}\n\nNewer messages to fold in:\n${conversationText}`
+      : conversationText;
+
     const summaryResponse = await anthropic.messages.create({
       model: getClaudeModel("text-simple"),
       system:
-        "Summarize this conversation concisely, capturing key topics, emotional tone, and important context. Keep it under 150 words.",
-      messages: [{ role: "user", content: conversationText }],
+        "Summarize this conversation concisely, capturing key topics, emotional tone, and important context. If given an existing summary plus newer messages, produce one updated summary covering both. Keep it under 150 words.",
+      messages: [{ role: "user", content: userContent }],
       max_tokens: 200,
       temperature: 0.3,
     });

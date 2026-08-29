@@ -22,7 +22,7 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt
     <div className={styles.modalBackdrop} data-testid="modal-image-backdrop" onClick={onClose}>
       <div
         className={styles.modalError}
-        style={{ maxWidth: 480, width: '90vw', padding: 0, position: 'relative', background: 'var(--color-background, #18141a)', color: 'var(--color-text, #f3f0e7)' }}
+        style={{ maxWidth: 480, width: '90vw', padding: 0, position: 'relative', background: 'var(--color-background)', color: 'var(--color-text)' }}
         onClick={e => e.stopPropagation()}
       >
         <button

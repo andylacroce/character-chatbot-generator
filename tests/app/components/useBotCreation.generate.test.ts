@@ -81,6 +81,37 @@ describe('generateBotDataWithProgressCancelable (unit tests)', () => {
     await expect(create).rejects.toThrow('cancelled');
   });
 
+  it('passes skipPersistence through to /api/generate-avatar and onto the returned Bot', async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: 'data:image/png;base64,abc', gender: 'female' }) } as any);
+      return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+    });
+    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
+
+    const bot = await generateBotDataWithProgressCancelable('Mickey', jest.fn(), jest.fn(), { cancelled: false } as any, true);
+
+    const avatarCall = mockFetch.mock.calls.find((c) => c[0] === '/api/generate-avatar');
+    expect(avatarCall).toBeDefined();
+    expect(JSON.parse((avatarCall as any)[1].body)).toEqual({ name: 'Mickey', skipPersistence: true });
+    expect(bot.skipPersistence).toBe(true);
+  });
+
+  it('defaults skipPersistence to false when omitted', async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png' }) } as any);
+      return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+    });
+    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
+
+    const bot = await generateBotDataWithProgressCancelable('Sherlock', jest.fn(), jest.fn(), { cancelled: false } as any);
+
+    const avatarCall = mockFetch.mock.calls.find((c) => c[0] === '/api/generate-avatar');
+    expect(JSON.parse((avatarCall as any)[1].body)).toEqual({ name: 'Sherlock', skipPersistence: false });
+    expect(bot.skipPersistence).toBe(false);
+  });
+
   it('continues even if persistVoiceConfig throws', async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);

@@ -105,10 +105,14 @@ describe('characterVoices - Simplified Claude → Google TTS Pipeline', () => {
   });
 
   describe('Gender Override', () => {
-    it('should respect gender override for female voice', async () => {
+    it('passes the override to Claude as a hint, but still derives ssmlGender from the voice Claude actually returns', async () => {
+      // Claude ignores the "female" hint here (still returns a male voice) — this is
+      // the exact shape of the real bug: an override that disagrees with the voice
+      // actually picked. ssmlGender must match voiceName regardless, or Google TTS
+      // rejects the request outright ("Requested X voice, but voice is Y").
       mockClaudeCreate.mockResolvedValue({
         content: [{ type: 'text', text: JSON.stringify({
-          gender: 'male', // Claude returns male voice gender
+          gender: 'male',
           languageCode: 'en-US',
           voiceName: 'en-US-Wavenet-D',
           pitch: 0,
@@ -118,8 +122,31 @@ describe('characterVoices - Simplified Claude → Google TTS Pipeline', () => {
 
       const config = await getVoiceConfigForCharacter('Test Person', 'female');
 
-      // Gender override should change the ssmlGender
+      // ssmlGender must agree with the voice actually returned, not the raw override —
+      // an internally-consistent (if not override-honoring) config beats a broken one.
+      expect(config.ssmlGender).toBe(SSML_GENDER.MALE);
+
+      // The override still has to reach Claude as a hint, even though this mock
+      // doesn't act on it.
+      const sentPrompt = JSON.stringify(mockClaudeCreate.mock.calls[0][0]);
+      expect(sentPrompt).toContain('female');
+    });
+
+    it('reflects a female ssmlGender when Claude honors the override and returns a female voice', async () => {
+      mockClaudeCreate.mockResolvedValue({
+        content: [{ type: 'text', text: JSON.stringify({
+          gender: 'female',
+          languageCode: 'en-US',
+          voiceName: 'en-US-Wavenet-C',
+          pitch: 0,
+          rate: 1.0
+        }) }]
+      });
+
+      const config = await getVoiceConfigForCharacter('Another Test Person', 'female');
+
       expect(config.ssmlGender).toBe(SSML_GENDER.FEMALE);
+      expect(config.name).toBe('en-US-Wavenet-C');
     });
 
     it('should cache different configs for different genders', async () => {

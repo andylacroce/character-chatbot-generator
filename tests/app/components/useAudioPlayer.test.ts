@@ -170,7 +170,10 @@ describe('useAudioPlayer', () => {
     const audioEnabledRef = { current: true };
     const ref = React.createRef<TestComponentHandles>();
     render(React.createElement(TestComponent, { ref, audioEnabledRef }));
-    const audioInstance = await ref.current!.playAudio('test.mp3');
+    let audioInstance: Awaited<ReturnType<TestComponentHandles['playAudio']>> = null;
+    await act(async () => {
+      audioInstance = await ref.current!.playAudio('test.mp3');
+    });
     // Check that a dummy audio instance is returned
     expect(audioInstance).not.toBeNull();
     expect(audioInstance && 'play' in audioInstance).toBe(true);
@@ -424,8 +427,10 @@ describe('useAudioPlayer', () => {
     if (!ref.current) throw new Error('ref.current is null');
     ref.current.audioRef.current = {} as HTMLAudioElement;
     // Call onended on the original instance
-    // @ts-expect-error: onended is a mock property on our test Audio
-    if (audioInstance && audioInstance.onended) audioInstance.onended();
+    act(() => {
+      // @ts-expect-error: onended is a mock property on our test Audio
+      if (audioInstance && audioInstance.onended) audioInstance.onended();
+    });
     // Should not set audioRef.current to null
     expect(ref.current!.audioRef.current).not.toBeNull();
   });
