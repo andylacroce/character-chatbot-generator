@@ -1,0 +1,78 @@
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+  font-family: var(--font-primary), sans-serif;
+  color: var(--color-text);
+  line-height: 1.65;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: var(--color-accent);
+  text-decoration: underline;
+  font-size: 0.92rem;
+}
+
+.title {
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+  color: var(--color-text);
+}
+
+.updated {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 2rem;
+}
+
+.section {
+  margin: 1.8rem 0;
+}
+
+.sectionTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 0.6rem;
+  color: var(--color-primary);
+}
+
+.section p,
+.section li {
+  font-size: 0.98rem;
+  color: var(--color-text);
+}
+
+.section ul {
+  margin: 0.4rem 0 0.4rem 1.2rem;
+  padding: 0;
+}
+
+.section li {
+  margin-bottom: 0.4rem;
+}
+
+.section a {
+  color: var(--color-accent);
+}
+
+.callout {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+  border-radius: 10px;
+  padding: 1rem 1.2rem;
+  font-size: 0.95rem;
+  margin: 1.5rem 0;
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 2rem 1.1rem 3rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+}

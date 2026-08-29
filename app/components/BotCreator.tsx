@@ -237,6 +237,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           >
             Disclaimer
           </button>
+          <a href="/privacy" className={styles.footerLink}>
+            Privacy
+          </a>
         </div>
       </form>
       <DisclaimerModal show={showDisclaimerModal} onClose={() => setShowDisclaimerModal(false)} />

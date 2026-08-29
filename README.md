@@ -151,7 +151,7 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 - `VERCEL_BLOB_READ_WRITE_TOKEN` (or `BLOB_READ_WRITE_TOKEN`) — Enables logging to Vercel Blob storage, and durable Blob-hosted avatar URLs instead of base64 data URLs
 - `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Redis REST endpoint (Vercel KV / Marketplace Redis) used to share API rate-limit counters across serverless instances. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` work too. With neither pair set, limits fall back to an in-process counter, which is per-instance on Vercel and exactly right for local development.
-- `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — Enables optional account sign-in and server-side persistence (see [Account Persistence](#account-persistence-optional) below). The app is fully functional as a guest with none of these set.
+- `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` + `FACEBOOK_CLIENT_ID` + `FACEBOOK_CLIENT_SECRET` — Enables optional account sign-in (Google and/or Facebook) and server-side persistence (see [Account Persistence](#account-persistence-optional) below). The app is fully functional as a guest with none of these set.
 
 ## Avatar Generation
 
@@ -185,14 +185,16 @@ Multi-layered protection for all API endpoints:
 ## Account Persistence (Optional)
 
 The app is fully usable as a guest — nothing below is required. When `DATABASE_URL` +
-`NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` are set, users can sign in
-with Google to save their characters and chat history server-side (Neon Postgres via
-Drizzle ORM), so both survive across devices and browser sessions:
+`NEXTAUTH_SECRET` are set (plus `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and/or
+`FACEBOOK_CLIENT_ID`/`FACEBOOK_CLIENT_SECRET`), users can sign in with Google and/or
+Facebook to save their characters and chat history server-side (Neon Postgres via Drizzle
+ORM), so both survive across devices and browser sessions:
 
 - **Sign-in**: A landing-page-only control (`AuthControl`) using Auth.js (`next-auth@4`,
-  JWT sessions, no `sessions` table). On Vercel preview deployments, an unverified stub
-  provider stands in for Google, since Google's OAuth redirect matching can't follow
-  per-push preview URLs.
+  JWT sessions, no `sessions` table). With both providers configured, it defers to Auth.js's
+  own picker page rather than guessing which one the user wants. On Vercel preview
+  deployments, an unverified stub provider stands in for both, since OAuth redirect
+  matching can't follow per-push preview URLs.
 - **Characters**: Created or resumed characters are saved to a `bots` table
   (`POST`/`GET /api/bots`) once signed in. `ResumeBotDropdown` on the landing page lists a
   signed-in user's saved characters, most recently updated first.

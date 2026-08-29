@@ -5,20 +5,19 @@
 //
 // Signs in directly against the active provider rather than routing through
 // NextAuth's built-in provider-picker page — that page only earns its keep once
-// there's an actual choice to make. Today there's exactly one provider (Google
-// in prod/dev, the preview stub on Vercel preview deployments — see
-// authOptions.ts's prod/preview swap), so the single-provider case skips it
-// entirely. Once a second real provider (planned: Facebook) is configured
-// alongside Google, this falls back to the picker page rather than silently
-// guessing which one the user wants — replace that fallback with in-app
-// provider-choice buttons at that point instead of reaching for the picker.
-// On preview, the stub signs in immediately as a fixed test identity with no
-// prompt, since it's a smoke-test aid, not a real login.
+// there's an actual choice to make. On preview (just the stub — see
+// authOptions.ts's prod/preview swap), that single-provider case skips the
+// picker entirely and signs in immediately as a fixed test identity with no
+// prompt, since it's a smoke-test aid, not a real login. Outside preview,
+// there are now two real providers (Google, Facebook), so this falls back to
+// the picker page rather than silently guessing which one the user wants —
+// replace that fallback with in-app provider-choice buttons if that page ever
+// stops being good enough.
 // =============================
 
 import React, { useEffect, useState } from "react";
 import { useSession, signIn, signOut, getProviders } from "next-auth/react";
-import { FaGoogle, FaSignOutAlt } from "react-icons/fa";
+import { FaGoogle, FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
 
 interface AuthControlProps {
   className?: string;
@@ -86,6 +85,12 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
     );
   }
 
+  // With a single provider, the icon can name it (Google today, or the preview stub, which
+  // never reaches this branch since it always has length 1 too but isn't Google — see
+  // below). Once there's an actual choice (Google + Facebook), a specific provider's icon
+  // would misrepresent what clicking actually does (open the picker), so it goes generic.
+  const isSingleGoogleProvider = providerIds?.length === 1 && providerIds[0] !== PREVIEW_STUB_PROVIDER_ID;
+
   return (
     <button
       type="button"
@@ -94,7 +99,11 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
       onClick={handleSignIn}
       disabled={!providerIds || providerIds.length === 0}
     >
-      <FaGoogle size={16} style={{ color: "var(--color-accent)" }} />
+      {isSingleGoogleProvider ? (
+        <FaGoogle size={16} style={{ color: "var(--color-accent)" }} />
+      ) : (
+        <FaSignInAlt size={16} style={{ color: "var(--color-accent)" }} />
+      )}
       <span style={{ fontSize: "0.92rem", marginLeft: "0.18em" }}>Sign in</span>
     </button>
   );
