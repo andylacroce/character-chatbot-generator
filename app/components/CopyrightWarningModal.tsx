@@ -114,7 +114,9 @@ export const CopyrightWarningModal: React.FC<CopyrightWarningModalProps> = ({
 
         <p className={styles.modalDisclaimer}>
           By continuing, you acknowledge potential copyright or trademark concerns.
-          Use of protected characters may have legal implications.
+          Use of protected characters may have legal implications. This character and
+          its portrait will not be saved to your account, shared with other users, or
+          available to download as a transcript; it exists only for this session.
         </p>
       </div>
     </div>

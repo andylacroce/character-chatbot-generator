@@ -117,7 +117,10 @@ const Home = () => {
     // Persist server-side when signed in — fire-and-forget, never blocks or breaks
     // bot creation itself. Guests (sessionStatus !== "authenticated") skip this
     // entirely; the API also no-ops for them as a second, server-side guarantee.
-    if (sessionStatus === "authenticated") {
+    // A character created past an overridden copyright warning (bot.skipPersistence)
+    // also skips this — it works for this session exactly like a guest's, via
+    // localStorage below, but is never written to this user's own bots row either.
+    if (sessionStatus === "authenticated" && !bot.skipPersistence) {
       authenticatedFetch("/api/bots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

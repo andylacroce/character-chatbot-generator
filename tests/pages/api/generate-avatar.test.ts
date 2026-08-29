@@ -683,4 +683,59 @@ describe('generate-avatar API', () => {
             });
         });
     });
+
+    describe('skipPersistence (copyright warning overridden by the user)', () => {
+        it('never checks or writes the shared avatar cache, and never uploads to Blob, even when both are configured', async () => {
+            await jest.isolateModulesAsync(async () => {
+                jest.resetModules();
+                process.env.DATABASE_URL = 'postgres://user:pass@host/db';
+                process.env.BLOB_READ_WRITE_TOKEN = 'fake-blob-token';
+
+                const mockWhere = jest.fn().mockResolvedValue([{ avatarUrl: 'https://blob.example.com/cached.png', gender: 'male' }]);
+                const mockFrom = jest.fn(() => ({ where: mockWhere }));
+                const mockSelect = jest.fn(() => ({ from: mockFrom }));
+                const mockOnConflictDoUpdate = jest.fn().mockResolvedValue(undefined);
+                const mockValues = jest.fn(() => ({ onConflictDoUpdate: mockOnConflictDoUpdate }));
+                const mockInsert = jest.fn(() => ({ values: mockValues }));
+                jest.doMock('../../../src/db/client', () => ({ getDb: () => ({ select: mockSelect, insert: mockInsert }) }));
+
+                const mockPut = jest.fn().mockResolvedValue({ url: 'https://example-blob.public.blob.vercel-storage.com/avatars/should-not-happen.png' });
+                jest.doMock('@vercel/blob', () => ({ put: (...args: unknown[]) => mockPut(...args) }));
+
+                const mockCreate = jest.fn().mockResolvedValueOnce({
+                    content: [{ type: 'text', text: JSON.stringify({ subject: 's', gender: 'female' }) }]
+                });
+                jest.doMock('@anthropic-ai/sdk', () => ({
+                    default: function AnthropicMock() { return { messages: { create: mockCreate } }; },
+                    __esModule: true
+                }));
+                jest.doMock('@google/genai', () => ({
+                    GoogleGenAI: jest.fn().mockImplementation(() => ({
+                        models: {
+                            generateContent: jest.fn().mockResolvedValue({
+                                candidates: [{ content: { parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }] } }]
+                            })
+                        }
+                    }))
+                }));
+                jest.doMock('../../../src/utils/logger', () => ({ __esModule: true, default: mockLoggerDefault, logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => mockSanitize(m) }));
+                jest.doMock('../../../src/utils/claudeModelSelector', () => ({ getClaudeModel: (_: string) => 'claude-test' }));
+                jest.doMock('../../../src/utils/security', () => ({ sanitizeCharacterName: (s: string) => (typeof s === 'string' ? s.trim() : '') }));
+
+                const handler = require('../../../pages/api/generate-avatar').default;
+                const req = { method: 'POST', body: { name: 'Mickey Mouse', skipPersistence: true } } as Partial<NextApiRequest> as NextApiRequest;
+                const res = makeRes();
+                await handler(req, res);
+
+                // Never touches the cache table at all — not the pre-existing cached row above.
+                expect(mockSelect).not.toHaveBeenCalled();
+                expect(mockInsert).not.toHaveBeenCalled();
+                // Never uploads to Blob — returns the raw data URL instead of a durable link.
+                expect(mockPut).not.toHaveBeenCalled();
+                expect(res.json).toHaveBeenCalledWith({ avatarUrl: `data:image/png;base64,${fakeB64}`, gender: 'female' });
+
+                delete process.env.BLOB_READ_WRITE_TOKEN;
+            });
+        });
+    });
 });

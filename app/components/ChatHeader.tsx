@@ -17,6 +17,9 @@ interface ChatHeaderProps {
     name: string;
     personality: string;
     avatarUrl: string;
+    // True for a character created past an overridden copyright warning — hides the
+    // Download Transcript button too, so no artifact of that session leaves the app.
+    skipPersistence?: boolean;
   };
 }
 
@@ -42,16 +45,18 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
                   <span>Character Creator</span>
                 </button>
               )}
-              <button
-                className={`${styles.downloadTranscriptLink} flex items-center gap-1 ml-0`}
-                type="button"
-                aria-label="Download chat transcript"
-                onClick={() => { onDownloadTranscript(); if (onHeaderLinkClick) onHeaderLinkClick(); }}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.7em' }}
-              >
-                <FaRegFileAlt size={18} style={{ color: 'var(--color-primary)' }} />
-                <span className={styles.downloadLabel}>Download Transcript</span>
-              </button>
+              {!bot.skipPersistence && (
+                <button
+                  className={`${styles.downloadTranscriptLink} flex items-center gap-1 ml-0`}
+                  type="button"
+                  aria-label="Download chat transcript"
+                  onClick={() => { onDownloadTranscript(); if (onHeaderLinkClick) onHeaderLinkClick(); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.7em' }}
+                >
+                  <FaRegFileAlt size={18} style={{ color: 'var(--color-primary)' }} />
+                  <span className={styles.downloadLabel}>Download Transcript</span>
+                </button>
+              )}
             </HamburgerMenu>
             <span className={styles.desktopToggle}>
               <DarkModeToggle className={styles.darkModeToggle} />

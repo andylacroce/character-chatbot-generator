@@ -117,6 +117,11 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             }
         }
 
+        // Capture before resetting: true only when this run reached here via
+        // handleValidationContinue, i.e. the user explicitly clicked through a
+        // copyright warning/caution. That, and only that, is what must never reach
+        // the shared avatar cache, Blob storage, or this user's own bots row.
+        const bypassedCopyrightWarning = proceedWithoutValidationRef.current;
         // Reset the flag for next time
         proceedWithoutValidationRef.current = false;
 
@@ -137,7 +142,8 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
                 input.trim(),
                 setProgress,
                 setLoadingMessage,
-                thisCancelToken
+                thisCancelToken,
+                bypassedCopyrightWarning
             );
             // If the run has not been cancelled, finish normally. Note: check the token's
             // cancelled flag (not truthiness of the ref) so we don't accidentally suppress
@@ -261,7 +267,11 @@ export async function generateBotDataWithProgressCancelable(
     onProgress: (step: ProgressStep) => void,
     setLoadingMessage: (msg: string | null) => void,
     // Accept a per-run cancellation token object (or null) so cancellation is specific to the run
-    cancelToken: { cancelled: boolean } | null
+    cancelToken: { cancelled: boolean } | null,
+    // True when the user clicked through a copyright warning/caution for this name.
+    // Propagated to /api/generate-avatar (skips the shared cache + Blob) and onto the
+    // returned Bot (skips this user's own bots-table persistence too) — see callers.
+    skipPersistence: boolean = false
 ): Promise<Bot> {
     // Implementation copied from previous inner function
     let personality = `You are ${originalInputName}. Stay in character.`;
@@ -306,7 +316,7 @@ export async function generateBotDataWithProgressCancelable(
         const avatarRes = await authenticatedFetch("/api/generate-avatar", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: correctedName }),
+            body: JSON.stringify({ name: correctedName, skipPersistence }),
         });
         if (cancelToken?.cancelled) throw new Error("cancelled");
         if (avatarRes.ok) {
@@ -353,5 +363,5 @@ export async function generateBotDataWithProgressCancelable(
     try {
         persistVoiceConfig(correctedName, voiceConfig);
     } catch {}
-    return { name: correctedName, personality, avatarUrl, voiceConfig, gender };
+    return { name: correctedName, personality, avatarUrl, voiceConfig, gender, skipPersistence };
 }

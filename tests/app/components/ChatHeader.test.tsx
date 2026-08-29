@@ -51,6 +51,12 @@ describe('ChatHeader', () => {
     expect(mockOnHeaderLinkClick).toHaveBeenCalled();
   });
 
+  it('hides the Download Transcript button for a character created past an overridden copyright warning', () => {
+    render(<ChatHeader {...defaultProps} bot={{ ...defaultProps.bot, skipPersistence: true }} />);
+    fireEvent.click(screen.getByLabelText(/open menu/i));
+    expect(screen.queryByLabelText(/download chat transcript/i)).not.toBeInTheDocument();
+  });
+
   it('shows the modal when avatar is clicked', () => {
     render(<ChatHeader {...defaultProps} />);
     fireEvent.click(screen.getByLabelText(/view character portrait/i));

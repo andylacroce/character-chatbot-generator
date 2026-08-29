@@ -200,6 +200,15 @@ async function cacheAvatar(sanitizedName: string, avatarUrl: string, gender: str
  *               name:
  *                 type: string
  *                 example: Sherlock Holmes
+ *               skipPersistence:
+ *                 type: boolean
+ *                 description: >
+ *                   Set by the client when the character name was flagged by
+ *                   /api/validate-character and the user chose to proceed anyway.
+ *                   Skips the shared avatar_cache table (both lookup and write) and
+ *                   Vercel Blob upload, returning a base64 data URL instead of a
+ *                   durable link — the image is generated fresh every time and never
+ *                   persisted anywhere server-side.
  *     responses:
  *       200:
  *         description: >
@@ -237,7 +246,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const { name } = req.body;
+  const { name, skipPersistence } = req.body;
   if (!name || typeof name !== 'string') {
     res.status(400).json({ error: "Valid name required" });
     return;
@@ -247,8 +256,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(400).json({ error: "Invalid character name" });
     return;
   }
+  // Set when the client is creating a character whose name was flagged by
+  // /api/validate-character and the user chose to proceed anyway. That image must
+  // never enter the shared cross-user cache or durable Blob storage — a
+  // per-request, never-persisted generation only, however costly to redo each time.
+  const bypassPersistence = skipPersistence === true;
 
-  const cached = await getCachedAvatar(sanitizedName);
+  const cached = bypassPersistence ? null : await getCachedAvatar(sanitizedName);
   if (cached) {
     logEvent("info", "avatar_cache_hit", "Reusing cached avatar", sanitizeLogMeta({ name: sanitizedName }));
     res.status(200).json({ avatarUrl: cached.avatarUrl, gender: cached.gender });
@@ -331,7 +345,9 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       avatarUrl = await generateImageWithGemini(prompt, credentials, projectId);
       if (avatarUrl) {
         logEvent("info", "avatar_gemini_success", "Image generated successfully with Gemini");
-        avatarUrl = await persistAvatarToBlob(avatarUrl);
+        if (!bypassPersistence) {
+          avatarUrl = await persistAvatarToBlob(avatarUrl);
+        }
       }
     } catch (err) {
       logEvent("error", "avatar_gemini_error", "Gemini image generation error", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
@@ -343,7 +359,9 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       return;
     }
 
-    await cacheAvatar(sanitizedName, avatarUrl, genderOut);
+    if (!bypassPersistence) {
+      await cacheAvatar(sanitizedName, avatarUrl, genderOut);
+    }
     res.status(200).json({ avatarUrl, gender: genderOut });
     return;
   } catch (e) {

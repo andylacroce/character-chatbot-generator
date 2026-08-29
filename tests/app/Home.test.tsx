@@ -242,6 +242,34 @@ describe('Home component URL parameter functionality', () => {
     });
   });
 
+  it('does not persist a character created past an overridden copyright warning, even when signed in', async () => {
+    mockGetValidBotFromStorage.mockReturnValue(null);
+    mockUseSession.mockReturnValue({ data: { user: { id: 'user-1' } }, status: 'authenticated' });
+
+    render(<Home />);
+
+    await waitFor(() => {
+      expect(mockBotCreatorOnBotCreated).not.toBeNull();
+    });
+
+    const overriddenBot: Bot = {
+      name: 'Mickey Mouse',
+      personality: 'mischievous',
+      avatarUrl: 'data:image/png;base64,abc',
+      voiceConfig: null,
+      skipPersistence: true,
+    };
+
+    await act(async () => {
+      mockBotCreatorOnBotCreated!(overriddenBot);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-page')).toBeInTheDocument();
+    });
+    expect(mockAuthenticatedFetch).not.toHaveBeenCalledWith('/api/bots', expect.anything());
+  });
+
   it('does not crash bot creation when the persist call rejects', async () => {
     mockGetValidBotFromStorage.mockReturnValue(null);
     mockUseSession.mockReturnValue({ data: { user: { id: 'user-1' } }, status: 'authenticated' });
