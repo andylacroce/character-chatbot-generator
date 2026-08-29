@@ -18,6 +18,16 @@
  * neither has credentials configured on preview and would just fail if offered there.
  * With two real providers now available outside preview, `AuthControl.tsx` falls back to
  * Auth.js's own picker page instead of guessing which one the user wants.
+ *
+ * Both real providers set `allowDangerousEmailAccountLinking: true`. Without it, NextAuth
+ * refuses to link a new provider to an existing `users` row sharing its email — a genuine
+ * account-takeover guard (see next-auth's own callback-handler.ts), since a same-email match
+ * alone doesn't prove the same person controls both accounts on an untrusted provider. Opted
+ * in deliberately here because both providers are Google and Facebook specifically — neither
+ * hands back an unconfirmed email through their profile APIs in practice — so the same person
+ * signing in with either one lands on one account instead of NextAuth's default
+ * OAuthAccountNotLinked error. This is a real trust decision, not a default; don't extend it
+ * to a future provider without re-confirming that provider verifies email ownership too.
  */
 
 import type { NextAuthOptions } from "next-auth";
@@ -56,10 +66,13 @@ const providers: NextAuthOptions["providers"] = isPreview
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      // See the account-linking note above `providers` — deliberate, not a default.
+      allowDangerousEmailAccountLinking: true,
     }),
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID || "",
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
+      allowDangerousEmailAccountLinking: true,
     }),
   ];
 

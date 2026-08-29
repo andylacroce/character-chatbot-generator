@@ -57,6 +57,22 @@ describe('auth/authOptions', () => {
             });
         });
 
+        it('allows linking Google and Facebook to the same account by matching email', async () => {
+            // Deliberate opt-in (see authOptions.ts's doc comment) — without this, signing in
+            // with a second provider on an email that already has an account throws NextAuth's
+            // OAuthAccountNotLinked error instead of signing the user into their existing account.
+            await jest.isolateModulesAsync(async () => {
+                delete process.env.DATABASE_URL;
+                delete process.env.VERCEL_ENV;
+                const { authOptions } = require('../../../src/auth/authOptions');
+                type ProviderWithOptions = { id: string; options?: { allowDangerousEmailAccountLinking?: boolean } };
+                const google = authOptions.providers.find((p: ProviderWithOptions) => p.id === 'google');
+                const facebook = authOptions.providers.find((p: ProviderWithOptions) => p.id === 'facebook');
+                expect(google.options.allowDangerousEmailAccountLinking).toBe(true);
+                expect(facebook.options.allowDangerousEmailAccountLinking).toBe(true);
+            });
+        });
+
         it('is absent in production even if VERCEL_ENV were somehow "production"', async () => {
             await jest.isolateModulesAsync(async () => {
                 delete process.env.DATABASE_URL;
