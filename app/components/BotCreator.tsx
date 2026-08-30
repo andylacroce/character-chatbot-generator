@@ -72,7 +72,11 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   }, []);
 
   const currentStep = progressSteps.find((s) => s.key === progress);
-  const isBusy = loading || randomizing || validating;
+  // Deliberately excludes `randomizing`: that request is near-instant, and gating the
+  // input row / dropdown visibility on it caused a jarring flash and layout shift for a
+  // loading state nobody actually perceives as "loading". `randomizing` still disables
+  // the Random button itself, below, as lightweight double-click protection.
+  const isBusy = loading || validating;
   const [elapsed, setElapsed] = useState<number>(0);
   const [MAX_AVATAR_SECONDS, setMaxAvatarSeconds] = useState<number | null>(null);
   const [hasAutoSubmitted, setHasAutoSubmitted] = useState<boolean>(false);
@@ -135,7 +139,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           <p className={styles.kicker}>Begin a conversation</p>
           <h1 className={styles.headline}>Who will you bring to life?</h1>
           <p className={styles.subhead}>
-            Any figure from public domain literature, myth, or history, or invent someone entirely your own.
+            Type any name. Public domain classics, myths, and historical figures work best, but feel free to go off script.
           </p>
         </div>
 
@@ -156,7 +160,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
             <button
               type="button"
               className={styles.textLink}
-              disabled={isBusy}
+              disabled={isBusy || randomizing}
               aria-label="Choose a random character name"
               onClick={handleRandomCharacter}
             >
@@ -185,12 +189,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           </div>
         </div>
 
-        {randomizing && (
-          <div className={styles.progressContainer} data-testid="bot-creator-progress">
-            <span className={styles.genericSpinner} aria-label="Loading" />
-            <div className={styles.progressText}>Picking a random character</div>
-          </div>
-        )}
         {validating && (
           <div className={styles.progressContainer} data-testid="bot-creator-validating">
             <span className={styles.genericSpinner} aria-label="Loading" />

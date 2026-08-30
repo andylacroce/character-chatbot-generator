@@ -68,7 +68,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
           data-testid="chat-send-button"
           aria-label={loading || !apiAvailable ? "Send disabled" : "Send message"}
         >
-          {loading || !apiAvailable ? "HOLD" : "Send"}
+          {loading || !apiAvailable ? (
+            "HOLD"
+          ) : (
+            <>
+              Send
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                <path d="M6 10h8M11 7l3 3-3 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </>
+          )}
         </button>
         {isAudioPlaying && (
           <button
@@ -97,16 +106,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
         >
           {audioEnabled ? (
             // Modern outlined volume up icon
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5 9v6h4l5 5V4l-5 5H5z" stroke="var(--button-bg)" strokeWidth="2" strokeLinejoin="round" fill="none"/>
-              <path d="M16.5 8.5a5 5 0 010 7" stroke="var(--button-bg)" strokeWidth="2" strokeLinecap="round" fill="none"/>
-              <path d="M19 5a9 9 0 010 14" stroke="var(--button-bg)" strokeWidth="2" strokeLinecap="round" fill="none"/>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 9v6h4l5 5V4l-5 5H5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" fill="none"/>
+              <path d="M16.5 8.5a5 5 0 010 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              <path d="M19 5a9 9 0 010 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
             </svg>
           ) : (
             // Modern outlined volume off icon
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5 9v6h4l5 5V4l-5 5H5z" stroke="var(--disabled-bg)" strokeWidth="2" strokeLinejoin="round" fill="none"/>
-              <line x1="21" y1="3" x2="3" y2="21" stroke="var(--disabled-bg)" strokeWidth="2"/>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 9v6h4l5 5V4l-5 5H5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" fill="none"/>
+              <line x1="21" y1="3" x2="3" y2="21" stroke="currentColor" strokeWidth="2"/>
             </svg>
           )}
         </button>

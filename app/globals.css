@@ -308,14 +308,6 @@ body,
   padding-bottom: var(--vv-keyboard-pad, 220px) !important;
 }
 
-/* --- Dark mode button focus/hover fix --- */
-.dark button:hover,
-.dark button:focus {
-  background: var(--button-hover-bg) !important;
-  color: var(--color-on-primary) !important;
-  outline: none;
-}
-
 @media (max-width: 600px) {
   :root {
     --chat-message-font-size: 1rem;

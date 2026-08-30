@@ -1,0 +1,28 @@
+/* =============================
+   ChatStatus.module.css
+   - Retry/error status line beneath the input bar. Quiet inline text rather
+     than a boxed alert banner, consistent with the rest of the chat page's
+     editorial minimalism.
+   - Uses CSS variables from globals.css for theme consistency
+   ============================= */
+
+.statusArea {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 12px;
+  box-sizing: border-box;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.retrying {
+  color: var(--color-text-secondary);
+  padding: 0.3rem 0;
+}
+
+.error {
+  color: var(--color-error);
+  padding: 0.3rem 0;
+}

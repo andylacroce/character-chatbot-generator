@@ -145,6 +145,33 @@ describe("useChatController — server history reconciliation", () => {
         ]);
     });
 
+    it("does not fire a duplicate intro request when server history exists but local storage is empty (new device / cleared cache)", async () => {
+        // Regression test: the intro-generation effect used to key off local messages.length
+        // alone, so on a device with no local cache it would fire "Introduce yourself..."
+        // before this reconciliation fetch resolved — persisting a bogus intro turn on top
+        // of the character's real, already-saved history. See historyReconciled in
+        // useChatController.ts.
+        mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, status: "authenticated" });
+        mockAuthenticatedFetch.mockImplementation((url: string) => {
+            if (typeof url === "string" && url.startsWith("/api/messages")) {
+                return Promise.resolve(mockResponse({
+                    messages: [
+                        { sender: "Gandalf", text: "Greetings, traveller." },
+                        { sender: "User", text: "hello" },
+                    ],
+                }));
+            }
+            return Promise.resolve(mockResponse({}));
+        });
+
+        const { result } = renderHook(() => useChatController(mockBot));
+
+        await waitFor(() => expect(result.current.messages.length).toBe(2));
+        // Give the (would-be) intro effect a tick to fire if the gate weren't working.
+        await new Promise((r) => setTimeout(r, 20));
+        expect(mockAuthenticatedFetch.mock.calls.some((c) => String(c[0]).startsWith("/api/chat"))).toBe(false);
+    });
+
     it("silently keeps the local list when the fetch fails", async () => {
         mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, status: "authenticated" });
         storedHistory["chatbot-history-Gandalf"] = JSON.stringify([{ sender: "User", text: "hi" }]);

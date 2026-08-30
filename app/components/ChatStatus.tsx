@@ -10,6 +10,7 @@
 
 import React from "react";
 import { logEvent } from "../../src/utils/logger";
+import styles from "./styles/ChatStatus.module.css";
 
 interface ChatStatusProps {
   error: string;
@@ -26,14 +27,14 @@ const ChatStatus: React.FC<ChatStatusProps> = ({ error, retrying }) => {
   }
   return (
     <div
-      className="chat-status-area"
+      className={styles.statusArea}
       data-testid="chat-status-area"
       role="status"
       aria-live="polite"
     >
       {(retrying || process.env.NODE_ENV === 'test') && (
         <div
-          className="alert alert-info"
+          className={styles.retrying}
           data-testid="retrying-message"
           style={{ display: retrying ? undefined : 'none' }}
         >
@@ -41,7 +42,7 @@ const ChatStatus: React.FC<ChatStatusProps> = ({ error, retrying }) => {
         </div>
       )}
       {error && (
-        <div className="alert alert-danger" data-testid="error-message">
+        <div className={styles.error} data-testid="error-message">
           {error}
         </div>
       )}

@@ -1,61 +1,112 @@
 /* =============================
    ChatMessage.module.css
-   - Styles specific to the ChatMessage component
-   - Handles message bubble appearance for user and bot
-   - Uses CSS variables from globals.css for theme consistency
-   - Adjusts for accessibility and responsive design
+   - "Immersive stage" transcript style: no bubbles. Bot replies render as large
+     serif pull-quotes with a teal accent rule; user turns stay small and quiet,
+     right-aligned. Same Fraunces/Inter pairing and CSS-variable palette as the
+     landing page (BotCreator.module.css) for visual consistency across the app.
+   - Uses CSS variables from globals.css/darkmode.css for theme consistency.
    ============================= */
 
-/* Message bubble base style */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
+
 .message {
-  border-radius: 10px;
-  padding: 10px;
-  margin-bottom: 10px;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-outline);
 }
 
-/* User message bubble (right-aligned) */
-.userMessage {
-  background-color: var(--user-message-bg);
-  color: var(--color-text);
-  font-family: var(--font-primary), sans-serif;
-  align-self: flex-end;
-  text-align: right;
-  font-size: var(--chat-message-font-size) !important;
+.message:last-child {
+  border-bottom: none;
 }
 
-/* Bot message bubble (left-aligned, themed) */
 .botMessage {
-  background-color: var(--bot-message-bg);
-  color: var(--color-text);
-  font-family: var(--font-primary), sans-serif;
-  align-self: flex-start;
-  font-size: var(--chat-message-font-size) !important;
+  border-left: 2px solid var(--color-accent);
+  padding-left: 1rem;
 }
 
-/* Sender name styling */
+.userMessage {
+  text-align: right;
+  padding-right: 0.15rem;
+}
+
+.byline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.userMessage .byline {
+  justify-content: flex-end;
+}
+
+.avatarButton {
+  /* Opaque backdrop so a transparent avatar (the silhouette.svg fallback,
+     mainly) shows up against this page's own dark background instead of
+     nearly disappearing into it. */
+  background: var(--color-surface-variant);
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: flex;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: box-shadow 0.15s ease;
+}
+
+.avatarButton:hover,
+.avatarButton:focus {
+  background: var(--color-surface-variant);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  outline: none;
+}
+
+.avatar {
+  flex-shrink: 0;
+  display: block;
+  /* Crops in slightly so the frame reads as filled rather than a small icon
+     floating in empty space — matters most for the generic silhouette
+     fallback, but also tightens up real generated portraits. */
+  transform: scale(1.18);
+}
+
 .sender {
   font-family: var(--font-primary), sans-serif;
   font-weight: 700;
-  color: var(--color-sender);
-  font-size: 1.25rem;
-  letter-spacing: 0.01em;
-  text-shadow: none;
-  line-height: 1.1;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
 }
 
-/* Bot sender name override */
 .botSender {
-  font-family: var(--font-primary), sans-serif;
-  font-weight: 800;
-  color: var(--bot-sender);
-  font-size: 1.25rem;
-  letter-spacing: 0.01em;
-  text-shadow: none;
-  line-height: 1.1;
+  color: var(--color-accent);
 }
 
-/* Make all message text inside chat bubbles large */
-.message .text-left {
-  font-size: var(--chat-message-font-size) !important;
-  font-family: var(--font-primary), sans-serif !important;
+.messageText {
+  font-family: var(--font-primary), sans-serif;
+  color: var(--color-text);
+  font-size: var(--chat-message-font-size);
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.botMessage .messageText {
+  font-family: 'Fraunces', var(--font-secondary), var(--font-primary), serif;
+  font-size: calc(var(--chat-message-font-size) * 1.15);
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.userMessage .messageText {
+  color: var(--color-text-secondary);
+  max-width: 60ch;
+  margin-left: auto;
+}
+
+@media (max-width: 600px) {
+  .botMessage .messageText {
+    font-size: calc(var(--chat-message-font-size) * 1.05);
+  }
 }

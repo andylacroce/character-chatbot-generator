@@ -709,6 +709,19 @@ describe('chat API', () => {
             ]);
         });
 
+        it("persists only the bot's reply (no synthetic User row) for the intro flow's prompt", async () => {
+            // The client's "Introduce yourself..." prompt is an internal mechanism, not
+            // something the user typed — persisting it as a "User" turn would misrepresent
+            // a signed-in user's saved transcript once it's fetched back via GET /api/messages.
+            mockBotRows = [makeBotRow()];
+            claudeSays('Greetings, traveller.');
+            await handler(makeReq({ message: 'Introduce yourself in 2 sentences or less.', isIntro: true }), makeRes());
+
+            expect(mockInsertValues).toHaveBeenCalledWith([
+                { botId: 'bot-1', sender: 'Ada', text: 'Greetings, traveller.' },
+            ]);
+        });
+
         it('persists the turn on a cache hit too', async () => {
             mockBotRows = [makeBotRow()];
             mockGetReplyCache.mockReturnValue('A cached greeting.');

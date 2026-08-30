@@ -155,13 +155,19 @@ async function fetchUnsummarizedMessages(botId: string, summarizedThroughMessage
  * Best-effort — a write failure here must never fail or discard an already-generated reply,
  * same resilience pattern as the TTS and avatar-cache persistence elsewhere in this API.
  */
-async function persistChatTurn(botId: string, userMessage: string, botName: string, botReply: string): Promise<void> {
+async function persistChatTurn(botId: string, userMessage: string, botName: string, botReply: string, isIntro: boolean): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   try {
-    await getDb().insert(messagesTable).values([
-      { botId, sender: "User", text: userMessage },
-      { botId, sender: botName, text: botReply },
-    ]);
+    // The intro flow's "Introduce yourself..." prompt is an internal mechanism to elicit an
+    // introduction, not something the user typed — persist only the bot's actual
+    // introduction, not a synthetic "User" turn that would misrepresent the transcript.
+    const rows = isIntro
+      ? [{ botId, sender: botName, text: botReply }]
+      : [
+          { botId, sender: "User", text: userMessage },
+          { botId, sender: botName, text: botReply },
+        ];
+    await getDb().insert(messagesTable).values(rows);
   } catch (err) {
     logger.error("Failed to persist chat turn:", { error: err });
   }
@@ -191,9 +197,10 @@ async function finalizeChatPersistence(
   botName: string,
   botReply: string,
   checkpoint: { summary: string; throughMessageId: number } | null,
+  isIntro: boolean,
 ): Promise<void> {
   if (!botRow) return;
-  await persistChatTurn(botRow.id, userMessage, botName, botReply);
+  await persistChatTurn(botRow.id, userMessage, botName, botReply, isIntro);
   if (checkpoint) {
     await persistSummaryCheckpoint(botRow.id, checkpoint.summary, checkpoint.throughMessageId);
   }
@@ -381,6 +388,9 @@ async function handler(
     const conversationHistory = req.body.conversationHistory || [];
     const stream = req.body.stream === true; // Support streaming mode
     const voiceConfig = req.body.voiceConfig;
+    // The client's internal "Introduce yourself..." prompt, not something the user typed —
+    // see finalizeChatPersistence, which skips persisting it as a "User" turn.
+    const isIntro = req.body.isIntro === true;
 
     if (!userMessage) {
       logger.info(`[Chat API] 400 Bad Request: Message is required | requestId=${requestId}`);
@@ -528,7 +538,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
           // reasoning as the non-streaming and streaming paths below.
           logger.error("Text-to-Speech API error (cache hit):", { error });
           res.status(200).json({ reply: cachedReply, cached: true, requestId });
-          await finalizeChatPersistence(botRow, userMessage, botName, cachedReply, newSummaryCheckpoint);
+          await finalizeChatPersistence(botRow, userMessage, botName, cachedReply, newSummaryCheckpoint, isIntro);
           return;
         }
       }
@@ -547,7 +557,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
         cached: true,
         requestId
       });
-      await finalizeChatPersistence(botRow, userMessage, botName, cachedReply, newSummaryCheckpoint);
+      await finalizeChatPersistence(botRow, userMessage, botName, cachedReply, newSummaryCheckpoint, isIntro);
       return;
     }
 
@@ -626,7 +636,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
 
         setReplyCache(cacheKey, botReply);
         logger.info(`${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`);
-        await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint);
+        await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint, isIntro);
         return;
       } catch (streamErr) {
         logger.error("Streaming error:", { error: streamErr });
@@ -705,7 +715,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
         );
         logger.info(`[Chat API] 200 OK: Reply sent without audio (TTS failed) | requestId=${requestId}`);
         res.status(200).json({ reply: botReply, requestId });
-        await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint);
+        await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint, isIntro);
         return;
       }
     }
@@ -728,7 +738,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
       audioFileUrl,
       requestId
     });
-    await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint);
+    await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint, isIntro);
     return;
   } catch (error) {
     logger.error(`API error | requestId=${requestId}:`, { error });
