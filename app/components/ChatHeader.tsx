@@ -1,8 +1,9 @@
 import React from "react";
 import styles from "./styles/ChatHeader.module.css";
 import Image from "next/image";
+import Link from "next/link";
 import HamburgerMenu from "./HamburgerMenu";
-import { FaArrowLeft, FaRegFileAlt } from "react-icons/fa";
+import { FaArrowLeft, FaRegFileAlt, FaImages } from "react-icons/fa";
 import DarkModeToggle from "./DarkModeToggle";
 
 interface ChatHeaderProps {
@@ -54,6 +55,14 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
                   <span>Download Transcript</span>
                 </button>
               )}
+              <Link
+                href="/chars"
+                className={styles.downloadTranscriptLink}
+                aria-label="View the character wall"
+              >
+                <FaImages size={18} className={styles.linkIcon} />
+                <span>Character Wall</span>
+              </Link>
             </HamburgerMenu>
             <span className={styles.desktopToggle}>
               <DarkModeToggle className={styles.darkModeToggle} />

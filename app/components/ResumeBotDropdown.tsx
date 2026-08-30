@@ -21,7 +21,9 @@ import type { Bot } from "./BotCreator";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import styles from "./styles/BotCreator.module.css";
 
-interface PersistedBot {
+// Exported so other launch points (e.g. BotCreator's ?name= auto-resume) can
+// match this repo's `GET /api/bots` response shape without redefining it.
+export interface PersistedBot {
   id: string;
   name: string;
   personality: string;
@@ -29,6 +31,17 @@ interface PersistedBot {
   gender: string | null;
   voiceConfig: CharacterVoiceConfig | null;
   updatedAt: string;
+}
+
+/** Maps a `GET /api/bots` row onto the Bot shape onBotCreated/onSelect expect. */
+export function persistedBotToBot(bot: PersistedBot): Bot {
+  return {
+    name: bot.name,
+    personality: bot.personality,
+    avatarUrl: bot.avatarUrl || "/silhouette.svg",
+    voiceConfig: bot.voiceConfig,
+    gender: bot.gender,
+  };
 }
 
 interface ResumeBotDropdownProps {
@@ -81,13 +94,7 @@ const ResumeBotDropdown: React.FC<ResumeBotDropdownProps> = ({ onSelect }) => {
   if (status !== "authenticated" || !bots || bots.length === 0) return null;
 
   const handleSelect = (selected: PersistedBot) => {
-    onSelect({
-      name: selected.name,
-      personality: selected.personality,
-      avatarUrl: selected.avatarUrl || "/silhouette.svg",
-      voiceConfig: selected.voiceConfig,
-      gender: selected.gender,
-    });
+    onSelect(persistedBotToBot(selected));
   };
 
   const hasMore = bots.length > VISIBLE_LIMIT;

@@ -1,0 +1,476 @@
+/* =============================
+   CharsPage.module.css
+   - Public gallery of every generated character portrait, laid out as an
+     actual old-school scrapbook collage: white polaroid-style photo frames,
+     scattered at slight random rotations, overlapping like photos pinned to
+     a corkboard — not an aligned grid or masonry wall. Rotation, size, and
+     pin color are each chosen by an independent hash of the character's
+     name (see CharsGallery.tsx), so the scatter looks organic and
+     hand-placed rather than a repeating pattern, while staying stable
+     across reloads/pagination for the same name.
+   - The flex-wrap flow (not Grid/columns) is what makes the negative-margin
+     overlap and per-tile rotation actually read as a pile of photos rather
+     than a broken layout — a strict grid fights this look.
+   - Effects: a handwritten caption (Caveat) under each photo like a real
+     scrapbook annotation, a "pick the photo up" hover (un-rotate, lift,
+     scale, deepen the shadow), a shimmer skeleton while each image loads,
+     and a staggered fade/rise-in as tiles scroll into view
+     (IntersectionObserver). Infinite-scroll pagination (see
+     CharsGallery.tsx) keeps the DOM/network work bounded regardless of
+     gallery size. Corkboard backdrop and photo frames stay a fixed warm
+     off-white regardless of light/dark mode — a physical photo doesn't
+     re-theme itself — while the surrounding page chrome still follows
+     globals.css/darkmode.css.
+   ============================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Caveat:wght@600;700&display=swap');
+
+.page {
+  max-width: min(96vw, 1800px);
+  margin: 0 auto;
+  padding: 3rem clamp(0.75rem, 2vw, 2rem) 5rem;
+  font-family: var(--font-primary), sans-serif;
+  color: var(--color-text);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.topBarControls {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  /* Matches BotCreator.module.css's .mastheadUtility: without this, a narrow
+     viewport lets .topBar's space-between squeeze this flex item below its
+     content width and wrap "Sign in" onto two lines. */
+  flex-shrink: 0;
+}
+
+.back {
+  display: inline-block;
+  color: var(--color-accent);
+  text-decoration: underline;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .backFull {
+    display: none;
+  }
+}
+
+/* Same minimal masthead-icon/ghost-text treatment the landing page itself
+   uses for these two controls (BotCreator.module.css's .ghostIcon/.ghostAuth)
+   — reproduced here rather than imported cross-module, so this page's look
+   stays consistent with the landing page without coupling the two stylesheets. */
+.ghostIcon {
+  margin: 0 !important;
+  background: none !important;
+  border: none !important;
+  padding: 0.2rem !important;
+  min-height: 0 !important;
+  box-shadow: none !important;
+  color: var(--color-text-secondary);
+}
+
+.ghostIcon:hover,
+.ghostIcon:focus {
+  background: none !important;
+  color: var(--color-accent);
+  box-shadow: none !important;
+  outline: none;
+}
+
+.ghostAuth {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.ghostAuth:hover,
+.ghostAuth:focus {
+  color: var(--color-primary);
+  outline: none;
+}
+
+.ghostAuth:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.title {
+  font-family: 'Fraunces', var(--font-secondary), var(--font-primary), serif;
+  font-weight: 500;
+  font-size: 2.6rem;
+  margin: 0 0 0.5rem;
+  color: var(--color-text);
+}
+
+.state {
+  text-align: center;
+  color: var(--color-text-secondary);
+  padding: 4rem 1rem;
+  font-size: 1.05rem;
+}
+
+/* The corkboard. A subtle dot-grid texture (a "pinboard" cue) sits behind
+   the scattered photos — faint enough to stay out of the way in both
+   themes, since it's drawn from the accent color at very low opacity
+   rather than a fixed color. */
+.board {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2.5rem 1rem;
+  border-radius: 24px;
+  background-color: var(--color-surface-variant);
+  background-image: radial-gradient(color-mix(in srgb, var(--color-accent) 35%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+@media (max-width: 600px) {
+  .title {
+    font-size: 1.8rem;
+  }
+
+  .board {
+    padding: 1.5rem 0.5rem;
+    border-radius: 16px;
+  }
+}
+
+/* Polaroid-style photo frame. Width varies (small/medium/large, chosen by
+   name hash) and each is rotated a few degrees off-axis; negative margins
+   let neighboring photos overlap at the edges like a real scattered pile.
+   The frame color is a fixed warm off-white in both themes — it's meant to
+   read as a physical object sitting on the corkboard, not a themed UI panel. */
+.tile {
+  --rot-scale: 1;
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  background: #faf6ee;
+  padding: 10px 10px 0;
+  border-radius: 3px;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.15);
+  transform: rotate(calc(var(--rot, 0deg) * var(--rot-scale)));
+  transition: transform 0.25s ease, box-shadow 0.25s ease, z-index 0s;
+  opacity: 0;
+  /* Vertical overlap gives the "stacked pile" look; horizontal overlap has to
+     stay much lighter than that, or a neighboring photo's edge covers this
+     one's caption text — legibility loses to authenticity past this point. */
+  margin: -14px -6px 10px;
+}
+
+.s1 {
+  width: 150px;
+}
+
+.s2 {
+  width: 195px;
+}
+
+.s3 {
+  width: 240px;
+}
+
+/* Caption size follows the photo's own width class — a fixed font-size
+   either looks tiny on the largest photos or overflows/collides with
+   neighbors on the smallest ones. */
+.s1 .caption {
+  font-size: 1.05rem;
+}
+
+.s2 .caption {
+  font-size: 1.25rem;
+}
+
+.s3 .caption {
+  font-size: 1.45rem;
+}
+
+@media (max-width: 600px) {
+  .tile {
+    /* Rotation's *layout box* doesn't grow to match, but its *rendered*
+       footprint does — on a 100-160px photo that's enough to visually cover
+       a neighbor's caption even with zero margin between them, so rotation
+       is dampened here rather than fully relied on for the scattered look. */
+    --rot-scale: 0.35;
+    /* No horizontal overlap at all at this size — the same few px that reads
+       as a light scatter on a 200px desktop photo is proportionally much
+       bigger on a 100-160px one, and swallows the caption next to it. */
+    margin: -8px 0 10px;
+  }
+
+  .s1 .caption {
+    font-size: 0.82rem;
+  }
+
+  .s2 .caption {
+    font-size: 0.95rem;
+  }
+
+  .s3 .caption {
+    font-size: 1.1rem;
+  }
+
+  .s1 {
+    width: 100px;
+  }
+
+  .s2 {
+    width: 130px;
+  }
+
+  .s3 {
+    width: 160px;
+  }
+}
+
+.tile:hover {
+  transform: rotate(0deg) scale(1.18) translateY(-6px);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.38), 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+}
+
+/* A pushpin "holding" every photo to the corkboard — always present (unlike
+   the tape it replaced, which only showed up on a random minority of
+   tiles), with its color varying per-name so the board doesn't look
+   uniform. Colors pull from the app's existing theme tokens, so pins
+   re-theme with light/dark mode along with everything else. */
+.tile::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.9), transparent 45%),
+    var(--pin-color, var(--color-primary));
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+  z-index: 1;
+}
+
+.pinClay {
+  --pin-color: var(--color-primary);
+}
+
+.pinTeal {
+  --pin-color: var(--color-accent);
+}
+
+.pinMoss {
+  --pin-color: var(--color-success);
+}
+
+.pinRust {
+  --pin-color: var(--color-error);
+}
+
+/* Staggered scroll-reveal — toggled by IntersectionObserver in CharsGallery.tsx. */
+.tileIn {
+  animation: tileReveal 0.5s ease forwards;
+  animation-delay: var(--reveal-delay, 0s);
+}
+
+@keyframes tileReveal {
+  from {
+    opacity: 0;
+    transform: rotate(calc(var(--rot, 0deg) * var(--rot-scale))) translateY(20px) scale(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform: rotate(calc(var(--rot, 0deg) * var(--rot-scale)));
+  }
+}
+
+.photoFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #e8e2d4;
+}
+
+.skeleton {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #e8e2d4 25%, #f5f1e6 50%, #e8e2d4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity 0.3s ease;
+  opacity: 0;
+}
+
+.image.loaded {
+  opacity: 1;
+}
+
+/* The handwritten caption in the polaroid's bottom margin — a scrapbook
+   annotation under the photo, not an overlay on top of it. */
+.caption {
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.15;
+  color: #3a3226;
+  text-align: center;
+  padding: 0.35rem 0.2rem 0.6rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Invisible trigger element at the bottom of the board — IntersectionObserver
+   fires the next page fetch when this scrolls into view. */
+.sentinel {
+  height: 1px;
+}
+
+.loadingMore {
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  padding: 1.5rem 0;
+}
+
+/* Native <dialog> lightbox, styled as one big polaroid — same fixed
+   off-white frame and handwritten caption as the tiles on the board, just
+   picked up and enlarged. showModal()/close() (called from CharsGallery.tsx)
+   give focus-trapping and Escape-to-close for free — no modal library, no
+   manually-managed focus trap. Opening/closing is wrapped in the View
+   Transitions API when the browser supports it, which cross-fades the whole
+   before/after snapshot with zero extra CSS required for that base effect.
+   Centering is set explicitly (position/top/left/translate) rather than
+   relying on <dialog>'s own UA-stylesheet auto-margin centering, which
+   varies enough across browsers/content sizes to drift off-center. */
+.lightbox {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  margin: 0;
+  border: none;
+  border-radius: 4px;
+  padding: 18px 18px 0;
+  width: min(90vw, 520px);
+  max-height: 85vh;
+  background: #faf6ee;
+  color: #3a3226;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.lightbox::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+}
+
+.lightboxImage {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #e8e2d4;
+}
+
+.lightboxName {
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+  font-size: 1.7rem;
+  text-align: center;
+  margin: 0;
+  padding: 0.5rem 0.5rem 0;
+}
+
+.lightboxChat {
+  display: block;
+  width: fit-content;
+  margin: 0.7rem auto 1.1rem;
+  padding: 0.5em 1.1em;
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-primary), sans-serif;
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.lightboxChat:hover,
+.lightboxChat:focus {
+  background: var(--button-hover-bg);
+  outline: none;
+}
+
+.lightboxClose {
+  /* Sits just inside the frame's own padding, not outside its edge — a
+     dialog isn't guaranteed not to clip an absolutely-positioned child that
+     pokes past its own box in every browser. */
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-text);
+  color: var(--color-background);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease;
+}
+
+.lightboxClose:hover,
+.lightboxClose:focus {
+  transform: scale(1.08);
+  outline: none;
+}

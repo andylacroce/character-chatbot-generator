@@ -47,7 +47,12 @@
   gap: 0.15rem;
 }
 
-.menuDropdown button {
+/* Also matches a plain <a>/next/link dropdown item (e.g. the Character Wall
+   link in ChatHeader.tsx) so it's normalized identically to a <button> one —
+   without this, an anchor keeps its own font-weight/padding/width instead of
+   matching its button siblings, since none of that is a <button>-only default. */
+.menuDropdown button,
+.menuDropdown a {
   background: none;
   border: none;
   color: inherit;
@@ -59,14 +64,15 @@
   transition: background 0.15s ease, color 0.15s ease;
   display: flex;
   align-items: center;
-  gap: 0.12em;
+  gap: 0.55em;
   font-size: 0.86rem;
   width: auto;
   min-width: 0;
   min-height: 24px;
 }
 
-.menuDropdown button:hover {
+.menuDropdown button:hover,
+.menuDropdown a:hover {
   background: var(--color-primary-container);
   color: var(--color-primary);
 }

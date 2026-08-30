@@ -36,6 +36,7 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 20 messages, with a rolling summary checkpoint for signed-in users so long conversations stay cheap
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
+- **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, laid out as a scattered polaroid/corkboard collage — see [Character Wall](#character-wall-chars)
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 900+ passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
@@ -46,6 +47,21 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - npm or yarn
 - Anthropic API key
 - Google Cloud service account with Text-to-Speech and Gemini Enterprise Agent Platform (formerly Vertex AI) APIs enabled
+
+## External Services & Accounts
+
+Everything below is an **account you'd need to create**, not just an env var to fill in — grouped by what breaks without it, so you can tell up front what's actually required versus what only enables one optional feature.
+
+| Service | Sign up at | Required? | Enables | Env vars |
+| --- | --- | --- | --- | --- |
+| **Anthropic** | [console.anthropic.com](https://console.anthropic.com) | **Required** | Chat replies, personality/avatar-prompt/voice-config generation, copyright & profanity validation — the app can't run at all without this | `ANTHROPIC_API_KEY` |
+| **Google Cloud Platform** | [console.cloud.google.com](https://console.cloud.google.com) | **Required** | Text-to-Speech (voice replies) and Gemini image generation (avatar portraits), via one service account — see the "Google Cloud Setup" step under Quickstart below | `GOOGLE_APPLICATION_CREDENTIALS_JSON`, `GOOGLE_CLOUD_PROJECT` |
+| **Neon** (Postgres) | [neon.tech](https://neon.tech) | Optional | Server-side persistence: saved characters, chat history, the shared avatar cache table. Skip it and the app is a fully-functional guest-only experience | `DATABASE_URL` |
+| **Google Cloud Console → OAuth credentials** | Same GCP project as above, but a *separate* setup step (APIs & Services → Credentials → OAuth client ID) — not the service account key | Optional | "Sign in with Google" on the landing page. Needs `DATABASE_URL` set too, or there's nothing to sign in *for* | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| **Vercel** | [vercel.com](https://vercel.com) | Optional | Deployment target, plus two of its own add-ons if you want them: **Blob** storage (durable avatar URLs instead of base64 data URLs) and **KV**/Marketplace Redis (shared rate-limit counters across serverless instances) | `VERCEL_BLOB_READ_WRITE_TOKEN`, `KV_REST_API_URL` + `KV_REST_API_TOKEN` |
+| **Upstash** (Redis) | [upstash.com](https://upstash.com) | Optional | Same shared-rate-limit feature as Vercel KV above, if you'd rather provision Redis directly instead of through Vercel's marketplace | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` |
+
+**Minimum to run locally as a guest**: just Anthropic + Google Cloud. Everything else in the table is additive — the app degrades gracefully (never crashes, never 401s) with any or all of it unset.
 
 ## Quickstart (Local Development)
 
@@ -215,6 +231,30 @@ Drizzle ORM), so both survive across devices and browser sessions:
   changes to `src/db/schema.ts`. Not part of `npm run ci`, since it mutates external state.
 
 See `CLAUDE.md`'s "Account persistence" section for the full phase-by-phase design notes.
+
+## Character Wall (`/chars`)
+
+A public gallery of every character portrait the app has ever generated — no sign-in
+required. It reads from the same global `avatar_cache` table described in
+[Account Persistence](#account-persistence-optional) above, so a name only ever needs to be
+generated once for it to show up here for everyone.
+
+- **Design**: laid out as an old-school scrapbook collage — polaroid-style photo frames at
+  slightly different sizes and rotation angles, "pinned" to a dot-grid corkboard, rather than
+  an aligned grid. Each photo's size, rotation, and pin color are derived from a hash of the
+  character's name, so the scatter looks hand-placed but stays put across page reloads.
+- **Scales without hammering the database**: paginated (`GET /api/chars?limit=&offset=`) and
+  backed by a 60-second in-process cache, so a burst of visitors scrolling through hundreds of
+  portraits costs at most one database query per minute, not one per page of results.
+- **Click a portrait to open it full-size** in a native `<dialog>` lightbox, with a "Chat with
+  this character" button that launches straight into a conversation — resuming your own saved
+  version of that character if you're signed in and already created one, or generating a fresh
+  one otherwise. It's the same landing-page launch path as typing a name in yourself, just
+  skipping straight past the form.
+- **Abusive names never reach this page**: every name is checked for profane/abusive content
+  as part of the same Claude-powered validation round-trip that screens for copyright
+  concerns, before a character (and its portrait) can be created at all. Unlike a copyright
+  warning, there's no "Continue Anyway" for this check.
 
 ## Storage (Client-Side)
 

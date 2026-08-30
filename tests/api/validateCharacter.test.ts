@@ -120,6 +120,61 @@ describe('validate-character API', () => {
         expect(data.isSafe).toBe(false);
         expect(data.warningLevel).toBe('warning');
         expect(data.suggestions).toContain('Hercules');
+        expect(data.blocked).toBe(false);
+    });
+
+    it('returns blocked: true for an abusive name, independent of warningLevel', async () => {
+        mockCreate.mockResolvedValueOnce({
+            content: [{
+                type: "text",
+                text: JSON.stringify({
+                    blocked: true,
+                    isPublicDomain: true,
+                    isSafe: false,
+                    warningLevel: "none",
+                    reason: "This name contains a slur.",
+                    suggestions: []
+                })
+            }]
+        });
+
+        const handler = (await import('../../pages/api/validate-character')).default;
+        const { req, res } = createMocks({
+            method: 'POST',
+            body: { name: 'Some Abusive Name' }
+        });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        const data = res._getJSONData();
+        expect(data.blocked).toBe(true);
+        expect(data.warningLevel).toBe('none');
+    });
+
+    it('defaults blocked to false when Claude omits the field', async () => {
+        mockCreate.mockResolvedValueOnce({
+            content: [{
+                type: "text",
+                text: JSON.stringify({
+                    isPublicDomain: true,
+                    isSafe: true,
+                    warningLevel: "none",
+                })
+            }]
+        });
+
+        const handler = (await import('../../pages/api/validate-character')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Ada Lovelace' } });
+        await handler(req, res);
+        expect(res._getJSONData().blocked).toBe(false);
+    });
+
+    it('defaults blocked to false on a Claude API error', async () => {
+        mockCreate.mockRejectedValueOnce(new Error('Claude is down'));
+        const handler = (await import('../../pages/api/validate-character')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Ada Lovelace' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        expect(res._getJSONData().blocked).toBe(false);
     });
 
     it('returns caution for uncertain character', async () => {

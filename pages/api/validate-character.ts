@@ -24,20 +24,30 @@ export interface CharacterValidationResult {
   warningLevel: "none" | "caution" | "warning";
   reason?: string;
   suggestions?: string[];
+  // Set when the name itself is profane, a slur, or otherwise abusive — distinct
+  // from warningLevel (which is copyright/trademark-only and always overridable
+  // via "Continue Anyway"). A blocked name has no override: the character wall
+  // at /chars is public, so a name like this can't be allowed to exist at all,
+  // not just flagged with a warning.
+  blocked?: boolean;
 }
 
 /**
  * Next.js API route handler for validating character names.
- * Returns whether the character is safe to use or if copyright/trademark concerns exist.
+ * Returns whether the character is safe to use, if copyright/trademark concerns
+ * exist, and whether the name itself is abusive content that must be hard-blocked.
  *
  * @swagger
  * /validate-character:
  *   post:
- *     summary: Validate a character name for copyright/trademark concerns
+ *     summary: Validate a character name for copyright/trademark concerns and abusive content
  *     description: >
- *       Uses Claude to classify the name as public-domain-safe, cautionary, or a
- *       clear violation. Rate limited to 30 requests/minute/IP. On an internal
- *       error, responds 200 with warningLevel "none" rather than blocking creation.
+ *       Uses Claude for two independent checks: whether the name is public-domain-safe,
+ *       cautionary, or a clear copyright/trademark violation (warningLevel — always
+ *       overridable), and whether the name itself is profane/abusive (blocked — never
+ *       overridable, since created characters appear on the public /chars gallery).
+ *       Rate limited to 30 requests/minute/IP. On an internal error, responds 200 with
+ *       warningLevel "none" and blocked false rather than blocking creation.
  *     tags: [Character]
  *     requestBody:
  *       required: true
@@ -73,6 +83,12 @@ export interface CharacterValidationResult {
  *                   type: array
  *                   items:
  *                     type: string
+ *                 blocked:
+ *                   type: boolean
+ *                   description: >
+ *                     True when the name itself is profane/abusive — distinct from
+ *                     warningLevel (copyright-only, always overridable). Never
+ *                     overridable: the character wall at /chars is public.
  *       400:
  *         description: Valid character name required
  *       405:
@@ -108,18 +124,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const response = await anthropic.messages.create({
       model,
-      system: `You are a copyright and trademark expert AI. Analyze character names to determine if they are:
-1. In the public domain (safe to use)
-2. Protected by copyright/trademark (not safe)
+      system: `You are a content-safety and copyright/trademark expert AI. Analyze character names for two, entirely separate concerns:
 
-Consider:
-- Publication/creation date (pre-1928 works are typically US public domain)
-- Trademark status (e.g., Disney characters, modern franchises)
-- Whether it's a historical figure vs fictional character
-- Active copyright protection
+1. Abusive content: is the name itself profane, a slur or hate-speech term, sexually explicit, or otherwise abusive (in English or any other language, including l33tspeak/spacing tricks meant to evade filters)? This app publishes every created character's name and portrait on a public gallery page, so a name like this can never be allowed to exist, not just be flagged.
+2. Copyright/trademark status (entirely independent of concern 1 — a name can be blocked for both, one, or neither):
+   - Publication/creation date (pre-1928 works are typically US public domain)
+   - Trademark status (e.g., Disney characters, modern franchises)
+   - Whether it's a historical figure vs fictional character
+   - Active copyright protection
 
 Return ONLY valid JSON with this exact schema:
 {
+  "blocked": boolean,
   "isPublicDomain": boolean,
   "isSafe": boolean,
   "warningLevel": "none" | "caution" | "warning",
@@ -127,14 +143,18 @@ Return ONLY valid JSON with this exact schema:
   "suggestions": ["alternative1", "alternative2", "alternative3"]
 }
 
-warningLevel guide:
+"blocked" guide:
+- true: the name itself is profane, a slur, hate speech, sexually explicit, or otherwise abusive.
+- false: none of the above — completely independent of whether it's copyrighted.
+
+warningLevel guide (only about copyright/trademark, ignore concern 1 entirely here):
 - "none": Clearly public domain (historical figures, ancient mythology, pre-1928 classics)
 - "caution": Uncertain status or lesser-known character
 - "warning": Clearly copyrighted/trademarked (Disney, Marvel, modern franchises, etc.)`,
       messages: [
         {
           role: "user",
-          content: `Analyze this character name for copyright/trademark concerns: "${characterName}"\n\nProvide validation result as JSON.`
+          content: `Analyze this character name: "${characterName}"\n\nProvide validation result as JSON.`
         }
       ],
       max_tokens: 250,
@@ -150,7 +170,8 @@ warningLevel guide:
       isSafe: validation.isSafe ?? true,
       warningLevel: validation.warningLevel || "none",
       reason: validation.reason || "",
-      suggestions: Array.isArray(validation.suggestions) ? validation.suggestions : []
+      suggestions: Array.isArray(validation.suggestions) ? validation.suggestions : [],
+      blocked: validation.blocked === true,
     };
 
     logEvent("info", "character_validated", "Character validation completed", sanitizeLogMeta({
@@ -173,7 +194,8 @@ warningLevel guide:
       isSafe: true,
       warningLevel: "none",
       reason: "Unable to validate at this time. Please proceed with caution.",
-      suggestions: []
+      suggestions: [],
+      blocked: false,
     } as CharacterValidationResult);
   }
 }

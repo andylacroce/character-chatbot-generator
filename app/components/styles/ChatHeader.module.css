@@ -184,6 +184,11 @@
   min-width: 0;
   width: 100%;
   letter-spacing: 0.01em;
+  /* This class also dresses up a real <a>/next/link (the Character Wall menu
+     item) alongside the plain <button>s it was originally written for —
+     buttons never carry a browser-default underline, so this reset was never
+     needed until an anchor started using the same class. */
+  text-decoration: none;
 }
 
 .downloadTranscriptLink:hover,

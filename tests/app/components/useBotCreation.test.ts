@@ -534,6 +534,40 @@ describe('useBotCreation tests', () => {
     expect(mockLogEvent).toHaveBeenCalledWith('info', 'bot_validation_warning_shown', 'Validation warning displayed', expect.any(Object));
   });
 
+  it('handleCreate hard-stops with an error (no modal, no override) when validation returns blocked: true', async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            characterName: 'Some Abusive Name',
+            isPublicDomain: true,
+            isSafe: false,
+            warningLevel: 'none',
+            blocked: true,
+            reason: 'This name contains a slur.',
+            suggestions: []
+          })
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Some Abusive Name'));
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    expect(result.current.showValidationModal).toBe(false);
+    expect(result.current.error).toMatch(/isn't allowed/i);
+    expect(result.current.validating).toBe(false);
+    expect(onBotCreated).not.toHaveBeenCalled();
+    expect(mockLogEvent).toHaveBeenCalledWith('warn', 'bot_validation_blocked', 'Character name blocked as abusive content', expect.any(Object));
+  });
+
   it('handleCreate shows modal when character validation returns caution level', async () => {
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === '/api/validate-character') {

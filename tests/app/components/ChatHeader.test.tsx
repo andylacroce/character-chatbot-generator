@@ -54,6 +54,14 @@ describe('ChatHeader', () => {
     expect(screen.queryByLabelText(/download chat transcript/i)).not.toBeInTheDocument();
   });
 
+  it('links to the public character wall from the menu, even for a skipPersistence character', () => {
+    render(<ChatHeader {...defaultProps} bot={{ ...defaultProps.bot, skipPersistence: true }} />);
+    fireEvent.click(screen.getByLabelText(/open menu/i));
+    const link = screen.getByLabelText(/view the character wall/i);
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', '/chars');
+  });
+
   it('calls onAvatarClick when the avatar is clicked', () => {
     // ChatHeader no longer owns the portrait modal itself — ChatPage does, since
     // per-message avatars in ChatMessage open the same shared modal instance.

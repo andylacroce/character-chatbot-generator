@@ -86,7 +86,21 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             
             try {
                 const validation = await validateCharacterName(input.trim());
-                
+
+                // Abusive names are hard-blocked, with no "Continue Anyway" — unlike a
+                // copyright warning, this can never be overridden, since created
+                // characters end up on the public /chars gallery.
+                if (validation.blocked) {
+                    setError("That name isn't allowed. Please choose a different name.");
+                    setValidating(false);
+                    if (typeof window !== 'undefined') {
+                        logEvent('warn', 'bot_validation_blocked', 'Character name blocked as abusive content', sanitizeLogMeta({
+                            characterName: input.trim(),
+                        }));
+                    }
+                    return;
+                }
+
                 // If character has warning or caution level, show modal
                 if (validation.warningLevel === "warning" || validation.warningLevel === "caution") {
                     setValidationResult(validation);
