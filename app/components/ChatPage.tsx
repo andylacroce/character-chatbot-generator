@@ -11,6 +11,7 @@
 
 import React from "react";
 import "../globals.css";
+import dynamic from "next/dynamic";
 import ChatMessagesList from "./ChatMessagesList";
 import "@trendmicro/react-toggle-switch/dist/react-toggle-switch.css";
 import styles from "./styles/ChatPage.module.css";
@@ -20,6 +21,12 @@ import ApiUnavailableModal from "./ApiUnavailableModal";
 import ChatHeader from "./ChatHeader";
 import type { Bot } from "./BotCreator";
 import { useChatController } from "./useChatController";
+
+// Dynamically import ModalImageViewer for code splitting. Owned here (not in
+// ChatHeader) since both the header's avatar and every per-message bot avatar
+// in ChatMessage open this same lightbox — one shared instance/state instead
+// of duplicating it per message.
+const ModalImageViewer = dynamic(() => import("./ModalImageViewer"), { ssr: false });
 
 /**
  * ChatPage component that handles the chat interface and interactions with the Character Chatbot Generator.
@@ -52,7 +59,8 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
     stopAudio,
     isAudioPlaying,
   } = useChatController(bot, onBackToCharacterCreation);
-
+  const [showImageModal, setShowImageModal] = React.useState(false);
+  const handleAvatarClick = React.useCallback(() => setShowImageModal(true), []);
 
   return (
     <div className={styles.chatLayout} data-testid="chat-layout">
@@ -60,6 +68,7 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         onDownloadTranscript={handleDownloadTranscript}
         onHeaderLinkClick={handleHeaderLinkClick}
         onBackToCharacterCreation={handleBackToCharacterCreation}
+        onAvatarClick={handleAvatarClick}
         bot={bot}
       />
       <div
@@ -75,6 +84,7 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         <ChatMessagesList
           messages={messages.slice(-visibleCount)}
           bot={bot}
+          onAvatarClick={handleAvatarClick}
         />
       </div>
       {(loading || introLoading) && (
@@ -88,7 +98,7 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         onSend={sendMessage}
         onKeyDown={handleKeyDown}
         loading={loading || introLoading}
-        apiAvailable={apiAvailable && !(!apiAvailable)}
+        apiAvailable={apiAvailable}
         inputRef={inputRef}
         audioEnabled={audioEnabled}
         onAudioToggle={handleAudioToggle}
@@ -98,6 +108,12 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
       {/* Prefer introError if present, else error */}
       <ChatStatus error={introError ?? error ?? ""} retrying={retrying} />
       <ApiUnavailableModal show={!apiAvailable} />
+      <ModalImageViewer
+        show={showImageModal}
+        imageUrl={bot.avatarUrl}
+        alt={bot.name}
+        onClose={() => setShowImageModal(false)}
+      />
     </div>
   );
 }

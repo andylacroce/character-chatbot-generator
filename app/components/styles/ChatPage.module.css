@@ -5,6 +5,8 @@
    - Uses CSS variables from globals.css for theme consistency
    ============================= */
 
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
+
 /* --- Main Chat Layout --- */
 /*
   Sets up the main grid layout for the chat page.
@@ -181,7 +183,7 @@
   color: var(--color-text);
   font-family: var(--font-primary);
   border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(175, 90, 63, 0.08);
+  box-shadow: 0 4px 24px var(--button-shadow);
   padding: 2.5rem 2rem 2rem 2rem;
   min-width: 320px;
   max-width: 480px;
@@ -209,10 +211,10 @@
 */
 .apiErrorTitle {
   font-size: 1.5rem;
-  font-weight: bold;
+  font-weight: 500;
   margin-bottom: 0.5rem;
   color: var(--color-primary);
-  font-family: var(--font-secondary), var(--font-primary), sans-serif;
+  font-family: 'Fraunces', var(--font-secondary), var(--font-primary), serif;
 }
 
 /* --- API Error Description --- */
@@ -239,7 +241,7 @@
   background: none;
   border: none;
   font-size: 1.7rem;
-  color: #888;
+  color: var(--color-text-secondary);
   cursor: pointer;
   font-weight: bold;
   transition: color 0.2s;
@@ -248,7 +250,7 @@
 }
 
 .closeButton:hover {
-  color: #c00;
+  color: var(--color-error);
 }
 
 /* --- Prompt Content --- */

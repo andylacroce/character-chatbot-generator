@@ -282,6 +282,25 @@ describe("ChatPage full feature coverage", () => {
     await act(async () => { await new Promise(res => setTimeout(res, 10)); });
   });
 
+  it("opens the shared portrait modal from the header avatar, and closes it", async () => {
+    render(<ChatPage bot={mockBot} />);
+    const headerAvatar = await screen.findByLabelText(/view character portrait/i);
+    await userEvent.click(headerAvatar);
+    const modal = await screen.findByTestId("modal-image-backdrop");
+    expect(modal).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /close/i }));
+    expect(screen.queryByTestId("modal-image-backdrop")).not.toBeInTheDocument();
+  });
+
+  it("opens the same shared portrait modal from a per-message bot avatar", async () => {
+    render(<ChatPage bot={mockBot} />);
+    // Wait for the intro reply so a bot message (with its own avatar) exists.
+    await screen.findByText("Bot reply");
+    const messageAvatar = await screen.findByLabelText(`View ${mockBot.name}'s portrait`);
+    await userEvent.click(messageAvatar);
+    expect(await screen.findByTestId("modal-image-backdrop")).toBeInTheDocument();
+  });
+
   it("handles missing localStorage gracefully", async () => {
     const realLocalStorage = global.localStorage;
     // @ts-expect-error: simulate missing localStorage

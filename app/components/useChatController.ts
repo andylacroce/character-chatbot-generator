@@ -186,6 +186,11 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         // Reset last played audio hash for new character
         lastPlayedAudioHashRef.current = null;
 
+        // A signed-in user's server history hasn't been checked yet for this
+        // (possibly new) bot — see the reconciliation effect below, and the
+        // intro effect that waits on it.
+        setHistoryReconciled(false);
+
     }, [bot.name, setError]); // Only depend on bot.name to avoid unnecessary resets
 
     // Reconcile with server-persisted history (phase 3c). Local storage stays the fast,
@@ -195,9 +200,20 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     // never regresses a longer local list and never blocks the initial render. Guests (no
     // session) and a character that was never saved server-side both just get [] back from
     // the endpoint, a no-op.
+    //
+    // historyReconciled gates the intro-generation effect below: without it, a signed-in
+    // user resuming a saved character on a device with no local cache would see
+    // messages.length === 0 for the instant between mount and this fetch resolving, firing
+    // a bogus "Introduce yourself" turn that then gets persisted server-side on top of the
+    // character's real history — the exact bug this gate exists to prevent.
     const { status: authStatus } = useAuthSession();
+    const [historyReconciled, setHistoryReconciled] = useState(authStatus !== 'loading' && authStatus !== 'authenticated');
     useEffect(() => {
-        if (authStatus !== 'authenticated') return;
+        if (authStatus === 'loading') return; // don't know yet whether there's server history to wait for
+        if (authStatus !== 'authenticated') {
+            setHistoryReconciled(true);
+            return;
+        }
         let mounted = true;
         authenticatedFetch(`/api/messages?botName=${encodeURIComponent(bot.name)}`)
             .then((res) => res.json())
@@ -211,6 +227,9 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             })
             .catch(() => {
                 // Best-effort — local storage already has whatever this device has seen.
+            })
+            .finally(() => {
+                if (mounted) setHistoryReconciled(true);
             });
         return () => { mounted = false; };
     }, [bot.name, authStatus]);
@@ -296,6 +315,9 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     useEffect(() => {
         // Prevent multiple concurrent requests (React Strict Mode protection)
         if (introSentRef.current || introRequestInProgressRef.current) return;
+        // Wait until we know whether this (possibly signed-in, server-saved) character
+        // already has real history — see the reconciliation effect above.
+        if (!historyReconciled) return;
         if (messages.length === 0 && apiAvailable) {
             introSentRef.current = true;
             introRequestInProgressRef.current = true;
@@ -329,7 +351,11 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                             botName: bot.name,
                             voiceConfig,
                             gender: bot.gender,
-                            conversationHistory: []
+                            conversationHistory: [],
+                            // This prompt is an internal mechanism to elicit an introduction, not
+                            // something the user typed — tells the server not to persist it as a
+                            // real "User" turn in a signed-in user's saved chat history.
+                            isIntro: true,
                         }),
                     }).then(res => {
                         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -373,7 +399,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 introRequestInProgressRef.current = false;
             };
         }
-    }, [messages.length, apiAvailable, bot, logMessage, setError, ensureVoiceConfig]);
+    }, [messages.length, apiAvailable, bot, logMessage, setError, ensureVoiceConfig, historyReconciled]);
 
     const sendMessage = useCallback(async () => {
         async function retryWithBackoff<T>(fn: () => Promise<T>, maxRetries = 2, initialDelay = 800): Promise<T> {

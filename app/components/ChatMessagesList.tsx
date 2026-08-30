@@ -20,23 +20,24 @@ interface ChatMessagesListProps {
     audioFileUrl?: string;
   }>;
   bot: Bot;
+  onAvatarClick?: () => void;
 }
 
 const VIRTUALIZE_THRESHOLD = 30;
 
 
-const ChatMessagesList: React.FC<ChatMessagesListProps> = React.memo(({ messages, bot }) => {
+const ChatMessagesList: React.FC<ChatMessagesListProps> = React.memo(({ messages, bot, onAvatarClick }) => {
   if (messages.length < VIRTUALIZE_THRESHOLD) {
     return (
       <>
         <div style={{ flexGrow: 1 }} />
         {messages.map((msg, index) => (
-          <ChatMessage key={index} message={msg} bot={bot} />
+          <ChatMessage key={index} message={msg} bot={bot} onAvatarClick={onAvatarClick} />
         ))}
       </>
     );
   }
-  return <VirtualizedMessagesList messages={messages} bot={bot} />;
+  return <VirtualizedMessagesList messages={messages} bot={bot} onAvatarClick={onAvatarClick} />;
 });
 
 ChatMessagesList.displayName = "ChatMessagesList";

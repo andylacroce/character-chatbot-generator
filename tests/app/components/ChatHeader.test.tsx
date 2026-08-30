@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import ChatHeader from '@/app/components/ChatHeader';
 import { Bot } from '@/app/components/BotCreator';
 
@@ -7,6 +7,7 @@ const mockOnDownloadTranscript = jest.fn();
 const mockOnShowPrompt = jest.fn();
 const mockOnHeaderLinkClick = jest.fn();
 const mockOnBackToCharacterCreation = jest.fn();
+const mockOnAvatarClick = jest.fn();
 
 const defaultProps = {
   bot: {
@@ -18,6 +19,7 @@ const defaultProps = {
   onShowPrompt: mockOnShowPrompt,
   onHeaderLinkClick: mockOnHeaderLinkClick,
   onBackToCharacterCreation: mockOnBackToCharacterCreation,
+  onAvatarClick: mockOnAvatarClick,
 };
 
 describe('ChatHeader', () => {
@@ -29,11 +31,6 @@ describe('ChatHeader', () => {
     render(<ChatHeader {...defaultProps} />);
     expect(screen.getByText('Gandalf')).toBeInTheDocument();
     expect(screen.getByAltText('Gandalf')).toBeInTheDocument();
-    // ChatHeader lazy-loads ModalImageViewer via next/dynamic; flush that one-time
-    // resolution within act() so it doesn't land outside an act() boundary. Next's
-    // dynamic loader caches the resolved module, so later tests in this file never
-    // hit this gap again.
-    await act(async () => { await new Promise((res) => setTimeout(res, 0)); });
   });
 
   it('calls onBackToCharacterCreation when back button is clicked', () => {
@@ -57,10 +54,12 @@ describe('ChatHeader', () => {
     expect(screen.queryByLabelText(/download chat transcript/i)).not.toBeInTheDocument();
   });
 
-  it('shows the modal when avatar is clicked', () => {
+  it('calls onAvatarClick when the avatar is clicked', () => {
+    // ChatHeader no longer owns the portrait modal itself — ChatPage does, since
+    // per-message avatars in ChatMessage open the same shared modal instance.
     render(<ChatHeader {...defaultProps} />);
     fireEvent.click(screen.getByLabelText(/view character portrait/i));
-    expect(screen.getByLabelText(/view character portrait/i)).toBeInTheDocument();
+    expect(mockOnAvatarClick).toHaveBeenCalledTimes(1);
   });
 
   it('calls onHeaderLinkClick when Mastodon or website links are clicked', () => {
@@ -75,20 +74,6 @@ describe('ChatHeader', () => {
     <ChatHeader {...defaultProps} bot={undefined as unknown as Bot} />
     );
     expect(container.firstChild).toBeNull();
-  });
-
-  it('closes the modal when ModalImageViewer onClose is called', async () => {
-    render(<ChatHeader {...defaultProps} />);
-    // Open the modal
-    fireEvent.click(screen.getByLabelText(/view character portrait/i));
-    // Modal should be open (look for the modal backdrop)
-    const modal = await screen.findByTestId('modal-image-backdrop');
-    expect(modal).toBeInTheDocument();
-    // Find the close button in ModalImageViewer (simulate close)
-    const closeButton = screen.getByRole('button', { name: /close/i });
-    fireEvent.click(closeButton);
-    // Modal should be closed (backdrop should not be in the document)
-    expect(screen.queryByTestId('modal-image-backdrop')).not.toBeInTheDocument();
   });
 
   it('calls only onDownloadTranscript if onHeaderLinkClick is not provided', () => {

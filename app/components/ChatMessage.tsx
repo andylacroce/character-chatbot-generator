@@ -25,6 +25,9 @@ export interface Message {
 interface ChatMessageProps {
   message: Message;
   bot: Bot;
+  // Opens the shared portrait lightbox (owned by ChatPage) — same modal the
+  // header's avatar opens, so there's one modal instance, not one per message.
+  onAvatarClick?: () => void;
 }
 
 /**
@@ -38,7 +41,7 @@ interface ChatMessageProps {
  * @returns {JSX.Element|null} The rendered chat message or null if message is invalid
  */
 const ChatMessage = React.memo(
-  ({ message, bot }: ChatMessageProps) => {
+  ({ message, bot, onAvatarClick }: ChatMessageProps) => {
     // Validate message object to prevent rendering errors
     if (!message || typeof message.text !== "string" || typeof message.sender !== "string") {
       if (typeof window !== 'undefined') {
@@ -60,29 +63,32 @@ const ChatMessage = React.memo(
 
     return (
       <div
-        className={`${styles.message} ${messageClass} my-2`}
+        className={`${styles.message} ${messageClass}`}
         role="article"
         aria-label={isUser ? `Message from you: ${sanitizeForReact(message.text)}` : `Message from ${bot.name}: ${sanitizeForReact(message.text)}`}
       >
-        <div className="rounded p-2 text-sm" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div className={styles.byline}>
           {!isUser && (
-            <Image
-              src={bot.avatarUrl}
-              alt={bot.name}
-              width={40}
-              height={40}
-              className="rounded-circle"
-              style={{ objectFit: 'cover', marginRight: 8 }}
-            />
+            <button
+              type="button"
+              aria-label={`View ${bot.name}'s portrait`}
+              className={styles.avatarButton}
+              onClick={onAvatarClick}
+            >
+              <Image
+                src={bot.avatarUrl}
+                alt={bot.name}
+                width={28}
+                height={28}
+                className={styles.avatar}
+                style={{ objectFit: 'cover' }}
+              />
+            </button>
           )}
-          <div style={{ flex: 1 }}>
-            <div className={`mb-1 ${senderClass} text-left`} style={{ fontSize: '1.4rem' }}>
-              {isUser ? "Me" : bot.name}
-            </div>
-            <div className="text-left" style={{ fontSize: 'var(--chat-message-font-size)' }}>
-              {sanitizeForReact(message.text)}
-            </div>
-          </div>
+          <span className={senderClass}>{isUser ? "Me" : bot.name}</span>
+        </div>
+        <div className={styles.messageText}>
+          {sanitizeForReact(message.text)}
         </div>
       </div>
     );
