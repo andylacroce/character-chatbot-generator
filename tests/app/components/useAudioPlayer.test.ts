@@ -174,11 +174,10 @@ describe('useAudioPlayer', () => {
     await act(async () => {
       audioInstance = await ref.current!.playAudio('test.mp3');
     });
-    // Check that a dummy audio instance is returned
+    // Check that a dummy audio instance is returned and play() was invoked on it
     expect(audioInstance).not.toBeNull();
     expect(audioInstance && 'play' in audioInstance).toBe(true);
-    // The hook does not call play() on the dummy anymore
-    // So we do not check play() calls
+    expect((audioInstance as unknown as { play: jest.Mock }).play).toHaveBeenCalled();
   });
 
   it('should pause and reset previous audio before playing new', async () => {
@@ -369,6 +368,37 @@ describe('useAudioPlayer', () => {
     });
 
     expect(ref.current!._audioRef.current).toBeNull();
+  });
+
+  it('should still populate audioRef when the signal is already aborted before playing', async () => {
+    const audioEnabledRef = { current: true };
+    const ref = React.createRef<TestComponentHandlesWithInternals>();
+    render(React.createElement(TestComponentWithInternals, { ref, audioEnabledRef }));
+
+    class AudioMockNoEnded extends AudioMock {
+      constructor(src: string) {
+        super(src);
+        this.play = jest.fn(() => undefined);
+      }
+    }
+    global.Audio = AudioMockNoEnded as unknown as typeof Audio;
+
+    // Signal is aborted before playAudio is even called — exercises the
+    // `signal.aborted` branch taken synchronously (rather than the
+    // addEventListener('abort', ...) branch the test above exercises). The
+    // hook checks `signal.aborted` and runs its cleanup handler *before*
+    // audioRef.current is assigned, so that handler's "clear if it's still
+    // mine" check never matches — audioRef ends up populated with the new
+    // element instead of null. Non-obvious enough to be worth pinning down.
+    const ac = new AbortController();
+    ac.abort();
+
+    let audioInstance: HTMLAudioElement | null = null;
+    await act(async () => {
+      audioInstance = await ref.current!.playAudio('test.mp3', ac.signal);
+    });
+
+    expect(ref.current!._audioRef.current).toBe(audioInstance);
   });
 
   it('should stop and disconnect existing sourceRef before playing', async () => {

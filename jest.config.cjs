@@ -26,7 +26,10 @@ const customJestConfig = {
     "^.+\\.(js|jsx|ts|tsx)$": ["babel-jest", { "configFile": "./babel-jest.config.js" }],
   },
   moduleNameMapper: {
-    "\\.(css|less|scss|sass)$": "identity-obj-proxy",
+    // CSS/SCSS/SASS imports are already handled by next/jest's own mocks
+    // (object-proxy.js for .module.css, styleMock.js otherwise), applied
+    // before this config is spread in — an explicit mapping here would
+    // never be reached.
     "^@/(.*)$": "<rootDir>/$1", // Fixes path alias resolution
   },
   // By default Jest ignores transforming files in node_modules. Newer dependencies (ESM
