@@ -28,6 +28,9 @@ export function useSession(): [string, string] {
   const [sessionId, setSessionId] = useState("");
   const [sessionDatetime, setSessionDatetime] = useState("");
 
+  // Generates a random uuid + timestamp, which must never run during SSR (would produce a
+  // value that can't match the client's on hydration) — has to stay a post-mount effect.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     let newSessionId = "";
     let sessionDatetime = "";
@@ -47,6 +50,7 @@ export function useSession(): [string, string] {
     setSessionId(newSessionId);
     setSessionDatetime(sessionDatetime);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return [sessionId, sessionDatetime];
 }

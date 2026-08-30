@@ -1,3 +1,7 @@
+import bundleAnalyzer from '@next/bundle-analyzer';
+
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
+
 // The API reference at /reference (@scalar/nextjs-api-reference) loads its UI
 // bundle from jsdelivr and renders inline <style> tags, so script-src/style-src
 // need to allow that CDN and 'unsafe-inline'. This isn't a nonce-based CSP —
@@ -95,4 +99,4 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

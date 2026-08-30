@@ -69,7 +69,7 @@ export const CopyrightWarningModal: React.FC<CopyrightWarningModalProps> = ({
 
         <h2 className={styles.title}>
           {isWarning ? 'Copyright/Trademark Warning' : 'Character Notice'}
-          <span className={styles.characterName}>"{validation.characterName}"</span>
+          <span className={styles.characterName}>&quot;{validation.characterName}&quot;</span>
         </h2>
 
         {validation.reason && (

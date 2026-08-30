@@ -1,7 +1,16 @@
 /**
  * Audio playback hook for chat responses.
  * Ensures single playback at a time, respects audioEnabled ref, and exposes play/stop helpers.
+ *
+ * This hook's entire design is built around mutating audioRef/sourceRef.current directly —
+ * that's the standard, correct React pattern for imperative control of an HTMLAudioElement
+ * (there's no way to "compute during render" what an already-playing <audio> element should
+ * do next). react-hooks/immutability flags every one of those mutations since they happen
+ * inside async callbacks and event listeners, which is exactly where this kind of cleanup
+ * has to run. Disabled file-wide rather than per line since the whole file is this pattern.
  */
+
+/* eslint-disable react-hooks/immutability */
 
 import { useRef, useCallback, useState } from "react";
 

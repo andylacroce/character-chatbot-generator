@@ -3,6 +3,7 @@
  * @module DataDeletionPage
  */
 
+import Link from "next/link";
 import styles from "../components/styles/LegalPage.module.css";
 
 export const metadata = {
@@ -13,7 +14,7 @@ export const metadata = {
 export default function DataDeletionPage() {
   return (
     <div className={styles.page}>
-      <a href="/" className={styles.back}>&larr; Back to Character Chatbot Generator</a>
+      <Link href="/" className={styles.back}>&larr; Back to Character Chatbot Generator</Link>
       <h1 className={styles.title}>Data Deletion Instructions</h1>
       <p className={styles.updated}>Last updated: August 2026</p>
 

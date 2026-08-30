@@ -34,6 +34,30 @@ function estimateRowHeight(message: VisibleMessage | undefined): number {
     return ROW_CHROME + lines * lineHeight;
 }
 
+interface RowProps {
+    visibleMessages: VisibleMessage[];
+    bot: Bot;
+    onAvatarClick?: () => void;
+}
+
+// Module-scope (not defined inside VirtualizedMessagesList) so react-window isn't handed a
+// brand-new component reference on every render — all the data it needs travels through
+// `rowProps`, matching react-window v2's actual rowComponent contract, rather than a
+// closure over the parent's render.
+//
+// react-window ships its own types (RowComponentProps), but this repo has a blanket
+// `declare module 'react-window'` shim (declarations/react-window.d.ts) working around a
+// TS inference gap in List's generic signature under this project's moduleResolution —
+// see that file's comment. That makes every named export `any`, so the row props shape is
+// typed by hand here instead of importing RowComponentProps.
+function Row({ index, style, visibleMessages, bot, onAvatarClick }: RowProps & { index: number; style: React.CSSProperties }) {
+    return (
+        <div style={style}>
+            <ChatMessage message={visibleMessages[index]} bot={bot} onAvatarClick={onAvatarClick} />
+        </div>
+    );
+}
+
 const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({ messages, bot, onAvatarClick, maxHeight = 480 }) => {
     const itemCount = messages.length;
     const heights = React.useMemo(() => messages.map(estimateRowHeight), [messages]);
@@ -54,24 +78,6 @@ const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({ messa
     const visibleMessages = messages.slice(startIdx);
     const height = Math.min(maxHeight, visibleHeights.reduce((sum, h) => sum + h, 0) + 1);
 
-    // Row component used by react-window's List API. The library's current
-    // List implementation expects a `rowComponent` and `rowProps` instead of
-    // the old FixedSizeList children render-prop API.
-    interface RowProps {
-        index: number;
-        style: React.CSSProperties;
-        // Some test/mocked variants of react-window don't pass `rowProps`.
-        // We'll read from the outer closure (visibleMessages, bot) which is
-        // always available in this component.
-        rowProps?: unknown;
-    }
-
-    const Row: React.FC<RowProps> = ({ index, style }) => (
-        <div style={style}>
-            <ChatMessage key={index + startIdx} message={visibleMessages[index]} bot={bot} onAvatarClick={onAvatarClick} />
-        </div>
-    );
-
     return (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'flex-end', minHeight: 0 }}>
             <RWList
@@ -81,7 +87,7 @@ const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({ messa
                 width={"100%"}
                 overscanCount={4}
                 rowComponent={Row}
-                rowProps={{ visibleMessages, bot }}
+                rowProps={{ visibleMessages, bot, onAvatarClick }}
                 style={{ flex: 1 }}
             />
         </div>

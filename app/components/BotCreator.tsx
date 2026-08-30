@@ -79,7 +79,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   const isBusy = loading || validating;
   const [elapsed, setElapsed] = useState<number>(0);
   const [MAX_AVATAR_SECONDS, setMaxAvatarSeconds] = useState<number | null>(null);
-  const [hasAutoSubmitted, setHasAutoSubmitted] = useState<boolean>(false);
+  // Guard flag only — never read by the render output, so a ref (not state) avoids an
+  // unnecessary extra render on top of the one handleCreate() itself already triggers.
+  const hasAutoSubmittedRef = useRef<boolean>(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   const [showCharacterInfoModal, setShowCharacterInfoModal] = useState(false);
 
@@ -96,11 +98,11 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   }, [returningToCreator, setInput]);
 
   useEffect(() => {
-    if (nameFromUrl && input === nameFromUrl && !hasAutoSubmitted && !isBusy && !returningToCreator) {
-      setHasAutoSubmitted(true);
+    if (nameFromUrl && input === nameFromUrl && !hasAutoSubmittedRef.current && !isBusy && !returningToCreator) {
+      hasAutoSubmittedRef.current = true;
       handleCreate();
     }
-  }, [nameFromUrl, input, hasAutoSubmitted, isBusy, returningToCreator, handleCreate]);
+  }, [nameFromUrl, input, isBusy, returningToCreator, handleCreate]);
   useEffect(() => {
     // fetch server-side config (safe subset) so UI matches server timeout
     let mounted = true;
@@ -111,8 +113,12 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     return () => { mounted = false; };
   }, []);
   useEffect(() => {
+    // A ticking elapsed-seconds counter is inherently effect-driven (setInterval can't run
+    // during render), so resetting it to 0 here whenever the timer starts/stops is the
+    // actual side effect, not state that could be computed during render instead.
     let timer: number | null = null;
     if (loading && progress === 'avatar' && MAX_AVATAR_SECONDS !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setElapsed(0);
       timer = window.setInterval(() => setElapsed((e) => Math.min(e + 1, MAX_AVATAR_SECONDS)), 1000);
     } else {

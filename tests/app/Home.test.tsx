@@ -54,7 +54,9 @@ jest.mock('next/dynamic', () => (importFunc: () => Promise<{ default: React.Comp
     // Fallback
   }
   
-  return () => <div data-testid="mock-component">Mock Component</div>;
+  return function MockDynamicComponent() {
+    return <div data-testid="mock-component">Mock Component</div>;
+  };
 });
 
 // Mock getValidBotFromStorage
