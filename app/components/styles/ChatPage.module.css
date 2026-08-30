@@ -143,18 +143,6 @@
   100% { transform: rotate(360deg); }
 }
 
-/* --- Download Transcript Button --- */
-/*
-  Wrapper for the download transcript button.
-  Adds spacing and alignment.
-*/
-.downloadTranscriptWrapper {
-  margin-top: 1.2rem; /* increased from 0.3rem for more space above the button */
-  display: flex;
-  justify-content: flex-start;
-  width: 100%;
-}
-
 /* --- Modal Backdrop --- */
 /*
   Backdrop for modal dialogs.
@@ -251,15 +239,4 @@
 
 .closeButton:hover {
   color: var(--color-error);
-}
-
-/* --- Prompt Content --- */
-/*
-  Content area within the prompt modal.
-  Styled for readability and spacing.
-*/
-.promptContent {
-  margin-top: 1.2rem;
-  font-size: 1.08rem;
-  word-break: break-word;
 }

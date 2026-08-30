@@ -194,13 +194,7 @@ CRITICAL: The "gender" field you return MUST match the actual gender of the spec
         languageCode: config.languageCode
       }));
 
-      return {
-        gender: config.gender || 'male',
-        languageCode: config.languageCode || 'en-US',
-        voiceName: config.voiceName,
-        pitch: typeof config.pitch === 'number' ? Math.max(-20, Math.min(20, config.pitch)) : 0,
-        rate: typeof config.rate === 'number' ? Math.max(0.25, Math.min(4.0, config.rate)) : 1.0,
-      };
+      return normalizeClaudeConfig(config);
     } catch (err) {
       if (attempt === maxRetries) {
         throw err;
@@ -214,7 +208,7 @@ CRITICAL: The "gender" field you return MUST match the actual gender of the spec
   throw new Error('Failed to get valid voice config from Claude');
 }
 
-// Exported helper to normalize Claude voice configs for unit testing
+/** Clamps and defaults a Claude-provided voice config into a valid VoiceConfig shape. */
 export function normalizeClaudeConfig(config: Partial<VoiceConfig>) {
   return {
     gender: config.gender || 'male',
