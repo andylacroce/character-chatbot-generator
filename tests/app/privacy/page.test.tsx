@@ -28,7 +28,7 @@ describe('PrivacyPage', () => {
 
     it('provides a contact email', () => {
         render(<PrivacyPage />);
-        expect(screen.getByText('andy.lacroce@gmail.com')).toHaveAttribute('href', 'mailto:andy.lacroce@gmail.com');
+        expect(screen.getByText('ccg@andrewlacroce.com')).toHaveAttribute('href', 'mailto:ccg@andrewlacroce.com');
     });
 
     it('exports page metadata', () => {

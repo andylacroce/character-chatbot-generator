@@ -16,8 +16,8 @@ describe('DataDeletionPage', () => {
 
     it('gives a mailto link with a prefilled subject for deletion requests', () => {
         render(<DataDeletionPage />);
-        const link = screen.getByText('andy.lacroce@gmail.com');
-        expect(link).toHaveAttribute('href', 'mailto:andy.lacroce@gmail.com?subject=Data%20deletion%20request');
+        const link = screen.getByText('ccg@andrewlacroce.com');
+        expect(link).toHaveAttribute('href', 'mailto:ccg@andrewlacroce.com?subject=Data%20deletion%20request');
     });
 
     it('notes the shared avatar cache is not personal data and is not deleted', () => {

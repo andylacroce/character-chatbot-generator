@@ -110,7 +110,7 @@ export default function PrivacyPage() {
         <h2 className={styles.sectionTitle}>Contact</h2>
         <p>
           Questions about this policy? Email{" "}
-          <a href="mailto:andy.lacroce@gmail.com">andy.lacroce@gmail.com</a>.
+          <a href="mailto:ccg@andrewlacroce.com">ccg@andrewlacroce.com</a>.
         </p>
       </div>
     </div>
