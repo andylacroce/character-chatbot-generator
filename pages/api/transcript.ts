@@ -175,7 +175,13 @@ export default async function handler(
 
   logger.info(`[Transcript API] Generated filename: ${filename}`);
 
-  // Generate formatted HTML transcript with styling and safety measures
+  // Generate formatted HTML transcript with styling and safety measures.
+  // Palette, type pairing (Inter/Fraunces) and "no bubbles" transcript treatment
+  // mirror the live chat page's immersive-stage design (ChatMessage.module.css,
+  // globals.css) so a downloaded transcript still looks like this app. Unlike the
+  // live app, this stays on the light palette always (no dark-mode media query)
+  // since a downloaded/printed document should stay print-friendly rather than
+  // follow the viewer's OS theme.
   const htmlTranscript = `
     <!DOCTYPE html>
     <html lang="en">
@@ -184,93 +190,143 @@ export default async function handler(
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${filename}</title>
       <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
+
+        :root {
+          --color-background: #f7f4ef;
+          --color-surface-variant: #efe6de;
+          --color-outline: #9c8f7d;
+          --color-text: #18160f;
+          --color-text-secondary: #5c5245;
+          --color-accent: #3d6e73;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
         body {
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
           max-width: 800px;
           margin: 0 auto;
-          padding: 20px;
-          background-color: #fafafa;
-        }
-        .container {
-          background-color: white;
-          padding: 30px;
-          border-radius: 10px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          padding: 2rem 1.25rem 4rem;
+          background-color: var(--color-background);
+          color: var(--color-text);
         }
         h1 {
-          color: #333;
+          font-family: 'Fraunces', 'Inter', serif;
+          font-weight: 500;
+          font-size: 1.65rem;
+          color: var(--color-text);
           text-align: center;
-          margin-bottom: 10px;
+          margin-bottom: 0.5rem;
         }
         h2 {
-          color: #555;
+          font-family: 'Fraunces', 'Inter', serif;
+          font-weight: 500;
+          font-size: 1.3rem;
+          color: var(--color-text);
           text-align: center;
-          margin-top: 10px;
+          margin-top: 0.65rem;
         }
         .header-info {
           text-align: center;
-          color: #666;
-          margin-bottom: 30px;
+          color: var(--color-text-secondary);
+          font-size: 0.9rem;
+          margin-bottom: 2rem;
+        }
+        .header-info strong {
+          color: var(--color-text);
         }
         .character-image {
           display: block;
-          margin: 20px auto;
-          width: 150px;
-          height: 150px;
+          margin: 0 auto;
+          width: 120px;
+          height: 120px;
           border-radius: 50%;
           object-fit: cover;
-          border: 2px solid #ccc;
+          background: var(--color-surface-variant);
+          border: 3px solid var(--color-accent);
+        }
+        .messages {
+          margin-top: 1rem;
         }
         .message {
-          margin-bottom: 15px;
-          padding: 15px;
-          border-radius: 8px;
-          line-height: 1.4;
+          padding: 1rem 0;
+          border-bottom: 1px solid var(--color-outline);
+          line-height: 1.5;
         }
-        .user-message {
-          background-color: #e3f2fd;
-          border-left: 4px solid #1976d2;
+        .message:last-child {
+          border-bottom: none;
         }
         .bot-message {
-          background-color: #f3e5f5;
-          border-left: 4px solid #7b1fa2;
+          border-left: 2px solid var(--color-accent);
+          padding-left: 1rem;
+        }
+        .user-message {
+          padding-left: 1rem;
         }
         .message strong {
-          font-weight: 600;
+          display: block;
+          font-family: 'Inter', sans-serif;
+          font-weight: 700;
+          font-size: 0.7rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          margin-bottom: 0.4rem;
         }
         .user-sender {
-          color: #1976d2;
+          color: var(--color-text-secondary);
         }
         .bot-sender {
-          color: #7b1fa2;
+          color: var(--color-accent);
+        }
+        .bot-message .message-text {
+          display: block;
+          font-family: 'Fraunces', 'Inter', serif;
+          font-size: 1.25rem;
+          line-height: 1.5;
+          color: var(--color-text);
+        }
+        .user-message .message-text {
+          display: block;
+          font-family: 'Inter', sans-serif;
+          font-size: 1rem;
+          color: var(--color-text-secondary);
+          max-width: 60ch;
+        }
+        @media print {
+          body {
+            padding: 0;
+          }
+          .message {
+            break-inside: avoid;
+          }
         }
       </style>
     </head>
     <body>
-      <div class="container">
-        <h1>Character Chatbot Generator Transcript</h1>
-        <div class="header-info">
-          <p><strong>Exported:</strong> ${escapeHtml(displayTimestamp)}</p>
+      <h1>Character Chatbot Generator Transcript</h1>
+      <div class="header-info">
+        <p><strong>Exported:</strong> ${escapeHtml(displayTimestamp)}</p>
+      </div>
+      ${bot ? `
+        <div style="margin-bottom: 2rem;">
+          ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${escapeHtml(bot.avatarUrl)}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ''}
+          <h2>${escapeHtml(bot.name)}</h2>
         </div>
-        ${bot ? `
-          <div style="text-align: center; margin-bottom: 30px;">
-            ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${escapeHtml(bot.avatarUrl)}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ''}
-            <h2>${escapeHtml(bot.name)}</h2>
-          </div>
-        ` : ''}
-        <div class="messages">
-          ${messages
-            .map((msg: { sender: string; text: string }) => {
-              const isUser = msg.sender === "User";
-              return `
-                <div class="message ${isUser ? 'user-message' : 'bot-message'}">
-                  <strong class="${isUser ? 'user-sender' : 'bot-sender'}">${isUser ? "Me" : (bot ? escapeHtml(bot.name) : escapeHtml(msg.sender))}:</strong>
-                  <span style="margin-left: 8px;">${sanitizeForDisplay(msg.text)}</span>
-                </div>
-              `;
-            })
-            .join('')}
-        </div>
+      ` : ''}
+      <div class="messages">
+        ${messages
+          .map((msg: { sender: string; text: string }) => {
+            const isUser = msg.sender === "User";
+            return `
+              <div class="message ${isUser ? 'user-message' : 'bot-message'}">
+                <strong class="${isUser ? 'user-sender' : 'bot-sender'}">${isUser ? "Me" : (bot ? escapeHtml(bot.name) : escapeHtml(msg.sender))}:</strong>
+                <span class="message-text">${sanitizeForDisplay(msg.text)}</span>
+              </div>
+            `;
+          })
+          .join('')}
       </div>
     </body>
     </html>
