@@ -60,11 +60,10 @@ const ResumeBotDropdown: React.FC<ResumeBotDropdownProps> = ({ onSelect }) => {
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (status !== "authenticated") {
-      setBots(null);
-      setExpanded(false);
-      return;
-    }
+    // No need to actively reset `bots`/`expanded` here — the render guard below already
+    // hides everything whenever status isn't "authenticated", and a fresh fetch naturally
+    // replaces stale data the next time status becomes "authenticated" again.
+    if (status !== "authenticated") return;
     let mounted = true;
     authenticatedFetch("/api/bots")
       .then((res) => res.json())

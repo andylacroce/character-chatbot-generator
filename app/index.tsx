@@ -85,7 +85,10 @@ const Home = () => {
   const nameFromUrl = searchParams?.get('name');
   const [returningToCreator, setReturningToCreator] = React.useState(false);
 
-  // Restore bot from localStorage on mount, using utility
+  // Restore bot from localStorage on mount, using utility. This page is SSR'd, and
+  // localStorage doesn't exist on the server, so this has to stay a post-mount effect
+  // rather than a useState initializer (which would run during SSR too).
+  /* eslint-disable react-hooks/set-state-in-effect */
   React.useEffect(() => {
     // If name is provided in URL, don't load existing bot
     if (nameFromUrl) {
@@ -102,6 +105,7 @@ const Home = () => {
       }
     }
   }, [nameFromUrl]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Save bot to localStorage whenever it changes, with timestamp
   React.useEffect(() => {

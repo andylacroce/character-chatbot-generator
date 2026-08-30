@@ -146,7 +146,22 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
 
     useChatScrollAndFocus({ chatBoxRef, inputRef, messages, loading });
 
-    // Reset state when bot changes
+    // Declared here (rather than down by the scroll-handling code that uses it) because
+    // the "reset state when bot changes" effect below also resets it, and referencing a
+    // setter before its useState declaration in source order isn't allowed.
+    const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+
+    // See the reconciliation effect's own comment further down for what this gates.
+    // Declared here (not next to that effect) for the same reason as visibleCount above.
+    const { status: authStatus } = useAuthSession();
+    const [historyReconciled, setHistoryReconciled] = useState(authStatus !== 'loading' && authStatus !== 'authenticated');
+
+    // Reset state when bot changes. This page is SSR'd, and this effect reads
+    // localStorage (browser-only) to seed the reset, so it has to run post-mount rather
+    // than during render — and it's a genuine "reset several independent pieces of state
+    // together when the character identity changes" operation, not something any single
+    // piece of state could be derived from during render instead.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         // Reset messages to load the new bot's chat history
         const newChatHistoryKey = `chatbot-history-${bot.name}`;
@@ -192,6 +207,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         setHistoryReconciled(false);
 
     }, [bot.name, setError]); // Only depend on bot.name to avoid unnecessary resets
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     // Reconcile with server-persisted history (phase 3c). Local storage stays the fast,
     // instant-load cache for the common case; the server is the durable source of truth for
@@ -206,8 +222,9 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     // messages.length === 0 for the instant between mount and this fetch resolving, firing
     // a bogus "Introduce yourself" turn that then gets persisted server-side on top of the
     // character's real history — the exact bug this gate exists to prevent.
-    const { status: authStatus } = useAuthSession();
-    const [historyReconciled, setHistoryReconciled] = useState(authStatus !== 'loading' && authStatus !== 'authenticated');
+    // (authStatus/historyReconciled are declared up above, near visibleCount — see that comment.)
+    /* eslint-disable react-hooks/set-state-in-effect -- authStatus is client-only auth
+       session state; this effect can only run post-mount. */
     useEffect(() => {
         if (authStatus === 'loading') return; // don't know yet whether there's server history to wait for
         if (authStatus !== 'authenticated') {
@@ -233,6 +250,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             });
         return () => { mounted = false; };
     }, [bot.name, authStatus]);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     // Reset and hydrate voice config when bot changes
     useEffect(() => {
@@ -319,9 +337,16 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         // already has real history — see the reconciliation effect above.
         if (!historyReconciled) return;
         if (messages.length === 0 && apiAvailable) {
+            // introSentRef is a deliberate "ran once" guard against React Strict Mode's
+            // double-invoke — reading then writing it within the same effect is exactly
+            // the point (a real duplicate-intro-message bug was fixed this way). Setting
+            // introLoading synchronously here (not in a callback) is what actually shows
+            // the loading state before the async fetch below starts.
+            /* eslint-disable react-hooks/immutability, react-hooks/set-state-in-effect */
             introSentRef.current = true;
             introRequestInProgressRef.current = true;
             setIntroLoading(true);
+            /* eslint-enable react-hooks/immutability, react-hooks/set-state-in-effect */
             let cancelled = false;
             const getIntro = async () => {
                 try {
@@ -602,7 +627,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         }
     }, [stopAudio, onBackToCharacterCreation]);
 
-    const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+    // (visibleCount is declared up above, near the top of the hook — see that comment.)
     // Throttle scroll handling using requestAnimationFrame to keep handlers cheap
     const scrollRafRef = useRef<number | null>(null);
     const handleScroll = useCallback(() => {
@@ -636,7 +661,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         };
     }, [handleScroll, visibleCount, messages.length]);
 
+    // Redundant with the bot-change reset above (chatHistoryKey derives from bot.name) but
+    // kept as a direct safety net specifically for this key.
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setVisibleCount(INITIAL_VISIBLE_COUNT);
     }, [chatHistoryKey]);
 
@@ -778,7 +806,10 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         const lastMsg = messages[messages.length - 1];
         const lastMsgHash = getMessageHash(lastMsg);
         if (typeof window !== 'undefined') {
-                if (lastPlayedAudioHashRef.current === null) {
+            // Lazy-init cache: only read localStorage once per mount, then rely on this
+            // same ref for every later run of this effect — deliberate read-then-write.
+            if (lastPlayedAudioHashRef.current === null) {
+                // eslint-disable-next-line react-hooks/immutability
                 try { lastPlayedAudioHashRef.current = storage.getItem(`lastPlayedAudioHash-${bot.name}`); } catch {}
             }
         }
