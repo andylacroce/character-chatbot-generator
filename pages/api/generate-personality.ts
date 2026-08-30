@@ -6,7 +6,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { sanitizeCharacterName } from "../../src/utils/security";
-import { createRateLimiter } from "../../src/utils/rateLimit";
+import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 
 /** Rate limiter: 20 requests per minute per IP (personality generation is lightweight). */
@@ -69,10 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Apply rate limiting
-  await new Promise<void>((resolve) => {
-    personalityRateLimit(req, res, () => resolve());
-  });
-  if (res.headersSent) {
+  if (!(await applyRateLimit(personalityRateLimit, req, res))) {
     return;
   }
   const { name: originalName } = req.body;

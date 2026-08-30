@@ -7,6 +7,7 @@
 "use client";
 
 import React from "react";
+import { STORAGE_KEYS } from "../../src/utils/storageKeys";
 
 interface DarkModeContextType {
   darkMode: boolean;
@@ -28,14 +29,14 @@ export const DarkModeProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // the server-rendered HTML and trigger a hydration mismatch.
   /* eslint-disable react-hooks/set-state-in-effect */
   React.useEffect(() => {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('darkMode') : null;
+    const stored = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEYS.darkMode) : null;
     if (stored !== null) setDarkMode(stored === 'true');
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('darkMode', String(darkMode));
+      localStorage.setItem(STORAGE_KEYS.darkMode, String(darkMode));
       if (darkMode) {
         document.documentElement.classList.add('dark');
       } else {

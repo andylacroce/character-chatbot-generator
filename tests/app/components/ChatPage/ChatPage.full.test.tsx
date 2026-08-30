@@ -5,6 +5,7 @@ import { Bot } from "../../../../app/components/BotCreator";
 import "@testing-library/jest-dom";
 import { downloadTranscript } from "../../../../src/utils/downloadTranscript";
 import userEvent from "@testing-library/user-event";
+import { mockResponse } from "../../../helpers/mockResponse";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
@@ -17,12 +18,6 @@ const mockAuthenticatedFetch = jest.fn();
 jest.mock("../../../../src/utils/api", () => ({
   authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
 }));
-
-const mockResponse = (data: unknown, status = 200) => ({
-  ok: status >= 200 && status < 300,
-  status,
-  json: () => Promise.resolve(data),
-});
 
 jest.mock("../../../../src/utils/downloadTranscript");
 jest.mock("../../../../app/components/useAudioPlayer", () => ({

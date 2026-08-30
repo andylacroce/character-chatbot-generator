@@ -7,6 +7,7 @@
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import storage from '../../src/utils/storage';
+import { STORAGE_KEYS } from '../../src/utils/storageKeys';
 
 /**
  * Custom hook to manage session ID and session datetime for chat sessions.
@@ -41,8 +42,8 @@ export function useSession(): [string, string] {
       sessionDatetime = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
       // Persist session metadata to localStorage (durable per browser) if available
       try {
-        storage.setItem("bot-session-id", newSessionId);
-        storage.setItem("bot-session-datetime", sessionDatetime);
+        storage.setItem(STORAGE_KEYS.sessionId, newSessionId);
+        storage.setItem(STORAGE_KEYS.sessionDatetime, sessionDatetime);
       } catch {
         // ignore
       }

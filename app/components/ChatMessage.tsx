@@ -81,7 +81,6 @@ const ChatMessage = React.memo(
                 width={28}
                 height={28}
                 className={styles.avatar}
-                style={{ objectFit: 'cover' }}
               />
             </button>
           )}

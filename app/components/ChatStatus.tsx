@@ -34,9 +34,8 @@ const ChatStatus: React.FC<ChatStatusProps> = ({ error, retrying }) => {
     >
       {(retrying || process.env.NODE_ENV === 'test') && (
         <div
-          className={styles.retrying}
+          className={`${styles.retrying} ${retrying ? '' : styles.hidden}`}
           data-testid="retrying-message"
-          style={{ display: retrying ? undefined : 'none' }}
         >
           Retrying connection...
         </div>

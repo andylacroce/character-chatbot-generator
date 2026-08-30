@@ -5,7 +5,7 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import logger from "../../src/utils/logger";
-import { createRateLimiter } from "../../src/utils/rateLimit";
+import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { sanitizeForDisplay, escapeHtml } from "../../src/utils/security";
 
 export const config = {
@@ -96,10 +96,7 @@ export default async function handler(
   }
 
   // Apply rate limiting middleware to this request
-  await new Promise<void>((resolve) => {
-    transcriptRateLimit(req, res, () => resolve());
-  });
-  if (res.headersSent) {
+  if (!(await applyRateLimit(transcriptRateLimit, req, res))) {
     return;
   }
 
@@ -294,6 +291,9 @@ export default async function handler(
           color: var(--color-text-secondary);
           max-width: 60ch;
         }
+        .bot-header {
+          margin-bottom: 2rem;
+        }
         @media print {
           body {
             padding: 0;
@@ -310,7 +310,7 @@ export default async function handler(
         <p><strong>Exported:</strong> ${escapeHtml(displayTimestamp)}</p>
       </div>
       ${bot ? `
-        <div style="margin-bottom: 2rem;">
+        <div class="bot-header">
           ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${escapeHtml(bot.avatarUrl)}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ''}
           <h2>${escapeHtml(bot.name)}</h2>
         </div>

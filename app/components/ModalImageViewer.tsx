@@ -8,6 +8,7 @@
 import React from "react";
 import Image from "next/image";
 import styles from "./styles/ChatPage.module.css";
+import viewerStyles from "./styles/ModalImageViewer.module.css";
 
 interface ModalImageViewerProps {
   show: boolean;
@@ -21,15 +22,13 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt
   return (
     <div className={styles.modalBackdrop} data-testid="modal-image-backdrop" onClick={onClose}>
       <div
-        className={styles.modalError}
-        style={{ maxWidth: 480, width: '90vw', padding: 0, position: 'relative', background: 'var(--color-background)', color: 'var(--color-text)' }}
+        className={`${styles.modalError} ${viewerStyles.modal}`}
         onClick={e => e.stopPropagation()}
       >
         <button
-          className={styles.closeButton}
+          className={`${styles.closeButton} ${viewerStyles.closeButton}`}
           aria-label="Close image viewer"
           onClick={onClose}
-          style={{ position: 'absolute', top: 10, right: 14 }}
         >
           ×
         </button>
@@ -38,18 +37,7 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt
           alt={alt}
           width={800}
           height={600}
-          style={{
-            maxWidth: '90vw',
-            maxHeight: '70vh',
-            width: 'calc(100% - 3rem)',
-            height: 'auto',
-            display: 'block',
-            borderRadius: 12,
-            margin: '2.5rem auto 2.5rem auto',
-            background: 'var(--card-body-bg)',
-            objectFit: 'contain',
-            boxSizing: 'border-box',
-          }}
+          className={viewerStyles.image}
         />
       </div>
     </div>

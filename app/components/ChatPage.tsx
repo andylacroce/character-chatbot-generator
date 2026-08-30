@@ -76,7 +76,6 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         className={styles.chatMessagesScroll}
         data-testid="chat-messages-container"
         onScroll={handleScroll}
-        style={{ paddingTop: 20 }}
         role="log"
         aria-live="polite"
         aria-relevant="additions text"

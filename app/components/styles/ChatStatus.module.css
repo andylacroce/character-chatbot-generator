@@ -22,6 +22,12 @@
   padding: 0.3rem 0;
 }
 
+/* Element stays mounted in NODE_ENV=test (for test queries) even when not
+   actively retrying, but shouldn't be visible in that state. */
+.hidden {
+  display: none;
+}
+
 .error {
   color: var(--color-error);
   padding: 0.3rem 0;

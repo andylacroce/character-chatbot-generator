@@ -25,13 +25,13 @@ const DarkModeToggle: React.FC<DarkModeToggleProps> = ({ className = "", hideLab
     >
       {darkMode ? (
         <>
-          <FaSun size={16} style={{ color: 'var(--color-accent)' }} />
-          {!hideLabel && <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Light</span>}
+          <FaSun size={16} className={styles.toggleIcon} />
+          {!hideLabel && <span className={styles.toggleText}>Light</span>}
         </>
       ) : (
         <>
-          <FaMoon size={16} style={{ color: 'var(--color-accent)' }} />
-          {!hideLabel && <span style={{ fontSize: '0.92rem', marginLeft: '0.18em' }}>Dark</span>}
+          <FaMoon size={16} className={styles.toggleIcon} />
+          {!hideLabel && <span className={styles.toggleText}>Dark</span>}
         </>
       )}
     </button>

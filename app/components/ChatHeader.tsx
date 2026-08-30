@@ -34,13 +34,12 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
             <HamburgerMenu>
               {onBackToCharacterCreation && (
                 <button
-                  className={styles.downloadTranscriptLink}
+                  className={`${styles.downloadTranscriptLink} ${styles.stackedAbove}`}
                   type="button"
                   aria-label="Back to character creation"
                   onClick={onBackToCharacterCreation}
-                  style={{ marginBottom: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.7em' }}
                 >
-                  <FaArrowLeft size={18} style={{ color: 'var(--color-primary)' }} />
+                  <FaArrowLeft size={18} className={styles.linkIcon} />
                   <span>Character Creator</span>
                 </button>
               )}
@@ -50,9 +49,8 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
                   type="button"
                   aria-label="Download chat transcript"
                   onClick={() => { onDownloadTranscript(); if (onHeaderLinkClick) onHeaderLinkClick(); }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.7em' }}
                 >
-                  <FaRegFileAlt size={18} style={{ color: 'var(--color-primary)' }} />
+                  <FaRegFileAlt size={18} className={styles.linkIcon} />
                   <span>Download Transcript</span>
                 </button>
               )}
@@ -79,7 +77,6 @@ const ChatHeader: React.FC<ChatHeaderProps> = React.memo(({ onDownloadTranscript
               width={150}
               height={150}
               className={styles.avatarImage}
-              style={{ objectFit: 'cover' }}
             />
           </button>
           <div className={styles.botNameLabel}>{bot.name}</div>

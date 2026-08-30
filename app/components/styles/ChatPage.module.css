@@ -44,6 +44,7 @@
   font-family: var(--font-primary);
   padding-left: 12px;
   padding-right: 12px;
+  padding-top: 20px;
   position: relative;
   /* Smoothly animate padding-bottom changes caused by on-screen keyboard */
   transition: padding-bottom 180ms ease;

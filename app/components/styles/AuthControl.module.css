@@ -1,0 +1,36 @@
+/* =============================
+   AuthControl.module.css
+   - Sign in / sign out control. The button's own visual treatment (ghost
+     button, colors, hover) comes from whatever className the caller passes
+     in (e.g. BotCreator.module.css's .ghostAuth) — these classes only cover
+     the internal icon/label layout that's the same regardless of caller.
+   ============================= */
+
+.signOutButton {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.signInButton {
+  flex-shrink: 0;
+}
+
+.icon {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.nameLabel {
+  font-size: 0.92rem;
+  margin-left: 0.18em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.signInLabel {
+  font-size: 0.92rem;
+  margin-left: 0.18em;
+  white-space: nowrap;
+}

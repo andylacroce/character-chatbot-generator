@@ -2,6 +2,7 @@ import React from "react";
 import { List as RWList } from "react-window";
 import ChatMessage from "./ChatMessage";
 import { Bot } from "./BotCreator";
+import styles from "./styles/VirtualizedMessagesList.module.css";
 
 type VisibleMessage = { text: string; sender: string; audioFileUrl?: string };
 
@@ -79,7 +80,7 @@ const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({ messa
     const height = Math.min(maxHeight, visibleHeights.reduce((sum, h) => sum + h, 0) + 1);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'flex-end', minHeight: 0 }}>
+        <div className={styles.wrapper}>
             <RWList
                 height={height}
                 rowCount={visibleMessages.length}
@@ -88,7 +89,7 @@ const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({ messa
                 overscanCount={4}
                 rowComponent={Row}
                 rowProps={{ visibleMessages, bot, onAvatarClick }}
-                style={{ flex: 1 }}
+                className={styles.list}
             />
         </div>
     );

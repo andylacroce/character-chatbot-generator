@@ -207,7 +207,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
             <div className={styles.progressText}>
               {loadingMessage || currentStep.label}
               {loading && progress === 'avatar' && MAX_AVATAR_SECONDS !== null && (
-                <span style={{ opacity: 0.85 }}>{elapsed < MAX_AVATAR_SECONDS ? ` (${elapsed}s)` : ` (${MAX_AVATAR_SECONDS}s max)`}</span>
+                <span className={styles.elapsedTime}>{elapsed < MAX_AVATAR_SECONDS ? ` (${elapsed}s)` : ` (${MAX_AVATAR_SECONDS}s max)`}</span>
               )}
             </div>
             <button

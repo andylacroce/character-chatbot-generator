@@ -10,7 +10,7 @@ import { getDb } from "../../src/db/client";
 import { bots } from "../../src/db/schema";
 import { getSessionUserId } from "../../src/utils/getSessionUserId";
 import { sanitizeCharacterName } from "../../src/utils/security";
-import { createRateLimiter } from "../../src/utils/rateLimit";
+import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { getCurrentEnvironment } from "../../src/utils/environment";
 import logger from "../../src/utils/logger";
 
@@ -99,10 +99,7 @@ const botsRateLimit = createRateLimiter({
  *         description: Failed to list characters
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await new Promise<void>((resolve) => {
-    botsRateLimit(req, res, () => resolve());
-  });
-  if (res.headersSent) return;
+  if (!(await applyRateLimit(botsRateLimit, req, res))) return;
 
   if (req.method !== "POST" && req.method !== "GET") {
     res.setHeader("Allow", ["GET", "POST"]);

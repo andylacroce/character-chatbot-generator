@@ -11,7 +11,7 @@ import { getReplyCache } from "../../src/utils/cache";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
-import { createRateLimiter } from "../../src/utils/rateLimit";
+import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
 import anthropic from "../../src/utils/anthropicClient";
 
@@ -129,10 +129,7 @@ async function handler(
   res: import("next").NextApiResponse,
 ): Promise<void> {
   // Apply rate limiting
-  await new Promise<void>((resolve) => {
-    audioRateLimit(req, res, () => resolve());
-  });
-  if (res.headersSent) {
+  if (!(await applyRateLimit(audioRateLimit, req, res))) {
     return;
   }
   

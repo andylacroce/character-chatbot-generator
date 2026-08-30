@@ -14,7 +14,7 @@ import { getDb } from "../../src/db/client";
 import { bots, messages } from "../../src/db/schema";
 import { getSessionUserId } from "../../src/utils/getSessionUserId";
 import { sanitizeCharacterName } from "../../src/utils/security";
-import { createRateLimiter } from "../../src/utils/rateLimit";
+import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { getCurrentEnvironment } from "../../src/utils/environment";
 import logger from "../../src/utils/logger";
 
@@ -69,10 +69,7 @@ const messagesRateLimit = createRateLimiter({
  *         description: Failed to list messages
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await new Promise<void>((resolve) => {
-    messagesRateLimit(req, res, () => resolve());
-  });
-  if (res.headersSent) return;
+  if (!(await applyRateLimit(messagesRateLimit, req, res))) return;
 
   if (req.method !== "GET") {
     res.setHeader("Allow", ["GET"]);

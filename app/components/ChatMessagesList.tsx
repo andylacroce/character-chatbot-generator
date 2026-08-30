@@ -12,6 +12,7 @@ import React from "react";
 import ChatMessage from "./ChatMessage";
 import { Bot } from "./BotCreator";
 import VirtualizedMessagesList from "./VirtualizedMessagesList";
+import styles from "./styles/ChatMessagesList.module.css";
 
 interface ChatMessagesListProps {
   messages: Array<{
@@ -30,7 +31,7 @@ const ChatMessagesList: React.FC<ChatMessagesListProps> = React.memo(({ messages
   if (messages.length < VIRTUALIZE_THRESHOLD) {
     return (
       <>
-        <div style={{ flexGrow: 1 }} />
+        <div className={styles.spacer} />
         {messages.map((msg, index) => (
           <ChatMessage key={index} message={msg} bot={bot} onAvatarClick={onAvatarClick} />
         ))}

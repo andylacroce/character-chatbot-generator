@@ -6,7 +6,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
-import { createRateLimiter } from "../../src/utils/rateLimit";
+import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { extractJson } from "../../src/utils/parseClaudeJson";
 import anthropic from "../../src/utils/anthropicClient";
 
@@ -90,10 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Apply rate limiting
-  await new Promise<void>((resolve) => {
-    validationRateLimit(req, res, () => resolve());
-  });
-  if (res.headersSent) {
+  if (!(await applyRateLimit(validationRateLimit, req, res))) {
     return;
   }
 

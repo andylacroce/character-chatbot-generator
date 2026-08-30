@@ -15,7 +15,7 @@ import logger, { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
 import { sanitizeCharacterName } from "../../src/utils/security";
 import { extractJson } from "../../src/utils/parseClaudeJson";
-import { createRateLimiter } from "../../src/utils/rateLimit";
+import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import anthropic from "../../src/utils/anthropicClient";
 import { getDb } from "../../src/db/client";
 import { avatarCache } from "../../src/db/schema";
@@ -239,10 +239,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Apply rate limiting
-  await new Promise<void>((resolve) => {
-    avatarRateLimit(req, res, () => resolve());
-  });
-  if (res.headersSent) {
+  if (!(await applyRateLimit(avatarRateLimit, req, res))) {
     return;
   }
 

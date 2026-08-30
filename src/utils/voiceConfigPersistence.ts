@@ -1,5 +1,6 @@
 import storage from "./storage";
 import type { CharacterVoiceConfig } from "./characterVoices";
+import { voiceConfigKey } from "./storageKeys";
 
 const VOICE_CONFIG_VERSION = 1;
 
@@ -63,14 +64,14 @@ function decodePayload(raw: string | null): CharacterVoiceConfig | null {
 export function loadVoiceConfig(botName: string): CharacterVoiceConfig | null {
   if (!botName) return null;
   try {
-    const versioned = storage.getVersionedJSON<CharacterVoiceConfig>(`voiceConfig-${botName}`);
+    const versioned = storage.getVersionedJSON<CharacterVoiceConfig>(voiceConfigKey(botName));
     if (versioned?.payload) return versioned.payload;
   } catch {
     // ignore
   }
-  const fromCookie = decodePayload(getCookie(`voiceConfig-${botName}`));
+  const fromCookie = decodePayload(getCookie(voiceConfigKey(botName)));
   if (fromCookie) {
-    try { storage.setVersionedJSON(`voiceConfig-${botName}`, fromCookie, VOICE_CONFIG_VERSION); } catch {}
+    try { storage.setVersionedJSON(voiceConfigKey(botName), fromCookie, VOICE_CONFIG_VERSION); } catch {}
     return fromCookie;
   }
   return null;
@@ -78,15 +79,15 @@ export function loadVoiceConfig(botName: string): CharacterVoiceConfig | null {
 
 export function persistVoiceConfig(botName: string, config: CharacterVoiceConfig) {
   if (!botName || !config) return;
-  try { storage.setVersionedJSON(`voiceConfig-${botName}`, config, VOICE_CONFIG_VERSION); } catch {}
+  try { storage.setVersionedJSON(voiceConfigKey(botName), config, VOICE_CONFIG_VERSION); } catch {}
   const encoded = encodePayload(config);
-  if (encoded) setCookie(`voiceConfig-${botName}`, encoded, 14);
+  if (encoded) setCookie(voiceConfigKey(botName), encoded, 14);
 }
 
 export function clearVoiceConfig(botName: string) {
   if (!botName) return;
-  try { storage.removeItem(`voiceConfig-${botName}`); } catch {}
+  try { storage.removeItem(voiceConfigKey(botName)); } catch {}
   if (canUseDocument()) {
-    try { document.cookie = `voiceConfig-${botName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; samesite=lax`; } catch {}
+    try { document.cookie = `${voiceConfigKey(botName)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; samesite=lax`; } catch {}
   }
 }

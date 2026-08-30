@@ -15,6 +15,7 @@ import React, { useEffect, useState } from "react";
 import { useSession, signIn, signOut, getProviders } from "next-auth/react";
 import { FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
 import SignInModal from "./SignInModal";
+import styles from "./styles/AuthControl.module.css";
 
 interface AuthControlProps {
   className?: string;
@@ -54,22 +55,12 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
     return (
       <button
         type="button"
-        className={className}
+        className={`${className} ${styles.signOutButton}`.trim()}
         aria-label="Sign out"
         onClick={() => signOut()}
-        style={{ minWidth: 0, maxWidth: "100%" }}
       >
-        <FaSignOutAlt size={16} style={{ color: "var(--color-accent)", flexShrink: 0 }} />
-        <span
-          style={{
-            fontSize: "0.92rem",
-            marginLeft: "0.18em",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            minWidth: 0,
-          }}
-        >
+        <FaSignOutAlt size={16} className={styles.icon} />
+        <span className={styles.nameLabel}>
           {session.user.name ? `Sign out (${session.user.name})` : "Sign out"}
         </span>
       </button>
@@ -80,14 +71,13 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
     <>
       <button
         type="button"
-        className={className}
+        className={`${className} ${styles.signInButton}`.trim()}
         aria-label="Sign in"
         onClick={handleSignIn}
         disabled={!providerIds || providerIds.length === 0}
-        style={{ flexShrink: 0 }}
       >
-        <FaSignInAlt size={16} style={{ color: "var(--color-accent)", flexShrink: 0 }} />
-        <span style={{ fontSize: "0.92rem", marginLeft: "0.18em", whiteSpace: "nowrap" }}>
+        <FaSignInAlt size={16} className={styles.icon} />
+        <span className={styles.signInLabel}>
           Sign in
         </span>
       </button>

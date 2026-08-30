@@ -17,6 +17,7 @@ import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
 import { loadVoiceConfig, persistVoiceConfig } from "../../src/utils/voiceConfigPersistence";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
+import { STORAGE_KEYS, chatHistoryKey, lastPlayedAudioHashKey } from "../../src/utils/storageKeys";
 
 const INITIAL_VISIBLE_COUNT = 20;
 const LOAD_MORE_COUNT = 10;
@@ -34,12 +35,12 @@ const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
 };
 
 export function useChatController(bot: Bot, onBackToCharacterCreation?: () => void) {
-    const chatHistoryKey = `chatbot-history-${bot.name}`;
+    const historyKey = chatHistoryKey(bot.name);
 
     // Memoize messages loading from localStorage
     const [messages, setMessages] = useState<Message[]>(() => {
         try {
-            const saved = storage.getItem(chatHistoryKey);
+            const saved = storage.getItem(historyKey);
             if (saved) {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed)) {
@@ -95,7 +96,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 if (stored) return setAndPersistVoiceConfig(stored);
             } catch { /* ignore */ }
             try {
-                const savedBotRaw = storage.getItem('chatbot-bot');
+                const savedBotRaw = storage.getItem(STORAGE_KEYS.bot);
                 if (savedBotRaw) {
                     const parsed = JSON.parse(savedBotRaw);
                     if (parsed?.name === bot.name && parsed.voiceConfig) {
@@ -130,7 +131,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     const [introLoading, setIntroLoading] = useState<boolean>(false);
     const [audioEnabled, setAudioEnabled] = useState<boolean>(() => {
         try {
-            const savedAudioPreference = storage.getItem('audioEnabled');
+            const savedAudioPreference = storage.getItem(STORAGE_KEYS.audioEnabled);
             if (savedAudioPreference !== null) return savedAudioPreference === 'true';
         } catch { }
         return true;
@@ -164,9 +165,9 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         // Reset messages to load the new bot's chat history
-        const newChatHistoryKey = `chatbot-history-${bot.name}`;
+        const newHistoryKey = chatHistoryKey(bot.name);
         try {
-            const saved = storage.getItem(newChatHistoryKey);
+            const saved = storage.getItem(newHistoryKey);
             if (saved) {
                 const parsed = JSON.parse(saved);
                 setMessages(Array.isArray(parsed) ? parsed.filter((m): m is Message =>
@@ -556,7 +557,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     const handleAudioToggle = useCallback(() => {
         setAudioEnabled((prev) => {
             const newEnabled = !prev;
-            try { storage.setItem('audioEnabled', String(newEnabled)); } catch {}
+            try { storage.setItem(STORAGE_KEYS.audioEnabled, String(newEnabled)); } catch {}
             if (audioRef.current) {
                 audioRef.current.muted = !newEnabled;
             }
@@ -568,7 +569,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     }, [audioRef, inputRef]);
 
     useEffect(() => {
-        try { storage.setItem('audioEnabled', String(audioEnabled)); } catch {}
+        try { storage.setItem(STORAGE_KEYS.audioEnabled, String(audioEnabled)); } catch {}
     }, [audioEnabled]);
 
     const healthCheckRan = useRef(false);
@@ -588,9 +589,9 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
 
     useEffect(() => {
         try {
-            if (chatHistoryKey) storage.setItem(chatHistoryKey, JSON.stringify(messages));
+            if (historyKey) storage.setItem(historyKey, JSON.stringify(messages));
         } catch {}
-    }, [messages, chatHistoryKey]);
+    }, [messages, historyKey]);
 
     const handleDownloadTranscript = async () => {
         try {
@@ -661,12 +662,12 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
         };
     }, [handleScroll, visibleCount, messages.length]);
 
-    // Redundant with the bot-change reset above (chatHistoryKey derives from bot.name) but
+    // Redundant with the bot-change reset above (historyKey derives from bot.name) but
     // kept as a direct safety net specifically for this key.
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setVisibleCount(INITIAL_VISIBLE_COUNT);
-    }, [chatHistoryKey]);
+    }, [historyKey]);
 
     // MOBILE KEYBOARD / VISUAL VIEWPORT ADJUSTMENT (CSS-driven)
     // Use existing `.ff-android-input-focus` pattern in globals.css and set
@@ -810,7 +811,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
             // same ref for every later run of this effect — deliberate read-then-write.
             if (lastPlayedAudioHashRef.current === null) {
                 // eslint-disable-next-line react-hooks/immutability
-                try { lastPlayedAudioHashRef.current = storage.getItem(`lastPlayedAudioHash-${bot.name}`); } catch {}
+                try { lastPlayedAudioHashRef.current = storage.getItem(lastPlayedAudioHashKey(bot.name)); } catch {}
             }
         }
         if (
@@ -824,7 +825,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                     lastPlayedAudioHashRef.current = lastMsgHash;
                     try {
                         await playAudio(lastMsg.audioFileUrl!, abortController.signal);
-                        try { storage.setItem(`lastPlayedAudioHash-${bot.name}`, lastMsgHash); } catch {}
+                        try { storage.setItem(lastPlayedAudioHashKey(bot.name), lastMsgHash); } catch {}
                     } catch (err: unknown) {
                         // If playback failed or was aborted, clear the in-progress marker
                         const errName = (err && typeof err === 'object' && 'name' in err)

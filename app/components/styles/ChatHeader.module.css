@@ -109,6 +109,7 @@
      floating in empty space — matters most for the generic silhouette
      fallback, but also tightens up real generated portraits. */
   transform: scale(1.18);
+  object-fit: cover;
 }
 
 /* Bot name label styling for legibility */
@@ -179,6 +180,7 @@
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  gap: 0.7em;
   min-width: 0;
   width: 100%;
   letter-spacing: 0.01em;
@@ -189,6 +191,16 @@
   background: var(--color-primary-container);
   color: var(--color-primary);
   outline: none;
+}
+
+/* Extra breathing room above this button when it's stacked above another
+   dropdown item ("Back to Character Creator" sits above "Download Transcript"). */
+.stackedAbove {
+  margin-bottom: 0.2rem;
+}
+
+.linkIcon {
+  color: var(--color-primary);
 }
 
 .darkModeToggle {
@@ -218,6 +230,17 @@
 }
 /* Bare ".dark" here would get hashed like any other class in a CSS module and never
    match the real, unscoped ".dark" on <html> — :global() is required to reach it. */
+.toggleText {
+  font-size: 0.92rem;
+  margin-left: 0.18em;
+}
+
+/* Explicit (not inherited) so the icon stays accent-colored even when the
+   button's own text/border color shifts to primary on hover/focus. */
+.toggleIcon {
+  color: var(--color-accent);
+}
+
 :global(.dark) .darkModeToggle {
   color: var(--color-accent);
   border-color: var(--color-outline);

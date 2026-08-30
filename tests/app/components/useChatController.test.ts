@@ -1,5 +1,6 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import type { Bot } from "../../../app/components/BotCreator";
+import { mockResponse } from "../../helpers/mockResponse";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
@@ -78,12 +79,6 @@ function makeMockSSEBody(frames: Array<Record<string, unknown>>) {
         }
     } as unknown as ReadableStream<Uint8Array>;
 }
-
-const mockResponse = (data: unknown, status = 200) => ({
-    ok: status >= 200 && status < 300,
-    status,
-    json: () => Promise.resolve(data),
-});
 
 const mockBot: Bot = {
     name: "Gandalf",

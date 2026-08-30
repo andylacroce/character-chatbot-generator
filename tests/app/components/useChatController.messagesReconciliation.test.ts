@@ -52,8 +52,7 @@ jest.mock("../../../src/utils/storage", () => ({
 }));
 
 import { useChatController } from "../../../app/components/useChatController";
-
-const mockResponse = (data: unknown) => ({ ok: true, json: () => Promise.resolve(data) });
+import { mockResponse } from "../../helpers/mockResponse";
 
 const mockBot: Bot = {
     name: "Gandalf",

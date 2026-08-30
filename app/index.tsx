@@ -14,16 +14,17 @@ import { Bot } from "./components/BotCreator";
 import { getValidBotFromStorage } from "../src/utils/getValidBotFromStorage";
 import storage from '../src/utils/storage';
 import { authenticatedFetch } from "../src/utils/api";
+import { STORAGE_KEYS, STORAGE_KEY_PREFIXES, voiceConfigKey } from "../src/utils/storageKeys";
 
 // Known storage key patterns to attempt migration on startup
 const KNOWN_KEYS_TO_MIGRATE = [
-  "chatbot-bot",
-  "chatbot-bot-timestamp",
-  "lastPlayedAudioHash-", // suffixed by bot name
-  "voiceConfig-", // suffixed by bot name
-  "chatbot-history-", // suffixed by bot name
-  "audioEnabled",
-  "darkMode",
+  STORAGE_KEYS.bot,
+  STORAGE_KEYS.botTimestamp,
+  STORAGE_KEY_PREFIXES.lastPlayedAudioHash, // suffixed by bot name
+  STORAGE_KEY_PREFIXES.voiceConfig, // suffixed by bot name
+  STORAGE_KEY_PREFIXES.chatHistory, // suffixed by bot name
+  STORAGE_KEYS.audioEnabled,
+  STORAGE_KEYS.darkMode,
 ];
 
 export function runStartupMigrations() {
@@ -100,7 +101,7 @@ const Home = () => {
       // Store voiceConfig in local storage (versioned) when loading existing bot
       if (loadedBot?.voiceConfig) {
         try {
-          storage.setVersionedJSON(`voiceConfig-${loadedBot.name}`, loadedBot.voiceConfig, 1);
+          storage.setVersionedJSON(voiceConfigKey(loadedBot.name), loadedBot.voiceConfig, 1);
         } catch {}
       }
     }
@@ -110,8 +111,8 @@ const Home = () => {
   // Save bot to localStorage whenever it changes, with timestamp
   React.useEffect(() => {
     if (bot) {
-      storage.setJSON("chatbot-bot", bot);
-      storage.setItem("chatbot-bot-timestamp", Date.now().toString());
+      storage.setJSON(STORAGE_KEYS.bot, bot);
+      storage.setItem(STORAGE_KEYS.botTimestamp, Date.now().toString());
     }
   }, [bot]);
 
@@ -143,15 +144,15 @@ const Home = () => {
     // Store voiceConfig in localStorage (versioned) keyed by character name for durability
     if (bot.voiceConfig) {
       try {
-        storage.setVersionedJSON(`voiceConfig-${bot.name}`, bot.voiceConfig, 1);
+        storage.setVersionedJSON(voiceConfigKey(bot.name), bot.voiceConfig, 1);
       } catch {}
     }
   }, [sessionStatus]);
 
   const handleBackToCharacterCreation = React.useCallback(() => {
     // Clear the bot from localStorage to kill the session
-  storage.removeItem("chatbot-bot");
-  storage.removeItem("chatbot-bot-timestamp");
+  storage.removeItem(STORAGE_KEYS.bot);
+  storage.removeItem(STORAGE_KEYS.botTimestamp);
     setBot(null);
     setReturningToCreator(true);
     router.push('/');

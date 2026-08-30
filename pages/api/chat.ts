@@ -19,7 +19,7 @@ import logger, { generateRequestId } from "../../src/utils/logger";
 import { setReplyCache, getReplyCache } from "../../src/utils/cache";
 import crypto from "crypto";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
-import { createRateLimiter } from "../../src/utils/rateLimit";
+import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
 import { summarizeConversation, buildClaudeMessages, type ClaudeMessage } from "../../src/utils/conversationSummarizer";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
@@ -361,10 +361,7 @@ async function handler(
   const requestId = req.headers["x-request-id"] || generateRequestId();
 
   // Apply rate limiting
-  await new Promise<void>((resolve) => {
-    chatRateLimit(req, res, () => resolve());
-  });
-  if (res.headersSent) {
+  if (!(await applyRateLimit(chatRateLimit, req, res))) {
     return;
   }
 

@@ -25,7 +25,7 @@
  */
 
 import rateLimit from "express-rate-limit";
-import type { NextApiRequest } from "next";
+import type { NextApiRequest, NextApiResponse } from "next";
 import { createRateLimitStore, rateLimitLogger } from "./rateLimitStore";
 
 /**
@@ -78,4 +78,21 @@ export function createRateLimiter({
     passOnStoreError: true,
     logger: rateLimitLogger,
   });
+}
+
+/**
+ * Runs a rate limiter (from `createRateLimiter`) against a request/response pair.
+ * Returns `true` once the request is allowed through; returns `false` when the
+ * limiter has already written a 429 response, in which case the caller must
+ * return immediately without doing any further work.
+ */
+export async function applyRateLimit(
+  limiter: ReturnType<typeof createRateLimiter>,
+  req: NextApiRequest,
+  res: NextApiResponse,
+): Promise<boolean> {
+  await new Promise<void>((resolve) => {
+    limiter(req, res, () => resolve());
+  });
+  return !res.headersSent;
 }

@@ -69,6 +69,7 @@
      floating in empty space — matters most for the generic silhouette
      fallback, but also tightens up real generated portraits. */
   transform: scale(1.18);
+  object-fit: cover;
 }
 
 .sender {

@@ -1,5 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import type { Bot } from '../../../app/components/BotCreator';
+import { mockResponse } from '../../helpers/mockResponse';
 
 // Mock logger to capture warnings/info
 const mockLogEvent = jest.fn();
@@ -42,10 +43,6 @@ const baseBot: Bot = {
     type: 'Wavenet',
   },
 };
-
-function mockResponse(data: unknown, status = 200) {
-  return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(data), text: () => Promise.resolve(String(data)) } as unknown;
-}
 
 describe('useBotCreation generateBotDataWithProgressCancelable branches', () => {
   beforeEach(() => {

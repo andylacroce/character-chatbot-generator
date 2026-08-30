@@ -300,6 +300,10 @@
   font-family: var(--font-primary), sans-serif;
 }
 
+.elapsedTime {
+  opacity: 0.85;
+}
+
 .error {
   color: var(--color-error);
   margin-top: 0.7rem;

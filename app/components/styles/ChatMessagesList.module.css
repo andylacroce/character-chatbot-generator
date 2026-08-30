@@ -1,0 +1,5 @@
+/* Pushes the message list to the bottom of its scroll container so a short
+   conversation still anchors at the bottom instead of floating at the top. */
+.spacer {
+  flex-grow: 1;
+}

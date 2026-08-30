@@ -1,0 +1,30 @@
+/* Overrides layered onto ChatPage.module.css's shared .modalError/.closeButton
+   shell for this modal's specific "enlarged image" layout. */
+
+.modal {
+  max-width: 480px;
+  width: 90vw;
+  padding: 0;
+  position: relative;
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+.closeButton {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+}
+
+.image {
+  max-width: 90vw;
+  max-height: 70vh;
+  width: calc(100% - 3rem);
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  margin: 2.5rem auto;
+  background: var(--card-body-bg);
+  object-fit: contain;
+  box-sizing: border-box;
+}

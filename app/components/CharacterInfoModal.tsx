@@ -7,33 +7,27 @@
 
 import React from "react";
 import styles from "./styles/BotCreator.module.css";
+import DisclaimerStyleModal from "./DisclaimerStyleModal";
 
 interface CharacterInfoModalProps {
   show: boolean;
   onClose: () => void;
 }
 
-const CharacterInfoModal: React.FC<CharacterInfoModalProps> = ({ show, onClose }) => {
-  if (!show) return null;
-  return (
-    <div className={styles.disclaimerBackdrop} data-testid="character-info-modal-backdrop" onClick={onClose}>
-      <div className={styles.disclaimerModal} onClick={e => e.stopPropagation()}>
-        <button
-          className={styles.disclaimerCloseButton}
-          aria-label="Close character info"
-          onClick={onClose}
-        >
-          ×
-        </button>
-        <div className={styles.disclaimerTitle}>Which characters can I create?</div>
-        <p className={styles.disclaimerText}>
-          Create a chatbot character using well-known public domain figures from classic
-          literature, mythology, or historical figures. Characters from copyrighted or
-          trademarked modern media will trigger a warning.
-        </p>
-      </div>
-    </div>
-  );
-};
+const CharacterInfoModal: React.FC<CharacterInfoModalProps> = ({ show, onClose }) => (
+  <DisclaimerStyleModal
+    show={show}
+    onClose={onClose}
+    title="Which characters can I create?"
+    closeLabel="Close character info"
+    testId="character-info-modal-backdrop"
+  >
+    <p className={styles.disclaimerText}>
+      Create a chatbot character using well-known public domain figures from classic
+      literature, mythology, or historical figures. Characters from copyrighted or
+      trademarked modern media will trigger a warning.
+    </p>
+  </DisclaimerStyleModal>
+);
 
 export default CharacterInfoModal;
