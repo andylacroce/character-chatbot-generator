@@ -29,7 +29,7 @@
     "@anthropic-ai/sdk": "^0.122.0",
     "@auth/drizzle-adapter": "^1.11.3",
     "@google-cloud/text-to-speech": "^7.0.0",
-    "@google/genai": "^2.18.0",
+    "@google/genai": "^2.20.0",
     "@neondatabase/serverless": "^1.1.0",
     "@scalar/nextjs-api-reference": "^0.11.16",
     "@trendmicro/react-toggle-switch": "^0.5.7",
