@@ -67,7 +67,7 @@
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.3.2",
+    "eslint-config-next": "^16.3.4",
     "express": "^5.2.1",
     "ipinfo": "^1.5.2",
     "jest": "^30.4.2",
