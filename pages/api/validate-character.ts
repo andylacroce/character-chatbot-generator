@@ -30,6 +30,13 @@ export interface CharacterValidationResult {
   // at /chars is public, so a name like this can't be allowed to exist at all,
   // not just flagged with a warning.
   blocked?: boolean;
+  // True when this is an actual character/person Claude has real knowledge of
+  // (fictional or historical) — false when the name doesn't correspond to anything
+  // Claude recognizes, i.e. it looks like an original character. Defaults to true
+  // (fail open, same as the other fields) so a validation error never blocks
+  // creation. useBotCreation.ts uses `=== false` specifically to prompt for a
+  // description, so leaving this true/undefined preserves the direct-create path.
+  recognized?: boolean;
 }
 
 /**
@@ -89,6 +96,14 @@ export interface CharacterValidationResult {
  *                     True when the name itself is profane/abusive — distinct from
  *                     warningLevel (copyright-only, always overridable). Never
  *                     overridable: the character wall at /chars is public.
+ *                 recognized:
+ *                   type: boolean
+ *                   description: >
+ *                     False when the name doesn't correspond to any character/person
+ *                     Claude actually knows about (an original character). The client
+ *                     prompts for a free-form description in that case, sent to
+ *                     /generate-personality to build the personality instead of
+ *                     relying on Claude to invent one from the name alone.
  *       400:
  *         description: Valid character name required
  *       405:
@@ -124,7 +139,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const response = await anthropic.messages.create({
       model,
-      system: `You are a content-safety and copyright/trademark expert AI. Analyze character names for two, entirely separate concerns:
+      system: `You are a content-safety and copyright/trademark expert AI. Analyze character names for three, entirely separate concerns:
 
 1. Abusive content: is the name itself profane, a slur or hate-speech term, sexually explicit, or otherwise abusive (in English or any other language, including l33tspeak/spacing tricks meant to evade filters)? This app publishes every created character's name and portrait on a public gallery page, so a name like this can never be allowed to exist, not just be flagged.
 2. Copyright/trademark status (entirely independent of concern 1 — a name can be blocked for both, one, or neither):
@@ -132,6 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
    - Trademark status (e.g., Disney characters, modern franchises)
    - Whether it's a historical figure vs fictional character
    - Active copyright protection
+3. Recognition (independent of both concerns above): is this an actual character or person you have real, specific knowledge of — a well-known (or even obscure but real) fictional character, historical figure, or mythological figure? Or does the name just look plausible without corresponding to anything you actually know (an invented name, a random combination of words, an original character)? Be honest here — do not guess or invent facts about a name just because it sounds like it could be a character.
 
 Return ONLY valid JSON with this exact schema:
 {
@@ -139,6 +155,7 @@ Return ONLY valid JSON with this exact schema:
   "isPublicDomain": boolean,
   "isSafe": boolean,
   "warningLevel": "none" | "caution" | "warning",
+  "recognized": boolean,
   "reason": "Brief explanation (1-2 sentences)",
   "suggestions": ["alternative1", "alternative2", "alternative3"]
 }
@@ -148,9 +165,13 @@ Return ONLY valid JSON with this exact schema:
 - false: none of the above — completely independent of whether it's copyrighted.
 
 warningLevel guide (only about copyright/trademark, ignore concern 1 entirely here):
-- "none": Clearly public domain (historical figures, ancient mythology, pre-1928 classics)
+- "none": Clearly public domain (historical figures, ancient mythology, pre-1928 classics), OR an unrecognized/original name (nothing to protect)
 - "caution": Uncertain status or lesser-known character
-- "warning": Clearly copyrighted/trademarked (Disney, Marvel, modern franchises, etc.)`,
+- "warning": Clearly copyrighted/trademarked (Disney, Marvel, modern franchises, etc.)
+
+"recognized" guide:
+- true: a real character or person you have specific knowledge about.
+- false: an original/made-up name with no actual match — warningLevel should be "none" in this case, since there's nothing copyrighted about a name nobody has used.`,
       messages: [
         {
           role: "user",
@@ -172,6 +193,7 @@ warningLevel guide (only about copyright/trademark, ignore concern 1 entirely he
       reason: validation.reason || "",
       suggestions: Array.isArray(validation.suggestions) ? validation.suggestions : [],
       blocked: validation.blocked === true,
+      recognized: validation.recognized ?? true,
     };
 
     logEvent("info", "character_validated", "Character validation completed", sanitizeLogMeta({
@@ -196,6 +218,7 @@ warningLevel guide (only about copyright/trademark, ignore concern 1 entirely he
       reason: "Unable to validate at this time. Please proceed with caution.",
       suggestions: [],
       blocked: false,
+      recognized: true,
     } as CharacterValidationResult);
   }
 }

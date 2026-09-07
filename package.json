@@ -23,7 +23,8 @@
     "analyze": "ANALYZE=true next build",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "chars:reclassify": "node scripts/reclassify-avatar-cache.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

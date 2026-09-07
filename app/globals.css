@@ -52,6 +52,9 @@
   --color-error: #8b3a3a;
   /* Rust */
   --color-on-error: #ffffff;
+  --color-error-container: #f2ddd8;
+  /* pale rust container, mirrors primary/secondary-container */
+  --color-on-error-container: #18160f;
   --color-success: #5a7d4a;
   /* Moss */
   --color-on-success: #ffffff;

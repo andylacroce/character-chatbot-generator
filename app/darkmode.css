@@ -27,6 +27,9 @@
   --color-error: #c97a72 !important;
   /* Rust, lightened */
   --color-on-error: #211d15 !important;
+  --color-error-container: #6b2f2f !important;
+  /* Rust, deeper — mirrors primary/secondary-container */
+  --color-on-error-container: #f5f1ea !important;
   --color-success: #8fb37a !important;
   /* Moss, lightened */
   --color-on-success: #211d15 !important;

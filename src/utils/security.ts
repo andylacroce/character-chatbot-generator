@@ -136,3 +136,18 @@ export function sanitizeCharacterName(name: string): string {
   const sanitized = name.replace(/[<>'"&]/g, '').trim();
   return sanitized.length > 100 ? sanitized.substring(0, 100) : sanitized;
 }
+
+/**
+ * Validates and sanitizes a free-form character description supplied by the user
+ * (used to generate a personality for a name Claude doesn't recognize as an existing
+ * character). Unlike sanitizeCharacterName, quotes and punctuation are preserved since
+ * this is prose, not an identifier — only characters with no legitimate use in plain
+ * text (HTML/script injection vectors) are stripped.
+ * @param {string} description - The raw description text
+ * @returns {string} The sanitized description, capped at 500 characters
+ */
+export function sanitizeDescription(description: string): string {
+  if (typeof description !== 'string') return '';
+  const sanitized = description.replace(/[<>`]/g, '').trim();
+  return sanitized.length > 500 ? sanitized.substring(0, 500) : sanitized;
+}

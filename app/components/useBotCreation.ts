@@ -18,11 +18,25 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     const [validationResult, setValidationResult] = useState<CharacterValidationResult | null>(null);
     const [showValidationModal, setShowValidationModal] = useState<boolean>(false);
     const [validating, setValidating] = useState<boolean>(false);
+    // Shown when validation reports `recognized: false` — the name doesn't match any
+    // character/person Claude actually knows about, so we ask the user to describe who
+    // they want instead of letting Claude improvise from just a name.
+    const [showDescriptionModal, setShowDescriptionModal] = useState<boolean>(false);
     // Cancellation token object per generation run. Each run assigns a fresh object so
     // previously-cancelled runs remain cancelled even if a new run starts.
     const cancelRequested = useRef<{ cancelled: boolean } | null>(null);
     const lastRandomNameRef = useRef<string>("");
     const proceedWithoutValidationRef = useRef<boolean>(false);
+    // Set from the validation result for the run currently in flight and read when
+    // building the /api/generate-avatar request — see generateBotDataWithProgressCancelable.
+    // Defaults true (fail open, same as the field's server-side default) so a run that
+    // skips validation entirely (e.g. a copyright-warning override) doesn't accidentally
+    // exclude a recognized character's avatar from the shared cache/gallery.
+    const recognizedRef = useRef<boolean>(true);
+    // Description/appearance text captured from CharacterDescriptionModal, consumed once
+    // by the next generateBotDataWithProgressCancelable call and cleared after.
+    const pendingDescriptionRef = useRef<string>("");
+    const pendingAppearanceRef = useRef<string>("");
 
     async function getRandomCharacterName(): Promise<string> {
         try {
@@ -86,6 +100,10 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             
             try {
                 const validation = await validateCharacterName(input.trim());
+                // Captured for this run regardless of which branch below returns —
+                // read by generateBotDataWithProgressCancelable to keep an original
+                // character's avatar out of the shared cache/public gallery.
+                recognizedRef.current = validation.recognized !== false;
 
                 // Abusive names are hard-blocked, with no "Continue Anyway" — unlike a
                 // copyright warning, this can never be overridden, since created
@@ -116,7 +134,22 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
                     }
                     return; // Stop here and wait for user decision
                 }
-                
+
+                // Name doesn't match any character/person Claude actually knows about —
+                // ask the user to describe who they want instead of letting Claude
+                // improvise a generic personality from the name alone.
+                if (validation.recognized === false) {
+                    setShowDescriptionModal(true);
+                    setValidating(false);
+
+                    if (typeof window !== 'undefined') {
+                        logEvent('info', 'bot_description_prompt_shown', 'Prompted for character description (unrecognized name)', sanitizeLogMeta({
+                            characterName: input.trim()
+                        }));
+                    }
+                    return; // Stop here and wait for the user's description
+                }
+
                 // If safe, proceed directly
                 setValidating(false);
             } catch (err) {
@@ -157,7 +190,10 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
                 setProgress,
                 setLoadingMessage,
                 thisCancelToken,
-                bypassedCopyrightWarning
+                bypassedCopyrightWarning,
+                pendingDescriptionRef.current || undefined,
+                pendingAppearanceRef.current || undefined,
+                recognizedRef.current
             );
             // If the run has not been cancelled, finish normally. Note: check the token's
             // cancelled flag (not truthiness of the ref) so we don't accidentally suppress
@@ -189,6 +225,9 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             }
         } finally {
             setLoading(false);
+            // One-shot: consumed by the run just attempted, regardless of outcome.
+            pendingDescriptionRef.current = "";
+            pendingAppearanceRef.current = "";
         }
     };
 
@@ -238,6 +277,33 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         }
     };
 
+    const handleDescriptionSubmit = (description: string, appearance: string) => {
+        setShowDescriptionModal(false);
+        pendingDescriptionRef.current = description.trim();
+        pendingAppearanceRef.current = appearance.trim();
+        proceedWithoutValidationRef.current = true;
+
+        if (typeof window !== 'undefined') {
+            logEvent('info', 'bot_description_submitted', 'User submitted character description', sanitizeLogMeta({
+                characterName: input.trim(),
+                descriptionLength: description.trim().length,
+                hasAppearance: Boolean(appearance.trim())
+            }));
+        }
+
+        handleCreate();
+    };
+
+    const handleDescriptionCancel = () => {
+        setShowDescriptionModal(false);
+
+        if (typeof window !== 'undefined') {
+            logEvent('info', 'bot_description_cancelled', 'User cancelled description prompt', sanitizeLogMeta({
+                characterName: input.trim()
+            }));
+        }
+    };
+
     const handleRandomCharacter = async () => {
         setRandomizing(true);
         setError("");
@@ -267,11 +333,12 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
 
     return {
         input, setInput, error, setError, loading, setLoading, progress, setProgress,
-        randomizing, setRandomizing, loadingMessage, setLoadingMessage, 
-        validating, validationResult, showValidationModal,
+        randomizing, setRandomizing, loadingMessage, setLoadingMessage,
+        validating, validationResult, showValidationModal, showDescriptionModal,
         cancelRequested, lastRandomNameRef,
         handleCreate, handleCancel, handleRandomCharacter,
-        handleValidationContinue, handleValidationCancel, handleValidationSuggestion
+        handleValidationContinue, handleValidationCancel, handleValidationSuggestion,
+        handleDescriptionSubmit, handleDescriptionCancel
     };
 }
 
@@ -285,7 +352,17 @@ export async function generateBotDataWithProgressCancelable(
     // True when the user clicked through a copyright warning/caution for this name.
     // Propagated to /api/generate-avatar (skips the shared cache + Blob) and onto the
     // returned Bot (skips this user's own bots-table persistence too) — see callers.
-    skipPersistence: boolean = false
+    skipPersistence: boolean = false,
+    // Free-form personality/background text collected via CharacterDescriptionModal
+    // when validate-character reported `recognized: false` — see description.
+    description?: string,
+    // Companion free-form appearance text from the same modal, used to steer avatar
+    // generation instead of inventing a look from the name alone.
+    appearance?: string,
+    // Mirrors validate-character's `recognized` field for this run. Propagated to
+    // /api/generate-avatar so an original character's avatar is never written to the
+    // shared, name-keyed avatar cache the public /chars gallery reads from.
+    recognized: boolean = true
 ): Promise<Bot> {
     // Implementation copied from previous inner function
     let personality = `You are ${originalInputName}. Stay in character.`;
@@ -298,7 +375,7 @@ export async function generateBotDataWithProgressCancelable(
         const personalityRes = await authenticatedFetch("/api/generate-personality", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: originalInputName }),
+            body: JSON.stringify({ name: originalInputName, description }),
         });
         if (cancelToken?.cancelled) throw new Error("cancelled");
         if (personalityRes.ok) {
@@ -330,7 +407,7 @@ export async function generateBotDataWithProgressCancelable(
         const avatarRes = await authenticatedFetch("/api/generate-avatar", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: correctedName, skipPersistence }),
+            body: JSON.stringify({ name: correctedName, skipPersistence, recognized, appearanceDescription: appearance }),
         });
         if (cancelToken?.cancelled) throw new Error("cancelled");
         if (avatarRes.ok) {

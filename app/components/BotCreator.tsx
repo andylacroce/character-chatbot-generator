@@ -21,6 +21,7 @@ import DisclaimerModal from "./DisclaimerModal";
 import CharacterInfoModal from "./CharacterInfoModal";
 import { useBotCreation } from "./useBotCreation";
 import { CopyrightWarningModal } from "./CopyrightWarningModal";
+import { CharacterDescriptionModal } from "./CharacterDescriptionModal";
 
 interface Bot {
   name: string;
@@ -63,8 +64,10 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   const {
     input, setInput, error, loading, progress,
     randomizing, loadingMessage, validating, validationResult, showValidationModal,
+    showDescriptionModal,
     handleCreate, handleCancel, handleRandomCharacter,
-    handleValidationContinue, handleValidationCancel, handleValidationSuggestion
+    handleValidationContinue, handleValidationCancel, handleValidationSuggestion,
+    handleDescriptionSubmit, handleDescriptionCancel
   } = useBotCreation(onBotCreated);
 
   useEffect(() => {
@@ -329,6 +332,14 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           onContinue={handleValidationContinue}
           onCancel={handleValidationCancel}
           onSelectSuggestion={handleValidationSuggestion}
+        />
+      )}
+
+      {showDescriptionModal && (
+        <CharacterDescriptionModal
+          characterName={input.trim()}
+          onSubmit={handleDescriptionSubmit}
+          onCancel={handleDescriptionCancel}
         />
       )}
     </>

@@ -5,7 +5,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
-import { sanitizeCharacterName } from "../../src/utils/security";
+import { sanitizeCharacterName, sanitizeDescription } from "../../src/utils/security";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 
@@ -41,6 +41,15 @@ const personalityRateLimit = createRateLimiter({
  *               name:
  *                 type: string
  *                 example: Sherlock Holmes
+ *               description:
+ *                 type: string
+ *                 description: >
+ *                   Optional free-form character concept, collected from the user when
+ *                   /api/validate-character flagged this name as unrecognized (not an
+ *                   actual character/person Claude knows). Used as the primary basis
+ *                   for personality generation instead of the name alone. Treated as
+ *                   untrusted creative-writing content, never as instructions; unsafe
+ *                   requests inside it are disregarded server-side.
  *     responses:
  *       200:
  *         description: Generated personality prompt
@@ -72,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!(await applyRateLimit(personalityRateLimit, req, res))) {
     return;
   }
-  const { name: originalName } = req.body;
+  const { name: originalName, description: originalDescription } = req.body;
   if (!originalName || typeof originalName !== 'string') {
     res.status(400).json({ error: "Valid name required" });
     return;
@@ -82,18 +91,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(400).json({ error: "Invalid character name" });
     return;
   }
-  
+  const sanitizedDescription = typeof originalDescription === 'string' && originalDescription.trim()
+    ? sanitizeDescription(originalDescription)
+    : undefined;
+
   try {
     logEvent("info", "personality_prompt_start", "Generating personality prompt", sanitizeLogMeta({
-      name: sanitizedName
+      name: sanitizedName,
+      hasDescription: Boolean(sanitizedDescription)
     }));
-    
-    const concisePrompt = await generatePersonalityPrompt(sanitizedName);
-    
+
+    const concisePrompt = sanitizedDescription
+      ? await generatePersonalityPrompt(sanitizedName, sanitizedDescription)
+      : await generatePersonalityPrompt(sanitizedName);
+
     logEvent("info", "personality_prompt_generated", "Personality prompt generated", sanitizeLogMeta({
       name: sanitizedName
     }));
-    
+
     res.status(200).json({ personality: concisePrompt, correctedName: sanitizedName });
   } catch (err) {
     logEvent("error", "personality_prompt_error", "Error generating personality prompt", sanitizeLogMeta({

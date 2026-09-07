@@ -26,7 +26,7 @@
  * checkpoint that keeps that source-of-truth switch cheap on long conversations.
  */
 
-import { pgTable, text, timestamp, integer, serial, primaryKey, jsonb, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, serial, primaryKey, jsonb, unique, boolean } from "drizzle-orm/pg-core";
 import type { CharacterVoiceConfig } from "../utils/characterVoices";
 
 export const users = pgTable("users", {
@@ -114,10 +114,22 @@ export const messages = pgTable("messages", {
  * permanently deny a name a real portrait. `gender` is cached alongside the image
  * because it's produced by the same Claude prompt-generation step that a cache hit
  * skips entirely, and callers need it for voice selection.
+ *
+ * `recognized` mirrors /api/validate-character's field of the same name: false when the
+ * name isn't an actual character/person Claude has knowledge of (an original character,
+ * described via the /api/generate-personality `description` flow instead). pages/api/chars.ts
+ * filters the public gallery to `recognized = true` rows only — an original character's
+ * name/portrait means something only to its own creator, unlike a famous name every visitor
+ * would recognize, so it doesn't belong on a public "characters anyone can chat with" wall.
+ * Defaults true so rows written before this column existed (all pre-dating the recognized/
+ * unrecognized distinction) keep showing on the gallery rather than silently vanishing;
+ * scripts/reclassify-avatar-cache.cjs can re-run the recognized classification over
+ * existing rows for anyone who wants that historical cleanup.
  */
 export const avatarCache = pgTable("avatar_cache", {
   characterName: text("character_name").primaryKey(),
   avatarUrl: text("avatar_url").notNull(),
   gender: text("gender"),
+  recognized: boolean("recognized").default(true).notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });

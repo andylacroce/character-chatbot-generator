@@ -7,7 +7,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { getDb } from "../../src/db/client";
 import { avatarCache } from "../../src/db/schema";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
@@ -56,7 +56,10 @@ async function getAllCharacters(): Promise<CharacterEntry[]> {
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
     return cache.entries;
   }
-  const rows = await getDb().select().from(avatarCache).orderBy(desc(avatarCache.createdAt));
+  // Original characters (recognized: false — see src/db/schema.ts) are excluded: their
+  // name/portrait means something only to the person who made them up, unlike a name
+  // every visitor to this public gallery would actually recognize.
+  const rows = await getDb().select().from(avatarCache).where(eq(avatarCache.recognized, true)).orderBy(desc(avatarCache.createdAt));
   const entries = rows.map((row) => ({
     name: toDisplayName(row.characterName),
     avatarUrl: row.avatarUrl,

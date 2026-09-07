@@ -1,7 +1,8 @@
 import { createMocks } from 'node-mocks-http';
 
 const mockOrderBy = jest.fn();
-const mockFrom = jest.fn(() => ({ orderBy: mockOrderBy }));
+const mockWhere = jest.fn(() => ({ orderBy: mockOrderBy }));
+const mockFrom = jest.fn(() => ({ where: mockWhere }));
 const mockSelect = jest.fn(() => ({ from: mockFrom }));
 const mockDb = { select: mockSelect };
 jest.mock('../../../src/db/client', () => ({ getDb: () => mockDb }));
@@ -88,6 +89,14 @@ describe('chars API', () => {
         // in-process cache should serve the second request without hitting the DB again.
         expect(mockSelect).toHaveBeenCalledTimes(1);
         expect(second.res._getJSONData().characters).toEqual(first.res._getJSONData().characters);
+    });
+
+    it('filters the query to recognized characters only', async () => {
+        mockOrderBy.mockResolvedValue([makeRow('ada lovelace')]);
+        const handler = (await import('../../../pages/api/chars')).default;
+        const { req, res } = createMocks({ method: 'GET' });
+        await handler(req, res);
+        expect(mockWhere).toHaveBeenCalledTimes(1);
     });
 
     it('returns 500 when the query fails', async () => {
