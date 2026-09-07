@@ -4,8 +4,10 @@ import BotCreator from '../../../app/components/BotCreator';
 
 // Mock next/navigation
 const mockSearchParams = new URLSearchParams();
+const mockRouter = { push: jest.fn() };
 jest.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
+  useRouter: () => mockRouter,
 }));
 
 // BotCreator renders AuthControl, which needs a SessionProvider ancestor
@@ -93,13 +95,15 @@ describe('BotCreator URL parameter functionality', () => {
 
         render(<BotCreator onBotCreated={onBotCreated} />);
 
+        // A brief "Resuming..." interstitial appears before the actual dispatch —
+        // see BotCreator.interstitial.test.tsx for dedicated coverage of it.
         await waitFor(() => expect(onBotCreated).toHaveBeenCalledWith({
             name: 'Sherlock Holmes',
             personality: savedBot.personality,
             avatarUrl: savedBot.avatarUrl,
             voiceConfig: savedBot.voiceConfig,
             gender: savedBot.gender,
-        }));
+        }), { timeout: 3000 });
         // Resuming a saved bot never shows the fresh-generation progress steps.
         expect(screen.queryByTestId('bot-creator-progress')).not.toBeInTheDocument();
     });
@@ -119,7 +123,7 @@ describe('BotCreator URL parameter functionality', () => {
 
         render(<BotCreator onBotCreated={onBotCreated} />);
 
-        await waitFor(() => expect(onBotCreated).toHaveBeenCalledWith(expect.objectContaining({ name: 'Sherlock Holmes' })));
+        await waitFor(() => expect(onBotCreated).toHaveBeenCalledWith(expect.objectContaining({ name: 'Sherlock Holmes' })), { timeout: 3000 });
     });
 
     it('falls back to fresh creation when the signed-in user has no saved character by that name', async () => {
@@ -135,8 +139,9 @@ describe('BotCreator URL parameter functionality', () => {
         // Falls through into the ordinary generation pipeline — proven by it reaching
         // that pipeline's first call, /api/validate-character (whether that pipeline
         // itself then succeeds or fails is useBotCreation.test.ts's concern, not this
-        // resume-vs-create branching logic's).
-        await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/validate-character', expect.anything()));
+        // resume-vs-create branching logic's). A brief "Starting a new chat..."
+        // interstitial delays that call — see BotCreator.interstitial.test.tsx.
+        await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/validate-character', expect.anything()), { timeout: 3000 });
     });
 
     it('falls back to fresh creation when the /api/bots lookup itself fails', async () => {
@@ -149,7 +154,7 @@ describe('BotCreator URL parameter functionality', () => {
 
         render(<BotCreator onBotCreated={() => { }} />);
 
-        await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/validate-character', expect.anything()));
+        await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/validate-character', expect.anything()), { timeout: 3000 });
     });
 
     it('waits for a loading session before deciding whether to look up a saved character', async () => {
@@ -190,7 +195,7 @@ describe('BotCreator URL parameter functionality', () => {
             </React.StrictMode>
         );
 
-        await waitFor(() => expect(onBotCreated).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(onBotCreated).toHaveBeenCalledTimes(1), { timeout: 3000 });
         expect(onBotCreated).toHaveBeenCalledWith(expect.objectContaining({ name: 'Sherlock Holmes' }));
     });
 

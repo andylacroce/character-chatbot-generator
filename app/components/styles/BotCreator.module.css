@@ -515,6 +515,11 @@
   text-align: center;
   margin-bottom: 0.2rem;
   font-family: var(--font-primary), sans-serif;
+  /* Reserves space for two lines so the Cancel button below doesn't bounce
+     vertically as this text's length changes (different progress messages,
+     the ticking elapsed-seconds suffix growing from one digit to two). */
+  line-height: 1.4;
+  min-height: 2.8em;
 }
 
 .elapsedTime {

@@ -11,7 +11,7 @@
 
 import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { FaPalette } from "react-icons/fa";
 import { authenticatedFetch } from "../../src/utils/api";
@@ -42,6 +42,17 @@ interface BotCreatorProps {
   returningToCreator?: boolean;
 }
 
+// How long the "Resuming..." / "Starting a new chat..." interstitial stays up
+// before actually dispatching, so the user has time to read which outcome
+// happened rather than jumping straight into chat with no visible signal.
+const INTERSTITIAL_DELAY_MS = 1500;
+
+interface Interstitial {
+  name: string;
+  kind: "resume" | "new";
+  dispatch: () => void;
+}
+
 const progressSteps = [
   {
     key: "personality",
@@ -60,6 +71,7 @@ const progressSteps = [
 
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreator = false }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const nameFromUrl = searchParams?.get('name') || null;
   const { status: sessionStatus } = useSession();
@@ -99,6 +111,57 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   const hasAutoSubmittedRef = useRef<boolean>(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
   const [showCharacterInfoModal, setShowCharacterInfoModal] = useState(false);
+  const [interstitial, setInterstitial] = useState<Interstitial | null>(null);
+  // useBotCreation doesn't memoize its return values, so handleCreate/onBotCreated
+  // get a new identity on every BotCreator render. The URL-launch effect below reads
+  // them through these refs instead of listing them as effect dependencies — otherwise
+  // any unrelated re-render while the /api/bots lookup is in flight (e.g. the separate
+  // /api/config fetch resolving) would tear down and re-fire the effect, and since the
+  // lookup hadn't dispatched yet, the StrictMode-hang-fix cleanup below would reset the
+  // guard and fire a duplicate /api/bots request — repeatedly, on every such re-render.
+  const handleCreateRef = useRef(handleCreate);
+  const onBotCreatedRef = useRef(onBotCreated);
+  useEffect(() => {
+    handleCreateRef.current = handleCreate;
+    onBotCreatedRef.current = onBotCreated;
+  });
+
+  // Runs the deferred dispatch (onBotCreated for a resumed character, or
+  // handleCreate for a fresh one) after the interstitial has been visible for
+  // a beat. Cancelled on unmount or if superseded by a new interstitial before
+  // it fires.
+  useEffect(() => {
+    if (!interstitial) return;
+    const timer = window.setTimeout(() => {
+      interstitial.dispatch();
+      setInterstitial(null);
+    }, INTERSTITIAL_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [interstitial]);
+
+  // Wraps ResumeBotDropdown's onSelect so picking a "Previously" character shows
+  // the same brief "Resuming..." interstitial as the ?name=X match branch below,
+  // instead of jumping straight into chat with no visible confirmation.
+  const handleResumeSelect = (bot: Bot) => {
+    setInterstitial({ name: bot.name, kind: "resume", dispatch: () => onBotCreatedRef.current(bot) });
+  };
+
+  // Lets the user back out of a pending interstitial instead of being forced to sit
+  // through it — same "Cancel" affordance and styling as the generation-progress
+  // step below. Clearing `interstitial` alone would be enough for a dropdown-driven
+  // resume (no ?name=X to contend with), but a URL-driven launch would otherwise be
+  // stuck: isLaunchingFromUrl stays true (nameFromUrl is still set) and
+  // hasAutoSubmittedRef is already true, so it'd just re-show "Loading..." forever
+  // with nothing left to resolve it. Navigating back to '/' drops the query param —
+  // the same reset the app already relies on elsewhere for "no name in the URL" — and
+  // releasing the guard lets clicking the same Character Wall link work again later.
+  const handleCancelInterstitial = () => {
+    setInterstitial(null);
+    if (nameFromUrl) {
+      hasAutoSubmittedRef.current = false;
+      router.push('/');
+    }
+  };
 
   useEffect(() => {
     if (nameFromUrl && !input.trim()) {
@@ -125,7 +188,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     hasAutoSubmittedRef.current = true;
 
     if (sessionStatus !== 'authenticated') {
-      handleCreate();
+      handleCreateRef.current();
       return;
     }
 
@@ -139,14 +202,14 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
         const match = bots.find((b) => b.name.toLowerCase() === nameFromUrl.toLowerCase());
         dispatched = true;
         if (match) {
-          onBotCreated(persistedBotToBot(match));
+          setInterstitial({ name: match.name, kind: "resume", dispatch: () => onBotCreatedRef.current(persistedBotToBot(match)) });
         } else {
-          handleCreate();
+          setInterstitial({ name: nameFromUrl, kind: "new", dispatch: () => handleCreateRef.current() });
         }
       })
       .catch(() => {
         dispatched = true;
-        handleCreate();
+        setInterstitial({ name: nameFromUrl, kind: "new", dispatch: () => handleCreateRef.current() });
       });
 
     return () => {
@@ -167,7 +230,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
         hasAutoSubmittedRef.current = false;
       }
     };
-  }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus, handleCreate, onBotCreated]);
+  }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus]);
   useEffect(() => {
     // fetch server-side config (safe subset) so UI matches server timeout
     let mounted = true;
@@ -209,7 +272,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
         className={styles.formContainer}
         autoComplete="off"
       >
-        {!isLaunchingFromUrl && (
+        {!isLaunchingFromUrl && !interstitial && (
           <>
             <div className={styles.hero}>
               <p className={styles.heroWordmark} aria-hidden="true">
@@ -290,10 +353,29 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           </>
         )}
 
-        {isLaunchingFromUrl && !isBusy && (
+        {isLaunchingFromUrl && !isBusy && !interstitial && (
           <div className={styles.progressContainer} data-testid="bot-creator-auto-launch">
             <span className={styles.genericSpinner} aria-label="Loading" />
             <div className={styles.progressText}>Loading {nameFromUrl}&hellip;</div>
+          </div>
+        )}
+
+        {interstitial && (
+          <div className={styles.progressContainer} data-testid="bot-creator-interstitial">
+            <span className={styles.genericSpinner} aria-label="Loading" />
+            <div className={styles.progressText}>
+              {interstitial.kind === "resume"
+                ? `Resuming your chat with ${interstitial.name}…`
+                : `Starting a new chat with ${interstitial.name}…`}
+            </div>
+            <button
+              type="button"
+              className={styles.textLink}
+              aria-label="Cancel"
+              onClick={handleCancelInterstitial}
+            >
+              Cancel
+            </button>
           </div>
         )}
 
@@ -324,9 +406,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
         )}
         {error && <div className={styles.error}>{error}</div>}
 
-        {!isBusy && !isLaunchingFromUrl && <ResumeBotDropdown onSelect={onBotCreated} />}
+        {!isBusy && !isLaunchingFromUrl && !interstitial && <ResumeBotDropdown onSelect={handleResumeSelect} />}
 
-        {!isLaunchingFromUrl && <div className={styles.footerLinks}>
+        {!isLaunchingFromUrl && !interstitial && <div className={styles.footerLinks}>
           <button
             type="button"
             aria-label="Which characters can I create?"
