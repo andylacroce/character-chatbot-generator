@@ -23,6 +23,11 @@
 const { neon } = require("@neondatabase/serverless");
 const Anthropic = require("@anthropic-ai/sdk").default;
 
+// This runs as a standalone script, not through Next.js, so .env.local (which
+// next dev/build load automatically) has to be loaded explicitly — same as
+// drizzle.config.ts does for drizzle-kit.
+require("dotenv").config({ path: ".env.local" });
+
 const DATABASE_URL = process.env.DATABASE_URL;
 const dryRun = process.argv.includes("--dry-run");
 
