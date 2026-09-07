@@ -94,12 +94,28 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* Anchored near the top with fixed padding, not vertically centered: with
+     the wall CTA + divider added, centering grew an ever-larger top gap on
+     tall viewports (nothing above it to balance) and, on short/landscape
+     viewports, actually pushed the top of the content above the visible
+     viewport with no way to scroll back to it (centered-content overflow in
+     a flex column doesn't yield a scrollable region above the container the
+     way top-anchored content does). */
+  justify-content: flex-start;
   width: 100%;
   max-width: 480px;
   box-sizing: border-box;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 3rem;
+  /* html/body are a fixed height:100% by design (the app fills exactly the
+     viewport, with no page-level scroll — see globals.css), so a flex child
+     taller than its allotted space can't fall back on the document scrolling;
+     it needs to scroll internally instead, same as ChatPage's own message
+     list. min-height: 0 lets this flex item actually shrink below its content
+     size so overflow-y can take over rather than being forced to its content
+     height (a flex item's default min-height is auto, i.e. its content size). */
+  min-height: 0;
+  overflow-y: auto;
 }
 
 @media (max-width: 600px) {
@@ -118,7 +134,9 @@
 .hero {
   text-align: center;
   width: 100%;
-  margin-bottom: 2rem;
+  /* No bottom margin: .orDivider (rendered right after this) supplies the
+     space down to the input row on its own, so the two don't stack. */
+  margin-bottom: 0;
 }
 
 .kicker {
@@ -146,6 +164,62 @@
   font-size: 0.98rem;
   margin: 0 auto;
   max-width: 40ch;
+}
+
+.wallCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 1.3rem;
+  padding: 0.7rem 1.35rem;
+  border-radius: 999px;
+  background: var(--color-secondary);
+  color: var(--color-on-secondary);
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  box-shadow: 0 3px 10px rgba(51, 89, 94, 0.25);
+  transition: all 0.2s ease;
+}
+
+.wallCta:hover,
+.wallCta:focus-visible {
+  background: var(--send-button-hover-bg);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(51, 89, 94, 0.35);
+  outline: none;
+}
+
+.wallCta:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(51, 89, 94, 0.25);
+}
+
+.orDivider {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 1.7rem 0 1.5rem;
+  color: var(--color-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.orDivider::before,
+.orDivider::after {
+  content: "";
+  flex: 1 1 0;
+  height: 1px;
+  background: var(--color-outline);
+  opacity: 0.45;
+}
+
+.orDivider span {
+  padding: 0 0.9rem;
 }
 
 /* ===== Name input + actions ===== */

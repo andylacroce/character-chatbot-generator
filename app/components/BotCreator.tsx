@@ -10,6 +10,7 @@
  */
 
 import React, { useRef, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { authenticatedFetch } from "../../src/utils/api";
@@ -212,6 +213,18 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
               <p className={styles.subhead}>
                 Type any name. Public domain classics, myths, and historical figures work best, but feel free to go off script.
               </p>
+              <Link href="/chars" className={styles.wallCta}>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                  <rect x="2.5" y="3.5" width="15" height="13" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                  <circle cx="7" cy="8" r="1.4" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M3.5 14l4.5-4 3 2.5 2.5-2 3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Pick from the Character Wall
+              </Link>
+            </div>
+
+            <div className={styles.orDivider} role="separator" aria-label="or">
+              <span>or</span>
             </div>
 
             <div className={styles.inputRow + (isBusy ? ' ' + styles.hideMobile : '')}>
@@ -317,9 +330,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           </button>
           <a href="/privacy" className={styles.footerLink}>
             Privacy
-          </a>
-          <a href="/chars" className={styles.footerLink}>
-            Character Wall
           </a>
         </div>}
       </form>

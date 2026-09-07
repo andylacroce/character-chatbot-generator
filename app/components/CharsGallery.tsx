@@ -257,7 +257,12 @@ const CharsGallery: React.FC = () => {
         {selected && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={selected.avatarUrl} alt={selected.name} className={styles.lightboxImage} />
+            <img
+              src={selected.avatarUrl}
+              alt={selected.name}
+              className={styles.lightboxImage}
+              onClick={closeLightbox}
+            />
             <p className={styles.lightboxName}>{selected.name}</p>
             {/* Same launch point the landing page itself uses for a name typed
                 into the creator (BotCreator's ?name= auto-submit effect) — it

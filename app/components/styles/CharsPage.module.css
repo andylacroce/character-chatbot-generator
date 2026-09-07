@@ -414,6 +414,7 @@
   aspect-ratio: 1 / 1;
   object-fit: cover;
   background: #e8e2d4;
+  cursor: zoom-out;
 }
 
 .lightboxName {

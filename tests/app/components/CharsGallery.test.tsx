@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import CharsGallery from "@/app/components/CharsGallery";
 
 const mockAuthenticatedFetch = jest.fn();
@@ -135,6 +135,19 @@ describe("CharsGallery", () => {
     await waitFor(() => expect(dialog.open).toBe(true));
 
     fireEvent.click(dialog);
+    await waitFor(() => expect(dialog.open).toBe(false));
+  });
+
+  it("closes the lightbox when the zoomed image itself is clicked", async () => {
+    mockAuthenticatedFetch.mockResolvedValue(mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false));
+    render(<CharsGallery />);
+    await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTitle("Ada Lovelace"));
+    const dialog = document.querySelector("dialog") as HTMLDialogElement;
+    await waitFor(() => expect(dialog.open).toBe(true));
+
+    fireEvent.click(within(dialog).getByAltText("Ada Lovelace"));
     await waitFor(() => expect(dialog.open).toBe(false));
   });
 });
