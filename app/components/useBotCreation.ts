@@ -93,13 +93,24 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             return;
         }
 
+        // One cancellation token for this entire run — validation through generation —
+        // so handleCancel() can interrupt it at any step, not just once generation has
+        // started. Assigned to cancelRequested.current immediately so a Cancel click
+        // during validation actually takes effect: previously the token was only
+        // created right before generation, so cancelling during validation couldn't
+        // stop that fetch's resolution from silently continuing into a warning modal,
+        // description prompt, or a full generation run regardless of the cancel click.
+        const thisRunToken = { cancelled: false };
+        cancelRequested.current = thisRunToken;
+
         // If we haven't validated yet and not explicitly proceeding without validation
         if (!proceedWithoutValidationRef.current) {
             setValidating(true);
             setError("");
-            
+
             try {
                 const validation = await validateCharacterName(input.trim());
+                if (thisRunToken.cancelled) return;
                 // Captured for this run regardless of which branch below returns —
                 // read by generateBotDataWithProgressCancelable to keep an original
                 // character's avatar out of the shared cache/public gallery.
@@ -153,6 +164,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
                 // If safe, proceed directly
                 setValidating(false);
             } catch (err) {
+                if (thisRunToken.cancelled) return;
                 // On validation error, proceed anyway
                 setValidating(false);
                 if (typeof window !== 'undefined') {
@@ -163,6 +175,8 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
                 }
             }
         }
+
+        if (thisRunToken.cancelled) return;
 
         // Capture before resetting: true only when this run reached here via
         // handleValidationContinue, i.e. the user explicitly clicked through a
@@ -181,15 +195,12 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
         setLoading(true);
         setProgress("personality");
         setLoadingMessage(null);
-        // Create a fresh cancellation token for this run and keep a reference to it on the hook
-        const thisCancelToken = { cancelled: false };
-        cancelRequested.current = thisCancelToken;
         try {
             const bot = await generateBotDataWithProgressCancelable(
                 input.trim(),
                 setProgress,
                 setLoadingMessage,
-                thisCancelToken,
+                thisRunToken,
                 bypassedCopyrightWarning,
                 pendingDescriptionRef.current || undefined,
                 pendingAppearanceRef.current || undefined,
@@ -198,7 +209,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             // If the run has not been cancelled, finish normally. Note: check the token's
             // cancelled flag (not truthiness of the ref) so we don't accidentally suppress
             // success when the token object is present but not cancelled.
-            if (!cancelRequested.current?.cancelled) {
+            if (!thisRunToken.cancelled) {
                 setProgress(null);
                 setLoadingMessage(null);
                 if (typeof window !== 'undefined') {
@@ -212,7 +223,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
             }
         } catch (err) {
             // Only surface an error to the user if this run wasn't cancelled
-            if (!cancelRequested.current?.cancelled) {
+            if (!thisRunToken.cancelled) {
                 if (typeof window !== 'undefined') {
                     logEvent('error', 'bot_creation_failed', 'Bot creation failed', sanitizeLogMeta({
                         characterName: input.trim(),
@@ -232,8 +243,11 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     };
 
     const handleCancel = () => {
-        // Mark the active run's token as cancelled so only that run is affected
+        // Mark the active run's token as cancelled so only that run is affected —
+        // this now spans the whole run (validation through generation), so cancelling
+        // during validation actually stops it from proceeding once it resolves.
         if (cancelRequested.current) cancelRequested.current.cancelled = true;
+        setValidating(false);
         setLoading(false);
         setProgress(null);
     };

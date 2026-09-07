@@ -460,6 +460,45 @@ describe('useBotCreation tests', () => {
     expect(result.current.progress).toBeNull();
   });
 
+  it('handleCancel during validating stops the run from proceeding once validation resolves', async () => {
+    // Regression: the cancellation token used to be created only right before
+    // generation started, so cancelling during validation had no effect — the
+    // validate-character response would still land and could show a warning
+    // modal or otherwise proceed, entirely ignoring the cancel click.
+    let resolveValidation: ((v: { ok: boolean; json: () => Promise<unknown> }) => void) | null = null;
+    const validationPromise = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((res) => { resolveValidation = res; });
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === '/api/validate-character') return validationPromise;
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated));
+
+    act(() => result.current.setInput('Spider-Man'));
+    act(() => { result.current.handleCreate(); });
+
+    await waitFor(() => expect(result.current.validating).toBe(true));
+
+    act(() => result.current.handleCancel());
+    expect(result.current.validating).toBe(false);
+
+    // Validation resolves *after* the cancel, with a warning level that would
+    // otherwise pop the copyright modal.
+    await act(async () => {
+      resolveValidation?.({
+        ok: true,
+        json: async () => ({ warningLevel: 'warning', characterName: 'Spider-Man' }),
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.showValidationModal).toBe(false);
+    expect(result.current.loading).toBe(false);
+    expect(onBotCreated).not.toHaveBeenCalled();
+  });
+
   // Merged from branches: SSR/window undefined paths
   it('SSR: handleCreate works when window is undefined at start', async () => {
     const originalWindow = (global as unknown as { window?: Window }).window;

@@ -90,13 +90,21 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     }
   }, []);
 
+  // Set once the user cancels a URL-driven launch (see handleCancelLaunch). Read by
+  // isLaunchingFromUrl and the URL-launch effect's own guard below so cancelling is
+  // immediate and deterministic — it doesn't depend on router.push('/chars') having
+  // actually completed its navigation (and thus unmounted this component) before some
+  // other render/effect tick could otherwise let the launch silently resume.
+  const [launchCancelled, setLaunchCancelled] = useState(false);
+
   // Launching via /?name=X (e.g. the /chars "Chat with this character" link) should
   // read as going straight into a chat, not "landing on the creator page, which then
   // happens to fill itself in" — so the ordinary hero/input/footer UI stays hidden
   // for as long as a URL-driven launch is in flight. Falls back to showing the normal
   // form (pre-filled, with the error visible) if that launch actually fails, so the
   // user isn't left stuck looking at a spinner with no way to retry or edit the name.
-  const isLaunchingFromUrl = Boolean(nameFromUrl) && !error && !returningToCreator;
+  // Also false once the user cancels (launchCancelled, set above).
+  const isLaunchingFromUrl = Boolean(nameFromUrl) && !error && !returningToCreator && !launchCancelled;
 
   const currentStep = progressSteps.find((s) => s.key === progress);
   // Deliberately excludes `randomizing`: that request is near-instant, and gating the
@@ -146,20 +154,32 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     setInterstitial({ name: bot.name, kind: "resume", dispatch: () => onBotCreatedRef.current(bot) });
   };
 
-  // Lets the user back out of a pending interstitial instead of being forced to sit
-  // through it — same "Cancel" affordance and styling as the generation-progress
-  // step below. Clearing `interstitial` alone would be enough for a dropdown-driven
-  // resume (no ?name=X to contend with), but a URL-driven launch would otherwise be
-  // stuck: isLaunchingFromUrl stays true (nameFromUrl is still set) and
-  // hasAutoSubmittedRef is already true, so it'd just re-show "Loading..." forever
-  // with nothing left to resolve it. Navigating back to '/' drops the query param —
-  // the same reset the app already relies on elsewhere for "no name in the URL" — and
-  // releasing the guard lets clicking the same Character Wall link work again later.
-  const handleCancelInterstitial = () => {
+  // Backs all the way out of the current launch — whichever step it's clicked
+  // from — and returns to wherever that launch actually started. Shared by the
+  // interstitial's Cancel button, the validating-step Cancel button, and the
+  // downstream generation-progress Cancel button, so cancelling always "kicks
+  // out" the same way instead of only unwinding whichever single step happened
+  // to be showing. handleCancel() (from useBotCreation) stops an in-flight
+  // generation run if one exists; it's a harmless no-op when cancelling
+  // straight out of the interstitial before generation ever started.
+  //
+  // A launch with no nameFromUrl started on this same landing-page form (typed
+  // name, or the "Previously" dropdown) — clearing `interstitial` is enough,
+  // since the ordinary form is already what re-appears once isBusy/interstitial
+  // are both false, no navigation needed. A launch WITH nameFromUrl only ever
+  // starts from the Character Wall's "Chat with this character" link (see
+  // CharsGallery.tsx / CLAUDE.md), so cancelling it goes back there — not to
+  // the plain landing page, which the user never actually visited this trip.
+  // Setting launchCancelled makes isLaunchingFromUrl false immediately, for
+  // this mounted instance, regardless of how long router.push('/chars') takes
+  // to actually complete its navigation — it doesn't rely on that navigation
+  // having unmounted the component yet to stop the launch from resuming.
+  const handleCancelLaunch = () => {
+    handleCancel();
     setInterstitial(null);
     if (nameFromUrl) {
-      hasAutoSubmittedRef.current = false;
-      router.push('/');
+      setLaunchCancelled(true);
+      router.push('/chars');
     }
   };
 
@@ -183,7 +203,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // match exists. Waits out sessionStatus === 'loading' so guests aren't misjudged
   // as signed-in before the session resolves.
   useEffect(() => {
-    if (!nameFromUrl || input !== nameFromUrl || hasAutoSubmittedRef.current || isBusy || returningToCreator) return;
+    if (!nameFromUrl || input !== nameFromUrl || hasAutoSubmittedRef.current || isBusy || returningToCreator || launchCancelled) return;
     if (sessionStatus === 'loading') return;
     hasAutoSubmittedRef.current = true;
 
@@ -230,7 +250,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
         hasAutoSubmittedRef.current = false;
       }
     };
-  }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus]);
+  }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus, launchCancelled]);
   useEffect(() => {
     // fetch server-side config (safe subset) so UI matches server timeout
     let mounted = true;
@@ -372,7 +392,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
               type="button"
               className={styles.textLink}
               aria-label="Cancel"
-              onClick={handleCancelInterstitial}
+              onClick={handleCancelLaunch}
             >
               Cancel
             </button>
@@ -383,6 +403,14 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           <div className={styles.progressContainer} data-testid="bot-creator-validating">
             <span className={styles.genericSpinner} aria-label="Loading" />
             <div className={styles.progressText}>Validating character...</div>
+            <button
+              type="button"
+              className={styles.textLink}
+              aria-label="Cancel"
+              onClick={handleCancelLaunch}
+            >
+              Cancel
+            </button>
           </div>
         )}
         {loading && currentStep && (
@@ -398,7 +426,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
               type="button"
               className={styles.textLink}
               aria-label="Cancel"
-              onClick={handleCancel}
+              onClick={handleCancelLaunch}
             >
               Cancel
             </button>
