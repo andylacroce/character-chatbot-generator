@@ -101,9 +101,9 @@ describe('ResumeBotDropdown', () => {
         expect(mockOnSelect).toHaveBeenCalledWith(expect.objectContaining({ avatarUrl: '/silhouette.svg' }));
     });
 
-    it('shows no "more" toggle when there are exactly 5 saved characters', async () => {
+    it('shows no "more" toggle when there are exactly 3 saved characters', async () => {
         mockUseSession.mockReturnValue({ data: { user: { id: 'u1' } }, status: 'authenticated' });
-        const bots = Array.from({ length: 5 }, (_, i) => ({
+        const bots = Array.from({ length: 3 }, (_, i) => ({
             id: `b${i}`, name: `Character ${i}`, personality: 'p', avatarUrl: null, gender: null, voiceConfig: null, updatedAt: new Date().toISOString(),
         }));
         mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ bots }) });
@@ -115,9 +115,9 @@ describe('ResumeBotDropdown', () => {
         expect(screen.queryByText(/Show \d+ more/)).not.toBeInTheDocument();
     });
 
-    it('truncates to 5 rows behind a "Show N more" toggle when there are more than 5 saved characters, and expands/collapses on click', async () => {
+    it('truncates to 3 rows behind a "Show N more" toggle when there are more than 3 saved characters, and expands/collapses on click', async () => {
         mockUseSession.mockReturnValue({ data: { user: { id: 'u1' } }, status: 'authenticated' });
-        const bots = Array.from({ length: 7 }, (_, i) => ({
+        const bots = Array.from({ length: 5 }, (_, i) => ({
             id: `b${i}`, name: `Character ${i}`, personality: 'p', avatarUrl: null, gender: null, voiceConfig: null, updatedAt: new Date().toISOString(),
         }));
         mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ bots }) });
@@ -125,19 +125,19 @@ describe('ResumeBotDropdown', () => {
         render(<ResumeBotDropdown onSelect={mockOnSelect} />);
         await screen.findByText('Character 0');
 
-        for (let i = 0; i < 5; i++) expect(screen.getByText(`Character ${i}`)).toBeInTheDocument();
-        expect(screen.queryByText('Character 5')).not.toBeInTheDocument();
-        expect(screen.queryByText('Character 6')).not.toBeInTheDocument();
+        for (let i = 0; i < 3; i++) expect(screen.getByText(`Character ${i}`)).toBeInTheDocument();
+        expect(screen.queryByText('Character 3')).not.toBeInTheDocument();
+        expect(screen.queryByText('Character 4')).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByText('Show 2 more'));
 
-        expect(screen.getByText('Character 5')).toBeInTheDocument();
-        expect(screen.getByText('Character 6')).toBeInTheDocument();
+        expect(screen.getByText('Character 3')).toBeInTheDocument();
+        expect(screen.getByText('Character 4')).toBeInTheDocument();
         expect(screen.getByText('Show less')).toBeInTheDocument();
 
         fireEvent.click(screen.getByText('Show less'));
 
-        expect(screen.queryByText('Character 5')).not.toBeInTheDocument();
+        expect(screen.queryByText('Character 3')).not.toBeInTheDocument();
         expect(screen.getByText('Show 2 more')).toBeInTheDocument();
     });
 

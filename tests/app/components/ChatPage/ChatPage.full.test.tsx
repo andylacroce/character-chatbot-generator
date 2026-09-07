@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import ChatPage from "../../../../app/components/ChatPage";
 import { Bot } from "../../../../app/components/BotCreator";
 import "@testing-library/jest-dom";
@@ -284,6 +284,15 @@ describe("ChatPage full feature coverage", () => {
     const modal = await screen.findByTestId("modal-image-backdrop");
     expect(modal).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /close/i }));
+    expect(screen.queryByTestId("modal-image-backdrop")).not.toBeInTheDocument();
+  });
+
+  it("closes the shared portrait modal when the enlarged image itself is clicked", async () => {
+    render(<ChatPage bot={mockBot} />);
+    const headerAvatar = await screen.findByLabelText(/view character portrait/i);
+    await userEvent.click(headerAvatar);
+    const modal = await screen.findByTestId("modal-image-backdrop");
+    await userEvent.click(within(modal).getByAltText(mockBot.name));
     expect(screen.queryByTestId("modal-image-backdrop")).not.toBeInTheDocument();
   });
 

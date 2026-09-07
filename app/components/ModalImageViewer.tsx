@@ -38,6 +38,7 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt
           width={800}
           height={600}
           className={viewerStyles.image}
+          onClick={onClose}
         />
       </div>
     </div>

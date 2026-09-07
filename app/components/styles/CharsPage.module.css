@@ -23,7 +23,7 @@
      globals.css/darkmode.css.
    ============================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Caveat:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Caveat:wght@600;700&display=swap');
 
 .page {
   max-width: min(96vw, 1800px);
@@ -118,7 +118,7 @@
 }
 
 .title {
-  font-family: 'Fraunces', var(--font-secondary), var(--font-primary), serif;
+  font-family: 'Playfair Display', var(--font-secondary), var(--font-primary), serif;
   font-weight: 500;
   font-size: 2.6rem;
   margin: 0 0 0.5rem;

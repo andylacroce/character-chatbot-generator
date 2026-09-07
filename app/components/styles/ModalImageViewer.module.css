@@ -27,4 +27,5 @@
   background: var(--card-body-bg);
   object-fit: contain;
   box-sizing: border-box;
+  cursor: zoom-out;
 }

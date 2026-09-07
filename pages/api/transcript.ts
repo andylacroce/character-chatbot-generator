@@ -173,7 +173,8 @@ export default async function handler(
   logger.info(`[Transcript API] Generated filename: ${filename}`);
 
   // Generate formatted HTML transcript with styling and safety measures.
-  // Palette, type pairing (Inter/Fraunces) and "no bubbles" transcript treatment
+  // Palette, type pairing (Inter for labels, Playfair Display for titles, Lora for
+  // the actual readable message body) and "no bubbles" transcript treatment
   // mirror the live chat page's immersive-stage design (ChatMessage.module.css,
   // globals.css) so a downloaded transcript still looks like this app. Unlike the
   // live app, this stays on the light palette always (no dark-mode media query)
@@ -187,7 +188,7 @@ export default async function handler(
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${filename}</title>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@400;500;600;700&family=Lora:wght@400;500;600&display=swap');
 
         :root {
           --color-background: #f7f4ef;
@@ -210,7 +211,7 @@ export default async function handler(
           color: var(--color-text);
         }
         h1 {
-          font-family: 'Fraunces', 'Inter', serif;
+          font-family: 'Playfair Display', 'Inter', serif;
           font-weight: 500;
           font-size: 1.65rem;
           color: var(--color-text);
@@ -218,7 +219,7 @@ export default async function handler(
           margin-bottom: 0.5rem;
         }
         h2 {
-          font-family: 'Fraunces', 'Inter', serif;
+          font-family: 'Playfair Display', 'Inter', serif;
           font-weight: 500;
           font-size: 1.3rem;
           color: var(--color-text);
@@ -279,7 +280,7 @@ export default async function handler(
         }
         .bot-message .message-text {
           display: block;
-          font-family: 'Fraunces', 'Inter', serif;
+          font-family: 'Lora', 'Inter', serif;
           font-size: 1.25rem;
           line-height: 1.5;
           color: var(--color-text);
@@ -305,7 +306,7 @@ export default async function handler(
       </style>
     </head>
     <body>
-      <h1>Character Chatbot Generator Transcript</h1>
+      <h1>Portrayal Transcript</h1>
       <div class="header-info">
         <p><strong>Exported:</strong> ${escapeHtml(displayTimestamp)}</p>
       </div>

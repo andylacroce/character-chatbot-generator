@@ -7,14 +7,14 @@ import Link from "next/link";
 import styles from "../components/styles/LegalPage.module.css";
 
 export const metadata = {
-  title: "Data Deletion — Character Chatbot Generator",
-  description: "How to request deletion of your Character Chatbot Generator account and data.",
+  title: "Data Deletion — Portrayal",
+  description: "How to request deletion of your Portrayal account and data.",
 };
 
 export default function DataDeletionPage() {
   return (
     <div className={styles.page}>
-      <Link href="/" className={styles.back}>&larr; Back to Character Chatbot Generator</Link>
+      <Link href="/" className={styles.back}>&larr; Back to Portrayal</Link>
       <h1 className={styles.title}>Data Deletion Instructions</h1>
       <p className={styles.updated}>Last updated: August 2026</p>
 

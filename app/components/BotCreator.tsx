@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Character Chatbot Generator - Character creation form component.
+ * Portrayal - Character creation form component.
  *
  * Allows users to create a new chatbot persona by entering a name or choosing a random character.
  * Handles personality, avatar, and voice generation with progress feedback.
@@ -13,6 +13,7 @@ import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { FaPalette } from "react-icons/fa";
 import { authenticatedFetch } from "../../src/utils/api";
 import styles from "./styles/BotCreator.module.css";
 import DarkModeToggle from "./DarkModeToggle";
@@ -194,7 +195,10 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   return (
     <>
       <header className={styles.masthead}>
-        <span className={styles.mastheadWord}>Character Chatbot Generator</span>
+        <span className={styles.logoMark}>
+          <FaPalette size={22} aria-hidden="true" className={styles.paletteIcon} />
+          <span className={styles.mastheadWord}>Portrayal</span>
+        </span>
         <div className={styles.mastheadUtility}>
           <DarkModeToggle className={styles.ghostIcon} hideLabel />
           <AuthControl className={styles.ghostAuth} />
@@ -208,6 +212,17 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
         {!isLaunchingFromUrl && (
           <>
             <div className={styles.hero}>
+              <p className={styles.heroWordmark} aria-hidden="true">
+                {"Portrayal".split("").map((ch, i) => (
+                  <span
+                    key={i}
+                    className={styles.heroLetter}
+                    style={{ animationDelay: `${i * 0.045}s` }}
+                  >
+                    {ch}
+                  </span>
+                ))}
+              </p>
               <p className={styles.kicker}>Begin a conversation</p>
               <h1 className={styles.headline}>Who will you bring to life?</h1>
               <p className={styles.subhead}>

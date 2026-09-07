@@ -49,7 +49,7 @@ interface ResumeBotDropdownProps {
 }
 
 /** Rows shown before collapsing behind a "Show N more" toggle. */
-const VISIBLE_LIMIT = 5;
+const VISIBLE_LIMIT = 3;
 
 /** Formats an ISO timestamp as a friendly relative time (e.g. "a few minutes ago", "yesterday"). */
 function formatRelativeTime(iso: string): string {

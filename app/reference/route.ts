@@ -10,7 +10,7 @@ import { ApiReference } from "@scalar/nextjs-api-reference";
 const config = {
   url: "/openapi.json",
   metaData: {
-    title: "Character Chatbot Generator API Reference",
+    title: "Portrayal API Reference",
   },
 };
 

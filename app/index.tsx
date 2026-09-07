@@ -1,5 +1,5 @@
 /**
- * Entry point component for the Character Chatbot Generator application.
+ * Entry point component for the Portrayal application.
  * Uses Next.js dynamic imports for optimal loading performance.
  * @module index
  */

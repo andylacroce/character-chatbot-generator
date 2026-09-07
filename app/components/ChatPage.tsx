@@ -1,5 +1,5 @@
 /**
- * Main chat interface component that manages the conversation with the Character Chatbot Generator.
+ * Main chat interface component that manages the conversation with the Portrayal character.
  *
  * Handles chat state, message sending, transcript download, and audio playback.
  * Integrates with Claude and Google TTS via API routes.
@@ -29,7 +29,7 @@ import { useChatController } from "./useChatController";
 const ModalImageViewer = dynamic(() => import("./ModalImageViewer"), { ssr: false });
 
 /**
- * ChatPage component that handles the chat interface and interactions with the Character Chatbot Generator.
+ * ChatPage component that handles the chat interface and interactions with the Portrayal character.
  * This component manages the state of the conversation, handles user input, and plays audio responses.
  *
  * @returns {JSX.Element} The ChatPage component.

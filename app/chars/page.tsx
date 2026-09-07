@@ -6,7 +6,7 @@
 import CharsGallery from "../components/CharsGallery";
 
 export const metadata = {
-  title: "Character Wall — Character Chatbot Generator",
+  title: "Character Wall — Portrayal",
   description: "A mosaic of every character portrait this app has generated.",
 };
 

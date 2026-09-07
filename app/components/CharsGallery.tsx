@@ -211,7 +211,7 @@ const CharsGallery: React.FC = () => {
     <div className={styles.page}>
       <div className={styles.topBar}>
         <Link href="/" className={styles.back}>
-          &larr; Back<span className={styles.backFull}> to Character Chatbot Generator</span>
+          &larr; Back<span className={styles.backFull}> to Portrayal</span>
         </Link>
         <div className={styles.topBarControls}>
           <DarkModeToggle className={styles.ghostIcon} hideLabel />

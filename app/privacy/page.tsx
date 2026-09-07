@@ -7,20 +7,20 @@ import Link from "next/link";
 import styles from "../components/styles/LegalPage.module.css";
 
 export const metadata = {
-  title: "Privacy Policy — Character Chatbot Generator",
-  description: "How Character Chatbot Generator collects, uses, and protects your information.",
+  title: "Privacy Policy — Portrayal",
+  description: "How Portrayal collects, uses, and protects your information.",
 };
 
 export default function PrivacyPage() {
   return (
     <div className={styles.page}>
-      <Link href="/" className={styles.back}>&larr; Back to Character Chatbot Generator</Link>
+      <Link href="/" className={styles.back}>&larr; Back to Portrayal</Link>
       <h1 className={styles.title}>Privacy Policy</h1>
       <p className={styles.updated}>Last updated: August 2026</p>
 
       <div className={styles.section}>
         <p>
-          Character Chatbot Generator is an educational/portfolio project built and operated
+          Portrayal is an educational/portfolio project built and operated
           by an individual developer, not a company. This policy explains what information
           the app collects, why, and how you can have it deleted.
         </p>

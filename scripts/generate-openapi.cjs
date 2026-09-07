@@ -18,10 +18,10 @@ const spec = swaggerJsdoc({
   definition: {
     openapi: "3.0.3",
     info: {
-      title: "Character Chatbot Generator API",
+      title: "Portrayal API",
       version: pkg.version,
       description:
-        "Server-side API for the Character Chatbot Generator. All routes are " +
+        "Server-side API for Portrayal. All routes are " +
         "gated by proxy.ts: same-origin browser requests are allowed automatically, " +
         "external callers must send an `x-api-key` header matching API_SECRET.",
     },

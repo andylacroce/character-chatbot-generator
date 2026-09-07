@@ -6,7 +6,7 @@ describe('DataDeletionPage', () => {
     it('renders the title and a link back to the app', () => {
         render(<DataDeletionPage />);
         expect(screen.getByRole('heading', { name: 'Data Deletion Instructions' })).toBeInTheDocument();
-        expect(screen.getByText(/Back to Character Chatbot Generator/)).toHaveAttribute('href', '/');
+        expect(screen.getByText(/Back to Portrayal/)).toHaveAttribute('href', '/');
     });
 
     it('explains guest data needs no request', () => {

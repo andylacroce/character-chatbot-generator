@@ -23,7 +23,7 @@ tests/               # Jest test suite (80%+ branch coverage)
 proxy.ts             # API authentication middleware (Next.js 16)
 ```
 
-# Character Chatbot Generator
+# Portrayal
 
 A Next.js 16 + TypeScript app that provides a character-driven chat UI with Claude-powered responses and Google Text-to-Speech audio replies.
 
