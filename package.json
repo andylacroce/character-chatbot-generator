@@ -27,7 +27,7 @@
     "chars:reclassify": "node scripts/reclassify-avatar-cache.cjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.123.0",
+    "@anthropic-ai/sdk": "^0.124.0",
     "@auth/drizzle-adapter": "^1.11.3",
     "@google-cloud/text-to-speech": "^7.0.0",
     "@neondatabase/serverless": "^1.1.0",
