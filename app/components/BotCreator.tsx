@@ -292,171 +292,173 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
         className={styles.formContainer}
         autoComplete="off"
       >
-        {!isLaunchingFromUrl && !interstitial && (
-          <>
-            <div className={styles.hero}>
-              <p className={styles.heroWordmark} aria-hidden="true">
-                {"Portrayal".split("").map((ch, i) => (
-                  <span
-                    key={i}
-                    className={styles.heroLetter}
-                    style={{ animationDelay: `${i * 0.045}s` }}
-                  >
-                    {ch}
-                  </span>
-                ))}
-              </p>
-              <p className={styles.kicker}>Begin a conversation</p>
-              <h1 className={styles.headline}>Who will you bring to life?</h1>
-              <p className={styles.subhead}>
-                Type any name. Public domain classics, myths, and historical figures work best, but feel free to go off script.
-              </p>
-              <Link href="/chars" className={styles.wallCta}>
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
-                  <rect x="2.5" y="3.5" width="15" height="13" rx="2" stroke="currentColor" strokeWidth="1.6" />
-                  <circle cx="7" cy="8" r="1.4" stroke="currentColor" strokeWidth="1.6" />
-                  <path d="M3.5 14l4.5-4 3 2.5 2.5-2 3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Pick from the Character Wall
-              </Link>
-            </div>
-
-            <div className={styles.orDivider} role="separator" aria-label="or">
-              <span>or</span>
-            </div>
-
-            <div className={styles.inputRow + (isBusy ? ' ' + styles.hideMobile : '')}>
-              <input
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Enter a name"
-                className={styles.inputField}
-                disabled={loading}
-                data-testid="bot-creator-input"
-                aria-label="Character name"
-                maxLength={36}
-                ref={inputRef}
-              />
-              <div className={styles.textLinks}>
-                <button
-                  type="button"
-                  className={styles.textLink}
-                  disabled={isBusy || randomizing}
-                  aria-label="Choose a random character name"
-                  onClick={handleRandomCharacter}
-                >
-                  <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
-                    <rect x="3" y="3" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.6" fill="none" />
-                    <circle cx="7" cy="7" r="1.15" fill="currentColor" />
-                    <circle cx="13" cy="7" r="1.15" fill="currentColor" />
-                    <circle cx="7" cy="13" r="1.15" fill="currentColor" />
-                    <circle cx="13" cy="13" r="1.15" fill="currentColor" />
-                    <circle cx="10" cy="10" r="1.15" fill="currentColor" />
+      <div className={styles.formInner}>
+          {!isLaunchingFromUrl && !interstitial && (
+            <>
+              <div className={styles.hero}>
+                <p className={styles.heroWordmark} aria-hidden="true">
+                  {"Portrayal".split("").map((ch, i) => (
+                    <span
+                      key={i}
+                      className={styles.heroLetter}
+                      style={{ animationDelay: `${i * 0.045}s` }}
+                    >
+                      {ch}
+                    </span>
+                  ))}
+                </p>
+                <p className={styles.kicker}>Begin a conversation</p>
+                <h1 className={styles.headline}>Who will you bring to life?</h1>
+                <p className={styles.subhead}>
+                  Type any name. Public domain classics, myths, and historical figures work best, but feel free to go off script.
+                </p>
+                <Link href="/chars" className={styles.wallCta}>
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                    <rect x="2.5" y="3.5" width="15" height="13" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                    <circle cx="7" cy="8" r="1.4" stroke="currentColor" strokeWidth="1.6" />
+                    <path d="M3.5 14l4.5-4 3 2.5 2.5-2 3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  Random
-                </button>
-                <button
-                  type="submit"
-                  className={styles.textLinkPrimary}
-                  disabled={isBusy}
-                  data-testid="bot-creator-button"
-                  aria-label="Create character"
-                >
-                  Create
-                  <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
-                    <path d="M6 10h8M11 7l3 3-3 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
+                  Pick from the Character Wall
+                </Link>
               </div>
-            </div>
-          </>
-        )}
 
-        {isLaunchingFromUrl && !isBusy && !interstitial && (
-          <div className={styles.progressContainer} data-testid="bot-creator-auto-launch">
-            <span className={styles.genericSpinner} aria-label="Loading" />
-            <div className={styles.progressText}>Loading {nameFromUrl}&hellip;</div>
-          </div>
-        )}
+              <div className={styles.orDivider} role="separator" aria-label="or">
+                <span>or</span>
+              </div>
 
-        {interstitial && (
-          <div className={styles.progressContainer} data-testid="bot-creator-interstitial">
-            <span className={styles.genericSpinner} aria-label="Loading" />
-            <div className={styles.progressText}>
-              {interstitial.kind === "resume"
-                ? `Resuming your chat with ${interstitial.name}…`
-                : `Starting a new chat with ${interstitial.name}…`}
+              <div className={styles.inputRow + (isBusy ? ' ' + styles.hideMobile : '')}>
+                <input
+                  type="text"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  placeholder="Enter a name"
+                  className={styles.inputField}
+                  disabled={loading}
+                  data-testid="bot-creator-input"
+                  aria-label="Character name"
+                  maxLength={36}
+                  ref={inputRef}
+                />
+                <div className={styles.textLinks}>
+                  <button
+                    type="button"
+                    className={styles.textLink}
+                    disabled={isBusy || randomizing}
+                    aria-label="Choose a random character name"
+                    onClick={handleRandomCharacter}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                      <rect x="3" y="3" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.6" fill="none" />
+                      <circle cx="7" cy="7" r="1.15" fill="currentColor" />
+                      <circle cx="13" cy="7" r="1.15" fill="currentColor" />
+                      <circle cx="7" cy="13" r="1.15" fill="currentColor" />
+                      <circle cx="13" cy="13" r="1.15" fill="currentColor" />
+                      <circle cx="10" cy="10" r="1.15" fill="currentColor" />
+                    </svg>
+                    Random
+                  </button>
+                  <button
+                    type="submit"
+                    className={styles.textLinkPrimary}
+                    disabled={isBusy}
+                    data-testid="bot-creator-button"
+                    aria-label="Create character"
+                  >
+                    Create
+                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
+                      <path d="M6 10h8M11 7l3 3-3 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {isLaunchingFromUrl && !isBusy && !interstitial && (
+            <div className={styles.progressContainer} data-testid="bot-creator-auto-launch">
+              <span className={styles.genericSpinner} aria-label="Loading" />
+              <div className={styles.progressText}>Loading {nameFromUrl}&hellip;</div>
             </div>
+          )}
+
+          {interstitial && (
+            <div className={styles.progressContainer} data-testid="bot-creator-interstitial">
+              <span className={styles.genericSpinner} aria-label="Loading" />
+              <div className={styles.progressText}>
+                {interstitial.kind === "resume"
+                  ? `Resuming your chat with ${interstitial.name}…`
+                  : `Starting a new chat with ${interstitial.name}…`}
+              </div>
+              <button
+                type="button"
+                className={styles.textLink}
+                aria-label="Cancel"
+                onClick={handleCancelLaunch}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {validating && (
+            <div className={styles.progressContainer} data-testid="bot-creator-validating">
+              <span className={styles.genericSpinner} aria-label="Loading" />
+              <div className={styles.progressText}>Validating character...</div>
+              <button
+                type="button"
+                className={styles.textLink}
+                aria-label="Cancel"
+                onClick={handleCancelLaunch}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          {loading && currentStep && (
+            <div className={styles.progressContainer} data-testid="bot-creator-progress">
+              <span className={styles.genericSpinner} aria-label="Loading" />
+              <div className={styles.progressText}>
+                {loadingMessage || currentStep.label}
+                {loading && progress === 'avatar' && MAX_AVATAR_SECONDS !== null && (
+                  <span className={styles.elapsedTime}>{elapsed < MAX_AVATAR_SECONDS ? ` (${elapsed}s)` : ` (${MAX_AVATAR_SECONDS}s max)`}</span>
+                )}
+              </div>
+              <button
+                type="button"
+                className={styles.textLink}
+                aria-label="Cancel"
+                onClick={handleCancelLaunch}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          {error && <div className={styles.error}>{error}</div>}
+
+          {!isBusy && !isLaunchingFromUrl && !interstitial && <ResumeBotDropdown onSelect={handleResumeSelect} />}
+
+          {!isLaunchingFromUrl && !interstitial && <div className={styles.footerLinks}>
             <button
               type="button"
-              className={styles.textLink}
-              aria-label="Cancel"
-              onClick={handleCancelLaunch}
+              aria-label="Which characters can I create?"
+              onClick={() => setShowCharacterInfoModal(true)}
+              className={styles.footerLink}
             >
-              Cancel
+              Which characters can I create?
             </button>
-          </div>
-        )}
-
-        {validating && (
-          <div className={styles.progressContainer} data-testid="bot-creator-validating">
-            <span className={styles.genericSpinner} aria-label="Loading" />
-            <div className={styles.progressText}>Validating character...</div>
             <button
               type="button"
-              className={styles.textLink}
-              aria-label="Cancel"
-              onClick={handleCancelLaunch}
+              aria-label="Read disclaimer"
+              onClick={() => setShowDisclaimerModal(true)}
+              className={styles.footerLink}
             >
-              Cancel
+              Disclaimer
             </button>
-          </div>
-        )}
-        {loading && currentStep && (
-          <div className={styles.progressContainer} data-testid="bot-creator-progress">
-            <span className={styles.genericSpinner} aria-label="Loading" />
-            <div className={styles.progressText}>
-              {loadingMessage || currentStep.label}
-              {loading && progress === 'avatar' && MAX_AVATAR_SECONDS !== null && (
-                <span className={styles.elapsedTime}>{elapsed < MAX_AVATAR_SECONDS ? ` (${elapsed}s)` : ` (${MAX_AVATAR_SECONDS}s max)`}</span>
-              )}
-            </div>
-            <button
-              type="button"
-              className={styles.textLink}
-              aria-label="Cancel"
-              onClick={handleCancelLaunch}
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-        {error && <div className={styles.error}>{error}</div>}
-
-        {!isBusy && !isLaunchingFromUrl && !interstitial && <ResumeBotDropdown onSelect={handleResumeSelect} />}
-
-        {!isLaunchingFromUrl && !interstitial && <div className={styles.footerLinks}>
-          <button
-            type="button"
-            aria-label="Which characters can I create?"
-            onClick={() => setShowCharacterInfoModal(true)}
-            className={styles.footerLink}
-          >
-            Which characters can I create?
-          </button>
-          <button
-            type="button"
-            aria-label="Read disclaimer"
-            onClick={() => setShowDisclaimerModal(true)}
-            className={styles.footerLink}
-          >
-            Disclaimer
-          </button>
-          <a href="/privacy" className={styles.footerLink}>
-            Privacy
-          </a>
-        </div>}
+            <a href="/privacy" className={styles.footerLink}>
+              Privacy
+            </a>
+          </div>}
+      </div>
       </form>
       <DisclaimerModal show={showDisclaimerModal} onClose={() => setShowDisclaimerModal(false)} />
       <CharacterInfoModal show={showCharacterInfoModal} onClose={() => setShowCharacterInfoModal(false)} />

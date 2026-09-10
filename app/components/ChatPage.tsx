@@ -80,11 +80,13 @@ function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharac
         aria-live="polite"
         aria-relevant="additions text"
       >
-        <ChatMessagesList
-          messages={messages.slice(-visibleCount)}
-          bot={bot}
-          onAvatarClick={handleAvatarClick}
-        />
+        <div className={styles.chatMessagesInner}>
+          <ChatMessagesList
+            messages={messages.slice(-visibleCount)}
+            bot={bot}
+            onAvatarClick={handleAvatarClick}
+          />
+        </div>
       </div>
       {(loading || introLoading) && (
         <div data-testid="loading-indicator" className={styles.spinnerContainerFixed}>

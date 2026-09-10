@@ -167,6 +167,28 @@
   color: var(--color-text);
   font-family: var(--font-primary), sans-serif;
   flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  /* html/body are a fixed height:100% by design (the app fills exactly the
+     viewport, with no page-level scroll — see globals.css), so a flex child
+     taller than its allotted space can't fall back on the document scrolling;
+     it needs to scroll internally instead, same as ChatPage's own message
+     list. min-height: 0 lets this flex item actually shrink below its content
+     size so overflow-y can take over rather than being forced to its content
+     height (a flex item's default min-height is auto, i.e. its content size).
+     Deliberately full-width here (the 480px content constraint lives on
+     .formInner below) so the native scrollbar this overflow produces tracks
+     the browser window's edge on wide desktop screens, instead of floating
+     next to a centered, max-width column. */
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/*
+  Width-constrained inner wrapper for the form's actual content — split out
+  from .formContainer (see the scrollbar-position note on it above).
+*/
+.formInner {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -180,18 +202,10 @@
   justify-content: flex-start;
   width: 100%;
   max-width: 480px;
+  min-height: 100%;
   box-sizing: border-box;
   margin: 0 auto;
   padding: 2.5rem 1.5rem 3rem;
-  /* html/body are a fixed height:100% by design (the app fills exactly the
-     viewport, with no page-level scroll — see globals.css), so a flex child
-     taller than its allotted space can't fall back on the document scrolling;
-     it needs to scroll internally instead, same as ChatPage's own message
-     list. min-height: 0 lets this flex item actually shrink below its content
-     size so overflow-y can take over rather than being forced to its content
-     height (a flex item's default min-height is auto, i.e. its content size). */
-  min-height: 0;
-  overflow-y: auto;
 }
 
 @media (max-width: 600px) {
@@ -199,7 +213,7 @@
     padding: 0.8rem 1.1rem;
   }
 
-  .formContainer {
+  .formInner {
     max-width: 100%;
     padding: 2rem 1.1rem 2.2rem;
   }
