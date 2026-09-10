@@ -62,7 +62,7 @@ describe('useChatController production and mobile branches', () => {
     });
 
     // spy on global setTimeout and make callbacks immediate so test does not wait
-    const setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((cb: (...args: unknown[]) => void, _delay?: number) => { cb(); return 0 as unknown as NodeJS.Timeout; });
+    const setTimeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation(((cb: (...args: unknown[]) => void) => { cb(); return 0 as unknown as NodeJS.Timeout; }) as unknown as typeof setTimeout);
 
     // set input and call sendMessage
     act(() => { result.current.setInput('hello'); });
