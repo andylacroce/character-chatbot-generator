@@ -78,7 +78,7 @@ Changing this flow touches both the API and modal, plus `tests/api/validateChara
 
 ### Avatar generation (`pages/api/generate-avatar.ts`)
 
-**This branch (`feature/cloudflare-avatar-fallback`) replaces the paid Gemini/Vertex image path with free providers only — no payment method required for avatar generation at all.** Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description prompt from the character name (and `appearanceDescription`, if supplied — see above), then an image is rendered by whichever free provider succeeds first:
+**Avatar generation runs on free image providers only — no payment method required at all** (the earlier Gemini/Vertex path was fully removed). Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description prompt from the character name (and `appearanceDescription`, if supplied — see above), then an image is rendered by whichever free provider succeeds first:
 
 1. **Cloudflare Workers AI** (`src/utils/cloudflareImageGen.ts`, model `@cf/black-forest-labs/flux-1-schnell`) — tried first when `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are both set. Free tier: 10,000 "neurons"/day, no payment info required; a Workers Paid plan (not configured here) would be needed to go past that, so requests simply start failing once the daily allocation is exhausted rather than silently incurring cost.
 2. **Pollinations.ai** (`src/utils/pollinationsImageGen.ts`) — free, anonymous, no API key, no comparable daily cap. Used whenever Cloudflare isn't configured, errors, or is rejected by its own safety filter, so it's also what runs immediately if `CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN` are simply unset (e.g. a fresh clone with no Cloudflare account). Its anonymous tier may render a small "pollinations.ai" watermark into the image — there's no free-tier way to suppress that.
@@ -133,9 +133,7 @@ Every `pages/api/*.ts` handler carries a `@swagger` JSDoc block (OpenAPI 3.0). `
 ## Environment variables
 
 Required: `ANTHROPIC_API_KEY`, `API_SECRET` (checked by `proxy.ts`), `GOOGLE_APPLICATION_CREDENTIALS_JSON` (path or raw JSON — for TTS).
-Optional: `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` (enables Cloudflare Workers AI as the primary avatar image provider on this branch — see "Avatar generation" above; without them, avatar generation still works via the Pollinations.ai fallback with no config at all), `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` (enables Vercel Blob logging and durable avatar URLs), `TTS_TMP_DIR` (defaults to system temp), `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) to share rate-limit counters across instances, `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (enables account sign-in and persistence — see "Account persistence" above; the app is fully functional as a guest with none of these set).
-
-`GOOGLE_CLOUD_PROJECT` is unused on this branch (it only fed Gemini/Vertex image generation, which this branch replaces — see "Avatar generation" above); it's still required on `main`, which keeps the Gemini path.
+Optional: `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` (enables Cloudflare Workers AI as the primary avatar image provider — see "Avatar generation" above; without them, avatar generation still works via the Pollinations.ai fallback with no config at all), `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` (enables Vercel Blob logging and durable avatar URLs), `TTS_TMP_DIR` (defaults to system temp), `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) to share rate-limit counters across instances, `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (enables account sign-in and persistence — see "Account persistence" above; the app is fully functional as a guest with none of these set).
 
 ### Rate limiting
 

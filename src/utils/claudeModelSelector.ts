@@ -1,20 +1,19 @@
 /**
- * Model selection utility for Claude API and Google Gemini image calls.
+ * Model selection utility for Claude API calls.
  *
- * Three tiers:
+ * Two tiers:
  *  "text"        — Quality-sensitive tasks (chat, personality generation).
  *                  Prod: claude-sonnet-4-6  Dev: claude-haiku-4-5-20251001
  *  "text-simple" — Simple structured tasks (validation, name lists, voice config, etc.).
  *                  Always: claude-haiku-4-5-20251001
- *  "image"       — Avatar generation via Gemini image generation on Google Cloud's
- *                  Gemini Enterprise Agent Platform (formerly Vertex AI).
- *                  Always: gemini-3.1-flash-lite-image
+ *
+ * Avatar image generation doesn't go through here — see cloudflareImageGen.ts /
+ * pollinationsImageGen.ts.
  */
 
 export function getClaudeModel(type: "text"): string;
 export function getClaudeModel(type: "text-simple"): string;
-export function getClaudeModel(type: "image"): { primary: string };
-export function getClaudeModel(type: "text" | "text-simple" | "image"): string | { primary: string } {
+export function getClaudeModel(type: "text" | "text-simple"): string {
     const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
 
     if (type === "text") {
@@ -27,12 +26,6 @@ export function getClaudeModel(type: "text" | "text-simple" | "image"): string |
         // Simple structured outputs (JSON extraction, classification, short lists).
         // Haiku is sufficient and cheapest at all times.
         return "claude-haiku-4-5-20251001";
-    }
-
-    if (type === "image") {
-        // Imagen legacy endpoints are being retired; Gemini 3.1 Flash Lite Image is
-        // the cost-conscious GA replacement (Google migration deadline: 2026-08-17).
-        return { primary: "gemini-3.1-flash-lite-image" };
     }
 
     throw new Error(`Unknown model type: ${type}`);

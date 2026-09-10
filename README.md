@@ -8,7 +8,7 @@ app/
 pages/api/           # API routes (chat, audio, health, transcript)
    chat.ts            # Main chat endpoint with streaming & summarization
    audio.ts           # TTS audio generation
-   generate-avatar.ts # Avatar generation via Claude + Gemini image generation (Gemini Enterprise Agent Platform, formerly Vertex AI)
+   generate-avatar.ts # Avatar generation via Claude + free image providers (Cloudflare Workers AI, Pollinations.ai fallback)
    validate-character.ts # Copyright/trademark validation
    random-character.ts   # Public domain character suggestions
    bots.ts            # List/persist a signed-in user's characters (optional)
@@ -32,7 +32,7 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with streaming responses and conversation summarization
 - **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
-- **Avatar Generation**: Claude generates a detailed image prompt; Gemini image generation (`gemini-3.1-flash-lite-image`) on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI) renders a portrait and returns it as a base64 data URL
+- **Avatar Generation**: Claude generates a detailed image prompt; a free image provider renders the portrait — Cloudflare Workers AI (Flux Schnell) first, falling back to Pollinations.ai if it's unconfigured or fails — returned as a base64 data URL (or a durable Vercel Blob URL, if configured)
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 20 messages, with a rolling summary checkpoint for signed-in users so long conversations stay cheap
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
@@ -46,7 +46,7 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - Node.js ≥18
 - npm or yarn
 - Anthropic API key
-- Google Cloud service account with Text-to-Speech and Gemini Enterprise Agent Platform (formerly Vertex AI) APIs enabled
+- Google Cloud service account with the Text-to-Speech API enabled
 
 ## External Services & Accounts
 
@@ -55,7 +55,8 @@ Everything below is an **account you'd need to create**, not just an env var to 
 | Service | Sign up at | Required? | Enables | Env vars |
 | --- | --- | --- | --- | --- |
 | **Anthropic** | [console.anthropic.com](https://console.anthropic.com) | **Required** | Chat replies, personality/avatar-prompt/voice-config generation, copyright & profanity validation — the app can't run at all without this | `ANTHROPIC_API_KEY` |
-| **Google Cloud Platform** | [console.cloud.google.com](https://console.cloud.google.com) | **Required** | Text-to-Speech (voice replies) and Gemini image generation (avatar portraits), via one service account — see the "Google Cloud Setup" step under Quickstart below | `GOOGLE_APPLICATION_CREDENTIALS_JSON`, `GOOGLE_CLOUD_PROJECT` |
+| **Google Cloud Platform** | [console.cloud.google.com](https://console.cloud.google.com) | **Required** | Text-to-Speech (voice replies), via a service account — see the "Google Cloud Setup" step under Quickstart below | `GOOGLE_APPLICATION_CREDENTIALS_JSON` |
+| **Cloudflare** | [dash.cloudflare.com](https://dash.cloudflare.com) | Optional | Primary (free-tier) avatar image provider (Workers AI, Flux Schnell). Skip it and avatar generation still works via the Pollinations.ai fallback with no config at all | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
 | **Neon** (Postgres) | [neon.tech](https://neon.tech) | Optional | Server-side persistence: saved characters, chat history, the shared avatar cache table. Skip it and the app is a fully-functional guest-only experience | `DATABASE_URL` |
 | **Google Cloud Console → OAuth credentials** | Same GCP project as above, but a *separate* setup step (APIs & Services → Credentials → OAuth client ID) — not the service account key | Optional | "Sign in with Google" on the landing page. Needs `DATABASE_URL` set too, or there's nothing to sign in *for* | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
 | **Vercel** | [vercel.com](https://vercel.com) | Optional | Deployment target, plus two of its own add-ons if you want them: **Blob** storage (durable avatar URLs instead of base64 data URLs) and **KV**/Marketplace Redis (shared rate-limit counters across serverless instances) | `VERCEL_BLOB_READ_WRITE_TOKEN`, `KV_REST_API_URL` + `KV_REST_API_TOKEN` |
@@ -81,8 +82,9 @@ Create `.env.local` at project root with required secrets:
 ANTHROPIC_API_KEY=sk-ant-...
 API_SECRET=your_server_api_secret
 GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
-GOOGLE_CLOUD_PROJECT=your_gcp_project_id
 # Optional:
+CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
+CLOUDFLARE_API_TOKEN=your_cloudflare_api_token
 VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_token
 TTS_TMP_DIR=/custom/temp/path
 # Optional, deployment only: makes API rate limits global instead of per-instance.
@@ -93,8 +95,7 @@ KV_REST_API_TOKEN=your_rest_token
 
 1. **Google Cloud Setup**
 
-   - Create a GCP service account with Text-to-Speech and Gemini Enterprise Agent Platform (formerly Vertex AI) APIs enabled
-   - Grant the service account the `roles/aiplatform.user` role for Gemini image generation
+   - Create a GCP service account with the Text-to-Speech API enabled
    - Download the JSON key file
    - Place it at `config/gcp-key.json` or paste contents into `GOOGLE_APPLICATION_CREDENTIALS_JSON`
 
@@ -159,11 +160,11 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 
 - `ANTHROPIC_API_KEY` — Anthropic API key for chat and avatar prompt generation
 - `API_SECRET` — Server-side API secret for request authorization
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON` — Path to GCP JSON key or full JSON content
-- `GOOGLE_CLOUD_PROJECT` — GCP project ID for Gemini image generation (Gemini Enterprise Agent Platform, formerly Vertex AI)
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON` — Path to GCP JSON key or full JSON content (for Text-to-Speech)
 
 ### Optional
 
+- `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` — Enables Cloudflare Workers AI (Flux Schnell) as the primary avatar image provider. Without them, avatar generation still works via the Pollinations.ai fallback with no config at all
 - `VERCEL_BLOB_READ_WRITE_TOKEN` (or `BLOB_READ_WRITE_TOKEN`) — Enables logging to Vercel Blob storage, and durable Blob-hosted avatar URLs instead of base64 data URLs
 - `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Redis REST endpoint (Vercel KV / Marketplace Redis) used to share API rate-limit counters across serverless instances. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` work too. With neither pair set, limits fall back to an in-process counter, which is per-instance on Vercel and exactly right for local development.
@@ -174,14 +175,12 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 When a character chatbot is created, the app generates a portrait avatar automatically:
 
 1. **Prompt generation** — Claude (`claude-haiku-4-5-20251001`) receives the character name and produces a detailed, safe-for-work image prompt describing appearance, era, and artistic style.
-2. **Image rendering** — The prompt is sent to Gemini image generation (`gemini-3.1-flash-lite-image`) on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI) which returns a square PNG as a base64 data URL.
-3. **Display** — The data URL is rendered directly in the UI; no external image hosting is required.
+2. **Image rendering** — free providers only, no payment method required. Cloudflare Workers AI (`@cf/black-forest-labs/flux-1-schnell`) renders it first when `CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN` are configured; if they're unset, or Cloudflare errors or is rejected by its own safety filter, it falls back to Pollinations.ai (free, anonymous, no API key — though its anonymous tier may render a small watermark).
+3. **Display** — The result is a base64 data URL (or a durable Vercel Blob URL, if `VERCEL_BLOB_READ_WRITE_TOKEN` is configured) rendered directly in the UI; no external image hosting is required beyond that.
 
 ### Requirements
 
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON` must reference a service account with `roles/aiplatform.user` granted in the GCP project.
-- `GOOGLE_CLOUD_PROJECT` must be set to the project where the Gemini Enterprise Agent Platform (formerly Vertex AI) API is enabled.
-- The `aiplatform.googleapis.com` API must be enabled in that project.
+None, strictly — Pollinations.ai needs no configuration at all. Setting `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` (a free Cloudflare account, Workers AI enabled) gets you the higher-quality primary provider instead of relying on the fallback for every avatar.
 
 ### Rate limit
 

@@ -14,10 +14,7 @@ jest.mock('@anthropic-ai/sdk', () => ({
 }));
 
 jest.mock("../../src/utils/claudeModelSelector", () => ({
-    getClaudeModel: (type: "text" | "text-simple" | "image") => {
-        if (type === "image") return { primary: "gemini-3.1-flash-lite-image" };
-        return "claude-haiku-4-5-20251001";
-    }
+    getClaudeModel: (_type: "text" | "text-simple") => "claude-haiku-4-5-20251001"
 }));
 
 jest.mock('express-rate-limit', () => {

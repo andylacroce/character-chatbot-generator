@@ -50,16 +50,6 @@ describe('getClaudeModel', () => {
         });
     });
 
-    describe('"image" type', () => {
-        it('returns gemini-3.1-flash-lite-image in any environment', () => {
-            setEnv({ NODE_ENV: 'production', VERCEL_ENV: undefined });
-            expect(getClaudeModel('image')).toEqual({ primary: 'gemini-3.1-flash-lite-image' });
-
-            setEnv({ NODE_ENV: 'development', VERCEL_ENV: undefined });
-            expect(getClaudeModel('image')).toEqual({ primary: 'gemini-3.1-flash-lite-image' });
-        });
-    });
-
     it('throws on unknown type', () => {
         // @ts-expect-error test: passing invalid type should throw
         expect(() => getClaudeModel('audio')).toThrow('Unknown model type: audio');
