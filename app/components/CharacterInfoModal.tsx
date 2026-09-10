@@ -23,9 +23,9 @@ const CharacterInfoModal: React.FC<CharacterInfoModalProps> = ({ show, onClose }
     testId="character-info-modal-backdrop"
   >
     <p className={styles.disclaimerText}>
-      Create a chatbot character using well-known public domain figures from classic
-      literature, mythology, or historical figures. Characters from copyrighted or
-      trademarked modern media will trigger a warning.
+      Create a chatbot character using well-known public domain figures from classic literature,
+      mythology, or historical figures. Characters from copyrighted or trademarked modern media will
+      trigger a warning.
     </p>
   </DisclaimerStyleModal>
 );

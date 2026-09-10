@@ -9,7 +9,10 @@
  * @param options - Fetch options.
  * @returns The fetch response.
  */
-export async function authenticatedFetch(url: string, options: RequestInit = {}): Promise<Response> {
-    // No longer sending API key header - middleware validates based on origin
-    return fetch(url, options);
+export async function authenticatedFetch(
+  url: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  // No longer sending API key header - middleware validates based on origin
+  return fetch(url, options);
 }

@@ -61,7 +61,10 @@ function supportsViewTransitions(): boolean {
   return typeof document !== "undefined" && "startViewTransition" in document;
 }
 
-const CharTile: React.FC<{ entry: CharEntry; onOpen: (entry: CharEntry) => void }> = ({ entry, onOpen }) => {
+const CharTile: React.FC<{ entry: CharEntry; onOpen: (entry: CharEntry) => void }> = ({
+  entry,
+  onOpen,
+}) => {
   const tileRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -130,7 +133,9 @@ const CharsGallery: React.FC = () => {
     loadingRef.current = true;
     setLoadingMore(true);
     try {
-      const res = await authenticatedFetch(`/api/chars?limit=${PAGE_SIZE}&offset=${offsetRef.current}`);
+      const res = await authenticatedFetch(
+        `/api/chars?limit=${PAGE_SIZE}&offset=${offsetRef.current}`,
+      );
       const data = await res.json();
       const page: CharEntry[] = Array.isArray(data?.characters) ? data.characters : [];
       setCharacters((prev) => [...prev, ...page]);
@@ -192,7 +197,9 @@ const CharsGallery: React.FC = () => {
       dialogRef.current?.showModal();
     };
     if (supportsViewTransitions()) {
-      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(open);
+      (
+        document as Document & { startViewTransition: (cb: () => void) => void }
+      ).startViewTransition(open);
     } else {
       open();
     }
@@ -201,7 +208,9 @@ const CharsGallery: React.FC = () => {
   const closeLightbox = useCallback(() => {
     const close = () => dialogRef.current?.close();
     if (supportsViewTransitions()) {
-      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(close);
+      (
+        document as Document & { startViewTransition: (cb: () => void) => void }
+      ).startViewTransition(close);
     } else {
       close();
     }
@@ -223,7 +232,9 @@ const CharsGallery: React.FC = () => {
       </div>
 
       {error && characters.length === 0 && (
-        <p className={styles.state}>Couldn&apos;t load the gallery right now — try again in a bit.</p>
+        <p className={styles.state}>
+          Couldn&apos;t load the gallery right now — try again in a bit.
+        </p>
       )}
       {!error && initialLoad && <p className={styles.state}>Loading portraits&hellip;</p>}
       {!initialLoad && characters.length === 0 && !error && (
@@ -268,10 +279,18 @@ const CharsGallery: React.FC = () => {
                 into the creator (BotCreator's ?name= auto-submit effect) — it
                 resumes this signed-in user's own saved character by that exact
                 name if one exists, or creates a fresh one otherwise. */}
-            <Link href={`/?name=${encodeURIComponent(selected.name)}`} className={styles.lightboxChat}>
+            <Link
+              href={`/?name=${encodeURIComponent(selected.name)}`}
+              className={styles.lightboxChat}
+            >
               Chat with {selected.name} &rarr;
             </Link>
-            <button type="button" className={styles.lightboxClose} aria-label="Close" onClick={closeLightbox}>
+            <button
+              type="button"
+              className={styles.lightboxClose}
+              aria-label="Close"
+              onClick={closeLightbox}
+            >
               &times;
             </button>
           </>

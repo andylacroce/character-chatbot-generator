@@ -113,9 +113,14 @@ export interface CharacterValidationResult {
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
-    logEvent("warn", "validate_character_method_not_allowed", "Validate character API method not allowed", sanitizeLogMeta({
-      method: req.method
-    }));
+    logEvent(
+      "warn",
+      "validate_character_method_not_allowed",
+      "Validate character API method not allowed",
+      sanitizeLogMeta({
+        method: req.method,
+      }),
+    );
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
@@ -127,7 +132,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { name } = req.body;
 
-  if (!name || typeof name !== 'string' || !name.trim()) {
+  if (!name || typeof name !== "string" || !name.trim()) {
     res.status(400).json({ error: "Valid character name required" });
     return;
   }
@@ -175,14 +180,16 @@ warningLevel guide (only about copyright/trademark, ignore concern 1 entirely he
       messages: [
         {
           role: "user",
-          content: `Analyze this character name: "${characterName}"\n\nProvide validation result as JSON.`
-        }
+          content: `Analyze this character name: "${characterName}"\n\nProvide validation result as JSON.`,
+        },
       ],
       max_tokens: 250,
       temperature: 0.3,
     });
 
-    const content = extractJson(response.content[0]?.type === "text" ? response.content[0].text : '{}');
+    const content = extractJson(
+      response.content[0]?.type === "text" ? response.content[0].text : "{}",
+    );
     const validation = JSON.parse(content);
 
     const result: CharacterValidationResult = {
@@ -196,18 +203,28 @@ warningLevel guide (only about copyright/trademark, ignore concern 1 entirely he
       recognized: validation.recognized ?? true,
     };
 
-    logEvent("info", "character_validated", "Character validation completed", sanitizeLogMeta({
-      characterName,
-      isSafe: result.isSafe,
-      warningLevel: result.warningLevel
-    }));
+    logEvent(
+      "info",
+      "character_validated",
+      "Character validation completed",
+      sanitizeLogMeta({
+        characterName,
+        isSafe: result.isSafe,
+        warningLevel: result.warningLevel,
+      }),
+    );
 
     res.status(200).json(result);
   } catch (err) {
-    logEvent("error", "character_validation_failed", "Failed to validate character", sanitizeLogMeta({
-      characterName,
-      error: err instanceof Error ? err.message : String(err)
-    }));
+    logEvent(
+      "error",
+      "character_validation_failed",
+      "Failed to validate character",
+      sanitizeLogMeta({
+        characterName,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
 
     // On error, default to safe (allow continuation but with caution)
     res.status(200).json({

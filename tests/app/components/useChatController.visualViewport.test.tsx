@@ -1,19 +1,19 @@
-import { render, act } from '@testing-library/react';
+import { render, act } from "@testing-library/react";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
-jest.mock('next-auth/react', () => ({
-  useSession: () => ({ data: null, status: 'unauthenticated' }),
+jest.mock("next-auth/react", () => ({
+  useSession: () => ({ data: null, status: "unauthenticated" }),
 }));
 
 // Mock storage and audio player
-jest.mock('../../../src/utils/storage', () => ({
+jest.mock("../../../src/utils/storage", () => ({
   getItem: jest.fn(() => null),
   setItem: jest.fn(),
   clearMemoryFallback: jest.fn(),
   setVersionedJSON: jest.fn(),
 }));
-jest.mock('../../../app/components/useAudioPlayer', () => ({
+jest.mock("../../../app/components/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: jest.fn(),
     stopAudio: jest.fn(),
@@ -22,26 +22,26 @@ jest.mock('../../../app/components/useAudioPlayer', () => ({
   }),
 }));
 
-import { useChatController } from '../../../app/components/useChatController';
-import type { Bot } from '../../../app/components/BotCreator';
+import { useChatController } from "../../../app/components/useChatController";
+import type { Bot } from "../../../app/components/BotCreator";
 
 type MinimalBot = { name: string; personality: string; avatarUrl: string; voiceConfig?: unknown };
 const mockBot: MinimalBot = {
-  name: 'VVBot',
-  personality: 'neutral',
-  avatarUrl: '/silhouette.svg',
+  name: "VVBot",
+  personality: "neutral",
+  avatarUrl: "/silhouette.svg",
   voiceConfig: undefined,
 };
 
-describe('useChatController visualViewport keyboard handling', () => {
+describe("useChatController visualViewport keyboard handling", () => {
   beforeEach(() => {
     jest.resetModules();
     // Ensure a clean document root
-    document.documentElement.className = '';
-    document.documentElement.style.removeProperty('--vv-keyboard-pad');
+    document.documentElement.className = "";
+    document.documentElement.style.removeProperty("--vv-keyboard-pad");
   });
 
-  it('sets --vv-keyboard-pad and classes on focus when visualViewport shrinks and removes them on blur', async () => {
+  it("sets --vv-keyboard-pad and classes on focus when visualViewport shrinks and removes them on blur", async () => {
     // Create a mock visualViewport implementation that stores listeners
     const listeners: Record<string, EventListener[]> = {};
     // provide a typed visualViewport mock
@@ -52,12 +52,12 @@ describe('useChatController visualViewport keyboard handling', () => {
         listeners[ev].push(cb);
       },
       removeEventListener: (ev: string, cb: EventListener) => {
-        listeners[ev] = (listeners[ev] || []).filter(f => f !== cb);
-      }
+        listeners[ev] = (listeners[ev] || []).filter((f) => f !== cb);
+      },
     } as unknown as VisualViewport;
 
     // Ensure an innerHeight greater than visualViewport.height
-  (global as unknown as { innerHeight?: number }).innerHeight = 1000;
+    (global as unknown as { innerHeight?: number }).innerHeight = 1000;
 
     // Render a harness component that attaches the hook's refs to real DOM elements
     function Harness() {
@@ -65,44 +65,54 @@ describe('useChatController visualViewport keyboard handling', () => {
       return (
         <div>
           <div data-testid="chat" ref={ctrl.chatBoxRef as unknown as React.Ref<HTMLDivElement>} />
-          <input data-testid="input" ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>} />
+          <input
+            data-testid="input"
+            ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>}
+          />
         </div>
       );
     }
 
     const { getByTestId } = render(<Harness />);
-    const inputEl = getByTestId('input') as HTMLInputElement;
-    const chatEl = getByTestId('chat') as HTMLDivElement;
+    const inputEl = getByTestId("input") as HTMLInputElement;
+    const chatEl = getByTestId("chat") as HTMLDivElement;
     // scrollHeight is read-only; define it
-    Object.defineProperty(chatEl, 'scrollHeight', { value: 2000, configurable: true });
+    Object.defineProperty(chatEl, "scrollHeight", { value: 2000, configurable: true });
     chatEl.scrollTop = 0;
 
     act(() => {
       // Dispatch focus to trigger the hook's focus listener
-      inputEl.dispatchEvent(new Event('focus'));
+      inputEl.dispatchEvent(new Event("focus"));
     });
 
     // Wait for the 50ms timeout in the hook
-    await act(async () => { await new Promise(res => setTimeout(res, 80)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 80));
+    });
 
-    const pad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
+    const pad = document.documentElement.style.getPropertyValue("--vv-keyboard-pad");
     expect(pad).toBeTruthy();
-    expect(document.documentElement.classList.contains('mobile-keyboard-open') || document.documentElement.classList.contains('ff-android-input-focus')).toBe(true);
+    expect(
+      document.documentElement.classList.contains("mobile-keyboard-open") ||
+        document.documentElement.classList.contains("ff-android-input-focus"),
+    ).toBe(true);
 
     // Simulate blur
     act(() => {
-      inputEl.dispatchEvent(new Event('blur'));
+      inputEl.dispatchEvent(new Event("blur"));
     });
 
     // Wait a tick for blur cleanup
-    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 10));
+    });
 
-  const clearedPad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
-  expect(['', '0px']).toContain(clearedPad);
-    expect(document.documentElement.classList.contains('mobile-keyboard-open')).toBe(false);
+    const clearedPad = document.documentElement.style.getPropertyValue("--vv-keyboard-pad");
+    expect(["", "0px"]).toContain(clearedPad);
+    expect(document.documentElement.classList.contains("mobile-keyboard-open")).toBe(false);
   });
 
-  it('renders safely when visualViewport is undefined', async () => {
+  it("renders safely when visualViewport is undefined", async () => {
     (global as unknown as { visualViewport?: VisualViewport }).visualViewport = undefined;
     (global as unknown as { innerHeight?: number }).innerHeight = 800;
 
@@ -111,19 +121,24 @@ describe('useChatController visualViewport keyboard handling', () => {
       return (
         <div>
           <div data-testid="chat" ref={ctrl.chatBoxRef as unknown as React.Ref<HTMLDivElement>} />
-          <input data-testid="input" ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>} />
+          <input
+            data-testid="input"
+            ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>}
+          />
         </div>
       );
     }
 
     const { getByTestId } = render(<Harness />);
-    expect(getByTestId('chat')).toBeTruthy();
+    expect(getByTestId("chat")).toBeTruthy();
     // Empty messages triggers the intro-generation effect; flush it within act()
     // so its eventual state update doesn't land after this test has returned.
-    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 10));
+    });
   });
 
-  it('does not add keyboard padding when heightDiff is zero', async () => {
+  it("does not add keyboard padding when heightDiff is zero", async () => {
     const listeners: Record<string, EventListener[]> = {};
     (global as unknown as { visualViewport?: VisualViewport }).visualViewport = {
       height: 800,
@@ -132,8 +147,8 @@ describe('useChatController visualViewport keyboard handling', () => {
         listeners[ev].push(cb);
       },
       removeEventListener: (ev: string, cb: EventListener) => {
-        listeners[ev] = (listeners[ev] || []).filter(f => f !== cb);
-      }
+        listeners[ev] = (listeners[ev] || []).filter((f) => f !== cb);
+      },
     } as unknown as VisualViewport;
     (global as unknown as { innerHeight?: number }).innerHeight = 800;
 
@@ -142,21 +157,26 @@ describe('useChatController visualViewport keyboard handling', () => {
       return (
         <div>
           <div data-testid="chat" ref={ctrl.chatBoxRef as unknown as React.Ref<HTMLDivElement>} />
-          <input data-testid="input" ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>} />
+          <input
+            data-testid="input"
+            ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>}
+          />
         </div>
       );
     }
 
     const { getByTestId } = render(<Harness />);
-    const inputEl = getByTestId('input') as HTMLInputElement;
+    const inputEl = getByTestId("input") as HTMLInputElement;
 
     act(() => {
-      inputEl.dispatchEvent(new Event('focus'));
+      inputEl.dispatchEvent(new Event("focus"));
     });
 
-    await act(async () => { await new Promise(res => setTimeout(res, 80)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 80));
+    });
 
-    const pad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
-    expect(['', '0px']).toContain(pad);
+    const pad = document.documentElement.style.getPropertyValue("--vv-keyboard-pad");
+    expect(["", "0px"]).toContain(pad);
   });
 });

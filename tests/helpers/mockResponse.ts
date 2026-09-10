@@ -7,10 +7,10 @@
  * hoisting restrictions on out-of-scope variables.
  */
 export function mockResponse(data: unknown, status = 200) {
-    return {
-        ok: status >= 200 && status < 300,
-        status,
-        json: () => Promise.resolve(data),
-        text: () => Promise.resolve(typeof data === "string" ? data : JSON.stringify(data)),
-    };
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(data),
+    text: () => Promise.resolve(typeof data === "string" ? data : JSON.stringify(data)),
+  };
 }

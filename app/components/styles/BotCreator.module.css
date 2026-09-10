@@ -10,7 +10,7 @@
    input — most characters here are public-domain figures a century or more old,
    so the display face leans into that rather than reading as a modern app.
    Everything else stays on the app's existing Inter (--font-primary). */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap");
 
 /* ===== Masthead ===== */
 
@@ -53,7 +53,8 @@
    every rest (0/360/720/1080deg) looks identical and correct, and the loop
    restart (1080deg -> 0deg next iteration) is seamless. */
 @keyframes paletteFlipRotate {
-  0%, 20% {
+  0%,
+  20% {
     transform: rotateY(0deg);
   }
   33% {
@@ -68,7 +69,8 @@
   86% {
     transform: rotateY(720deg);
   }
-  99%, 100% {
+  99%,
+  100% {
     transform: rotateY(1080deg);
   }
 }
@@ -76,16 +78,20 @@
 /* Cycles through the app's own accent colors, one per landed position —
    percentages matched to paletteFlipRotate's landing points above. */
 @keyframes paletteFlipColor {
-  0%, 32% {
+  0%,
+  32% {
     color: var(--color-primary);
   }
-  33%, 65% {
+  33%,
+  65% {
     color: var(--color-accent);
   }
-  66%, 98% {
+  66%,
+  98% {
     color: var(--color-success);
   }
-  99%, 100% {
+  99%,
+  100% {
     color: var(--color-primary);
   }
 }
@@ -97,7 +103,7 @@
 }
 
 .mastheadWord {
-  font-family: 'Playfair Display', var(--font-secondary), var(--font-primary), serif;
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
   font-size: 1.3rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -239,7 +245,7 @@
    out of this same accent color specifically so it reads as its own small
    eyebrow label rather than a second line of the logo. */
 .heroWordmark {
-  font-family: 'Playfair Display', var(--font-secondary), var(--font-primary), serif;
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
   font-weight: 600;
   font-size: clamp(2.6rem, 10vw, 3.6rem);
   letter-spacing: 0.01em;
@@ -264,7 +270,8 @@
 }
 
 @keyframes heroWordmarkGlow {
-  0%, 100% {
+  0%,
+  100% {
     text-shadow: 0 0 0 transparent;
     transform: scale(1);
   }
@@ -306,7 +313,7 @@
 }
 
 .headline {
-  font-family: 'Playfair Display', var(--font-secondary), var(--font-primary), serif;
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
   font-weight: 500;
   font-size: clamp(1.9rem, 5vw, 2.5rem);
   line-height: 1.15;
@@ -399,7 +406,7 @@
   outline: none;
   -webkit-appearance: none;
   appearance: none;
-  font-family: 'Playfair Display', var(--font-secondary), var(--font-primary), serif;
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
   font-size: 1.35rem;
   color: var(--color-text);
 }
@@ -805,8 +812,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* --- Modal Container --- */

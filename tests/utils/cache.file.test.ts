@@ -1,10 +1,10 @@
-import fs from 'fs';
-import { setReplyCache, getReplyCache, deleteReplyCache } from '../../src/utils/cache';
+import fs from "fs";
+import { setReplyCache, getReplyCache, deleteReplyCache } from "../../src/utils/cache";
 
-jest.mock('fs');
+jest.mock("fs");
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
-describe('cache file-based behavior', () => {
+describe("cache file-based behavior", () => {
   const OLD_ENV = process.env;
   beforeEach(() => {
     jest.resetModules();
@@ -17,61 +17,61 @@ describe('cache file-based behavior', () => {
     process.env = OLD_ENV;
   });
 
-  it('getReplyCache returns value and saves updated timestamp', () => {
+  it("getReplyCache returns value and saves updated timestamp", () => {
     const now = Date.now();
-    const payload = { myKey: { value: 'file-val', timestamp: now } };
+    const payload = { myKey: { value: "file-val", timestamp: now } };
     mockedFs.existsSync.mockReturnValue(true);
     mockedFs.readFileSync.mockReturnValue(JSON.stringify(payload));
 
-    const res = getReplyCache('myKey');
-    expect(res).toBe('file-val');
+    const res = getReplyCache("myKey");
+    expect(res).toBe("file-val");
     // should have saved updated timestamp via writeFileSync
     expect(mockedFs.writeFileSync).toHaveBeenCalled();
   });
 
-  it('loadCacheFromFile handles invalid JSON gracefully', () => {
+  it("loadCacheFromFile handles invalid JSON gracefully", () => {
     mockedFs.existsSync.mockReturnValue(true);
-    mockedFs.readFileSync.mockReturnValue('not json');
+    mockedFs.readFileSync.mockReturnValue("not json");
 
     // setReplyCache should not throw even if read returns invalid JSON
-    expect(() => setReplyCache('k1', 'v1')).not.toThrow();
+    expect(() => setReplyCache("k1", "v1")).not.toThrow();
     // and writeFileSync should have been called to persist cleaned cache
     expect(mockedFs.writeFileSync).toHaveBeenCalled();
   });
 
-  it('deleteReplyCache removes key and writes file', () => {
+  it("deleteReplyCache removes key and writes file", () => {
     const now = Date.now();
-    const payload = { removeMe: { value: 'x', timestamp: now } };
+    const payload = { removeMe: { value: "x", timestamp: now } };
     mockedFs.existsSync.mockReturnValue(true);
     mockedFs.readFileSync.mockReturnValue(JSON.stringify(payload));
 
-    deleteReplyCache('removeMe');
+    deleteReplyCache("removeMe");
     expect(mockedFs.writeFileSync).toHaveBeenCalled();
   });
 
-  it('getReplyCache removes and saves when entry is expired (lines 129-130)', () => {
-    const expiredTs = Date.now() - (25 * 60 * 60 * 1000); // 25 hours ago
-    const payload = { staleKey: { value: 'stale', timestamp: expiredTs } };
+  it("getReplyCache removes and saves when entry is expired (lines 129-130)", () => {
+    const expiredTs = Date.now() - 25 * 60 * 60 * 1000; // 25 hours ago
+    const payload = { staleKey: { value: "stale", timestamp: expiredTs } };
     mockedFs.existsSync.mockReturnValue(true);
     mockedFs.readFileSync.mockReturnValue(JSON.stringify(payload));
 
-    const result = getReplyCache('staleKey');
+    const result = getReplyCache("staleKey");
     expect(result).toBeNull();
     // Should have written the cleaned cache (expired entry removed)
     expect(mockedFs.writeFileSync).toHaveBeenCalled();
   });
 
-  it('cleanupExpiredEntries sort comparator runs when multiple entries exist (line 66)', () => {
+  it("cleanupExpiredEntries sort comparator runs when multiple entries exist (line 66)", () => {
     const now = Date.now();
     const payload = {
-      a: { value: 'v-a', timestamp: now - 1000 },
-      b: { value: 'v-b', timestamp: now },
+      a: { value: "v-a", timestamp: now - 1000 },
+      b: { value: "v-b", timestamp: now },
     };
     mockedFs.existsSync.mockReturnValue(true);
     mockedFs.readFileSync.mockReturnValue(JSON.stringify(payload));
 
     // setReplyCache triggers cleanupExpiredEntries with 3 entries → sort comparator called
-    setReplyCache('c', 'v-c');
+    setReplyCache("c", "v-c");
     expect(mockedFs.writeFileSync).toHaveBeenCalled();
   });
 });

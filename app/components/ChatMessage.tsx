@@ -40,59 +40,62 @@ interface ChatMessageProps {
  * @param {Bot} props.bot - The bot object containing name and avatarUrl for assistant messages
  * @returns {JSX.Element|null} The rendered chat message or null if message is invalid
  */
-const ChatMessage = React.memo(
-  ({ message, bot, onAvatarClick }: ChatMessageProps) => {
-    // Validate message object to prevent rendering errors
-    if (!message || typeof message.text !== "string" || typeof message.sender !== "string") {
-      if (typeof window !== 'undefined') {
-        logEvent('error', 'chat_message_invalid', 'Invalid message object received', sanitizeLogMeta({
-          hasSender: !!(message && typeof message.sender === 'string'),
-          hasText: !!(message && typeof message.text === 'string'),
-          messageType: typeof message
-        }));
-      }
-      return null; // Render nothing if the message is invalid
+const ChatMessage = React.memo(({ message, bot, onAvatarClick }: ChatMessageProps) => {
+  // Validate message object to prevent rendering errors
+  if (!message || typeof message.text !== "string" || typeof message.sender !== "string") {
+    if (typeof window !== "undefined") {
+      logEvent(
+        "error",
+        "chat_message_invalid",
+        "Invalid message object received",
+        sanitizeLogMeta({
+          hasSender: !!(message && typeof message.sender === "string"),
+          hasText: !!(message && typeof message.text === "string"),
+          messageType: typeof message,
+        }),
+      );
     }
-
-    // Determine CSS classes based on message sender
-    const isUser = message.sender === "User";
-    const messageClass = isUser ? styles.userMessage : styles.botMessage;
-    const senderClass = isUser
-      ? styles.sender
-      : `${styles.sender} ${styles.botSender}`;
-
-    return (
-      <div
-        className={`${styles.message} ${messageClass}`}
-        role="article"
-        aria-label={isUser ? `Message from you: ${sanitizeForReact(message.text)}` : `Message from ${bot.name}: ${sanitizeForReact(message.text)}`}
-      >
-        <div className={styles.byline}>
-          {!isUser && (
-            <button
-              type="button"
-              aria-label={`View ${bot.name}'s portrait`}
-              className={styles.avatarButton}
-              onClick={onAvatarClick}
-            >
-              <Image
-                src={bot.avatarUrl}
-                alt={bot.name}
-                width={28}
-                height={28}
-                className={styles.avatar}
-              />
-            </button>
-          )}
-          <span className={senderClass}>{isUser ? "Me" : bot.name}</span>
-        </div>
-        <div className={styles.messageText}>
-          {sanitizeForReact(message.text)}
-        </div>
-      </div>
-    );
+    return null; // Render nothing if the message is invalid
   }
-);
+
+  // Determine CSS classes based on message sender
+  const isUser = message.sender === "User";
+  const messageClass = isUser ? styles.userMessage : styles.botMessage;
+  const senderClass = isUser ? styles.sender : `${styles.sender} ${styles.botSender}`;
+
+  return (
+    <div
+      className={`${styles.message} ${messageClass}`}
+      role="article"
+      aria-label={
+        isUser
+          ? `Message from you: ${sanitizeForReact(message.text)}`
+          : `Message from ${bot.name}: ${sanitizeForReact(message.text)}`
+      }
+    >
+      <div className={styles.byline}>
+        {!isUser && (
+          <button
+            type="button"
+            aria-label={`View ${bot.name}'s portrait`}
+            className={styles.avatarButton}
+            onClick={onAvatarClick}
+          >
+            <Image
+              src={bot.avatarUrl}
+              alt={bot.name}
+              width={28}
+              height={28}
+              className={styles.avatar}
+            />
+          </button>
+        )}
+        <span className={senderClass}>{isUser ? "Me" : bot.name}</span>
+      </div>
+      <div className={styles.messageText}>{sanitizeForReact(message.text)}</div>
+    </div>
+  );
+});
 
 ChatMessage.displayName = "ChatMessage";
 

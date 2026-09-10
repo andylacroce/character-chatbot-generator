@@ -52,7 +52,9 @@ describe("ChatPage full feature coverage", () => {
       configurable: true,
       value: jest.fn(),
     });
-    mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: null }));
+    mockAuthenticatedFetch.mockResolvedValue(
+      mockResponse({ reply: "Bot reply", audioFileUrl: null }),
+    );
     localStorage.clear();
   });
 
@@ -66,8 +68,12 @@ describe("ChatPage full feature coverage", () => {
     // given test didn't bother mocking, now touched by an unrelated effect) is
     // swallowed rather than failing an otherwise-passing test.
     try {
-      await act(async () => { await new Promise((res) => setTimeout(res, 20)); });
-    } catch { /* draining stragglers only; see comment above */ }
+      await act(async () => {
+        await new Promise((res) => setTimeout(res, 20));
+      });
+    } catch {
+      /* draining stragglers only; see comment above */
+    }
   });
 
   it("renders and focuses input after health check", async () => {
@@ -76,7 +82,9 @@ describe("ChatPage full feature coverage", () => {
     expect(input).toHaveFocus();
     // Empty messages triggers the intro-generation effect; flush it within act()
     // so its eventual state update doesn't land after this test has returned.
-    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 10));
+    });
   });
 
   it("toggles audio and persists preference", async () => {
@@ -95,7 +103,11 @@ describe("ChatPage full feature coverage", () => {
     render(<ChatPage bot={mockBot} />);
     const menuBtn = await screen.findByLabelText(/open menu/i, {}, { timeout: 2000 });
     await userEvent.click(menuBtn);
-    const downloadBtn = await screen.findByLabelText(/download chat transcript/i, {}, { timeout: 2000 });
+    const downloadBtn = await screen.findByLabelText(
+      /download chat transcript/i,
+      {},
+      { timeout: 2000 },
+    );
     await userEvent.click(downloadBtn);
     await waitFor(() => expect(downloadTranscript).toHaveBeenCalled(), { timeout: 1000 });
   });
@@ -107,7 +119,9 @@ describe("ChatPage full feature coverage", () => {
       stopAudio: jest.fn(),
       audioRef: { current: null },
     }));
-    mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: "audio.mp3" }));
+    mockAuthenticatedFetch.mockResolvedValue(
+      mockResponse({ reply: "Bot reply", audioFileUrl: "audio.mp3" }),
+    );
     render(<ChatPage bot={mockBot} />);
     const input = await screen.findByRole("textbox");
     await userEvent.type(input, "Hi{Enter}");
@@ -131,7 +145,9 @@ describe("ChatPage full feature coverage", () => {
       isAudioPlaying: false,
     }));
     localStorage.setItem("audioEnabled", "false");
-    mockAuthenticatedFetch.mockResolvedValue(mockResponse({ reply: "Bot reply", audioFileUrl: "audio.mp3" }));
+    mockAuthenticatedFetch.mockResolvedValue(
+      mockResponse({ reply: "Bot reply", audioFileUrl: "audio.mp3" }),
+    );
     render(<ChatPage bot={mockBot} />);
     const input = await screen.findByRole("textbox");
     await userEvent.type(input, "Hi{Enter}");
@@ -144,7 +160,9 @@ describe("ChatPage full feature coverage", () => {
   });
 
   it("shows alert if transcript download fails", async () => {
-    (downloadTranscript as jest.Mock).mockImplementationOnce(() => { throw new Error("fail"); });
+    (downloadTranscript as jest.Mock).mockImplementationOnce(() => {
+      throw new Error("fail");
+    });
     const originalAlert = window.alert;
     window.alert = jest.fn();
     render(<ChatPage bot={mockBot} />);
@@ -152,23 +170,36 @@ describe("ChatPage full feature coverage", () => {
     await userEvent.click(menuBtn);
     const downloadBtn = await screen.findByLabelText(/download chat transcript/i);
     await userEvent.click(downloadBtn);
-    await waitFor(() => expect(window.alert).toHaveBeenCalledWith("Failed to open transcript: fail"));
+    await waitFor(() =>
+      expect(window.alert).toHaveBeenCalledWith("Failed to open transcript: fail"),
+    );
     window.alert = originalAlert;
   });
 
   it("pauses and resets audio when going back to character creation", async () => {
     const onBack = jest.fn();
     const mockStopAudio = jest.fn();
-    (mockUseAudioPlayer as jest.Mock).mockImplementation(() => ({ playAudio: jest.fn(), stopAudio: mockStopAudio, audioRef: { current: { pause: jest.fn(), currentTime: 42 } } }));
+    (mockUseAudioPlayer as jest.Mock).mockImplementation(() => ({
+      playAudio: jest.fn(),
+      stopAudio: mockStopAudio,
+      audioRef: { current: { pause: jest.fn(), currentTime: 42 } },
+    }));
     render(<ChatPage bot={mockBot} onBackToCharacterCreation={onBack} />);
     const menuBtn = await screen.findByLabelText(/open menu/i, {}, { timeout: 2000 });
     await userEvent.click(menuBtn);
-    const backBtn = await screen.findByLabelText(/back to character creation/i, {}, { timeout: 2000 });
+    const backBtn = await screen.findByLabelText(
+      /back to character creation/i,
+      {},
+      { timeout: 2000 },
+    );
     await userEvent.click(backBtn);
-    await waitFor(() => {
-      expect(mockStopAudio).toHaveBeenCalled();
-      expect(onBack).toHaveBeenCalled();
-    }, { timeout: 1000 });
+    await waitFor(
+      () => {
+        expect(mockStopAudio).toHaveBeenCalled();
+        expect(onBack).toHaveBeenCalled();
+      },
+      { timeout: 1000 },
+    );
   });
 
   it("handles input and sends message on Enter", async () => {
@@ -191,7 +222,9 @@ describe("ChatPage full feature coverage", () => {
     });
     render(<ChatPage bot={mockBot} />);
     // The modal shows a message about the bot vanishing
-    await waitFor(() => expect(screen.getByText(/bot has vanished from the chat/i)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/bot has vanished from the chat/i)).toBeInTheDocument(),
+    );
   });
 
   it("calls onBackToCharacterCreation when header back button is clicked", async () => {
@@ -206,26 +239,29 @@ describe("ChatPage full feature coverage", () => {
 
   it("loads more messages on scroll to top", async () => {
     render(<ChatPage bot={mockBot} />);
-   
+
     // Wait for intro to load
-    await waitFor(() => {
-      expect(screen.getByText("Bot reply")).toBeInTheDocument();
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(screen.getByText("Bot reply")).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
 
     // Test that scrolling to top doesn't crash (scroll handler coverage)
     const chatContainer = screen.getByTestId("chat-messages-container");
     Object.defineProperty(chatContainer, "scrollTop", {
       value: 0,
       writable: true,
-      configurable: true
+      configurable: true,
     });
-    
+
     // Trigger scroll event
     fireEvent.scroll(chatContainer);
 
     // Wait for any potential scroll handling
     await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
     });
 
     // Verify the component is still functional after scroll
@@ -233,13 +269,14 @@ describe("ChatPage full feature coverage", () => {
     expect(screen.getByText("Bot reply")).toBeInTheDocument();
   });
 
-
   it("handleScroll: does nothing if chatBoxRef.current is null", async () => {
     render(<ChatPage bot={mockBot} />);
     // No assertion needed, just coverage
     // Empty messages triggers the intro-generation effect; flush it within act()
     // so its eventual state update doesn't land after this test has returned.
-    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 10));
+    });
   });
 
   it("handleScroll: does nothing if not at top or all messages visible", async () => {
@@ -255,8 +292,10 @@ describe("ChatPage full feature coverage", () => {
       get: () => scrollTopValue,
       // A real setter (not just a fixed-return getter) so a later, unrelated
       // scroll-to-bottom effect writing to scrollTop doesn't throw.
-      set: (v: number) => { scrollTopValue = v; },
-      configurable: true
+      set: (v: number) => {
+        scrollTopValue = v;
+      },
+      configurable: true,
     });
     fireEvent.scroll(chatBox);
     scrollTopValue = 0;
@@ -264,7 +303,9 @@ describe("ChatPage full feature coverage", () => {
     // No assertion needed, just coverage
     // Several messages were just sent; flush the scroll-to-bottom effect's timer
     // within act() so it doesn't land during a later test.
-    await act(async () => { await new Promise((res) => setTimeout(res, 20)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 20));
+    });
   });
 
   it("handles SSR: window is undefined", async () => {
@@ -274,7 +315,9 @@ describe("ChatPage full feature coverage", () => {
     global.window = realWindow;
     // Empty messages triggers the intro-generation effect; flush it within act()
     // so its eventual state update doesn't land after this test has returned.
-    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 10));
+    });
   });
 
   it("opens the shared portrait modal from the header avatar, and closes it", async () => {
@@ -313,6 +356,8 @@ describe("ChatPage full feature coverage", () => {
     global.localStorage = realLocalStorage;
     // Empty messages triggers the intro-generation effect; flush it within act()
     // so its eventual state update doesn't land after this test has returned.
-    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 10));
+    });
   });
 });

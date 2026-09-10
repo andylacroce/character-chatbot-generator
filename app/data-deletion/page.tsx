@@ -14,7 +14,9 @@ export const metadata = {
 export default function DataDeletionPage() {
   return (
     <div className={styles.page}>
-      <Link href="/" className={styles.back}>&larr; Back to Portrayal</Link>
+      <Link href="/" className={styles.back}>
+        &larr; Back to Portrayal
+      </Link>
       <h1 className={styles.title}>Data Deletion Instructions</h1>
       <p className={styles.updated}>Last updated: August 2026</p>
 
@@ -31,10 +33,12 @@ export default function DataDeletionPage() {
         <h2 className={styles.sectionTitle}>If you signed in with Google</h2>
         <p>
           To request deletion of your account, saved characters, and chat history, email{" "}
-          <a href="mailto:ccg@andrewlacroce.com?subject=Data%20deletion%20request">ccg@andrewlacroce.com</a>{" "}
+          <a href="mailto:ccg@andrewlacroce.com?subject=Data%20deletion%20request">
+            ccg@andrewlacroce.com
+          </a>{" "}
           from the email address you signed in with, with the subject line{" "}
-          <strong>&quot;Data deletion request&quot;</strong>. Include the name you signed in with
-          if you can, to help us find the right account.
+          <strong>&quot;Data deletion request&quot;</strong>. Include the name you signed in with if
+          you can, to help us find the right account.
         </p>
         <div className={styles.callout}>
           We&apos;ll delete your account record, every character you saved, and your full chat

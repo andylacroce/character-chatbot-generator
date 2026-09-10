@@ -6,8 +6,8 @@
 
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
-import storage from '../../src/utils/storage';
-import { STORAGE_KEYS } from '../../src/utils/storageKeys';
+import storage from "../../src/utils/storage";
+import { STORAGE_KEYS } from "../../src/utils/storageKeys";
 
 /**
  * Custom hook to manage session ID and session datetime for chat sessions.
@@ -15,7 +15,9 @@ import { STORAGE_KEYS } from '../../src/utils/storageKeys';
  */
 // Test hook: override in tests by replacing `_isBrowser` to simulate SSR/browser
 export let _isBrowser = () => typeof window !== "undefined";
-export function isBrowser() { return _isBrowser(); }
+export function isBrowser() {
+  return _isBrowser();
+}
 
 // Test helpers: allow tests to override the browser detection function deterministically
 export function setIsBrowserForTests(fn: () => boolean) {

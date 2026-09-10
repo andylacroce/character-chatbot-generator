@@ -7,7 +7,7 @@ const memoryFallback = new Map<string, string>();
 
 function storageAvailable(): boolean {
   try {
-    return typeof localStorage !== 'undefined' && !!localStorage;
+    return typeof localStorage !== "undefined" && !!localStorage;
   } catch {
     return false;
   }
@@ -77,7 +77,11 @@ export type VersionedRecord<T = unknown> = { v: number; createdAt: string; paylo
  */
 export function setVersionedJSON<T = unknown>(key: string, payload: T, version = 1) {
   try {
-    const wrapper: VersionedRecord<T> = { v: version, createdAt: new Date().toISOString(), payload };
+    const wrapper: VersionedRecord<T> = {
+      v: version,
+      createdAt: new Date().toISOString(),
+      payload,
+    };
     setItem(key, JSON.stringify(wrapper));
   } catch {
     // Silently ignore stringify or storage errors
@@ -92,7 +96,7 @@ export function getVersionedJSON<T = unknown>(key: string): VersionedRecord<T> |
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as VersionedRecord<T>;
-    if (parsed && typeof parsed.v === 'number' && parsed.createdAt && 'payload' in parsed) {
+    if (parsed && typeof parsed.v === "number" && parsed.createdAt && "payload" in parsed) {
       return parsed;
     }
     return null;
@@ -110,17 +114,25 @@ export function getVersionedJSON<T = unknown>(key: string): VersionedRecord<T> |
  *
  * Optional `transform` can be provided to modify the parsed payload before storing.
  */
-export function migrateToVersioned<T = unknown>(key: string, targetVersion = 1, transform?: (payload: unknown) => T): VersionedRecord<T> | null {
+export function migrateToVersioned<T = unknown>(
+  key: string,
+  targetVersion = 1,
+  transform?: (payload: unknown) => T,
+): VersionedRecord<T> | null {
   const raw = getItem(key);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
     // Already versioned
-    if (parsed && typeof parsed.v === 'number' && parsed.createdAt && 'payload' in parsed) {
+    if (parsed && typeof parsed.v === "number" && parsed.createdAt && "payload" in parsed) {
       return parsed as VersionedRecord<T>;
     }
     const payload = transform ? transform(parsed) : parsed;
-    const wrapper: VersionedRecord<T> = { v: targetVersion, createdAt: new Date().toISOString(), payload };
+    const wrapper: VersionedRecord<T> = {
+      v: targetVersion,
+      createdAt: new Date().toISOString(),
+      payload,
+    };
     try {
       setItem(key, JSON.stringify(wrapper));
     } catch {
@@ -132,6 +144,16 @@ export function migrateToVersioned<T = unknown>(key: string, targetVersion = 1, 
   }
 }
 
-const storageExports = { setItem, getItem, removeItem, setJSON, getJSON, clearMemoryFallback, setVersionedJSON, getVersionedJSON, migrateToVersioned };
+const storageExports = {
+  setItem,
+  getItem,
+  removeItem,
+  setJSON,
+  getJSON,
+  clearMemoryFallback,
+  setVersionedJSON,
+  getVersionedJSON,
+  migrateToVersioned,
+};
 
 export default storageExports;

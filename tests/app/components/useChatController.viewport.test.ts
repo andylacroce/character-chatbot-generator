@@ -1,55 +1,81 @@
-import React from 'react';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { useChatController } from '../../../app/components/useChatController';
+import React from "react";
+import { renderHook, act, waitFor } from "@testing-library/react";
+import { useChatController } from "../../../app/components/useChatController";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
-jest.mock('next-auth/react', () => ({
-  useSession: () => ({ data: null, status: 'unauthenticated' }),
+jest.mock("next-auth/react", () => ({
+  useSession: () => ({ data: null, status: "unauthenticated" }),
 }));
 
 // Mocks used across tests
 const mockAuthenticatedFetch = jest.fn();
-jest.mock('../../../src/utils/api', () => ({ authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])) }));
+jest.mock("../../../src/utils/api", () => ({
+  authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
+}));
 
 const mockLoadVoiceConfig = jest.fn();
-jest.mock('../../../src/utils/voiceConfigPersistence', () => ({ loadVoiceConfig: (...args: unknown[]) => mockLoadVoiceConfig(...(args as unknown[])), persistVoiceConfig: jest.fn() }));
+jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
+  loadVoiceConfig: (...args: unknown[]) => mockLoadVoiceConfig(...(args as unknown[])),
+  persistVoiceConfig: jest.fn(),
+}));
 
 const mockPlayAudio = jest.fn();
 const mockStopAudio = jest.fn();
 const mockIsAudioPlaying = jest.fn();
 const mockAudioRef = { current: { muted: false } } as unknown as React.RefObject<HTMLAudioElement>;
-jest.mock('../../../app/components/useAudioPlayer', () => ({ useAudioPlayer: () => ({ playAudio: mockPlayAudio, stopAudio: mockStopAudio, isAudioPlaying: mockIsAudioPlaying, audioRef: mockAudioRef }) }));
+jest.mock("../../../app/components/useAudioPlayer", () => ({
+  useAudioPlayer: () => ({
+    playAudio: mockPlayAudio,
+    stopAudio: mockStopAudio,
+    isAudioPlaying: mockIsAudioPlaying,
+    audioRef: mockAudioRef,
+  }),
+}));
 
 const mockApiGetVoiceConfigForCharacter = jest.fn();
-jest.mock('../../../app/components/api_getVoiceConfigForCharacter', () => ({ api_getVoiceConfigForCharacter: (...args: unknown[]) => mockApiGetVoiceConfigForCharacter(...(args as unknown[])) }));
+jest.mock("../../../app/components/api_getVoiceConfigForCharacter", () => ({
+  api_getVoiceConfigForCharacter: (...args: unknown[]) =>
+    mockApiGetVoiceConfigForCharacter(...(args as unknown[])),
+}));
 
 const mockLogEvent = jest.fn();
-jest.mock('../../../src/utils/logger', () => ({ logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])), sanitizeLogMeta: (m: unknown) => m }));
+jest.mock("../../../src/utils/logger", () => ({
+  logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
+  sanitizeLogMeta: (m: unknown) => m,
+}));
 
-import type { Bot } from '../../../app/components/BotCreator';
+import type { Bot } from "../../../app/components/BotCreator";
 
 const baseBot: Bot = {
-  name: 'Gandalf',
-  personality: 'wise',
-  avatarUrl: '/silhouette.svg',
-  voiceConfig: { languageCodes: ['en-US'], name: 'en-US-Wavenet-D', ssmlGender: 1, pitch: 0, rate: 1.0, type: 'Wavenet' },
+  name: "Gandalf",
+  personality: "wise",
+  avatarUrl: "/silhouette.svg",
+  voiceConfig: {
+    languageCodes: ["en-US"],
+    name: "en-US-Wavenet-D",
+    ssmlGender: 1,
+    pitch: 0,
+    rate: 1.0,
+    type: "Wavenet",
+  },
 };
 
 beforeEach(() => {
   jest.clearAllMocks();
   // default health check to resolve
   mockAuthenticatedFetch.mockImplementation((url: string) => {
-    if (url === '/api/health') return Promise.resolve({ ok: true, json: async () => ({}) });
-    if (url === '/api/chat') return Promise.resolve({ ok: true, json: async () => ({ reply: 'hi' }) });
+    if (url === "/api/health") return Promise.resolve({ ok: true, json: async () => ({}) });
+    if (url === "/api/chat")
+      return Promise.resolve({ ok: true, json: async () => ({ reply: "hi" }) });
     return Promise.resolve({ ok: true, json: async () => ({}) });
   });
   mockLoadVoiceConfig.mockReturnValue(baseBot.voiceConfig);
   mockApiGetVoiceConfigForCharacter.mockResolvedValue(baseBot.voiceConfig);
 });
 
-describe('useChatController viewport and focus behavior', () => {
-  it('visualViewport fallback for iOS sets CSS pad and scrolls chat to bottom', async () => {
+describe("useChatController viewport and focus behavior", () => {
+  it("visualViewport fallback for iOS sets CSS pad and scrolls chat to bottom", async () => {
     // Ensure visualViewport is undefined for the fallback path
     // and simulate iOS user agent
     // Store original values to restore
@@ -59,87 +85,114 @@ describe('useChatController viewport and focus behavior', () => {
 
     // remove visualViewport for the fallback path
     delete (win as unknown as { visualViewport?: unknown }).visualViewport;
-    Object.defineProperty(navigator, 'userAgent', { value: 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)', configurable: true });
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)",
+      configurable: true,
+    });
 
     // Render a TestHost that attaches the hook's refs to real DOM nodes during initial render
     const TestHost = (props: { botProp: Bot }) => {
       const ctrl = useChatController(props.botProp);
-      return React.createElement(React.Fragment, null,
-        React.createElement('div', { 'data-testid': 'chat', ref: ctrl.chatBoxRef }),
-        React.createElement('input', { 'data-testid': 'input', ref: ctrl.inputRef })
+      return React.createElement(
+        React.Fragment,
+        null,
+        React.createElement("div", { "data-testid": "chat", ref: ctrl.chatBoxRef }),
+        React.createElement("input", { "data-testid": "input", ref: ctrl.inputRef }),
       );
     };
 
     // Render with attached refs so effect runs with refs present
-    const { getByTestId, unmount } = require('@testing-library/react').render(React.createElement(TestHost, { botProp: baseBot }));
+    const { getByTestId, unmount } = require("@testing-library/react").render(
+      React.createElement(TestHost, { botProp: baseBot }),
+    );
     // The intro-generation effect can still see the pre-history-load render on
     // first mount; flush within act() regardless so any resulting state update
     // doesn't land outside an act() boundary.
-    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 10));
+    });
 
     // Grab elements and make scrollHeight predictable
-    const chatEl = getByTestId('chat');
-    Object.defineProperty(chatEl, 'scrollHeight', { value: 2000, configurable: true });
+    const chatEl = getByTestId("chat");
+    Object.defineProperty(chatEl, "scrollHeight", { value: 2000, configurable: true });
     chatEl.scrollTop = 0;
 
-    const inputEl = getByTestId('input') as HTMLInputElement;
+    const inputEl = getByTestId("input") as HTMLInputElement;
 
     // Simulate focusing once to capture initialInnerHeight
     const initialInner = 800;
-    Object.defineProperty(window, 'innerHeight', { value: initialInner, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: initialInner, configurable: true });
 
     // Mock window.scrollTo (jsdom doesn't implement it fully) to avoid Not implemented errors
     (window as unknown as { scrollTo: (...args: unknown[]) => void }).scrollTo = jest.fn();
     act(() => {
-      inputEl.dispatchEvent(new Event('focus'));
+      inputEl.dispatchEvent(new Event("focus"));
     });
 
     // Shrink window to simulate keyboard and trigger a resize event
-    Object.defineProperty(window, 'innerHeight', { value: 500, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 500, configurable: true });
 
     // Make requestAnimationFrame synchronous for this test so scheduled viewport changes run deterministically
     const originalRaf = window.requestAnimationFrame;
-    (window as unknown as { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame = (cb: FrameRequestCallback) => { cb(0); return 0 as unknown as number; };
+    (
+      window as unknown as { requestAnimationFrame: (cb: FrameRequestCallback) => number }
+    ).requestAnimationFrame = (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0 as unknown as number;
+    };
 
     act(() => {
-      inputEl.dispatchEvent(new Event('focus'));
-      window.dispatchEvent(new Event('resize'));
+      inputEl.dispatchEvent(new Event("focus"));
+      window.dispatchEvent(new Event("resize"));
     });
 
     const root = document.documentElement;
 
     // Wait for the CSS variable to be set and classes applied (avoid flaky timing)
-    await waitFor(() => {
-      const pad = parseInt(root.style.getPropertyValue('--vv-keyboard-pad') || '0', 10);
-      expect(pad).toBeGreaterThan(0);
-      expect(root.classList.contains('mobile-keyboard-open') || root.classList.contains('ff-android-input-focus')).toBe(true);
-      // Chat element should have been scrolled to bottom
-      expect(chatEl.scrollTop).toBe(chatEl.scrollHeight);
-    }, { timeout: 500 });
+    await waitFor(
+      () => {
+        const pad = parseInt(root.style.getPropertyValue("--vv-keyboard-pad") || "0", 10);
+        expect(pad).toBeGreaterThan(0);
+        expect(
+          root.classList.contains("mobile-keyboard-open") ||
+            root.classList.contains("ff-android-input-focus"),
+        ).toBe(true);
+        // Chat element should have been scrolled to bottom
+        expect(chatEl.scrollTop).toBe(chatEl.scrollHeight);
+      },
+      { timeout: 500 },
+    );
 
     // Restore RAF
-    (window as unknown as { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame = originalRaf;
+    (
+      window as unknown as { requestAnimationFrame: (cb: FrameRequestCallback) => number }
+    ).requestAnimationFrame = originalRaf;
 
     // cleanup
     unmount();
-    Object.defineProperty(navigator, 'userAgent', { value: originalUA });
+    Object.defineProperty(navigator, "userAgent", { value: originalUA });
     // restore visualViewport
     (window as Window & { visualViewport?: VisualViewport }).visualViewport = originalVV;
   });
 
-  it('safeFocus does not call focus when input is not in document', async () => {
+  it("safeFocus does not call focus when input is not in document", async () => {
     // Make health check delayed so we can set inputRef before it resolves
     mockAuthenticatedFetch.mockImplementation((url: string) => {
-      if (url === '/api/health') return new Promise((res) => setTimeout(() => res({ ok: true, json: async () => ({}) }), 30));
+      if (url === "/api/health")
+        return new Promise((res) =>
+          setTimeout(() => res({ ok: true, json: async () => ({}) }), 30),
+        );
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
 
     const { result } = renderHook(() => useChatController(baseBot));
 
     // Create an input element but do NOT append to document (not in DOM)
-    const input = document.createElement('input');
+    const input = document.createElement("input");
     // Spy on the prototype focus to capture calls without needing to attach to the DOM
-    const focusSpy = jest.spyOn(HTMLInputElement.prototype, 'focus').mockImplementation(() => undefined as unknown as void);
+    const focusSpy = jest
+      .spyOn(HTMLInputElement.prototype, "focus")
+      .mockImplementation(() => undefined as unknown as void);
 
     // Attach to hook's ref before health check resolves
     act(() => {
@@ -147,7 +200,9 @@ describe('useChatController viewport and focus behavior', () => {
     });
 
     // Wait for health check to resolve
-    await act(async () => { await new Promise((r) => setTimeout(r, 60)); });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 60));
+    });
 
     // Focus should not have been called because element is not in the document
     expect(focusSpy).not.toHaveBeenCalled();
@@ -155,7 +210,7 @@ describe('useChatController viewport and focus behavior', () => {
     focusSpy.mockRestore();
   });
 
-  it('visualViewport resize triggers CSS pad and classes', async () => {
+  it("visualViewport resize triggers CSS pad and classes", async () => {
     // Mock a visualViewport object that stores listeners
     const listeners: Record<string, EventListener[]> = {};
     const vv: {
@@ -167,26 +222,30 @@ describe('useChatController viewport and focus behavior', () => {
       addEventListener: (evt: string, cb: EventListenerOrEventListenerObject) => {
         listeners[evt] = listeners[evt] || [];
         // normalize to function
-        const fn = (cb as EventListener);
+        const fn = cb as EventListener;
         listeners[evt].push(fn);
       },
       removeEventListener: (evt: string, cb: EventListenerOrEventListenerObject) => {
-        listeners[evt] = (listeners[evt] || []).filter(f => f !== (cb as EventListener));
-      }
+        listeners[evt] = (listeners[evt] || []).filter((f) => f !== (cb as EventListener));
+      },
     };
 
-    Object.defineProperty(window, 'visualViewport', { value: vv, configurable: true });
+    Object.defineProperty(window, "visualViewport", { value: vv, configurable: true });
 
     // Render TestHost to get refs attached
     const TestHost = (props: { botProp: Bot }) => {
       const ctrl = useChatController(props.botProp);
-      return React.createElement(React.Fragment, null,
-        React.createElement('div', { 'data-testid': 'chat', ref: ctrl.chatBoxRef }),
-        React.createElement('input', { 'data-testid': 'input', ref: ctrl.inputRef })
+      return React.createElement(
+        React.Fragment,
+        null,
+        React.createElement("div", { "data-testid": "chat", ref: ctrl.chatBoxRef }),
+        React.createElement("input", { "data-testid": "input", ref: ctrl.inputRef }),
       );
     };
 
-    const { getByTestId, unmount } = require('@testing-library/react').render(React.createElement(TestHost, { botProp: baseBot }));
+    const { getByTestId, unmount } = require("@testing-library/react").render(
+      React.createElement(TestHost, { botProp: baseBot }),
+    );
 
     // The intro-generation effect can still see the pre-history-load render on
 
@@ -194,44 +253,68 @@ describe('useChatController viewport and focus behavior', () => {
 
     // doesn't land outside an act() boundary.
 
-    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 10));
+    });
 
-    const chatEl = getByTestId('chat');
-    Object.defineProperty(chatEl, 'scrollHeight', { value: 2000, configurable: true });
+    const chatEl = getByTestId("chat");
+    Object.defineProperty(chatEl, "scrollHeight", { value: 2000, configurable: true });
     chatEl.scrollTop = 0;
 
     // Make RAF synchronous
-    const originalRaf = (window as Window & { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame;
-    (window as Window & { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame = (cb) => { cb(0); return 0; };
+    const originalRaf = (
+      window as Window & { requestAnimationFrame: (cb: FrameRequestCallback) => number }
+    ).requestAnimationFrame;
+    (
+      window as Window & { requestAnimationFrame: (cb: FrameRequestCallback) => number }
+    ).requestAnimationFrame = (cb) => {
+      cb(0);
+      return 0;
+    };
 
     // Ensure window.innerHeight is set so heightDiff > 0 when vv.height shrinks
-    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 800, configurable: true });
 
     // Trigger a vv resize by changing height and invoking listeners
     vv.height = 500;
-    (listeners['resize'] || []).forEach(f => f(new Event('resize') as Event));
+    (listeners["resize"] || []).forEach((f) => f(new Event("resize") as Event));
 
-    await waitFor(() => {
-      const pad = parseInt(document.documentElement.style.getPropertyValue('--vv-keyboard-pad') || '0', 10);
-      expect(pad).toBeGreaterThan(0);
-      expect(document.documentElement.classList.contains('mobile-keyboard-open') || document.documentElement.classList.contains('ff-android-input-focus')).toBe(true);
-    }, { timeout: 500 });
+    await waitFor(
+      () => {
+        const pad = parseInt(
+          document.documentElement.style.getPropertyValue("--vv-keyboard-pad") || "0",
+          10,
+        );
+        expect(pad).toBeGreaterThan(0);
+        expect(
+          document.documentElement.classList.contains("mobile-keyboard-open") ||
+            document.documentElement.classList.contains("ff-android-input-focus"),
+        ).toBe(true);
+      },
+      { timeout: 500 },
+    );
 
-    (window as Window & { requestAnimationFrame: (cb: FrameRequestCallback) => number }).requestAnimationFrame = originalRaf;
+    (
+      window as Window & { requestAnimationFrame: (cb: FrameRequestCallback) => number }
+    ).requestAnimationFrame = originalRaf;
     unmount();
   });
 
-  it('onBlur clears CSS pad and removes classes', async () => {
+  it("onBlur clears CSS pad and removes classes", async () => {
     // Use iOS fallback path from earlier test but trigger blur explicitly
     const TestHost = (props: { botProp: Bot }) => {
       const ctrl = useChatController(props.botProp);
-      return React.createElement(React.Fragment, null,
-        React.createElement('div', { 'data-testid': 'chat', ref: ctrl.chatBoxRef }),
-        React.createElement('input', { 'data-testid': 'input', ref: ctrl.inputRef })
+      return React.createElement(
+        React.Fragment,
+        null,
+        React.createElement("div", { "data-testid": "chat", ref: ctrl.chatBoxRef }),
+        React.createElement("input", { "data-testid": "input", ref: ctrl.inputRef }),
       );
     };
 
-    const { getByTestId, unmount } = require('@testing-library/react').render(React.createElement(TestHost, { botProp: baseBot }));
+    const { getByTestId, unmount } = require("@testing-library/react").render(
+      React.createElement(TestHost, { botProp: baseBot }),
+    );
 
     // The intro-generation effect can still see the pre-history-load render on
 
@@ -239,22 +322,24 @@ describe('useChatController viewport and focus behavior', () => {
 
     // doesn't land outside an act() boundary.
 
-    await act(async () => { await new Promise(res => setTimeout(res, 10)); });
-    const inputEl = getByTestId('input') as HTMLInputElement;
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 10));
+    });
+    const inputEl = getByTestId("input") as HTMLInputElement;
 
     // Set a pad and class as if focused
-    document.documentElement.style.setProperty('--vv-keyboard-pad', '100px');
-    document.documentElement.classList.add('mobile-keyboard-open');
+    document.documentElement.style.setProperty("--vv-keyboard-pad", "100px");
+    document.documentElement.classList.add("mobile-keyboard-open");
 
     act(() => {
-      inputEl.dispatchEvent(new Event('blur'));
+      inputEl.dispatchEvent(new Event("blur"));
     });
 
     await waitFor(() => {
-      const pad = document.documentElement.style.getPropertyValue('--vv-keyboard-pad');
+      const pad = document.documentElement.style.getPropertyValue("--vv-keyboard-pad");
       // onBlur sets pad to 0px (not removed until cleanup), so we expect '0px'
-      expect(pad).toBe('0px');
-      expect(document.documentElement.classList.contains('mobile-keyboard-open')).toBe(false);
+      expect(pad).toBe("0px");
+      expect(document.documentElement.classList.contains("mobile-keyboard-open")).toBe(false);
     });
 
     unmount();

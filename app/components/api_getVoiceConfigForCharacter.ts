@@ -7,7 +7,10 @@
 import { authenticatedFetch } from "../../src/utils/api";
 
 // API utility to fetch voice config for a character from the backend
-export async function api_getVoiceConfigForCharacter(name: string, gender?: string | null): Promise<import("../../src/utils/characterVoices").CharacterVoiceConfig> {
+export async function api_getVoiceConfigForCharacter(
+  name: string,
+  gender?: string | null,
+): Promise<import("../../src/utils/characterVoices").CharacterVoiceConfig> {
   const res = await authenticatedFetch("/api/get-voice-config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

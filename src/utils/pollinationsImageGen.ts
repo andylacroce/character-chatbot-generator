@@ -19,11 +19,21 @@ import { logEvent, sanitizeLogMeta } from "./logger";
 export async function generateImageWithPollinations(prompt: string): Promise<string | null> {
   const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=1024&nologo=true&model=flux`;
 
-  logEvent("info", "avatar_pollinations_call", "Calling Pollinations.ai image generation", sanitizeLogMeta({ prompt: prompt.slice(0, 100) }));
+  logEvent(
+    "info",
+    "avatar_pollinations_call",
+    "Calling Pollinations.ai image generation",
+    sanitizeLogMeta({ prompt: prompt.slice(0, 100) }),
+  );
 
   const response = await fetch(url);
   if (!response.ok) {
-    logEvent("warn", "avatar_pollinations_http_error", "Pollinations.ai request failed", sanitizeLogMeta({ status: response.status }));
+    logEvent(
+      "warn",
+      "avatar_pollinations_http_error",
+      "Pollinations.ai request failed",
+      sanitizeLogMeta({ status: response.status }),
+    );
     return null;
   }
 

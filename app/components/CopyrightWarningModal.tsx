@@ -2,7 +2,7 @@
 
 /**
  * Copyright Warning Modal Component
- * 
+ *
  * Displays a warning lightbox when a user attempts to create a character
  * that may be protected by copyright or trademark.
  */
@@ -22,24 +22,24 @@ export const CopyrightWarningModal: React.FC<CopyrightWarningModalProps> = ({
   validation,
   onContinue,
   onCancel,
-  onSelectSuggestion
+  onSelectSuggestion,
 }) => {
   // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onCancel();
       }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
   }, [onCancel]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, []);
 
@@ -63,26 +63,20 @@ export const CopyrightWarningModal: React.FC<CopyrightWarningModalProps> = ({
       <div className={styles.modal}>
         <div className={styles.iconWrapper}>
           <span className={isWarning ? styles.warningIcon : styles.cautionIcon}>
-            {isWarning ? '⚠️' : '⚡'}
+            {isWarning ? "⚠️" : "⚡"}
           </span>
         </div>
 
         <h2 className={styles.title}>
-          {isWarning ? 'Copyright/Trademark Warning' : 'Character Notice'}
+          {isWarning ? "Copyright/Trademark Warning" : "Character Notice"}
           <span className={styles.characterName}>&quot;{validation.characterName}&quot;</span>
         </h2>
 
-        {validation.reason && (
-          <div className={styles.reason}>
-            {validation.reason}
-          </div>
-        )}
+        {validation.reason && <div className={styles.reason}>{validation.reason}</div>}
 
         {validation.suggestions && validation.suggestions.length > 0 && (
           <div className={styles.suggestions}>
-            <div className={styles.suggestionsTitle}>
-              Suggested alternatives (click to use):
-            </div>
+            <div className={styles.suggestionsTitle}>Suggested alternatives (click to use):</div>
             <ul className={styles.suggestionsList}>
               {validation.suggestions.map((suggestion, idx) => (
                 <li
@@ -98,25 +92,19 @@ export const CopyrightWarningModal: React.FC<CopyrightWarningModalProps> = ({
         )}
 
         <div className={styles.buttonGroup}>
-          <button
-            className={`${styles.button} ${styles.cancelButton}`}
-            onClick={onCancel}
-          >
+          <button className={`${styles.button} ${styles.cancelButton}`} onClick={onCancel}>
             Cancel
           </button>
-          <button
-            className={`${styles.button} ${styles.continueButton}`}
-            onClick={onContinue}
-          >
+          <button className={`${styles.button} ${styles.continueButton}`} onClick={onContinue}>
             Continue Anyway
           </button>
         </div>
 
         <p className={styles.modalDisclaimer}>
-          By continuing, you acknowledge potential copyright or trademark concerns.
-          Use of protected characters may have legal implications. This character and
-          its portrait will not be saved to your account, shared with other users, or
-          available to download as a transcript; it exists only for this session.
+          By continuing, you acknowledge potential copyright or trademark concerns. Use of protected
+          characters may have legal implications. This character and its portrait will not be saved
+          to your account, shared with other users, or available to download as a transcript; it
+          exists only for this session.
         </p>
       </div>
     </div>

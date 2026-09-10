@@ -24,25 +24,25 @@ const MAX_LENGTH = 500;
 export const CharacterDescriptionModal: React.FC<CharacterDescriptionModalProps> = ({
   characterName,
   onSubmit,
-  onCancel
+  onCancel,
 }) => {
   const [description, setDescription] = useState("");
   const [appearance, setAppearance] = useState("");
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onCancel();
       }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
   }, [onCancel]);
 
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, []);
 
@@ -73,8 +73,8 @@ export const CharacterDescriptionModal: React.FC<CharacterDescriptionModalProps>
 
         <div className={styles.reason}>
           We don&apos;t recognize this as an existing character, so we can&apos;t build a
-          personality from the name alone. Describe who they are — personality, background,
-          how they talk — and we&apos;ll bring them to life from that instead.
+          personality from the name alone. Describe who they are — personality, background, how they
+          talk — and we&apos;ll bring them to life from that instead.
         </div>
 
         <label htmlFor="character-description" className={styles.suggestionsTitle}>
@@ -91,7 +91,9 @@ export const CharacterDescriptionModal: React.FC<CharacterDescriptionModalProps>
           data-testid="description-textarea"
           autoFocus
         />
-        <div className={styles.charCount}>{description.length}/{MAX_LENGTH}</div>
+        <div className={styles.charCount}>
+          {description.length}/{MAX_LENGTH}
+        </div>
 
         <label htmlFor="character-appearance" className={styles.suggestionsTitle}>
           Appearance <span aria-hidden="true">(optional)</span>
@@ -106,13 +108,12 @@ export const CharacterDescriptionModal: React.FC<CharacterDescriptionModalProps>
           rows={3}
           data-testid="appearance-textarea"
         />
-        <div className={styles.charCount}>{appearance.length}/{MAX_LENGTH}</div>
+        <div className={styles.charCount}>
+          {appearance.length}/{MAX_LENGTH}
+        </div>
 
         <div className={styles.buttonGroup}>
-          <button
-            className={`${styles.button} ${styles.cancelButton}`}
-            onClick={onCancel}
-          >
+          <button className={`${styles.button} ${styles.cancelButton}`} onClick={onCancel}>
             Cancel
           </button>
           <button
@@ -126,9 +127,8 @@ export const CharacterDescriptionModal: React.FC<CharacterDescriptionModalProps>
 
         <p className={styles.modalDisclaimer}>
           Your description shapes this character&apos;s personality
-          {appearance.trim() ? " and portrait" : ""}. It must not contain illegal,
-          sexual, or hateful content — anything that does will be disregarded when
-          generating the character.
+          {appearance.trim() ? " and portrait" : ""}. It must not contain illegal, sexual, or
+          hateful content — anything that does will be disregarded when generating the character.
         </p>
       </div>
     </div>

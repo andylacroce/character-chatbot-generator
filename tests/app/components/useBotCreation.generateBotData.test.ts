@@ -1,73 +1,79 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
-import type { Bot } from '../../../app/components/BotCreator';
-import { mockResponse } from '../../helpers/mockResponse';
+import { renderHook, act, waitFor } from "@testing-library/react";
+import type { Bot } from "../../../app/components/BotCreator";
+import { mockResponse } from "../../helpers/mockResponse";
 
 // Mock logger to capture warnings/info
 const mockLogEvent = jest.fn();
-jest.mock('../../../src/utils/logger', () => ({
+jest.mock("../../../src/utils/logger", () => ({
   logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
 // Mock authenticatedFetch for personality/avatar endpoints
 const mockAuthenticatedFetch = jest.fn();
-jest.mock('../../../src/utils/api', () => ({
+jest.mock("../../../src/utils/api", () => ({
   authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
 }));
 
 // Mock voice config fetcher used by the hook
 const mockApiGetVoiceConfigForCharacter = jest.fn();
-jest.mock('../../../app/components/api_getVoiceConfigForCharacter', () => ({
-  api_getVoiceConfigForCharacter: (...args: unknown[]) => mockApiGetVoiceConfigForCharacter(...(args as unknown[])),
+jest.mock("../../../app/components/api_getVoiceConfigForCharacter", () => ({
+  api_getVoiceConfigForCharacter: (...args: unknown[]) =>
+    mockApiGetVoiceConfigForCharacter(...(args as unknown[])),
 }));
 
 // Mock persistence helpers
 const mockPersistVoiceConfig = jest.fn();
-jest.mock('../../../src/utils/voiceConfigPersistence', () => ({
+jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
   persistVoiceConfig: (...args: unknown[]) => mockPersistVoiceConfig(...(args as unknown[])),
   loadVoiceConfig: jest.fn(),
 }));
 
-import { useBotCreation } from '../../../app/components/useBotCreation';
+import { useBotCreation } from "../../../app/components/useBotCreation";
 
 const baseBot: Bot = {
-  name: 'TestHero',
-  personality: 'brave',
-  avatarUrl: '/silhouette.svg',
+  name: "TestHero",
+  personality: "brave",
+  avatarUrl: "/silhouette.svg",
   voiceConfig: {
-    languageCodes: ['en-US'],
-    name: 'en-US-Wavenet-D',
+    languageCodes: ["en-US"],
+    name: "en-US-Wavenet-D",
     ssmlGender: 1,
     pitch: 0,
     rate: 1.0,
-    type: 'Wavenet',
+    type: "Wavenet",
   },
 };
 
-describe('useBotCreation generateBotDataWithProgressCancelable branches', () => {
+describe("useBotCreation generateBotDataWithProgressCancelable branches", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // default success for personality/avatar
     mockAuthenticatedFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve(mockResponse({ personality: 'gen-personality' }));
-      if (url === '/api/generate-avatar') return Promise.resolve(mockResponse({ avatarUrl: '/avatar.png', gender: 'female' }));
+      if (url === "/api/generate-personality")
+        return Promise.resolve(mockResponse({ personality: "gen-personality" }));
+      if (url === "/api/generate-avatar")
+        return Promise.resolve(mockResponse({ avatarUrl: "/avatar.png", gender: "female" }));
       return Promise.resolve(mockResponse({}));
     });
     mockApiGetVoiceConfigForCharacter.mockResolvedValue(baseBot.voiceConfig);
   });
 
-  it('continues when personality generation fails and uses default personality', async () => {
+  it("continues when personality generation fails and uses default personality", async () => {
     // personality endpoint rejects
     mockAuthenticatedFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.reject(new Error('personality fail'));
-      if (url === '/api/generate-avatar') return Promise.resolve(mockResponse({ avatarUrl: '/avatar.png' }));
+      if (url === "/api/generate-personality") return Promise.reject(new Error("personality fail"));
+      if (url === "/api/generate-avatar")
+        return Promise.resolve(mockResponse({ avatarUrl: "/avatar.png" }));
       return Promise.resolve(mockResponse({}));
     });
 
     const onBotCreated = jest.fn();
     const { result } = renderHook(() => useBotCreation(onBotCreated));
 
-    act(() => { result.current.setInput('Alice'); });
+    act(() => {
+      result.current.setInput("Alice");
+    });
 
     await act(async () => {
       await result.current.handleCreate();
@@ -76,25 +82,35 @@ describe('useBotCreation generateBotDataWithProgressCancelable branches', () => 
     expect(onBotCreated).toHaveBeenCalled();
     const created = onBotCreated.mock.calls[0][0] as Bot;
     // default personality used when generation fails
-    expect(created.personality).toBe('You are Alice. Stay in character.');
+    expect(created.personality).toBe("You are Alice. Stay in character.");
     // ensure we logged a warning about personality failure
-    expect(mockLogEvent).toHaveBeenCalledWith(expect.any(String), 'bot_personality_generation_failed', expect.any(String), expect.any(Object));
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      expect.any(String),
+      "bot_personality_generation_failed",
+      expect.any(String),
+      expect.any(Object),
+    );
   });
 
-  it('does not resurrect a cancelled run when a new run starts quickly', async () => {
+  it("does not resurrect a cancelled run when a new run starts quickly", async () => {
     // Make first personality promise resolvable externally so we can cancel and start a second run
     let resolveFirst: ((v: unknown) => void) | null = null;
-    const firstPersonalityPromise = new Promise((res) => { resolveFirst = res; });
+    const firstPersonalityPromise = new Promise((res) => {
+      resolveFirst = res;
+    });
 
     // Track calls to personality so we can return controlled promises in order
     let personalityCallCount = 0;
     mockAuthenticatedFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') {
+      if (url === "/api/generate-personality") {
         const callIdx = personalityCallCount++;
         if (callIdx === 0) return firstPersonalityPromise; // long-running first call
-        return Promise.resolve(mockResponse({ personality: 'gen-personality-2', correctedName: 'Beta' }));
+        return Promise.resolve(
+          mockResponse({ personality: "gen-personality-2", correctedName: "Beta" }),
+        );
       }
-      if (url === '/api/generate-avatar') return Promise.resolve(mockResponse({ avatarUrl: '/avatar.png' }));
+      if (url === "/api/generate-avatar")
+        return Promise.resolve(mockResponse({ avatarUrl: "/avatar.png" }));
       return Promise.resolve(mockResponse({}));
     });
 
@@ -104,7 +120,9 @@ describe('useBotCreation generateBotDataWithProgressCancelable branches', () => 
     const { result } = renderHook(() => useBotCreation(onBotCreated));
 
     // Start first generation for Alpha
-    act(() => { result.current.setInput('Alpha'); });
+    act(() => {
+      result.current.setInput("Alpha");
+    });
 
     // Unused by design: start the first run then cancel it and start a second run.
     // Prefix with underscore so ESLint's no-unused-vars rule permits it.
@@ -116,33 +134,36 @@ describe('useBotCreation generateBotDataWithProgressCancelable branches', () => 
       // Cancel the first run
       result.current.handleCancel();
       // Immediately start a new generation for Beta
-      result.current.setInput('Beta');
+      result.current.setInput("Beta");
       await result.current.handleCreate();
     });
 
     // Resolve the first personality late (after we started the second run)
     // Cast to a callable type to avoid TypeScript narrowing issues in tests.
-    (resolveFirst as ((v: unknown) => void) | null)?.({ personality: 'late' });
+    (resolveFirst as ((v: unknown) => void) | null)?.({ personality: "late" });
     // Wait for state to settle
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     // Ensure only one bot was created (the second run), and it's the Beta bot
     expect(onBotCreated).toHaveBeenCalledTimes(1);
     const created = onBotCreated.mock.calls[0][0] as Bot;
-    expect(created.name).toBe('Beta');
+    expect(created.name).toBe("Beta");
   });
 
-  it('falls back to default avatar when avatar generation fails', async () => {
+  it("falls back to default avatar when avatar generation fails", async () => {
     mockAuthenticatedFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve(mockResponse({ personality: 'gen-personality' }));
-      if (url === '/api/generate-avatar') return Promise.reject(new Error('avatar fail'));
+      if (url === "/api/generate-personality")
+        return Promise.resolve(mockResponse({ personality: "gen-personality" }));
+      if (url === "/api/generate-avatar") return Promise.reject(new Error("avatar fail"));
       return Promise.resolve(mockResponse({}));
     });
 
     const onBotCreated = jest.fn();
     const { result } = renderHook(() => useBotCreation(onBotCreated));
 
-    act(() => { result.current.setInput('Bob'); });
+    act(() => {
+      result.current.setInput("Bob");
+    });
 
     await act(async () => {
       await result.current.handleCreate();
@@ -150,17 +171,24 @@ describe('useBotCreation generateBotDataWithProgressCancelable branches', () => 
 
     expect(onBotCreated).toHaveBeenCalled();
     const created = onBotCreated.mock.calls[0][0] as Bot;
-    expect(created.avatarUrl).toBe('/silhouette.svg');
-    expect(mockLogEvent).toHaveBeenCalledWith(expect.any(String), 'bot_personality_generated', expect.any(String), expect.any(Object));
+    expect(created.avatarUrl).toBe("/silhouette.svg");
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      expect.any(String),
+      "bot_personality_generated",
+      expect.any(String),
+      expect.any(Object),
+    );
   });
 
-  it('reports error when voice config generation fails and does not create bot', async () => {
-    mockApiGetVoiceConfigForCharacter.mockRejectedValue(new Error('voice fail'));
+  it("reports error when voice config generation fails and does not create bot", async () => {
+    mockApiGetVoiceConfigForCharacter.mockRejectedValue(new Error("voice fail"));
 
     const onBotCreated = jest.fn();
     const { result } = renderHook(() => useBotCreation(onBotCreated));
 
-    act(() => { result.current.setInput('Charlie'); });
+    act(() => {
+      result.current.setInput("Charlie");
+    });
 
     await act(async () => {
       await result.current.handleCreate();
@@ -169,25 +197,35 @@ describe('useBotCreation generateBotDataWithProgressCancelable branches', () => 
     // Bot should not have been created
     expect(onBotCreated).not.toHaveBeenCalled();
     // Error state should be set to friendly message
-    expect(result.current.error).toBe('Failed to generate character. Please try again.');
+    expect(result.current.error).toBe("Failed to generate character. Please try again.");
     // Ensure a warning was logged about voice generation failure
-    expect(mockLogEvent).toHaveBeenCalledWith(expect.any(String), 'bot_voice_config_generation_failed', expect.any(String), expect.any(Object));
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      expect.any(String),
+      "bot_voice_config_generation_failed",
+      expect.any(String),
+      expect.any(Object),
+    );
   });
 
-  it('cancels the creation flow when cancelled mid-flight', async () => {
+  it("cancels the creation flow when cancelled mid-flight", async () => {
     // Make personality promise resolvable externally so we can cancel before it completes
     let resolvePersonality: ((v: unknown) => void) | null = null;
-    const personalityPromise = new Promise((res) => { resolvePersonality = res; });
+    const personalityPromise = new Promise((res) => {
+      resolvePersonality = res;
+    });
     mockAuthenticatedFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return personalityPromise;
-      if (url === '/api/generate-avatar') return Promise.resolve(mockResponse({ avatarUrl: '/avatar.png' }));
+      if (url === "/api/generate-personality") return personalityPromise;
+      if (url === "/api/generate-avatar")
+        return Promise.resolve(mockResponse({ avatarUrl: "/avatar.png" }));
       return Promise.resolve(mockResponse({}));
     });
 
     const onBotCreated = jest.fn();
     const { result } = renderHook(() => useBotCreation(onBotCreated));
 
-    act(() => { result.current.setInput('Dana'); });
+    act(() => {
+      result.current.setInput("Dana");
+    });
 
     // start the creation and cancel shortly after it begins
     let createPromise: Promise<void> | undefined;
@@ -198,7 +236,7 @@ describe('useBotCreation generateBotDataWithProgressCancelable branches', () => 
       // use the public handler to cancel so state updates happen inside act
       result.current.handleCancel();
       // now resolve personality
-      if (resolvePersonality) resolvePersonality({ personality: 'late' });
+      if (resolvePersonality) resolvePersonality({ personality: "late" });
       await createPromise;
     });
 
@@ -208,19 +246,25 @@ describe('useBotCreation generateBotDataWithProgressCancelable branches', () => 
     expect(onBotCreated).not.toHaveBeenCalled();
   });
 
-  it('continues even if persistVoiceConfig throws', async () => {
+  it("continues even if persistVoiceConfig throws", async () => {
     // voice generation works
     mockApiGetVoiceConfigForCharacter.mockResolvedValue(baseBot.voiceConfig);
     // persist throws
-    mockPersistVoiceConfig.mockImplementation(() => { throw new Error('persist fail'); });
+    mockPersistVoiceConfig.mockImplementation(() => {
+      throw new Error("persist fail");
+    });
 
     const onBotCreated = jest.fn();
     const { result } = renderHook(() => useBotCreation(onBotCreated));
 
     // Ensure fresh state
-    act(() => { result.current.setInput('Eve'); });
+    act(() => {
+      result.current.setInput("Eve");
+    });
 
-    await act(async () => { await result.current.handleCreate(); });
+    await act(async () => {
+      await result.current.handleCreate();
+    });
 
     expect(onBotCreated).toHaveBeenCalled();
     // ensure that persist was attempted (even though it threw)

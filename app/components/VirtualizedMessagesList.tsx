@@ -7,10 +7,10 @@ import styles from "./styles/VirtualizedMessagesList.module.css";
 type VisibleMessage = { text: string; sender: string; audioFileUrl?: string };
 
 interface VirtualizedMessagesListProps {
-    messages: VisibleMessage[];
-    bot: Bot;
-    onAvatarClick?: () => void;
-    maxHeight?: number;
+  messages: VisibleMessage[];
+  bot: Bot;
+  onAvatarClick?: () => void;
+  maxHeight?: number;
 }
 
 // Message rows are variable height in the "immersive stage" layout — bot replies
@@ -27,18 +27,18 @@ const USER_LINE_HEIGHT = 26;
 const ROW_CHROME = 60; // sender byline + vertical padding + divider
 
 function estimateRowHeight(message: VisibleMessage | undefined): number {
-    if (!message) return ROW_CHROME + BOT_LINE_HEIGHT;
-    const isBot = message.sender !== "User";
-    const charsPerLine = isBot ? BOT_CHARS_PER_LINE : USER_CHARS_PER_LINE;
-    const lineHeight = isBot ? BOT_LINE_HEIGHT : USER_LINE_HEIGHT;
-    const lines = Math.max(1, Math.ceil(message.text.length / charsPerLine));
-    return ROW_CHROME + lines * lineHeight;
+  if (!message) return ROW_CHROME + BOT_LINE_HEIGHT;
+  const isBot = message.sender !== "User";
+  const charsPerLine = isBot ? BOT_CHARS_PER_LINE : USER_CHARS_PER_LINE;
+  const lineHeight = isBot ? BOT_LINE_HEIGHT : USER_LINE_HEIGHT;
+  const lines = Math.max(1, Math.ceil(message.text.length / charsPerLine));
+  return ROW_CHROME + lines * lineHeight;
 }
 
 interface RowProps {
-    visibleMessages: VisibleMessage[];
-    bot: Bot;
-    onAvatarClick?: () => void;
+  visibleMessages: VisibleMessage[];
+  bot: Bot;
+  onAvatarClick?: () => void;
 }
 
 // Module-scope (not defined inside VirtualizedMessagesList) so react-window isn't handed a
@@ -51,48 +51,59 @@ interface RowProps {
 // TS inference gap in List's generic signature under this project's moduleResolution —
 // see that file's comment. That makes every named export `any`, so the row props shape is
 // typed by hand here instead of importing RowComponentProps.
-function Row({ index, style, visibleMessages, bot, onAvatarClick }: RowProps & { index: number; style: React.CSSProperties }) {
-    return (
-        <div style={style}>
-            <ChatMessage message={visibleMessages[index]} bot={bot} onAvatarClick={onAvatarClick} />
-        </div>
-    );
+function Row({
+  index,
+  style,
+  visibleMessages,
+  bot,
+  onAvatarClick,
+}: RowProps & { index: number; style: React.CSSProperties }) {
+  return (
+    <div style={style}>
+      <ChatMessage message={visibleMessages[index]} bot={bot} onAvatarClick={onAvatarClick} />
+    </div>
+  );
 }
 
-const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({ messages, bot, onAvatarClick, maxHeight = 480 }) => {
-    const itemCount = messages.length;
-    const heights = React.useMemo(() => messages.map(estimateRowHeight), [messages]);
+const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({
+  messages,
+  bot,
+  onAvatarClick,
+  maxHeight = 480,
+}) => {
+  const itemCount = messages.length;
+  const heights = React.useMemo(() => messages.map(estimateRowHeight), [messages]);
 
-    // Trim from the front until the estimated total fits within maxHeight, so the
-    // virtualized window still anchors on the most recent messages, same as the
-    // non-virtualized path in ChatMessagesList.
-    const { startIdx, visibleHeights } = React.useMemo(() => {
-        let start = 0;
-        let running = heights.reduce((sum, h) => sum + h, 0);
-        while (start < itemCount - 1 && running > maxHeight) {
-            running -= heights[start];
-            start += 1;
-        }
-        return { startIdx: start, visibleHeights: heights.slice(start) };
-    }, [heights, itemCount, maxHeight]);
+  // Trim from the front until the estimated total fits within maxHeight, so the
+  // virtualized window still anchors on the most recent messages, same as the
+  // non-virtualized path in ChatMessagesList.
+  const { startIdx, visibleHeights } = React.useMemo(() => {
+    let start = 0;
+    let running = heights.reduce((sum, h) => sum + h, 0);
+    while (start < itemCount - 1 && running > maxHeight) {
+      running -= heights[start];
+      start += 1;
+    }
+    return { startIdx: start, visibleHeights: heights.slice(start) };
+  }, [heights, itemCount, maxHeight]);
 
-    const visibleMessages = messages.slice(startIdx);
-    const height = Math.min(maxHeight, visibleHeights.reduce((sum, h) => sum + h, 0) + 1);
+  const visibleMessages = messages.slice(startIdx);
+  const height = Math.min(maxHeight, visibleHeights.reduce((sum, h) => sum + h, 0) + 1);
 
-    return (
-        <div className={styles.wrapper}>
-            <RWList
-                height={height}
-                rowCount={visibleMessages.length}
-                rowHeight={(index: number) => visibleHeights[index] ?? ROW_CHROME}
-                width={"100%"}
-                overscanCount={4}
-                rowComponent={Row}
-                rowProps={{ visibleMessages, bot, onAvatarClick }}
-                className={styles.list}
-            />
-        </div>
-    );
+  return (
+    <div className={styles.wrapper}>
+      <RWList
+        height={height}
+        rowCount={visibleMessages.length}
+        rowHeight={(index: number) => visibleHeights[index] ?? ROW_CHROME}
+        width={"100%"}
+        overscanCount={4}
+        rowComponent={Row}
+        rowProps={{ visibleMessages, bot, onAvatarClick }}
+        className={styles.list}
+      />
+    </div>
+  );
 };
 
 export default VirtualizedMessagesList;

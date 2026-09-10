@@ -1,18 +1,18 @@
-import { runStartupMigrations } from '../../app/index';
+import { runStartupMigrations } from "../../app/index";
 
-describe('startup migrations', () => {
+describe("startup migrations", () => {
   beforeEach(() => {
     // Clear storage and setup fresh state
     localStorage.clear();
   });
 
-  it('migrates legacy voiceConfig to versioned wrapper', () => {
-    const key = 'voiceConfig-OldBot';
-    const legacy = { voice: 'test-voice' };
+  it("migrates legacy voiceConfig to versioned wrapper", () => {
+    const key = "voiceConfig-OldBot";
+    const legacy = { voice: "test-voice" };
     localStorage.setItem(key, JSON.stringify(legacy));
 
-  // Execute all registered startup migrations
-  runStartupMigrations();
+    // Execute all registered startup migrations
+    runStartupMigrations();
 
     const raw = localStorage.getItem(key);
     expect(raw).not.toBeNull();

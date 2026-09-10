@@ -23,7 +23,7 @@
      globals.css/darkmode.css.
    ============================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Caveat:wght@600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Caveat:wght@600;700&display=swap");
 
 .page {
   max-width: min(96vw, 1800px);
@@ -118,7 +118,7 @@
 }
 
 .title {
-  font-family: 'Playfair Display', var(--font-secondary), var(--font-primary), serif;
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
   font-weight: 500;
   font-size: 2.6rem;
   margin: 0 0 0.5rem;
@@ -144,7 +144,10 @@
   padding: 2.5rem 1rem;
   border-radius: 24px;
   background-color: var(--color-surface-variant);
-  background-image: radial-gradient(color-mix(in srgb, var(--color-accent) 35%, transparent) 1px, transparent 1px);
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--color-accent) 35%, transparent) 1px,
+    transparent 1px
+  );
   background-size: 22px 22px;
 }
 
@@ -173,9 +176,14 @@
   padding: 10px 10px 0;
   border-radius: 3px;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.28),
+    0 1px 2px rgba(0, 0, 0, 0.15);
   transform: rotate(calc(var(--rot, 0deg) * var(--rot-scale)));
-  transition: transform 0.25s ease, box-shadow 0.25s ease, z-index 0s;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    z-index 0s;
   opacity: 0;
   /* Vertical overlap gives the "stacked pile" look; horizontal overlap has to
      stay much lighter than that, or a neighboring photo's edge covers this
@@ -250,7 +258,9 @@
 
 .tile:hover {
   transform: rotate(0deg) scale(1.18) translateY(-6px);
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.38), 0 4px 10px rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 18px 34px rgba(0, 0, 0, 0.38),
+    0 4px 10px rgba(0, 0, 0, 0.2);
   z-index: 20;
 }
 
@@ -352,7 +362,7 @@
 /* The handwritten caption in the polaroid's bottom margin — a scrapbook
    annotation under the photo, not an overlay on top of it. */
 .caption {
-  font-family: 'Caveat', cursive;
+  font-family: "Caveat", cursive;
   font-weight: 700;
   font-size: 1.35rem;
   line-height: 1.15;
@@ -418,7 +428,7 @@
 }
 
 .lightboxName {
-  font-family: 'Caveat', cursive;
+  font-family: "Caveat", cursive;
   font-weight: 700;
   font-size: 1.7rem;
   text-align: center;

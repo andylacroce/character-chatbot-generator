@@ -73,7 +73,8 @@ Return ONLY a valid JSON array, one entry per input name in the same order, each
 }
 
 async function main() {
-  const rows = await sql`SELECT character_name, recognized FROM avatar_cache ORDER BY character_name`;
+  const rows =
+    await sql`SELECT character_name, recognized FROM avatar_cache ORDER BY character_name`;
   console.log(`Found ${rows.length} cached character(s).`);
   if (rows.length === 0) return;
 
@@ -91,24 +92,33 @@ async function main() {
     }
 
     for (const row of batch) {
-      const result = results.find((r) => typeof r.name === "string" && r.name.toLowerCase() === row.character_name.toLowerCase());
+      const result = results.find(
+        (r) =>
+          typeof r.name === "string" && r.name.toLowerCase() === row.character_name.toLowerCase(),
+      );
       if (!result || typeof result.recognized !== "boolean") {
-        console.warn(`  No classification returned for "${row.character_name}", leaving unchanged.`);
+        console.warn(
+          `  No classification returned for "${row.character_name}", leaving unchanged.`,
+        );
         continue;
       }
       if (result.recognized === row.recognized) continue;
 
       changed++;
-      console.log(`  "${row.character_name}": recognized ${row.recognized} -> ${result.recognized}`);
+      console.log(
+        `  "${row.character_name}": recognized ${row.recognized} -> ${result.recognized}`,
+      );
       if (!dryRun) {
         await sql`UPDATE avatar_cache SET recognized = ${result.recognized} WHERE character_name = ${row.character_name}`;
       }
     }
   }
 
-  console.log(dryRun
-    ? `Dry run complete: ${changed} row(s) would change.`
-    : `Done: ${changed} row(s) updated.`);
+  console.log(
+    dryRun
+      ? `Dry run complete: ${changed} row(s) would change.`
+      : `Done: ${changed} row(s) updated.`,
+  );
 }
 
 main().catch((err) => {

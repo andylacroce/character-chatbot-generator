@@ -46,13 +46,13 @@ function saveCacheToFile(cache: Map<string, CacheEntry>) {
       obj[key] = value;
     });
     fs.writeFileSync(CACHE_FILE, JSON.stringify(obj), "utf8");
-  } catch { }
+  } catch {}
 }
 
 function cleanupExpiredEntries(cache: Map<string, CacheEntry>): Map<string, CacheEntry> {
   const now = Date.now();
   const cleaned = new Map<string, CacheEntry>();
-  
+
   // Remove expired entries and enforce size limits
   const validEntries: Array<[string, CacheEntry]> = [];
   cache.forEach((entry, key) => {
@@ -60,7 +60,7 @@ function cleanupExpiredEntries(cache: Map<string, CacheEntry>): Map<string, Cach
       validEntries.push([key, entry]);
     }
   });
-  
+
   // Sort by access time (LRU) and keep only most recent entries
   validEntries
     .sort((a, b) => b[1].timestamp - a[1].timestamp)
@@ -68,7 +68,7 @@ function cleanupExpiredEntries(cache: Map<string, CacheEntry>): Map<string, Cach
     .forEach(([key, entry]) => {
       cleaned.set(key, entry);
     });
-    
+
   return cleaned;
 }
 
@@ -80,9 +80,9 @@ function cleanupExpiredEntries(cache: Map<string, CacheEntry>): Map<string, Cach
 export function setReplyCache(key: string, value: string) {
   const entry: CacheEntry = {
     value,
-    timestamp: Date.now()
+    timestamp: Date.now(),
   };
-  
+
   if (isVercelEnv()) {
     memoryCache.set(key, entry);
     // Trigger cleanup if cache grows too large

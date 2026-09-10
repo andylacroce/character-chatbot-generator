@@ -1,0 +1,10 @@
+node_modules
+.next
+out
+dist
+coverage
+.jest-cache
+public/openapi.json
+package-lock.json
+next-env.d.ts
+*.md

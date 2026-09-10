@@ -11,7 +11,7 @@ import { sanitizeForDisplay, escapeHtml } from "../../src/utils/security";
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '10mb',
+      sizeLimit: "10mb",
     },
   },
 };
@@ -84,10 +84,7 @@ const transcriptRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     logger.info(`[Transcript API] 405 Method Not Allowed for ${req.method}`);
     res.setHeader("Allow", ["POST"]);
@@ -105,28 +102,31 @@ export default async function handler(
 
   if (!Array.isArray(messages)) {
     logger.info(`[Transcript API] 400 Bad Request: Messages array required`);
-    logger.error(
-      "[Transcript API] Invalid request: Messages array required in JSON body.",
-    );
+    logger.error("[Transcript API] Invalid request: Messages array required in JSON body.");
     res.status(400).json({ error: "Messages array required" });
     return;
   }
 
   // Validate required fields and types
-  if (bot !== undefined && (typeof bot !== 'object' || bot === null)) {
+  if (bot !== undefined && (typeof bot !== "object" || bot === null)) {
     res.status(400).json({ error: "bot must be an object" });
     return;
   }
-  if (bot && typeof bot.name !== 'string') {
+  if (bot && typeof bot.name !== "string") {
     res.status(400).json({ error: "bot.name must be a string" });
     return;
   }
-  if (bot && typeof bot.avatarUrl !== 'string') {
+  if (bot && typeof bot.avatarUrl !== "string") {
     res.status(400).json({ error: "bot.avatarUrl must be a string" });
     return;
   }
   for (const msg of messages) {
-    if (typeof msg !== 'object' || msg === null || typeof msg.sender !== 'string' || typeof msg.text !== 'string') {
+    if (
+      typeof msg !== "object" ||
+      msg === null ||
+      typeof msg.sender !== "string" ||
+      typeof msg.text !== "string"
+    ) {
       res.status(400).json({ error: "Invalid message format" });
       return;
     }
@@ -141,7 +141,8 @@ export default async function handler(
 
   // Ensure total payload size stays within limits to prevent abuse
   const totalSize = JSON.stringify(messages).length;
-  if (totalSize > 5 * 1024 * 1024) { // 5MB size limit
+  if (totalSize > 5 * 1024 * 1024) {
+    // 5MB size limit
     logger.info(`[Transcript API] 400 Bad Request: Transcript too large (${totalSize} bytes)`);
     res.status(400).json({ error: "Transcript too large (max 5MB)" });
     return;
@@ -150,19 +151,22 @@ export default async function handler(
   logger.info(`[Transcript API] Received messages for download: ${messages.length}`);
 
   // Use friendly timestamp if provided, otherwise generate machine-readable one
-  const displayTimestamp = exportedAt && typeof exportedAt === 'string' ? exportedAt : (() => {
-    const now = new Date();
-    return now.toLocaleString(undefined, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-      timeZoneName: "short"
-    });
-  })();
+  const displayTimestamp =
+    exportedAt && typeof exportedAt === "string"
+      ? exportedAt
+      : (() => {
+          const now = new Date();
+          return now.toLocaleString(undefined, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true,
+            timeZoneName: "short",
+          });
+        })();
 
   // Generate descriptive filename for the HTML document
   const now = new Date();
@@ -310,24 +314,28 @@ export default async function handler(
       <div class="header-info">
         <p><strong>Exported:</strong> ${escapeHtml(displayTimestamp)}</p>
       </div>
-      ${bot ? `
+      ${
+        bot
+          ? `
         <div class="bot-header">
-          ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${escapeHtml(bot.avatarUrl)}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ''}
+          ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${escapeHtml(bot.avatarUrl)}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ""}
           <h2>${escapeHtml(bot.name)}</h2>
         </div>
-      ` : ''}
+      `
+          : ""
+      }
       <div class="messages">
         ${messages
           .map((msg: { sender: string; text: string }) => {
             const isUser = msg.sender === "User";
             return `
-              <div class="message ${isUser ? 'user-message' : 'bot-message'}">
-                <strong class="${isUser ? 'user-sender' : 'bot-sender'}">${isUser ? "Me" : (bot ? escapeHtml(bot.name) : escapeHtml(msg.sender))}:</strong>
+              <div class="message ${isUser ? "user-message" : "bot-message"}">
+                <strong class="${isUser ? "user-sender" : "bot-sender"}">${isUser ? "Me" : bot ? escapeHtml(bot.name) : escapeHtml(msg.sender)}:</strong>
                 <span class="message-text">${sanitizeForDisplay(msg.text)}</span>
               </div>
             `;
           })
-          .join('')}
+          .join("")}
       </div>
     </body>
     </html>
@@ -347,9 +355,9 @@ export default async function handler(
  * would otherwise be mistaken for a relative path and rendered as-is.
  */
 export function isValidAvatarUrl(url: string): boolean {
-  if (typeof url !== 'string' || url === '') return false;
+  if (typeof url !== "string" || url === "") return false;
   // Allow absolute paths starting with /
-  if (url.startsWith('/')) return true;
+  if (url.startsWith("/")) return true;
   const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.\-]*:/.test(url);
   // Allow relative URLs without a scheme (e.g., 'silhouette.svg')
   if (!hasScheme) return true;
@@ -359,7 +367,7 @@ export function isValidAvatarUrl(url: string): boolean {
   // For full URLs, validate the protocol is safe
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
     return false;
   }

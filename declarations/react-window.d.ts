@@ -6,4 +6,4 @@
 // shim: type-check start reporting `Property 'height' does not exist...`). This blanket
 // declaration widens the whole module to `any` as a workaround — see
 // VirtualizedMessagesList.tsx for the manually-typed row props that fill the gap.
-declare module 'react-window';
+declare module "react-window";

@@ -15,7 +15,7 @@ function setup({ messages: _messages = [], loading: _loading = false } = {}) {
     });
     return (
       <>
-        <div ref={chatBoxRef} data-testid="chatbox" style={{ height: 100, overflow: 'auto' }} />
+        <div ref={chatBoxRef} data-testid="chatbox" style={{ height: 100, overflow: "auto" }} />
         <input ref={inputRef} data-testid="input" />
       </>
     );
@@ -34,7 +34,9 @@ describe("useChatScrollAndFocus", () => {
     Object.defineProperty(el, "scrollTop", {
       configurable: true,
       get: () => _scrollTop,
-      set: v => { _scrollTop = v; },
+      set: (v) => {
+        _scrollTop = v;
+      },
     });
   }
 
@@ -46,12 +48,12 @@ describe("useChatScrollAndFocus", () => {
       setScrollProps(chatBoxRef.current, { scrollHeight: 500, scrollTop: 0 });
     }
     rerender(<TestComponent messages={[{ id: 1, text: "hi" }]} loading={false} />);
-    
+
     // Fast-forward timers to trigger the setTimeout
     act(() => {
       jest.runAllTimers();
     });
-    
+
     expect(chatBoxRef.current?.scrollTop).toBe(chatBoxRef.current?.scrollHeight);
     jest.useRealTimers();
   });
@@ -86,7 +88,7 @@ describe("useChatScrollAndFocus", () => {
     const origUA = window.navigator.userAgent;
     Object.defineProperty(window.navigator, "userAgent", {
       value: "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15",
-      configurable: true
+      configurable: true,
     });
     const { TestComponent, inputRef, chatBoxRef } = setup();
     render(<TestComponent messages={[]} loading={false} />);
@@ -133,14 +135,18 @@ describe("useChatScrollAndFocus", () => {
     const origVV = window.visualViewport;
     Object.defineProperty(window.navigator, "userAgent", {
       value: "Mozilla/5.0 (Android; Mobile; rv:89.0) Gecko/89.0 Firefox/89.0",
-      configurable: true
+      configurable: true,
     });
     // Minimal visualViewport mock
     const addMock = jest.fn();
     const removeMock = jest.fn();
-    (window as unknown as { visualViewport?: { addEventListener?: jest.Mock; removeEventListener?: jest.Mock } }).visualViewport = {
+    (
+      window as unknown as {
+        visualViewport?: { addEventListener?: jest.Mock; removeEventListener?: jest.Mock };
+      }
+    ).visualViewport = {
       addEventListener: addMock,
-      removeEventListener: removeMock
+      removeEventListener: removeMock,
     };
     const { TestComponent, chatBoxRef: _chatBoxRef } = setup();
     const { unmount } = render(<TestComponent messages={[]} loading={false} />);
@@ -151,7 +157,7 @@ describe("useChatScrollAndFocus", () => {
     expect(removeMock).toHaveBeenCalledWith("resize", expect.any(Function));
     // Clean up
     Object.defineProperty(window.navigator, "userAgent", { value: origUA, configurable: true });
-  Object.defineProperty(window, 'visualViewport', { value: origVV, configurable: true });
+    Object.defineProperty(window, "visualViewport", { value: origVV, configurable: true });
   });
 
   it("handles focus/blur events on input (Firefox Android)", () => {
@@ -160,7 +166,7 @@ describe("useChatScrollAndFocus", () => {
     const origUA = window.navigator.userAgent;
     Object.defineProperty(window.navigator, "userAgent", {
       value: "Mozilla/5.0 (Android; Mobile; rv:89.0) Gecko/89.0 Firefox/89.0",
-      configurable: true
+      configurable: true,
     });
     const { TestComponent, inputRef } = setup();
     render(<TestComponent messages={[]} loading={false} />);
@@ -191,28 +197,28 @@ describe("useChatScrollAndFocus", () => {
     const origUA = window.navigator.userAgent;
     Object.defineProperty(window.navigator, "userAgent", {
       value: "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15",
-      configurable: true
+      configurable: true,
     });
-    
+
     const { TestComponent, inputRef, chatBoxRef } = setup();
     render(<TestComponent messages={[]} loading={false} />);
-    
+
     const input = inputRef.current!;
     if (chatBoxRef.current) {
       setScrollProps(chatBoxRef.current, { scrollHeight: 1000, scrollTop: 0 });
     }
-    
+
     input.scrollIntoView = jest.fn();
     window.scrollTo = jest.fn();
-    
+
     act(() => {
       input.dispatchEvent(new FocusEvent("focus"));
       jest.advanceTimersByTime(120);
     });
-    
+
     expect(input.scrollIntoView).toHaveBeenCalled();
     expect(window.scrollTo).toHaveBeenCalled();
-    
+
     Object.defineProperty(window.navigator, "userAgent", { value: origUA, configurable: true });
     jest.useRealTimers();
   });
@@ -221,21 +227,21 @@ describe("useChatScrollAndFocus", () => {
     jest.useFakeTimers();
     const { TestComponent, chatBoxRef } = setup();
     const { rerender } = render(<TestComponent messages={[]} loading={false} />);
-    
+
     if (chatBoxRef.current) {
       setScrollProps(chatBoxRef.current, { scrollHeight: 500, scrollTop: 0 });
       // Mock scrollTo to throw error
       chatBoxRef.current.scrollTo = jest.fn(() => {
-        throw new Error('scrollTo not supported');
+        throw new Error("scrollTo not supported");
       });
     }
-    
+
     rerender(<TestComponent messages={[{ id: 1, text: "test" }]} loading={false} />);
-    
+
     act(() => {
       jest.runAllTimers();
     });
-    
+
     // Should fall back to setting scrollTop directly
     expect(chatBoxRef.current?.scrollTop).toBe(500);
     jest.useRealTimers();
@@ -254,7 +260,7 @@ describe("useChatScrollAndFocus", () => {
       });
       return <input ref={inputRef} />;
     };
-    
+
     // Should not throw even without chatBox element
     expect(() => {
       render(<TestComponent />);
@@ -262,7 +268,7 @@ describe("useChatScrollAndFocus", () => {
         jest.runAllTimers();
       });
     }).not.toThrow();
-    
+
     jest.useRealTimers();
   });
 
@@ -278,16 +284,16 @@ describe("useChatScrollAndFocus", () => {
       });
       return <div ref={chatBoxRef} />;
     };
-    
+
     // Should not throw even without input element
     expect(() => {
       render(<TestComponent />);
     }).not.toThrow();
   });
 
-  it('defers focus when NODE_ENV is not test', () => {
+  it("defers focus when NODE_ENV is not test", () => {
     const originalEnv = (process.env as unknown as { NODE_ENV?: string }).NODE_ENV;
-    (process.env as unknown as { NODE_ENV?: string }).NODE_ENV = 'production';
+    (process.env as unknown as { NODE_ENV?: string }).NODE_ENV = "production";
 
     jest.useFakeTimers();
     const { TestComponent, inputRef } = setup();
@@ -297,7 +303,9 @@ describe("useChatScrollAndFocus", () => {
     expect(document.activeElement).not.toBe(inputRef.current);
 
     // Run timers to trigger deferred focus
-    act(() => { jest.runOnlyPendingTimers(); });
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
 
     expect(document.activeElement).toBe(inputRef.current);
 

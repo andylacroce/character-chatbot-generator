@@ -12,7 +12,7 @@ describe("HamburgerMenu", () => {
     render(
       <HamburgerMenu>
         <DummyButton />
-      </HamburgerMenu>
+      </HamburgerMenu>,
     );
     expect(screen.getByLabelText(/open menu/i)).toBeInTheDocument();
   });
@@ -21,7 +21,7 @@ describe("HamburgerMenu", () => {
     render(
       <HamburgerMenu>
         <DummyButton />
-      </HamburgerMenu>
+      </HamburgerMenu>,
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.click(menuButton);
@@ -37,7 +37,7 @@ describe("HamburgerMenu", () => {
           <DummyButton />
         </HamburgerMenu>
         <button data-testid="outside">Outside</button>
-      </div>
+      </div>,
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.click(menuButton);
@@ -51,7 +51,7 @@ describe("HamburgerMenu", () => {
     render(
       <HamburgerMenu>
         <DummyButton onClick={onClick} />
-      </HamburgerMenu>
+      </HamburgerMenu>,
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.click(menuButton);
@@ -67,7 +67,7 @@ describe("HamburgerMenu", () => {
     render(
       <HamburgerMenu>
         <DummyButton />
-      </HamburgerMenu>
+      </HamburgerMenu>,
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     menuButton.focus();
@@ -80,7 +80,7 @@ describe("HamburgerMenu", () => {
     render(
       <HamburgerMenu>
         <DummyButton />
-      </HamburgerMenu>
+      </HamburgerMenu>,
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.keyDown(menuButton, { key: " " });
@@ -93,7 +93,7 @@ describe("HamburgerMenu", () => {
     render(
       <HamburgerMenu>
         <DummyButton />
-      </HamburgerMenu>
+      </HamburgerMenu>,
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.keyDown(menuButton, { key: "Tab" });
@@ -104,7 +104,7 @@ describe("HamburgerMenu", () => {
     render(
       <HamburgerMenu>
         <span data-testid="non-button-child">Not a button</span>
-      </HamburgerMenu>
+      </HamburgerMenu>,
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.click(menuButton);
@@ -118,7 +118,7 @@ describe("HamburgerMenu", () => {
     render(
       <HamburgerMenu>
         <NoClickChild />
-      </HamburgerMenu>
+      </HamburgerMenu>,
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.click(menuButton);
@@ -126,11 +126,7 @@ describe("HamburgerMenu", () => {
   });
 
   it("string child (non-React-element) passes through unchanged (L57 if[0])", () => {
-    render(
-      <HamburgerMenu>
-        {"Text node child"}
-      </HamburgerMenu>
-    );
+    render(<HamburgerMenu>{"Text node child"}</HamburgerMenu>);
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.click(menuButton);
     expect(screen.getByText("Text node child")).toBeInTheDocument();
@@ -140,7 +136,7 @@ describe("HamburgerMenu", () => {
     render(
       <HamburgerMenu>
         <button>No Handler</button>
-      </HamburgerMenu>
+      </HamburgerMenu>,
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.click(menuButton);

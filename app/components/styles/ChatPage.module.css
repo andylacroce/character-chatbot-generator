@@ -5,7 +5,7 @@
    - Uses CSS variables from globals.css for theme consistency
    ============================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap");
 
 /* --- Main Chat Layout --- */
 /*
@@ -104,7 +104,7 @@
   .chatMessagesScroll::-webkit-scrollbar {
     width: 8px;
   }
-  
+
   .chatMessagesScroll::-webkit-scrollbar-thumb {
     border: 1px solid var(--scrollbar-bg);
   }
@@ -151,8 +151,12 @@
   Keyframes for the spin animation used in the generic spinner.
 */
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* --- Modal Backdrop --- */
@@ -214,7 +218,7 @@
   font-weight: 500;
   margin-bottom: 0.5rem;
   color: var(--color-primary);
-  font-family: 'Lora', var(--font-secondary), var(--font-primary), serif;
+  font-family: "Lora", var(--font-secondary), var(--font-primary), serif;
 }
 
 /* --- API Error Description --- */

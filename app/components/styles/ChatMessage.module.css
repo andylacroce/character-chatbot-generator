@@ -11,7 +11,7 @@
    - Uses CSS variables from globals.css/darkmode.css for theme consistency.
    ============================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap");
 
 .message {
   padding: 1rem 0;
@@ -98,7 +98,7 @@
 }
 
 .botMessage .messageText {
-  font-family: 'Lora', var(--font-secondary), var(--font-primary), serif;
+  font-family: "Lora", var(--font-secondary), var(--font-primary), serif;
   font-size: calc(var(--chat-message-font-size) * 1.15);
   line-height: 1.5;
   color: var(--color-text);

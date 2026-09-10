@@ -37,12 +37,17 @@ const MAX_RECENT_NAMES = 100;
  */
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
-    logEvent("warn", "random_character_method_not_allowed", "RandomCharacter API method not allowed", sanitizeLogMeta({ method: req.method }));
+    logEvent(
+      "warn",
+      "random_character_method_not_allowed",
+      "RandomCharacter API method not allowed",
+      sanitizeLogMeta({ method: req.method }),
+    );
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
-  const available = characterNames.filter(name => !recentNames.includes(name));
+  const available = characterNames.filter((name) => !recentNames.includes(name));
 
   if (available.length === 0) {
     // All names have been shown — reset and use the full list
@@ -54,11 +59,16 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   recentNames.push(chosen);
   while (recentNames.length > MAX_RECENT_NAMES) recentNames.shift();
 
-  logEvent("info", "random_character_generated", "Random character generated", sanitizeLogMeta({
-    chosen,
-    availableCount: available.length,
-    recentNamesCount: recentNames.length,
-  }));
+  logEvent(
+    "info",
+    "random_character_generated",
+    "Random character generated",
+    sanitizeLogMeta({
+      chosen,
+      availableCount: available.length,
+      recentNamesCount: recentNames.length,
+    }),
+  );
 
   res.status(200).json({ name: chosen });
 }

@@ -14,19 +14,19 @@
 export function getClaudeModel(type: "text"): string;
 export function getClaudeModel(type: "text-simple"): string;
 export function getClaudeModel(type: "text" | "text-simple"): string {
-    const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+  const isProd = process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
 
-    if (type === "text") {
-        // Conversational quality matters — sonnet balances capability and cost.
-        // Haiku in dev to keep local iteration cheap.
-        return isProd ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
-    }
+  if (type === "text") {
+    // Conversational quality matters — sonnet balances capability and cost.
+    // Haiku in dev to keep local iteration cheap.
+    return isProd ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
+  }
 
-    if (type === "text-simple") {
-        // Simple structured outputs (JSON extraction, classification, short lists).
-        // Haiku is sufficient and cheapest at all times.
-        return "claude-haiku-4-5-20251001";
-    }
+  if (type === "text-simple") {
+    // Simple structured outputs (JSON extraction, classification, short lists).
+    // Haiku is sufficient and cheapest at all times.
+    return "claude-haiku-4-5-20251001";
+  }
 
-    throw new Error(`Unknown model type: ${type}`);
+  throw new Error(`Unknown model type: ${type}`);
 }

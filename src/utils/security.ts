@@ -9,38 +9,38 @@
  * @returns {string} The decoded string
  */
 export function decodeHtmlEntities(str: string): string {
-  if (typeof str !== 'string') return '';
+  if (typeof str !== "string") return "";
   // Decode named HTML entities (e.g., &lt; to <)
   const entityMap: { [key: string]: string } = {
-    '&amp;': '&',
-    '&lt;': '<',
-    '&gt;': '>',
-    '&quot;': '"',
-    '&#39;': "'",
-    '&#x27;': "'",
-    '&#x2F;': '/',
-    '&#x60;': '`',
-    '&#x3D;': '=',
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&quot;": '"',
+    "&#39;": "'",
+    "&#x27;": "'",
+    "&#x2F;": "/",
+    "&#x60;": "`",
+    "&#x3D;": "=",
   };
-  
+
   return str.replace(/&[a-zA-Z0-9#]+;/g, (entity) => {
     if (entityMap[entity]) return entityMap[entity];
-    
+
     // Parse numeric character references (decimal or hexadecimal)
-    if (entity.startsWith('&#x')) {
+    if (entity.startsWith("&#x")) {
       // Hexadecimal numeric reference (&#x...;)
       const code = parseInt(entity.slice(3, -1), 16);
-      if (code >= 0 && code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF)) {
+      if (code >= 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff)) {
         return String.fromCodePoint(code);
       }
-    } else if (entity.startsWith('&#')) {
+    } else if (entity.startsWith("&#")) {
       // Decimal numeric reference (&#...;)
       const code = parseInt(entity.slice(2, -1), 10);
-      if (code >= 0 && code <= 0x10FFFF && (code < 0xD800 || code > 0xDFFF)) {
+      if (code >= 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff)) {
         return String.fromCodePoint(code);
       }
     }
-    
+
     return entity; // Unknown entity; return as-is without decoding
   });
 }
@@ -51,7 +51,7 @@ export function decodeHtmlEntities(str: string): string {
  * @returns {string} The escaped string
  */
 export function escapeHtml(str: string): string {
-  if (typeof str !== 'string') return '';
+  if (typeof str !== "string") return "";
   return str.replace(/[&<>"`]/g, function (tag) {
     const chars: { [key: string]: string } = {
       "&": "&amp;",
@@ -70,20 +70,31 @@ export function escapeHtml(str: string): string {
  * @returns {string} The unescaped string
  */
 export function unescapeString(str: string): string {
-  if (typeof str !== 'string') return '';
+  if (typeof str !== "string") return "";
   return str.replace(/\\(.)/g, (match, char) => {
     switch (char) {
-      case 'n': return '\n';
-      case 'r': return '\r';
-      case 't': return '\t';
-      case 'b': return '\b';
-      case 'f': return '\f';
-      case 'v': return '\v';
-      case '0': return '\0';
-      case '\\': return '\\';
-      case '"': return '"';
-      case "'": return "'";
-      default: return match;
+      case "n":
+        return "\n";
+      case "r":
+        return "\r";
+      case "t":
+        return "\t";
+      case "b":
+        return "\b";
+      case "f":
+        return "\f";
+      case "v":
+        return "\v";
+      case "0":
+        return "\0";
+      case "\\":
+        return "\\";
+      case '"':
+        return '"';
+      case "'":
+        return "'";
+      default:
+        return match;
     }
   });
 }
@@ -95,14 +106,14 @@ export function unescapeString(str: string): string {
  * @returns {string} The sanitized string
  */
 export function sanitizeForDisplay(str: string): string {
-  if (typeof str !== 'string') return '';
-  
+  if (typeof str !== "string") return "";
+
   // First unescape JavaScript escape sequences
   str = unescapeString(str);
-  
+
   // Step 2: Decode HTML entities (e.g., &lt; to <)
   str = decodeHtmlEntities(str);
-  
+
   // Step 3: Escape dangerous HTML characters for display safety
   return escapeHtml(str);
 }
@@ -115,12 +126,12 @@ export function sanitizeForDisplay(str: string): string {
  * @returns {string} The sanitized string ready for React display
  */
 export function sanitizeForReact(str: string): string {
-  if (typeof str !== 'string') return '';
-  
+  if (typeof str !== "string") return "";
+
   // Step 1: Unescape JavaScript escape sequences
   str = unescapeString(str);
   str = decodeHtmlEntities(str);
-  
+
   // Step 3: Do NOT escape - React's JSX automatically prevents XSS attacks
   return str;
 }
@@ -131,9 +142,9 @@ export function sanitizeForReact(str: string): string {
  * @returns {string} The sanitized name or empty string if invalid
  */
 export function sanitizeCharacterName(name: string): string {
-  if (typeof name !== 'string') return '';
+  if (typeof name !== "string") return "";
   // Remove dangerous characters, trim whitespace, and limit length for safety
-  const sanitized = name.replace(/[<>'"&]/g, '').trim();
+  const sanitized = name.replace(/[<>'"&]/g, "").trim();
   return sanitized.length > 100 ? sanitized.substring(0, 100) : sanitized;
 }
 
@@ -147,7 +158,7 @@ export function sanitizeCharacterName(name: string): string {
  * @returns {string} The sanitized description, capped at 500 characters
  */
 export function sanitizeDescription(description: string): string {
-  if (typeof description !== 'string') return '';
-  const sanitized = description.replace(/[<>`]/g, '').trim();
+  if (typeof description !== "string") return "";
+  const sanitized = description.replace(/[<>`]/g, "").trim();
   return sanitized.length > 500 ? sanitized.substring(0, 500) : sanitized;
 }

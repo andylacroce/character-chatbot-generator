@@ -57,10 +57,7 @@ export async function summarizeConversation(
  * new user message.  The system prompt is kept separate (Claude requires it as
  * a top-level param).
  */
-export function buildClaudeMessages(
-  history: string[],
-  userMessage: string,
-): ClaudeMessage[] {
+export function buildClaudeMessages(history: string[], userMessage: string): ClaudeMessage[] {
   const messages: ClaudeMessage[] = [];
   for (const entry of history) {
     if (entry.startsWith("User: ")) {

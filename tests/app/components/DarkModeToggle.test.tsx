@@ -9,7 +9,7 @@ describe("DarkModeToggle", () => {
     const { getByRole, getByText, rerender } = render(
       <DarkModeContext.Provider value={{ darkMode: true, setDarkMode }}>
         <DarkModeToggle />
-      </DarkModeContext.Provider>
+      </DarkModeContext.Provider>,
     );
     // Should show sun icon and label 'Light' in dark mode
     expect(getByRole("button")).toHaveAttribute("aria-label", "Switch to light mode");
@@ -21,7 +21,7 @@ describe("DarkModeToggle", () => {
     rerender(
       <DarkModeContext.Provider value={{ darkMode: false, setDarkMode }}>
         <DarkModeToggle />
-      </DarkModeContext.Provider>
+      </DarkModeContext.Provider>,
     );
     expect(getByRole("button")).toHaveAttribute("aria-label", "Switch to dark mode");
     expect(getByText("Dark")).toBeInTheDocument();
@@ -34,7 +34,7 @@ describe("DarkModeToggle", () => {
     const { queryByText } = render(
       <DarkModeContext.Provider value={{ darkMode: true, setDarkMode }}>
         <DarkModeToggle hideLabel />
-      </DarkModeContext.Provider>
+      </DarkModeContext.Provider>,
     );
     expect(queryByText("Light")).not.toBeInTheDocument();
     expect(queryByText("Dark")).not.toBeInTheDocument();
@@ -45,7 +45,7 @@ describe("DarkModeToggle", () => {
     const { getByRole } = render(
       <DarkModeContext.Provider value={{ darkMode: false, setDarkMode }}>
         <DarkModeToggle className="custom-class" />
-      </DarkModeContext.Provider>
+      </DarkModeContext.Provider>,
     );
     expect(getByRole("button").className).toMatch(/custom-class/);
   });

@@ -23,7 +23,7 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   testEnvironment: "jest-environment-jsdom",
   transform: {
-    "^.+\\.(js|jsx|ts|tsx)$": ["babel-jest", { "configFile": "./babel-jest.config.js" }],
+    "^.+\\.(js|jsx|ts|tsx)$": ["babel-jest", { configFile: "./babel-jest.config.js" }],
   },
   moduleNameMapper: {
     // CSS/SCSS/SASS imports are already handled by next/jest's own mocks
@@ -36,9 +36,7 @@ const customJestConfig = {
   // packages like `uuid@13`) ship `export` syntax and must be transformed by Babel for
   // Jest to parse them. The pattern below whitelists specific packages while keeping
   // the default behavior for others. It handles both POSIX and Windows path separators.
-  transformIgnorePatterns: [
-    "node_modules[/\\\\]?(?!(lodash-es|uuid)(?:[/\\\\]|$))",
-  ],
+  transformIgnorePatterns: ["node_modules[/\\\\]?(?!(lodash-es|uuid)(?:[/\\\\]|$))"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"], // Ensure test setup is loaded
   testMatch: [
     "<rootDir>/tests/**/*.test.(ts|tsx|js|jsx)",

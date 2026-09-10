@@ -34,7 +34,13 @@ const ModalImageViewer = dynamic(() => import("./ModalImageViewer"), { ssr: fals
  *
  * @returns {JSX.Element} The ChatPage component.
  */
-function ChatPage({ bot, onBackToCharacterCreation }: { bot: Bot, onBackToCharacterCreation?: () => void }) {
+function ChatPage({
+  bot,
+  onBackToCharacterCreation,
+}: {
+  bot: Bot;
+  onBackToCharacterCreation?: () => void;
+}) {
   const {
     messages,
     input,

@@ -56,32 +56,44 @@ interface Interstitial {
 const progressSteps = [
   {
     key: "personality",
-    label: "Creating personality"
+    label: "Creating personality",
   },
   {
     key: "avatar",
-    label: "Generating portrait, this may take a minute"
+    label: "Generating portrait, this may take a minute",
   },
   {
     key: "voice",
-    label: "Selecting voice"
-  }
+    label: "Selecting voice",
+  },
 ];
-
 
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreator = false }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nameFromUrl = searchParams?.get('name') || null;
+  const nameFromUrl = searchParams?.get("name") || null;
   const { status: sessionStatus } = useSession();
   const {
-    input, setInput, error, loading, progress,
-    randomizing, loadingMessage, validating, validationResult, showValidationModal,
+    input,
+    setInput,
+    error,
+    loading,
+    progress,
+    randomizing,
+    loadingMessage,
+    validating,
+    validationResult,
+    showValidationModal,
     showDescriptionModal,
-    handleCreate, handleCancel, handleRandomCharacter,
-    handleValidationContinue, handleValidationCancel, handleValidationSuggestion,
-    handleDescriptionSubmit, handleDescriptionCancel
+    handleCreate,
+    handleCancel,
+    handleRandomCharacter,
+    handleValidationContinue,
+    handleValidationCancel,
+    handleValidationSuggestion,
+    handleDescriptionSubmit,
+    handleDescriptionCancel,
   } = useBotCreation(onBotCreated);
 
   useEffect(() => {
@@ -104,7 +116,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // form (pre-filled, with the error visible) if that launch actually fails, so the
   // user isn't left stuck looking at a spinner with no way to retry or edit the name.
   // Also false once the user cancels (launchCancelled, set above).
-  const isLaunchingFromUrl = Boolean(nameFromUrl) && !error && !returningToCreator && !launchCancelled;
+  const isLaunchingFromUrl =
+    Boolean(nameFromUrl) && !error && !returningToCreator && !launchCancelled;
 
   const currentStep = progressSteps.find((s) => s.key === progress);
   // Deliberately excludes `randomizing`: that request is near-instant, and gating the
@@ -151,7 +164,11 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // the same brief "Resuming..." interstitial as the ?name=X match branch below,
   // instead of jumping straight into chat with no visible confirmation.
   const handleResumeSelect = (bot: Bot) => {
-    setInterstitial({ name: bot.name, kind: "resume", dispatch: () => onBotCreatedRef.current(bot) });
+    setInterstitial({
+      name: bot.name,
+      kind: "resume",
+      dispatch: () => onBotCreatedRef.current(bot),
+    });
   };
 
   // Backs all the way out of the current launch — whichever step it's clicked
@@ -179,7 +196,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     setInterstitial(null);
     if (nameFromUrl) {
       setLaunchCancelled(true);
-      router.push('/chars');
+      router.push("/chars");
     }
   };
 
@@ -191,7 +208,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
 
   useEffect(() => {
     if (returningToCreator) {
-      setInput('');
+      setInput("");
     }
   }, [returningToCreator, setInput]);
 
@@ -203,11 +220,19 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // match exists. Waits out sessionStatus === 'loading' so guests aren't misjudged
   // as signed-in before the session resolves.
   useEffect(() => {
-    if (!nameFromUrl || input !== nameFromUrl || hasAutoSubmittedRef.current || isBusy || returningToCreator || launchCancelled) return;
-    if (sessionStatus === 'loading') return;
+    if (
+      !nameFromUrl ||
+      input !== nameFromUrl ||
+      hasAutoSubmittedRef.current ||
+      isBusy ||
+      returningToCreator ||
+      launchCancelled
+    )
+      return;
+    if (sessionStatus === "loading") return;
     hasAutoSubmittedRef.current = true;
 
-    if (sessionStatus !== 'authenticated') {
+    if (sessionStatus !== "authenticated") {
       handleCreateRef.current();
       return;
     }
@@ -215,21 +240,33 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     // Tracks whether this invocation actually dispatched onBotCreated/handleCreate
     // before its cleanup ran — see the cleanup comment below for why that matters.
     let dispatched = false;
-    authenticatedFetch('/api/bots')
+    authenticatedFetch("/api/bots")
       .then((res) => res.json())
       .then((data) => {
         const bots: PersistedBot[] = Array.isArray(data?.bots) ? data.bots : [];
         const match = bots.find((b) => b.name.toLowerCase() === nameFromUrl.toLowerCase());
         dispatched = true;
         if (match) {
-          setInterstitial({ name: match.name, kind: "resume", dispatch: () => onBotCreatedRef.current(persistedBotToBot(match)) });
+          setInterstitial({
+            name: match.name,
+            kind: "resume",
+            dispatch: () => onBotCreatedRef.current(persistedBotToBot(match)),
+          });
         } else {
-          setInterstitial({ name: nameFromUrl, kind: "new", dispatch: () => handleCreateRef.current() });
+          setInterstitial({
+            name: nameFromUrl,
+            kind: "new",
+            dispatch: () => handleCreateRef.current(),
+          });
         }
       })
       .catch(() => {
         dispatched = true;
-        setInterstitial({ name: nameFromUrl, kind: "new", dispatch: () => handleCreateRef.current() });
+        setInterstitial({
+          name: nameFromUrl,
+          kind: "new",
+          dispatch: () => handleCreateRef.current(),
+        });
       });
 
     return () => {
@@ -254,25 +291,37 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   useEffect(() => {
     // fetch server-side config (safe subset) so UI matches server timeout
     let mounted = true;
-    authenticatedFetch('/api/config')
-      .then(r => r.json())
-      .then((data) => { if (mounted && data && typeof data.avatarTimeoutSeconds === 'number') setMaxAvatarSeconds(data.avatarTimeoutSeconds); })
-      .catch(() => { /* ignore, fall back to 60 */ });
-    return () => { mounted = false; };
+    authenticatedFetch("/api/config")
+      .then((r) => r.json())
+      .then((data) => {
+        if (mounted && data && typeof data.avatarTimeoutSeconds === "number")
+          setMaxAvatarSeconds(data.avatarTimeoutSeconds);
+      })
+      .catch(() => {
+        /* ignore, fall back to 60 */
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
   useEffect(() => {
     // A ticking elapsed-seconds counter is inherently effect-driven (setInterval can't run
     // during render), so resetting it to 0 here whenever the timer starts/stops is the
     // actual side effect, not state that could be computed during render instead.
     let timer: number | null = null;
-    if (loading && progress === 'avatar' && MAX_AVATAR_SECONDS !== null) {
+    if (loading && progress === "avatar" && MAX_AVATAR_SECONDS !== null) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setElapsed(0);
-      timer = window.setInterval(() => setElapsed((e) => Math.min(e + 1, MAX_AVATAR_SECONDS)), 1000);
+      timer = window.setInterval(
+        () => setElapsed((e) => Math.min(e + 1, MAX_AVATAR_SECONDS)),
+        1000,
+      );
     } else {
       setElapsed(0);
     }
-    return () => { if (timer) window.clearInterval(timer); };
+    return () => {
+      if (timer) window.clearInterval(timer);
+    };
   }, [loading, progress, MAX_AVATAR_SECONDS]);
 
   return (
@@ -287,12 +336,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           <AuthControl className={styles.ghostAuth} />
         </div>
       </header>
-      <form
-        onSubmit={handleCreate}
-        className={styles.formContainer}
-        autoComplete="off"
-      >
-      <div className={styles.formInner}>
+      <form onSubmit={handleCreate} className={styles.formContainer} autoComplete="off">
+        <div className={styles.formInner}>
           {!isLaunchingFromUrl && !interstitial && (
             <>
               <div className={styles.hero}>
@@ -310,13 +355,35 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                 <p className={styles.kicker}>Begin a conversation</p>
                 <h1 className={styles.headline}>Who will you bring to life?</h1>
                 <p className={styles.subhead}>
-                  Type any name. Public domain classics, myths, and historical figures work best, but feel free to go off script.
+                  Type any name. Public domain classics, myths, and historical figures work best,
+                  but feel free to go off script.
                 </p>
                 <Link href="/chars" className={styles.wallCta}>
-                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
-                    <rect x="2.5" y="3.5" width="15" height="13" rx="2" stroke="currentColor" strokeWidth="1.6" />
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <rect
+                      x="2.5"
+                      y="3.5"
+                      width="15"
+                      height="13"
+                      rx="2"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                    />
                     <circle cx="7" cy="8" r="1.4" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M3.5 14l4.5-4 3 2.5 2.5-2 3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M3.5 14l4.5-4 3 2.5 2.5-2 3.5 3.5"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                   Pick from the Character Wall
                 </Link>
@@ -326,11 +393,11 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                 <span>or</span>
               </div>
 
-              <div className={styles.inputRow + (isBusy ? ' ' + styles.hideMobile : '')}>
+              <div className={styles.inputRow + (isBusy ? " " + styles.hideMobile : "")}>
                 <input
                   type="text"
                   value={input}
-                  onChange={e => setInput(e.target.value)}
+                  onChange={(e) => setInput(e.target.value)}
                   placeholder="Enter a name"
                   className={styles.inputField}
                   disabled={loading}
@@ -347,8 +414,24 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                     aria-label="Choose a random character name"
                     onClick={handleRandomCharacter}
                   >
-                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
-                      <rect x="3" y="3" width="14" height="14" rx="3" stroke="currentColor" strokeWidth="1.6" fill="none" />
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <rect
+                        x="3"
+                        y="3"
+                        width="14"
+                        height="14"
+                        rx="3"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        fill="none"
+                      />
                       <circle cx="7" cy="7" r="1.15" fill="currentColor" />
                       <circle cx="13" cy="7" r="1.15" fill="currentColor" />
                       <circle cx="7" cy="13" r="1.15" fill="currentColor" />
@@ -365,8 +448,21 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                     aria-label="Create character"
                   >
                     Create
-                    <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" focusable="false">
-                      <path d="M6 10h8M11 7l3 3-3 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      aria-hidden="true"
+                      focusable="false"
+                    >
+                      <path
+                        d="M6 10h8M11 7l3 3-3 3"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -419,8 +515,12 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
               <span className={styles.genericSpinner} aria-label="Loading" />
               <div className={styles.progressText}>
                 {loadingMessage || currentStep.label}
-                {loading && progress === 'avatar' && MAX_AVATAR_SECONDS !== null && (
-                  <span className={styles.elapsedTime}>{elapsed < MAX_AVATAR_SECONDS ? ` (${elapsed}s)` : ` (${MAX_AVATAR_SECONDS}s max)`}</span>
+                {loading && progress === "avatar" && MAX_AVATAR_SECONDS !== null && (
+                  <span className={styles.elapsedTime}>
+                    {elapsed < MAX_AVATAR_SECONDS
+                      ? ` (${elapsed}s)`
+                      : ` (${MAX_AVATAR_SECONDS}s max)`}
+                  </span>
                 )}
               </div>
               <button
@@ -435,33 +535,40 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           )}
           {error && <div className={styles.error}>{error}</div>}
 
-          {!isBusy && !isLaunchingFromUrl && !interstitial && <ResumeBotDropdown onSelect={handleResumeSelect} />}
+          {!isBusy && !isLaunchingFromUrl && !interstitial && (
+            <ResumeBotDropdown onSelect={handleResumeSelect} />
+          )}
 
-          {!isLaunchingFromUrl && !interstitial && <div className={styles.footerLinks}>
-            <button
-              type="button"
-              aria-label="Which characters can I create?"
-              onClick={() => setShowCharacterInfoModal(true)}
-              className={styles.footerLink}
-            >
-              Which characters can I create?
-            </button>
-            <button
-              type="button"
-              aria-label="Read disclaimer"
-              onClick={() => setShowDisclaimerModal(true)}
-              className={styles.footerLink}
-            >
-              Disclaimer
-            </button>
-            <a href="/privacy" className={styles.footerLink}>
-              Privacy
-            </a>
-          </div>}
-      </div>
+          {!isLaunchingFromUrl && !interstitial && (
+            <div className={styles.footerLinks}>
+              <button
+                type="button"
+                aria-label="Which characters can I create?"
+                onClick={() => setShowCharacterInfoModal(true)}
+                className={styles.footerLink}
+              >
+                Which characters can I create?
+              </button>
+              <button
+                type="button"
+                aria-label="Read disclaimer"
+                onClick={() => setShowDisclaimerModal(true)}
+                className={styles.footerLink}
+              >
+                Disclaimer
+              </button>
+              <a href="/privacy" className={styles.footerLink}>
+                Privacy
+              </a>
+            </div>
+          )}
+        </div>
       </form>
       <DisclaimerModal show={showDisclaimerModal} onClose={() => setShowDisclaimerModal(false)} />
-      <CharacterInfoModal show={showCharacterInfoModal} onClose={() => setShowCharacterInfoModal(false)} />
+      <CharacterInfoModal
+        show={showCharacterInfoModal}
+        onClose={() => setShowCharacterInfoModal(false)}
+      />
 
       {showValidationModal && validationResult && (
         <CopyrightWarningModal
@@ -482,7 +589,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     </>
   );
 };
-
 
 export type { Bot };
 export default BotCreator;

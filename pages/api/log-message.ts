@@ -71,64 +71,87 @@ export default async function handler(
   const requestId = req.headers["x-request-id"] || generateRequestId();
 
   if (req.method !== "POST") {
-    logEvent("warn", "log_api_method_not_allowed", "Method not allowed", sanitizeLogMeta({
-      method: req.method,
-      requestId
-    }));
+    logEvent(
+      "warn",
+      "log_api_method_not_allowed",
+      "Method not allowed",
+      sanitizeLogMeta({
+        method: req.method,
+        requestId,
+      }),
+    );
     res.setHeader("Allow", ["POST"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
     return;
   }
   try {
     const { sender, text, sessionId, sessionDatetime } = req.body;
-    if (
-      !sender ||
-      typeof text === "undefined" ||
-      !sessionId ||
-      !sessionDatetime
-    ) {
-      logEvent("warn", "log_api_missing_fields", "Missing required fields", sanitizeLogMeta({
-        requestId
-      }));
-      res
-        .status(400)
-        .json({
-          error: "Sender, text, sessionId, and sessionDatetime required",
-          requestId
-        });
+    if (!sender || typeof text === "undefined" || !sessionId || !sessionDatetime) {
+      logEvent(
+        "warn",
+        "log_api_missing_fields",
+        "Missing required fields",
+        sanitizeLogMeta({
+          requestId,
+        }),
+      );
+      res.status(400).json({
+        error: "Sender, text, sessionId, and sessionDatetime required",
+        requestId,
+      });
       return;
     }
 
     // Validate input types and lengths BEFORE any transformations
     if (typeof sender !== "string" || sender.length > 100) {
-      logEvent("warn", "log_api_invalid_sender", "Invalid sender", sanitizeLogMeta({
-        sender,
-        requestId
-      }));
+      logEvent(
+        "warn",
+        "log_api_invalid_sender",
+        "Invalid sender",
+        sanitizeLogMeta({
+          sender,
+          requestId,
+        }),
+      );
       res.status(400).json({ error: "Invalid sender", requestId });
       return;
     }
     if (typeof text !== "string" || text.length > 2000) {
-      logEvent("warn", "log_api_invalid_text", "Invalid text", sanitizeLogMeta({
-        textLength: typeof text === "string" ? text.length : undefined,
-        requestId
-      }));
+      logEvent(
+        "warn",
+        "log_api_invalid_text",
+        "Invalid text",
+        sanitizeLogMeta({
+          textLength: typeof text === "string" ? text.length : undefined,
+          requestId,
+        }),
+      );
       res.status(400).json({ error: "Invalid text", requestId });
       return;
     }
     if (typeof sessionId !== "string" || sessionId.length > 100) {
-      logEvent("warn", "log_api_invalid_sessionId", "Invalid sessionId", sanitizeLogMeta({
-        sessionId,
-        requestId
-      }));
+      logEvent(
+        "warn",
+        "log_api_invalid_sessionId",
+        "Invalid sessionId",
+        sanitizeLogMeta({
+          sessionId,
+          requestId,
+        }),
+      );
       res.status(400).json({ error: "Invalid sessionId", requestId });
       return;
     }
     if (typeof sessionDatetime !== "string" || sessionDatetime.length > 30) {
-      logEvent("warn", "log_api_invalid_sessionDatetime", "Invalid sessionDatetime", sanitizeLogMeta({
-        sessionDatetime,
-        requestId
-      }));
+      logEvent(
+        "warn",
+        "log_api_invalid_sessionDatetime",
+        "Invalid sessionDatetime",
+        sanitizeLogMeta({
+          sessionDatetime,
+          requestId,
+        }),
+      );
       res.status(400).json({ error: "Invalid sessionDatetime", requestId });
       return;
     }
@@ -143,11 +166,7 @@ export default async function handler(
 
     // Extract and validate client IP (no geolocation for privacy)
     const ip =
-      (
-        (req.headers["x-forwarded-for"] as string) ||
-        req.socket.remoteAddress ||
-        ""
-      )
+      ((req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "")
         .split(",")[0]
         .trim() || "UnknownIP";
     const safeIp = ip.replace(/[^a-zA-Z0-9\.:_-]/g, ""); // Remove potentially dangerous characters
@@ -159,9 +178,7 @@ export default async function handler(
     // --- Determine Log Filename ---
     // Sanitize filename to prevent directory traversal
     const safeSessionDatetime = sessionDatetime.replace(/[^a-zA-Z0-9_-]/g, "");
-    const safeShortSessionId = sessionId
-      .slice(0, 8)
-      .replace(/[^a-zA-Z0-9]/g, "");
+    const safeShortSessionId = sessionId.slice(0, 8).replace(/[^a-zA-Z0-9]/g, "");
     const logFilename: string = `${safeSessionDatetime}_session_${safeShortSessionId}.log`;
     // --- End Determine Log Filename ---
 
@@ -177,9 +194,7 @@ export default async function handler(
           const blobInfo = await head(logFilename, { token: blobToken });
           const blobUrl = blobInfo.downloadUrl || blobInfo.url;
 
-          const response = await fetch(
-            blobUrl + `?cachebust=${Date.now()}`,
-          ); // Bypass CDN cache
+          const response = await fetch(blobUrl + `?cachebust=${Date.now()}`); // Bypass CDN cache
           if (response.ok) {
             existingContent = await response.text();
           }
@@ -220,7 +235,7 @@ export default async function handler(
         // Validate that filePath is within logDir to prevent path traversal
         const resolvedFilePath = path.resolve(filePath);
         const rel = path.relative(logDir, resolvedFilePath);
-        if (rel.startsWith('..') || path.isAbsolute(rel)) {
+        if (rel.startsWith("..") || path.isAbsolute(rel)) {
           throw new Error("Invalid log file path");
         }
 
@@ -235,22 +250,27 @@ export default async function handler(
     // --- End Append to Log ---
 
     // Always log to the main terminal (stdout) as well
-    logEvent("info", "log_api_entry", "Log entry", sanitizeLogMeta({
-      requestId,
-      timestamp,
-      ip: safeIp,
-      sender: cleanSender,
-      sessionId,
-      sessionDatetime,
-      text: cleanText
-    }));
+    logEvent(
+      "info",
+      "log_api_entry",
+      "Log entry",
+      sanitizeLogMeta({
+        requestId,
+        timestamp,
+        ip: safeIp,
+        sender: cleanSender,
+        sessionId,
+        sessionDatetime,
+        text: cleanText,
+      }),
+    );
     res.status(200).json({ success: true, requestId });
     return;
   } catch (error) {
     logger.error("Internal Server Error", {
       event: "log_api_internal_error",
       requestId,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
     res.status(500).json({ error: "Internal Server Error", requestId });
   }

@@ -8,7 +8,7 @@
  */
 
 import textToSpeech from "@google-cloud/text-to-speech";
-import { GoogleAuth } from 'google-auth-library';
+import { GoogleAuth } from "google-auth-library";
 import fs from "fs";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import anthropic from "../../src/utils/anthropicClient";
@@ -88,15 +88,25 @@ export default async function handler(
     claudeStatus = "error";
     claudeError = err instanceof Error ? err.message : String(err);
     if (process.env.NODE_ENV !== "production") {
-      logEvent("error", "health_claude_error", "Claude health check error", sanitizeLogMeta({
-        requestId,
-        error: err instanceof Error ? err.message : String(err)
-      }));
+      logEvent(
+        "error",
+        "health_claude_error",
+        "Claude health check error",
+        sanitizeLogMeta({
+          requestId,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     }
-    logEvent("info", "health_claude_failed", "Claude health check failed", sanitizeLogMeta({
-      requestId,
-      error: claudeError
-    }));
+    logEvent(
+      "info",
+      "health_claude_failed",
+      "Claude health check failed",
+      sanitizeLogMeta({
+        requestId,
+        error: claudeError,
+      }),
+    );
   }
 
   let ttsStatus = "ok";
@@ -109,15 +119,20 @@ export default async function handler(
     }
     const credentials = JSON.parse(creds);
     // Build GoogleAuth when explicit credentials exist; otherwise allow ADC discovery.
-    let ttsClient: import('@google-cloud/text-to-speech').TextToSpeechClient;
+    let ttsClient: import("@google-cloud/text-to-speech").TextToSpeechClient;
     if (credentials && credentials.client_email && credentials.private_key) {
       const auth = new GoogleAuth({
         credentials: credentials as Record<string, unknown>,
-        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+        scopes: ["https://www.googleapis.com/auth/cloud-platform"],
       });
       ttsClient = new textToSpeech.TextToSpeechClient({ auth: auth as never });
     } else {
-      logEvent("info", "health_tts_adc_fallback", "Falling back to Application Default Credentials (ADC) for TTS client", sanitizeLogMeta({ requestId }));
+      logEvent(
+        "info",
+        "health_tts_adc_fallback",
+        "Falling back to Application Default Credentials (ADC) for TTS client",
+        sanitizeLogMeta({ requestId }),
+      );
       ttsClient = new textToSpeech.TextToSpeechClient();
     }
     const [response] = await ttsClient.listVoices({ languageCode: "en-GB" });
@@ -128,40 +143,65 @@ export default async function handler(
     ttsStatus = "error";
     ttsError = err instanceof Error ? err.message : String(err);
     if (process.env.NODE_ENV !== "production") {
-      logEvent("error", "health_tts_error", "Google TTS health check error", sanitizeLogMeta({
-        requestId,
-        error: err instanceof Error ? err.message : String(err)
-      }));
+      logEvent(
+        "error",
+        "health_tts_error",
+        "Google TTS health check error",
+        sanitizeLogMeta({
+          requestId,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     }
-    logEvent("info", "health_tts_failed", "Google TTS health check failed", sanitizeLogMeta({
-      requestId,
-      error: ttsError
-    }));
+    logEvent(
+      "info",
+      "health_tts_failed",
+      "Google TTS health check failed",
+      sanitizeLogMeta({
+        requestId,
+        error: ttsError,
+      }),
+    );
   }
 
   if (claudeStatus === "ok" && ttsStatus === "ok") {
-    logEvent("info", "health_ok", "All services healthy", sanitizeLogMeta({
-      requestId
-    }));
+    logEvent(
+      "info",
+      "health_ok",
+      "All services healthy",
+      sanitizeLogMeta({
+        requestId,
+      }),
+    );
     return res.status(200).json({ status: "ok", requestId });
   }
   if (process.env.NODE_ENV !== "production")
-    logEvent("error", "health_service_error", "Service error", sanitizeLogMeta({
+    logEvent(
+      "error",
+      "health_service_error",
+      "Service error",
+      sanitizeLogMeta({
+        requestId,
+        claudeStatus,
+        claudeError,
+        ttsStatus,
+        ttsError,
+      }),
+    );
+  logEvent(
+    "info",
+    "health_service_error_info",
+    "Service error",
+    sanitizeLogMeta({
       requestId,
       claudeStatus,
-      claudeError,
       ttsStatus,
-      ttsError
-    }));
-  logEvent("info", "health_service_error_info", "Service error", sanitizeLogMeta({
-    requestId,
-    claudeStatus,
-    ttsStatus
-  }));
+    }),
+  );
   return res.status(500).json({
     status: "error",
     claude: { status: claudeStatus, error: claudeError },
     tts: { status: ttsStatus, error: ttsError },
-    requestId
+    requestId,
   });
 }

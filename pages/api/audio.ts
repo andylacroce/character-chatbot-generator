@@ -48,14 +48,13 @@ function realRoot(dir: string): string {
 function escapesRoot(resolved: string, root: string): boolean {
   if (!resolved) return false;
   const real = realRoot(root);
-  const within = (base: string) =>
-    resolved === base || resolved.startsWith(base + path.sep);
+  const within = (base: string) => resolved === base || resolved.startsWith(base + path.sep);
   return !within(real) && !within(root);
 }
 
 function getOriginalTextForAudio(sanitizedFile: string): string | null {
   const txtFile = sanitizedFile.replace(/\.mp3$/, ".txt");
-  const txtPathTmp = path.join(os.tmpdir(),txtFile);
+  const txtPathTmp = path.join(os.tmpdir(), txtFile);
   const txtPathPublic = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", txtFile);
   if (fs.existsSync(txtPathTmp)) {
     return fs.readFileSync(txtPathTmp, "utf8");
@@ -132,7 +131,7 @@ async function handler(
   if (!(await applyRateLimit(audioRateLimit, req, res))) {
     return;
   }
-  
+
   const { file, text: expectedText, voiceConfig: voiceConfigParam } = req.query;
   const botName = typeof req.query.botName === "string" ? req.query.botName : "Character";
   const gender = typeof req.query.gender === "string" ? req.query.gender : null;
@@ -147,15 +146,20 @@ async function handler(
     voiceConfig = await getVoiceConfigForCharacter(botName, gender);
   }
   if (!file || typeof file !== "string") {
-    logEvent("info", "audio_bad_request", "Audio API bad request: file parameter is required", sanitizeLogMeta({
-      file,
-      query: req.query
-    }));
+    logEvent(
+      "info",
+      "audio_bad_request",
+      "Audio API bad request: file parameter is required",
+      sanitizeLogMeta({
+        file,
+        query: req.query,
+      }),
+    );
     return res.status(400).json({ error: "File parameter is required" });
   }
   // Only allow filename, not path
   const sanitizedFile = path.basename(file);
-  const audioFilePath = path.join(os.tmpdir(),sanitizedFile);
+  const audioFilePath = path.join(os.tmpdir(), sanitizedFile);
   const localFilePath = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", sanitizedFile);
   const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
   const checkFileExists = (filePath: string) =>
@@ -182,10 +186,15 @@ async function handler(
     } else {
       // .txt missing or does not match, regenerate audio and update .txt
       try {
-        logEvent("info", "audio_voice_selected", "TTS voice config selected", sanitizeLogMeta({
-          botName,
-          voiceConfig
-        }));
+        logEvent(
+          "info",
+          "audio_voice_selected",
+          "TTS voice config selected",
+          sanitizeLogMeta({
+            botName,
+            voiceConfig,
+          }),
+        );
         const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
         const ssmlText = buildSsml(expectedText, selectedVoice);
         await synthesizeSpeechToFile({
@@ -199,10 +208,15 @@ async function handler(
         found = !!normalizedAudioFilePath;
         triedRegenerate = true;
       } catch (err) {
-        logEvent("error", "audio_synthesis_failed", "Audio synthesis failed from text param", sanitizeLogMeta({
-          file: sanitizedFile,
-          error: err instanceof Error ? err.message : String(err)
-        }));
+        logEvent(
+          "error",
+          "audio_synthesis_failed",
+          "Audio synthesis failed from text param",
+          sanitizeLogMeta({
+            file: sanitizedFile,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
         regenError = err;
       }
     }
@@ -212,7 +226,11 @@ async function handler(
     if (normalizedAudioFilePath || normalizedLocalFilePath) {
       // Try to find the .txt file in /tmp or /public
       const txtPathTmp = txtFilePath;
-      const txtPathPublic = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", sanitizedFile.replace(/\.mp3$/, ".txt"));
+      const txtPathPublic = path.join(
+        /*turbopackIgnore: true*/ process.cwd(),
+        "public",
+        sanitizedFile.replace(/\.mp3$/, ".txt"),
+      );
       if (fs.existsSync(txtPathTmp)) {
         txtContent = fs.readFileSync(txtPathTmp, "utf8");
       } else if (fs.existsSync(txtPathPublic)) {
@@ -225,11 +243,16 @@ async function handler(
         typeof txtContent === "string" &&
         (txtContent as string).trim() !== (expectedText as string).trim()
       ) {
-        logEvent("warn", "audio_text_mismatch_regen", "Audio text mismatch detected, regenerating", sanitizeLogMeta({
-          file: sanitizedFile,
-          expectedText,
-          txtContent
-        }));
+        logEvent(
+          "warn",
+          "audio_text_mismatch_regen",
+          "Audio text mismatch detected, regenerating",
+          sanitizeLogMeta({
+            file: sanitizedFile,
+            expectedText,
+            txtContent,
+          }),
+        );
         try {
           const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
           const ssmlText = buildSsml(expectedText as string, selectedVoice);
@@ -245,10 +268,15 @@ async function handler(
           txtContent = expectedText;
           triedRegenerate = true;
         } catch (err) {
-          logEvent("error", "audio_regen_failed_text_mismatch", "Audio regeneration failed for text mismatch", sanitizeLogMeta({
-            file: sanitizedFile,
-            error: err instanceof Error ? err.message : String(err)
-          }));
+          logEvent(
+            "error",
+            "audio_regen_failed_text_mismatch",
+            "Audio regeneration failed for text mismatch",
+            sanitizeLogMeta({
+              file: sanitizedFile,
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
           regenError = err;
         }
       }
@@ -279,62 +307,83 @@ async function handler(
             normalizedAudioFilePath = checkFileExists(audioFilePath);
             found = !!normalizedAudioFilePath;
           } catch (err) {
-            logEvent("error", "audio_regen_failed_cached_text", "Audio regeneration failed from cached text", sanitizeLogMeta({
-              file: sanitizedFile,
-              error: err instanceof Error ? err.message : String(err)
-            }));
+            logEvent(
+              "error",
+              "audio_regen_failed_cached_text",
+              "Audio regeneration failed from cached text",
+              sanitizeLogMeta({
+                file: sanitizedFile,
+                error: err instanceof Error ? err.message : String(err),
+              }),
+            );
             regenError = err;
           }
         }
         // If still not found, try full Claude+TTS regen up to 3 times
         if (!found) {
           for (let attempt = 1; attempt <= 3; attempt++) {
-              try {
-                logEvent("info", "audio_regen_claude_attempt", "Attempting Claude+TTS audio regen", sanitizeLogMeta({
-                  file: sanitizedFile,
-                  attempt
-                }));
-                // Use the filename (without .mp3) as the user message if possible
-                const userMessage = sanitizedFile.replace(/\.mp3$/, "");
-                const result = await anthropic.messages.create({
-                  model: "claude-haiku-4-5-20251001",
-                  system: SYSTEM_PROMPT,
-                  messages: [{ role: "user", content: userMessage }],
-                  max_tokens: 150,
-                  temperature: 0.8,
-                });
-                const aiReply = result.content[0]?.type === "text" ? result.content[0].text.trim() : "";
-                if (!aiReply) throw new Error("Claude returned empty message");
-                // Save .txt for future regen
-                const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-                fs.writeFileSync(txtFilePath, aiReply, "utf8");
-                // Now TTS
-                const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
-                const ssmlText = buildSsml(aiReply, selectedVoice);
-                await synthesizeSpeechToFile({
-                  text: ssmlText,
-                  filePath: audioFilePath,
-                  ssml: true,
-                  voice: selectedVoice,
-                });
-                normalizedAudioFilePath = checkFileExists(audioFilePath);
-                if (normalizedAudioFilePath) {
-                  logEvent("info", "audio_regen_claude_success", "Audio successfully regenerated via Claude+TTS", sanitizeLogMeta({
-                    file: sanitizedFile,
-                    attempt
-                  }));
-                  found = true;
-                  break;
-                }
-              } catch (err) {
-                logEvent("error", "audio_regen_claude_failed", "Claude+TTS audio regen failed", sanitizeLogMeta({
+            try {
+              logEvent(
+                "info",
+                "audio_regen_claude_attempt",
+                "Attempting Claude+TTS audio regen",
+                sanitizeLogMeta({
                   file: sanitizedFile,
                   attempt,
-                  error: err instanceof Error ? err.message : String(err)
-                }));
-                regenError = err;
+                }),
+              );
+              // Use the filename (without .mp3) as the user message if possible
+              const userMessage = sanitizedFile.replace(/\.mp3$/, "");
+              const result = await anthropic.messages.create({
+                model: "claude-haiku-4-5-20251001",
+                system: SYSTEM_PROMPT,
+                messages: [{ role: "user", content: userMessage }],
+                max_tokens: 150,
+                temperature: 0.8,
+              });
+              const aiReply =
+                result.content[0]?.type === "text" ? result.content[0].text.trim() : "";
+              if (!aiReply) throw new Error("Claude returned empty message");
+              // Save .txt for future regen
+              const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
+              fs.writeFileSync(txtFilePath, aiReply, "utf8");
+              // Now TTS
+              const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
+              const ssmlText = buildSsml(aiReply, selectedVoice);
+              await synthesizeSpeechToFile({
+                text: ssmlText,
+                filePath: audioFilePath,
+                ssml: true,
+                voice: selectedVoice,
+              });
+              normalizedAudioFilePath = checkFileExists(audioFilePath);
+              if (normalizedAudioFilePath) {
+                logEvent(
+                  "info",
+                  "audio_regen_claude_success",
+                  "Audio successfully regenerated via Claude+TTS",
+                  sanitizeLogMeta({
+                    file: sanitizedFile,
+                    attempt,
+                  }),
+                );
+                found = true;
+                break;
               }
+            } catch (err) {
+              logEvent(
+                "error",
+                "audio_regen_claude_failed",
+                "Claude+TTS audio regen failed",
+                sanitizeLogMeta({
+                  file: sanitizedFile,
+                  attempt,
+                  error: err instanceof Error ? err.message : String(err),
+                }),
+              );
+              regenError = err;
             }
+          }
         }
       }
       // If we just regenerated, wait for file to appear (retry up to 5 times)
@@ -359,38 +408,68 @@ async function handler(
     escapesRoot(normalizedAudioFilePath, allowedTmp) ||
     escapesRoot(normalizedLocalFilePath, allowedPublic)
   ) {
-    logEvent("warn", "audio_forbidden", "Audio API forbidden: access forbidden for file", sanitizeLogMeta({
-      file: sanitizedFile
-    }));
+    logEvent(
+      "warn",
+      "audio_forbidden",
+      "Audio API forbidden: access forbidden for file",
+      sanitizeLogMeta({
+        file: sanitizedFile,
+      }),
+    );
     return res.status(403).json({ error: "Access forbidden" });
   }
   const filePath = normalizedAudioFilePath || normalizedLocalFilePath;
   if (!filePath || !fs.existsSync(filePath)) {
-    logEvent("warn", "audio_not_found", "Audio API not found: file not found after all regen attempts", sanitizeLogMeta({
-      file: sanitizedFile
-    }));
-    logEvent("error", "audio_not_found_error", "Audio file not found after all regen attempts", sanitizeLogMeta({
-      file: sanitizedFile,
-      error: regenError
-    }));
+    logEvent(
+      "warn",
+      "audio_not_found",
+      "Audio API not found: file not found after all regen attempts",
+      sanitizeLogMeta({
+        file: sanitizedFile,
+      }),
+    );
+    logEvent(
+      "error",
+      "audio_not_found_error",
+      "Audio file not found after all regen attempts",
+      sanitizeLogMeta({
+        file: sanitizedFile,
+        error: regenError,
+      }),
+    );
     return res.status(404).json({ error: "File not found after all regeneration attempts" });
   }
   let audioContent;
   try {
     audioContent = fs.readFileSync(filePath);
   } catch (err) {
-    logEvent("info", "audio_internal_error_reading_file", "Audio API internal error: error reading file", sanitizeLogMeta({
-      file: filePath
-    }));
-    logEvent("error", "audio_read_error", "Audio file read error", sanitizeLogMeta({
-      file: filePath,
-      error: err instanceof Error ? err.message : String(err)
-    }));
+    logEvent(
+      "info",
+      "audio_internal_error_reading_file",
+      "Audio API internal error: error reading file",
+      sanitizeLogMeta({
+        file: filePath,
+      }),
+    );
+    logEvent(
+      "error",
+      "audio_read_error",
+      "Audio file read error",
+      sanitizeLogMeta({
+        file: filePath,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
     return res.status(500).json({ error: "Error reading file" });
   }
-  logEvent("info", "audio_sent", "Audio API success: audio file sent", sanitizeLogMeta({
-    file: sanitizedFile
-  }));
+  logEvent(
+    "info",
+    "audio_sent",
+    "Audio API success: audio file sent",
+    sanitizeLogMeta({
+      file: sanitizedFile,
+    }),
+  );
   res.setHeader("Content-Type", "audio/mpeg");
   res.send(audioContent);
 }

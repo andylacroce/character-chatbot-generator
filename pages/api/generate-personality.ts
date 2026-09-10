@@ -82,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
   const { name: originalName, description: originalDescription } = req.body;
-  if (!originalName || typeof originalName !== 'string') {
+  if (!originalName || typeof originalName !== "string") {
     res.status(400).json({ error: "Valid name required" });
     return;
   }
@@ -91,30 +91,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(400).json({ error: "Invalid character name" });
     return;
   }
-  const sanitizedDescription = typeof originalDescription === 'string' && originalDescription.trim()
-    ? sanitizeDescription(originalDescription)
-    : undefined;
+  const sanitizedDescription =
+    typeof originalDescription === "string" && originalDescription.trim()
+      ? sanitizeDescription(originalDescription)
+      : undefined;
 
   try {
-    logEvent("info", "personality_prompt_start", "Generating personality prompt", sanitizeLogMeta({
-      name: sanitizedName,
-      hasDescription: Boolean(sanitizedDescription)
-    }));
+    logEvent(
+      "info",
+      "personality_prompt_start",
+      "Generating personality prompt",
+      sanitizeLogMeta({
+        name: sanitizedName,
+        hasDescription: Boolean(sanitizedDescription),
+      }),
+    );
 
     const concisePrompt = sanitizedDescription
       ? await generatePersonalityPrompt(sanitizedName, sanitizedDescription)
       : await generatePersonalityPrompt(sanitizedName);
 
-    logEvent("info", "personality_prompt_generated", "Personality prompt generated", sanitizeLogMeta({
-      name: sanitizedName
-    }));
+    logEvent(
+      "info",
+      "personality_prompt_generated",
+      "Personality prompt generated",
+      sanitizeLogMeta({
+        name: sanitizedName,
+      }),
+    );
 
     res.status(200).json({ personality: concisePrompt, correctedName: sanitizedName });
   } catch (err) {
-    logEvent("error", "personality_prompt_error", "Error generating personality prompt", sanitizeLogMeta({
-      name: sanitizedName,
-      error: err instanceof Error ? err.message : String(err)
-    }));
+    logEvent(
+      "error",
+      "personality_prompt_error",
+      "Error generating personality prompt",
+      sanitizeLogMeta({
+        name: sanitizedName,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
     res.status(500).json({ error: "Failed to generate personality prompt" });
   }
   return;

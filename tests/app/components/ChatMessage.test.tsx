@@ -38,10 +38,10 @@ describe("ChatMessage", () => {
     const { container } = render(<ChatMessage message={null} bot={mockBot} />);
     expect(container.firstChild).toBeNull();
     expect(logEvent).toHaveBeenCalledWith(
-      'error',
-      'chat_message_invalid',
-      'Invalid message object received',
-      expect.any(Object)
+      "error",
+      "chat_message_invalid",
+      "Invalid message object received",
+      expect.any(Object),
     );
   });
 
@@ -55,28 +55,28 @@ describe("ChatMessage", () => {
     // message is truthy (object), but .text is not a string — exercises the binary-expr where message is truthy
     const { container } = render(
       // @ts-expect-error purposely invalid type for text
-      <ChatMessage message={{ text: 123, sender: "User" }} bot={mockBot} />
+      <ChatMessage message={{ text: 123, sender: "User" }} bot={mockBot} />,
     );
     expect(container.firstChild).toBeNull();
     expect(logEvent).toHaveBeenCalledWith(
       "error",
       "chat_message_invalid",
       "Invalid message object received",
-      expect.objectContaining({ hasSender: true })
+      expect.objectContaining({ hasSender: true }),
     );
   });
 
   it("returns null for message with non-string sender (truthy message, logs with hasText=true)", () => {
     const { container } = render(
       // @ts-expect-error purposely invalid type for sender
-      <ChatMessage message={{ text: "Hello", sender: 42 }} bot={mockBot} />
+      <ChatMessage message={{ text: "Hello", sender: 42 }} bot={mockBot} />,
     );
     expect(container.firstChild).toBeNull();
     expect(logEvent).toHaveBeenCalledWith(
       "error",
       "chat_message_invalid",
       "Invalid message object received",
-      expect.objectContaining({ hasText: true })
+      expect.objectContaining({ hasText: true }),
     );
   });
 });

@@ -47,8 +47,8 @@ beforeEach(() => {
     observe(target: Element) {
       observers[observers.length - 1].target = target;
     }
-    disconnect() { }
-    unobserve() { }
+    disconnect() {}
+    unobserve() {}
   };
 });
 
@@ -74,7 +74,9 @@ function mockPage(characters: Array<{ name: string; avatarUrl: string }>, hasMor
 
 describe("CharsGallery", () => {
   it("shows a loading state, then the gallery once the first page resolves", async () => {
-    mockAuthenticatedFetch.mockResolvedValue(mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false));
+    mockAuthenticatedFetch.mockResolvedValue(
+      mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false),
+    );
     render(<CharsGallery />);
     expect(screen.getByText(/loading portraits/i)).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
@@ -112,7 +114,9 @@ describe("CharsGallery", () => {
   });
 
   it("opens the lightbox on tile click and closes it via the close button", async () => {
-    mockAuthenticatedFetch.mockResolvedValue(mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false));
+    mockAuthenticatedFetch.mockResolvedValue(
+      mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false),
+    );
     render(<CharsGallery />);
     await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
 
@@ -126,7 +130,9 @@ describe("CharsGallery", () => {
   });
 
   it("closes the lightbox when the backdrop (the dialog element itself) is clicked", async () => {
-    mockAuthenticatedFetch.mockResolvedValue(mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false));
+    mockAuthenticatedFetch.mockResolvedValue(
+      mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false),
+    );
     render(<CharsGallery />);
     await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
 
@@ -139,7 +145,9 @@ describe("CharsGallery", () => {
   });
 
   it("closes the lightbox when the zoomed image itself is clicked", async () => {
-    mockAuthenticatedFetch.mockResolvedValue(mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false));
+    mockAuthenticatedFetch.mockResolvedValue(
+      mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false),
+    );
     render(<CharsGallery />);
     await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
 

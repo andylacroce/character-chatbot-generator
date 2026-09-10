@@ -77,9 +77,7 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
         disabled={!providerIds || providerIds.length === 0}
       >
         <FaSignInAlt size={16} className={styles.icon} />
-        <span className={styles.signInLabel}>
-          Sign in
-        </span>
+        <span className={styles.signInLabel}>Sign in</span>
       </button>
       <SignInModal show={showSignInModal} onClose={() => setShowSignInModal(false)} />
     </>

@@ -1,6 +1,6 @@
-import bundleAnalyzer from '@next/bundle-analyzer';
+import bundleAnalyzer from "@next/bundle-analyzer";
 
-const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'true' });
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
 
 // The API reference at /reference (@scalar/nextjs-api-reference) loads its UI
 // bundle from jsdelivr and renders inline <style> tags, so script-src/style-src
@@ -10,10 +10,10 @@ const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === 'tr
 // script-src keeps 'unsafe-inline' too. Still meaningfully narrows the attack
 // surface versus no CSP: blocks framing, arbitrary object/embed, and any script,
 // style, image, or fetch target outside this explicit allowlist.
-const isDev = process.env.NODE_ENV !== 'production';
+const isDev = process.env.NODE_ENV !== "production";
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net${isDev ? " 'unsafe-eval'" : ''}`,
+  `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
   "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:",
   "img-src 'self' data: https:",
@@ -30,14 +30,14 @@ const contentSecurityPolicy = [
   // again when Facebook sign-in itself was disabled (see authOptions.ts).
   "form-action 'self' https://accounts.google.com",
   "frame-ancestors 'none'",
-].join('; ');
+].join("; ");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
     optimizeCss: true,
   },
-  serverExternalPackages: ['winston'],
+  serverExternalPackages: ["winston"],
   images: {
     // Avatars uploaded to Vercel Blob (pages/api/generate-avatar.ts) come back as
     // <random-store-id>.public.blob.vercel-storage.com URLs — the store id varies
@@ -45,8 +45,8 @@ const nextConfig = {
     // to be a wildcard rather than one fixed hostname.
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: '*.public.blob.vercel-storage.com',
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
       },
     ],
   },
@@ -58,40 +58,40 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: "/(.*)",
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
+            key: "X-Frame-Options",
+            value: "DENY",
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
           {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
           },
           {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
           },
           {
-            key: 'Content-Security-Policy',
+            key: "Content-Security-Policy",
             value: contentSecurityPolicy,
           },
         ],
       },
       {
-        source: '/api/(.*)',
+        source: "/api/(.*)",
         headers: [
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
+            key: "X-Frame-Options",
+            value: "DENY",
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
         ],
       },

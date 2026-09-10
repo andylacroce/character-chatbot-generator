@@ -59,7 +59,11 @@ async function getAllCharacters(): Promise<CharacterEntry[]> {
   // Original characters (recognized: false — see src/db/schema.ts) are excluded: their
   // name/portrait means something only to the person who made them up, unlike a name
   // every visitor to this public gallery would actually recognize.
-  const rows = await getDb().select().from(avatarCache).where(eq(avatarCache.recognized, true)).orderBy(desc(avatarCache.createdAt));
+  const rows = await getDb()
+    .select()
+    .from(avatarCache)
+    .where(eq(avatarCache.recognized, true))
+    .orderBy(desc(avatarCache.createdAt));
   const entries = rows.map((row) => ({
     name: toDisplayName(row.characterName),
     avatarUrl: row.avatarUrl,

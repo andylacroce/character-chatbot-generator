@@ -26,11 +26,23 @@
  * checkpoint that keeps that source-of-truth switch cheap on long conversations.
  */
 
-import { pgTable, text, timestamp, integer, serial, primaryKey, jsonb, unique, boolean } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  integer,
+  serial,
+  primaryKey,
+  jsonb,
+  unique,
+  boolean,
+} from "drizzle-orm/pg-core";
 import type { CharacterVoiceConfig } from "../utils/characterVoices";
 
 export const users = pgTable("users", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
   email: text("email").unique().notNull(),
   emailVerified: timestamp("email_verified", { mode: "date" }),
@@ -60,7 +72,9 @@ export const accounts = pgTable(
 export const bots = pgTable(
   "bots",
   {
-    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

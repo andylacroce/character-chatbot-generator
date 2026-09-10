@@ -33,13 +33,19 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
         <link rel="icon" href="/palette-icon.svg" type="image/svg+xml" />
         {/* Open Graph / Facebook */}
         <meta property="og:title" content="Portrayal" />
-        <meta property="og:description" content="Create and chat with your own AI-powered characters." />
+        <meta
+          property="og:description"
+          content="Create and chat with your own AI-powered characters."
+        />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="/andrew.png" />
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Portrayal" />
-        <meta name="twitter:description" content="Create and chat with your own AI-powered characters." />
+        <meta
+          name="twitter:description"
+          content="Create and chat with your own AI-powered characters."
+        />
         <meta name="twitter:image" content="/andrew.png" />
       </head>
       <body>

@@ -1,115 +1,118 @@
-import React from 'react';
-import { render } from '@testing-library/react';
-import { useSession } from '../../../app/components/useSession';
+import React from "react";
+import { render } from "@testing-library/react";
+import { useSession } from "../../../app/components/useSession";
 
-describe('useSession', () => {
-    beforeEach(() => {
-        // Clear localStorage before each test
-        if (typeof window !== 'undefined') {
-            localStorage.clear();
+describe("useSession", () => {
+  beforeEach(() => {
+    // Clear localStorage before each test
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+    }
+  });
+
+  function TestComponent({
+    onResult,
+  }: {
+    onResult: (sessionId: string, sessionDatetime: string) => void;
+  }) {
+    const [sessionId, sessionDatetime] = useSession();
+    const onResultRef = React.useRef(onResult);
+    React.useEffect(() => {
+      onResultRef.current = onResult;
+    }, [onResult]);
+
+    React.useEffect(() => {
+      onResultRef.current(sessionId, sessionDatetime);
+    }, [sessionId, sessionDatetime]);
+    return null;
+  }
+
+  it("generates a sessionId and sessionDatetime and stores them in localStorage", (done) => {
+    let called = false;
+    function handleResult(sessionId: string, sessionDatetime: string) {
+      if (called) return;
+      called = true;
+      // If sessionId is empty, skip the test (likely non-browser env)
+      if (!sessionId) {
+        done();
+        return;
+      }
+      try {
+        expect(typeof sessionId).toBe("string");
+        expect(sessionId.length).toBeGreaterThan(0);
+        expect(typeof sessionDatetime).toBe("string");
+        expect(sessionDatetime.length).toBeGreaterThan(0);
+        if (typeof window !== "undefined") {
+          expect(localStorage.getItem("bot-session-id")).toBe(sessionId);
+          expect(localStorage.getItem("bot-session-datetime")).toBe(sessionDatetime);
         }
+        done();
+      } catch (e) {
+        done(e);
+      }
+    }
+    render(<TestComponent onResult={handleResult} />);
+  });
+
+  it("exercises storage error catch block via spy", async () => {
+    // Spy on storage and make it throw to exercise catch block
+    const storage = require("../../../src/utils/storage").default;
+    const setItemSpy = jest.spyOn(storage, "setItem").mockImplementationOnce(() => {
+      throw new Error("Storage error");
     });
 
-
-    function TestComponent({ onResult }: { onResult: (sessionId: string, sessionDatetime: string) => void }) {
-        const [sessionId, sessionDatetime] = useSession();
-        const onResultRef = React.useRef(onResult);
-        React.useEffect(() => {
-            onResultRef.current = onResult;
-        }, [onResult]);
-
-        React.useEffect(() => {
-            onResultRef.current(sessionId, sessionDatetime);
-        }, [sessionId, sessionDatetime]);
-        return null;
+    // Render hook in proper component
+    function TestWrapper() {
+      const [sessionId] = useSession();
+      return <div>{sessionId}</div>;
     }
 
-    it('generates a sessionId and sessionDatetime and stores them in localStorage', (done) => {
-        let called = false;
-        function handleResult(sessionId: string, sessionDatetime: string) {
-            if (called) return;
-            called = true;
-            // If sessionId is empty, skip the test (likely non-browser env)
-            if (!sessionId) {
-                done();
-                return;
-            }
-            try {
-                expect(typeof sessionId).toBe('string');
-                expect(sessionId.length).toBeGreaterThan(0);
-                expect(typeof sessionDatetime).toBe('string');
-                expect(sessionDatetime.length).toBeGreaterThan(0);
-                if (typeof window !== 'undefined') {
-                    expect(localStorage.getItem('bot-session-id')).toBe(sessionId);
-                    expect(localStorage.getItem('bot-session-datetime')).toBe(sessionDatetime);
-                }
-                done();
-            } catch (e) {
-                done(e);
-            }
-        }
-        render(<TestComponent onResult={handleResult} />);
-    });
+    const { unmount } = render(<TestWrapper />);
 
-    it('exercises storage error catch block via spy', async () => {
-        // Spy on storage and make it throw to exercise catch block
-        const storage = require('../../../src/utils/storage').default;
-        const setItemSpy = jest.spyOn(storage, 'setItem').mockImplementationOnce(() => {
-            throw new Error('Storage error');
-        });
+    // Wait for effect to run
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-        // Render hook in proper component
-        function TestWrapper() {
-            const [sessionId] = useSession();
-            return <div>{sessionId}</div>;
-        }
+    // Verify setItem was attempted (and threw, exercising catch block)
+    expect(setItemSpy).toHaveBeenCalled();
 
-        const { unmount } = render(<TestWrapper />);
+    setItemSpy.mockRestore();
+    unmount();
+  });
 
-        // Wait for effect to run
-        await new Promise(resolve => setTimeout(resolve, 50));
+  it("returns empty values when not in browser (SSR)", async () => {
+    // Use test helper to override browser detection deterministically
+    const useSessionModule = require("../../../app/components/useSession");
+    useSessionModule.resetIsBrowserForTests();
 
-        // Verify setItem was attempted (and threw, exercising catch block)
-        expect(setItemSpy).toHaveBeenCalled();
+    try {
+      useSessionModule.setIsBrowserForTests(() => false);
 
-        setItemSpy.mockRestore();
-        unmount();
-    });
+      let received: [string, string] | null = null;
 
-    it('returns empty values when not in browser (SSR)', async () => {
-        // Use test helper to override browser detection deterministically
-        const useSessionModule = require('../../../app/components/useSession');
-        useSessionModule.resetIsBrowserForTests();
+      function TestComponent({ onResult }: { onResult: (s: [string, string]) => void }) {
+        const val = useSession();
+        React.useEffect(() => {
+          onResult(val);
+        }, [val, onResult]);
+        return null;
+      }
 
-        try {
-            useSessionModule.setIsBrowserForTests(() => false);
+      const onResult = (s: [string, string]) => {
+        received = s;
+      };
+      render(<TestComponent onResult={onResult} />);
 
-            let received: [string, string] | null = null;
+      // Wait for effect
+      await new Promise((res) => setTimeout(res, 20));
 
-            function TestComponent({ onResult }: { onResult: (s: [string, string]) => void }) {
-                const val = useSession();
-                React.useEffect(() => { onResult(val); }, [val, onResult]);
-                return null;
-            }
+      expect(received).not.toBeNull();
+      expect(received![0]).toBe("");
+      expect(received![1]).toBe("");
+    } finally {
+      useSessionModule.resetIsBrowserForTests();
+    }
+  });
 
-            const onResult = (s: [string, string]) => { received = s; };
-            render(<TestComponent onResult={onResult} />);
-
-            // Wait for effect
-            await new Promise(res => setTimeout(res, 20));
-
-            expect(received).not.toBeNull();
-            expect(received![0]).toBe('');
-            expect(received![1]).toBe('');
-        } finally {
-            useSessionModule.resetIsBrowserForTests();
-        }
-    });
-
-    // SSR-specific behavior is tested indirectly elsewhere; attempting to simulate a full SSR
-    // environment within the JSDOM-based test runner proved flaky so we avoid a dedicated test here.
-
-
-
-
+  // SSR-specific behavior is tested indirectly elsewhere; attempting to simulate a full SSR
+  // environment within the JSDOM-based test runner proved flaky so we avoid a dedicated test here.
 });

@@ -18,13 +18,22 @@ export async function generateImageWithCloudflare(prompt: string): Promise<strin
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   if (!accountId || !apiToken) {
-    logEvent("info", "avatar_cloudflare_not_configured", "Cloudflare not configured (CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN unset), trying Pollinations fallback");
+    logEvent(
+      "info",
+      "avatar_cloudflare_not_configured",
+      "Cloudflare not configured (CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN unset), trying Pollinations fallback",
+    );
     return null;
   }
 
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${MODEL}`;
 
-  logEvent("info", "avatar_cloudflare_call", "Calling Cloudflare Workers AI image generation", sanitizeLogMeta({ model: MODEL, prompt: prompt.slice(0, 100) }));
+  logEvent(
+    "info",
+    "avatar_cloudflare_call",
+    "Calling Cloudflare Workers AI image generation",
+    sanitizeLogMeta({ model: MODEL, prompt: prompt.slice(0, 100) }),
+  );
 
   const response = await fetch(url, {
     method: "POST",
@@ -39,14 +48,24 @@ export async function generateImageWithCloudflare(prompt: string): Promise<strin
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    logEvent("warn", "avatar_cloudflare_http_error", "Cloudflare Workers AI request failed", sanitizeLogMeta({ status: response.status, body: text.slice(0, 300) }));
+    logEvent(
+      "warn",
+      "avatar_cloudflare_http_error",
+      "Cloudflare Workers AI request failed",
+      sanitizeLogMeta({ status: response.status, body: text.slice(0, 300) }),
+    );
     return null;
   }
 
   const json = await response.json();
   const b64 = json?.result?.image;
   if (!json?.success || !b64) {
-    logEvent("warn", "avatar_cloudflare_no_image", "Cloudflare Workers AI returned no image", sanitizeLogMeta({ errors: json?.errors }));
+    logEvent(
+      "warn",
+      "avatar_cloudflare_no_image",
+      "Cloudflare Workers AI returned no image",
+      sanitizeLogMeta({ errors: json?.errors }),
+    );
     return null;
   }
 

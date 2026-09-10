@@ -58,6 +58,8 @@
   --button-shadow: rgba(0, 0, 0, 0.3) !important;
   --button-shadow-hover: rgba(214, 138, 108, 0.25) !important;
   /* clay-tinted shadow on hover */
-  --font-primary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
-  --font-secondary: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, 'Liberation Sans', 'Nimbus Sans', 'sans-serif' !important;
+  --font-primary:
+    "Inter", "Segoe UI", "Helvetica Neue", Arial, "Liberation Sans", "Nimbus Sans", "sans-serif" !important;
+  --font-secondary:
+    "Inter", "Segoe UI", "Helvetica Neue", Arial, "Liberation Sans", "Nimbus Sans", "sans-serif" !important;
 }

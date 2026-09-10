@@ -12,15 +12,21 @@ const mockBot: Bot = {
 
 describe("ChatMessagesList", () => {
   it("renders all messages without virtualization if below threshold", () => {
-    const messages = Array.from({ length: 5 }, (_, i) => ({ text: `msg${i}`, sender: i % 2 === 0 ? "User" : "AI" }));
+    const messages = Array.from({ length: 5 }, (_, i) => ({
+      text: `msg${i}`,
+      sender: i % 2 === 0 ? "User" : "AI",
+    }));
     render(<ChatMessagesList messages={messages} bot={mockBot} />);
-    messages.forEach(m => {
+    messages.forEach((m) => {
       expect(screen.getByText(m.text)).toBeInTheDocument();
     });
   });
 
   it("renders virtualized list if messages exceed threshold", () => {
-    const messages = Array.from({ length: 40 }, (_, i) => ({ text: `msg${i}`, sender: i % 2 === 0 ? "User" : "AI" }));
+    const messages = Array.from({ length: 40 }, (_, i) => ({
+      text: `msg${i}`,
+      sender: i % 2 === 0 ? "User" : "AI",
+    }));
     render(<ChatMessagesList messages={messages} bot={mockBot} />);
     // Only a subset will be in the DOM; ensure the virtualized list rendered and at least
     // one message item is present in the DOM (avoid flaky assumption about exact items).
@@ -37,9 +43,7 @@ describe("ChatMessagesList", () => {
   });
 
   it("handles messages with audioFileUrl", () => {
-    const messages = [
-      { text: "Audio message", sender: "AI", audioFileUrl: "/audio.mp3" },
-    ];
+    const messages = [{ text: "Audio message", sender: "AI", audioFileUrl: "/audio.mp3" }];
     render(<ChatMessagesList messages={messages} bot={mockBot} />);
     expect(screen.getByText("Audio message")).toBeInTheDocument();
   });

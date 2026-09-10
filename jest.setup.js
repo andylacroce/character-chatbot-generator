@@ -35,10 +35,7 @@ if (typeof global.HTMLMediaElement !== "undefined") {
 // Suppress React warnings about deprecated lifecycle methods during tests
 const originalWarn = console.warn;
 console.warn = (...args) => {
-  if (
-    args[0] &&
-    args[0].includes("componentWillReceiveProps has been renamed")
-  ) {
+  if (args[0] && args[0].includes("componentWillReceiveProps has been renamed")) {
     return;
   }
   originalWarn(...args);
@@ -46,18 +43,18 @@ console.warn = (...args) => {
 
 // Polyfill performance.markResourceTiming for undici in Jest/jsdom
 global.performance = global.performance || {};
-global.performance.markResourceTiming = global.performance.markResourceTiming || (() => { });
+global.performance.markResourceTiming = global.performance.markResourceTiming || (() => {});
 
 // Mock ResizeObserver for libraries that rely on it (react-window hooks)
 class MockResizeObserver {
-  observe() { }
-  unobserve() { }
-  disconnect() { }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 }
 global.ResizeObserver = global.ResizeObserver || MockResizeObserver;
 
 // Mock global fetch to prevent undici TCPWRAP handle leaks in tests
-if (typeof global.fetch === 'undefined') {
+if (typeof global.fetch === "undefined") {
   global.fetch = async () => ({ ok: true, status: 200, json: async () => ({}) });
 }
 
@@ -73,10 +70,13 @@ afterEach(() => {
 // execution and cause the process to crash). Install a safe fallback now so
 // it is present for the entire test run.
 try {
-  process.removeAllListeners('unhandledRejection');
-  process.on('unhandledRejection', (reason) => {
+  process.removeAllListeners("unhandledRejection");
+  process.on("unhandledRejection", (reason) => {
     // eslint-disable-next-line no-console
-    console.error('unhandledRejection (test-protected):', reason && reason.stack ? reason.stack : reason);
+    console.error(
+      "unhandledRejection (test-protected):",
+      reason && reason.stack ? reason.stack : reason,
+    );
   });
 } catch (e) {
   // ignore in test environment
@@ -105,10 +105,13 @@ try {
 // during tests (this will re-assert our safe handler at teardown).
 afterAll(() => {
   try {
-    process.removeAllListeners('unhandledRejection');
-    process.on('unhandledRejection', (reason) => {
+    process.removeAllListeners("unhandledRejection");
+    process.on("unhandledRejection", (reason) => {
       // eslint-disable-next-line no-console
-      console.error('unhandledRejection (test-protected):', reason && reason.stack ? reason.stack : reason);
+      console.error(
+        "unhandledRejection (test-protected):",
+        reason && reason.stack ? reason.stack : reason,
+      );
     });
   } catch (e) {
     // ignore in test environment

@@ -16,7 +16,10 @@ import { authenticatedFetch } from "./api";
  * @returns {Promise<void>} Resolves when the download is triggered.
  * @throws {Error} If the transcript fetch fails or browser APIs are unavailable.
  */
-export async function downloadTranscript(messages: Array<Record<string, unknown>> | Message[], bot?: { name: string; avatarUrl: string }) {
+export async function downloadTranscript(
+  messages: Array<Record<string, unknown>> | Message[],
+  bot?: { name: string; avatarUrl: string },
+) {
   if (!Array.isArray(messages)) {
     throw new Error("Transcript must be an array");
   }
@@ -31,7 +34,7 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
     minute: "2-digit",
     second: "2-digit",
     hour12: true,
-    timeZoneName: "short"
+    timeZoneName: "short",
   });
   let response;
   try {
@@ -45,7 +48,7 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
     throw new Error(`Network error: ${err instanceof Error ? err.message : String(err)}`);
   }
   if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Unknown error');
+    const errorText = await response.text().catch(() => "Unknown error");
     throw new Error(`API error (${response.status}): ${errorText}`);
   }
   let htmlContent;
@@ -60,7 +63,11 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
   const blob = new Blob([htmlContent], { type: "text/html; charset=utf-8" });
   const url = window.URL.createObjectURL(blob);
   const botSlug = bot?.name
-    ? bot.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50)
+    ? bot.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 50)
     : "chat";
   const dateStr = now.toISOString().slice(0, 19).replace("T", "-").replace(/:/g, "");
   const filename = `${botSlug}-transcript-${dateStr}.html`;
@@ -70,7 +77,10 @@ export async function downloadTranscript(messages: Array<Record<string, unknown>
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(() => {
-    if (window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(url);
-  }, typeof process !== 'undefined' && process.env.JEST_WORKER_ID ? 0 : 100);
+  setTimeout(
+    () => {
+      if (window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(url);
+    },
+    typeof process !== "undefined" && process.env.JEST_WORKER_ID ? 0 : 100,
+  );
 }

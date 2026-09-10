@@ -25,7 +25,7 @@ describe("ChatInput stop button", () => {
         onAudioToggle={onAudioToggle}
         onStopAudio={onStopAudio}
         isAudioPlaying
-      />
+      />,
     );
 
     const stopBtn = await screen.findByTestId("chat-audio-stop");
@@ -52,7 +52,7 @@ describe("ChatInput stop button", () => {
         onAudioToggle={() => {}}
         onStopAudio={onStopAudio}
         isAudioPlaying
-      />
+      />,
     );
 
     const stopBtn = await screen.findByTestId("chat-audio-stop");
@@ -80,7 +80,7 @@ describe("ChatInput stop button", () => {
         onAudioToggle={() => {}}
         onStopAudio={() => {}}
         isAudioPlaying={false}
-      />
+      />,
     );
 
     expect(screen.queryByTestId("chat-audio-stop")).not.toBeInTheDocument();
@@ -103,7 +103,7 @@ describe("ChatInput stop button", () => {
         onAudioToggle={() => {}}
         onStopAudio={onStopAudio}
         isAudioPlaying
-      />
+      />,
     );
 
     const stopBtn = await screen.findByTestId("chat-audio-stop");

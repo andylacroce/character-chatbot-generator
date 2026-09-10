@@ -71,7 +71,9 @@ export function loadVoiceConfig(botName: string): CharacterVoiceConfig | null {
   }
   const fromCookie = decodePayload(getCookie(voiceConfigKey(botName)));
   if (fromCookie) {
-    try { storage.setVersionedJSON(voiceConfigKey(botName), fromCookie, VOICE_CONFIG_VERSION); } catch {}
+    try {
+      storage.setVersionedJSON(voiceConfigKey(botName), fromCookie, VOICE_CONFIG_VERSION);
+    } catch {}
     return fromCookie;
   }
   return null;
@@ -79,15 +81,21 @@ export function loadVoiceConfig(botName: string): CharacterVoiceConfig | null {
 
 export function persistVoiceConfig(botName: string, config: CharacterVoiceConfig) {
   if (!botName || !config) return;
-  try { storage.setVersionedJSON(voiceConfigKey(botName), config, VOICE_CONFIG_VERSION); } catch {}
+  try {
+    storage.setVersionedJSON(voiceConfigKey(botName), config, VOICE_CONFIG_VERSION);
+  } catch {}
   const encoded = encodePayload(config);
   if (encoded) setCookie(voiceConfigKey(botName), encoded, 14);
 }
 
 export function clearVoiceConfig(botName: string) {
   if (!botName) return;
-  try { storage.removeItem(voiceConfigKey(botName)); } catch {}
+  try {
+    storage.removeItem(voiceConfigKey(botName));
+  } catch {}
   if (canUseDocument()) {
-    try { document.cookie = `${voiceConfigKey(botName)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; samesite=lax`; } catch {}
+    try {
+      document.cookie = `${voiceConfigKey(botName)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; samesite=lax`;
+    } catch {}
   }
 }

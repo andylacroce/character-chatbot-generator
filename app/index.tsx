@@ -12,7 +12,7 @@ import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import { Bot } from "./components/BotCreator";
 import { getValidBotFromStorage } from "../src/utils/getValidBotFromStorage";
-import storage from '../src/utils/storage';
+import storage from "../src/utils/storage";
 import { authenticatedFetch } from "../src/utils/api";
 import { STORAGE_KEYS, STORAGE_KEY_PREFIXES, voiceConfigKey } from "../src/utils/storageKeys";
 
@@ -30,12 +30,12 @@ const KNOWN_KEYS_TO_MIGRATE = [
 export function runStartupMigrations() {
   try {
     // For keys that are pattern-based (suffix), scan localStorage for matches
-    if (typeof window !== 'undefined' && window.localStorage) {
+    if (typeof window !== "undefined" && window.localStorage) {
       const keys = Object.keys(localStorage || {});
       keys.forEach((k) => {
         // If any known prefix matches, attempt migration
         for (const prefix of KNOWN_KEYS_TO_MIGRATE) {
-          if (prefix.endsWith('-') || prefix.endsWith('-')) {
+          if (prefix.endsWith("-") || prefix.endsWith("-")) {
             // prefix already includes dash to indicate suffix-style keys
           }
           if (k === prefix || k.startsWith(prefix)) {
@@ -83,7 +83,7 @@ const Home = () => {
   const { status: sessionStatus } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const nameFromUrl = searchParams?.get('name');
+  const nameFromUrl = searchParams?.get("name");
   const [returningToCreator, setReturningToCreator] = React.useState(false);
 
   // Restore bot from localStorage on mount, using utility. This page is SSR'd, and
@@ -116,46 +116,49 @@ const Home = () => {
     }
   }, [bot]);
 
-  const handleBotCreated = React.useCallback((bot: Bot) => {
-    setBot(bot);
-    setReturningToCreator(false);
-    // Persist server-side when signed in — fire-and-forget, never blocks or breaks
-    // bot creation itself. Guests (sessionStatus !== "authenticated") skip this
-    // entirely; the API also no-ops for them as a second, server-side guarantee.
-    // A character created past an overridden copyright warning (bot.skipPersistence)
-    // also skips this — it works for this session exactly like a guest's, via
-    // localStorage below, but is never written to this user's own bots row either.
-    if (sessionStatus === "authenticated" && !bot.skipPersistence) {
-      authenticatedFetch("/api/bots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: bot.name,
-          personality: bot.personality,
-          avatarUrl: bot.avatarUrl,
-          gender: bot.gender,
-          voiceConfig: bot.voiceConfig,
-        }),
-      }).catch(() => {
-        // Persistence is a bonus for signed-in users, not a requirement — the bot
-        // still works locally via localStorage exactly as it does for guests.
-      });
-    }
-    // Store voiceConfig in localStorage (versioned) keyed by character name for durability
-    if (bot.voiceConfig) {
-      try {
-        storage.setVersionedJSON(voiceConfigKey(bot.name), bot.voiceConfig, 1);
-      } catch {}
-    }
-  }, [sessionStatus]);
+  const handleBotCreated = React.useCallback(
+    (bot: Bot) => {
+      setBot(bot);
+      setReturningToCreator(false);
+      // Persist server-side when signed in — fire-and-forget, never blocks or breaks
+      // bot creation itself. Guests (sessionStatus !== "authenticated") skip this
+      // entirely; the API also no-ops for them as a second, server-side guarantee.
+      // A character created past an overridden copyright warning (bot.skipPersistence)
+      // also skips this — it works for this session exactly like a guest's, via
+      // localStorage below, but is never written to this user's own bots row either.
+      if (sessionStatus === "authenticated" && !bot.skipPersistence) {
+        authenticatedFetch("/api/bots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: bot.name,
+            personality: bot.personality,
+            avatarUrl: bot.avatarUrl,
+            gender: bot.gender,
+            voiceConfig: bot.voiceConfig,
+          }),
+        }).catch(() => {
+          // Persistence is a bonus for signed-in users, not a requirement — the bot
+          // still works locally via localStorage exactly as it does for guests.
+        });
+      }
+      // Store voiceConfig in localStorage (versioned) keyed by character name for durability
+      if (bot.voiceConfig) {
+        try {
+          storage.setVersionedJSON(voiceConfigKey(bot.name), bot.voiceConfig, 1);
+        } catch {}
+      }
+    },
+    [sessionStatus],
+  );
 
   const handleBackToCharacterCreation = React.useCallback(() => {
     // Clear the bot from localStorage to kill the session
-  storage.removeItem(STORAGE_KEYS.bot);
-  storage.removeItem(STORAGE_KEYS.botTimestamp);
+    storage.removeItem(STORAGE_KEYS.bot);
+    storage.removeItem(STORAGE_KEYS.botTimestamp);
     setBot(null);
     setReturningToCreator(true);
-    router.push('/');
+    router.push("/");
   }, [router]);
   if (loadingBot) return null; // Prevent UI flash
   if (!bot) {

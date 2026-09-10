@@ -58,30 +58,30 @@ const isPreview = process.env.VERCEL_ENV === "preview";
 
 const providers: NextAuthOptions["providers"] = isPreview
   ? [
-    CredentialsProvider({
-      id: "preview-stub",
-      name: "Preview (no real login)",
-      credentials: {
-        email: { label: "Email", type: "email" },
-      },
-      async authorize(credentials) {
-        // Redundant guard: must never issue a session outside an actual Vercel
-        // preview deployment, even if this were somehow reached another way.
-        if (process.env.VERCEL_ENV !== "preview") return null;
-        const email = credentials?.email?.trim().toLowerCase();
-        if (!email) return null;
-        return { id: email, email, name: email.split("@")[0] };
-      },
-    }),
-  ]
+      CredentialsProvider({
+        id: "preview-stub",
+        name: "Preview (no real login)",
+        credentials: {
+          email: { label: "Email", type: "email" },
+        },
+        async authorize(credentials) {
+          // Redundant guard: must never issue a session outside an actual Vercel
+          // preview deployment, even if this were somehow reached another way.
+          if (process.env.VERCEL_ENV !== "preview") return null;
+          const email = credentials?.email?.trim().toLowerCase();
+          if (!email) return null;
+          return { id: email, email, name: email.split("@")[0] };
+        },
+      }),
+    ]
   : [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      // See the account-linking note above `providers` — deliberate, not a default.
-      allowDangerousEmailAccountLinking: true,
-    }),
-  ];
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID || "",
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+        // See the account-linking note above `providers` — deliberate, not a default.
+        allowDangerousEmailAccountLinking: true,
+      }),
+    ];
 
 export const authOptions: NextAuthOptions = {
   adapter,

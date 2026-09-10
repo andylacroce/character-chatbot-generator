@@ -21,7 +21,11 @@ import crypto from "crypto";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
-import { summarizeConversation, buildClaudeMessages, type ClaudeMessage } from "../../src/utils/conversationSummarizer";
+import {
+  summarizeConversation,
+  buildClaudeMessages,
+  type ClaudeMessage,
+} from "../../src/utils/conversationSummarizer";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 import anthropic from "../../src/utils/anthropicClient";
 import { getSessionUserId } from "../../src/utils/getSessionUserId";
@@ -55,7 +59,7 @@ function cleanupOldAudioFiles() {
     let cleanedCount = 0;
 
     for (const file of files) {
-      if (file.endsWith('.mp3') || file.endsWith('.txt')) {
+      if (file.endsWith(".mp3") || file.endsWith(".txt")) {
         const filePath = path.join(tmpDir, file);
         try {
           const stats = fs.statSync(filePath);
@@ -84,17 +88,24 @@ function cleanupOldAudioFiles() {
  * - Preserves types for consistent keys across nodes
  */
 function stableStringify(obj: unknown): string {
-  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
-  if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';
+  if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
+  if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
   const keys = Object.keys(obj as Record<string, unknown>).sort();
-  return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify((obj as Record<string, unknown>)[k])).join(',') + '}';
+  return (
+    "{" +
+    keys
+      .map((k) => JSON.stringify(k) + ":" + stableStringify((obj as Record<string, unknown>)[k]))
+      .join(",") +
+    "}"
+  );
 }
 
 function getAudioCacheKey(text: string, voiceConfig: object) {
-  return crypto.createHash('sha256')
+  return crypto
+    .createHash("sha256")
     .update(text)
     .update(stableStringify(voiceConfig))
-    .digest('hex');
+    .digest("hex");
 }
 
 type BotRow = typeof bots.$inferSelect;
@@ -115,11 +126,13 @@ async function lookupBot(userId: string, botName: string): Promise<BotRow | null
     const rows = await getDb()
       .select()
       .from(bots)
-      .where(and(
-        eq(bots.userId, userId),
-        eq(bots.name, sanitizedName),
-        eq(bots.environment, getCurrentEnvironment()),
-      ));
+      .where(
+        and(
+          eq(bots.userId, userId),
+          eq(bots.name, sanitizedName),
+          eq(bots.environment, getCurrentEnvironment()),
+        ),
+      );
     return rows[0] ?? null;
   } catch (err) {
     logger.error("Failed to look up bot for chat persistence:", { error: err });
@@ -132,7 +145,10 @@ async function lookupBot(userId: string, botName: string): Promise<BotRow | null
  * conversation has never been summarized), oldest first. Returns [] on any DB error so a
  * lookup failure degrades to an empty-history turn rather than failing the request.
  */
-async function fetchUnsummarizedMessages(botId: string, summarizedThroughMessageId: number | null): Promise<MessageRow[]> {
+async function fetchUnsummarizedMessages(
+  botId: string,
+  summarizedThroughMessageId: number | null,
+): Promise<MessageRow[]> {
   if (!process.env.DATABASE_URL) return [];
   try {
     return await getDb()
@@ -141,7 +157,7 @@ async function fetchUnsummarizedMessages(botId: string, summarizedThroughMessage
       .where(
         summarizedThroughMessageId != null
           ? and(eq(messagesTable.botId, botId), gt(messagesTable.id, summarizedThroughMessageId))
-          : eq(messagesTable.botId, botId)
+          : eq(messagesTable.botId, botId),
       )
       .orderBy(asc(messagesTable.id));
   } catch (err) {
@@ -155,7 +171,13 @@ async function fetchUnsummarizedMessages(botId: string, summarizedThroughMessage
  * Best-effort — a write failure here must never fail or discard an already-generated reply,
  * same resilience pattern as the TTS and avatar-cache persistence elsewhere in this API.
  */
-async function persistChatTurn(botId: string, userMessage: string, botName: string, botReply: string, isIntro: boolean): Promise<void> {
+async function persistChatTurn(
+  botId: string,
+  userMessage: string,
+  botName: string,
+  botReply: string,
+  isIntro: boolean,
+): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   try {
     // The intro flow's "Introduce yourself..." prompt is an internal mechanism to elicit an
@@ -174,7 +196,11 @@ async function persistChatTurn(botId: string, userMessage: string, botName: stri
 }
 
 /** Persists a new rolling summarization checkpoint onto the bot's row. Best-effort. */
-async function persistSummaryCheckpoint(botId: string, summary: string, throughMessageId: number): Promise<void> {
+async function persistSummaryCheckpoint(
+  botId: string,
+  summary: string,
+  throughMessageId: number,
+): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   try {
     await getDb()
@@ -209,9 +235,7 @@ async function finalizeChatPersistence(
 /**
  * Checks if the given object is a valid Claude messages response.
  */
-function isClaudeResponse(
-  obj: unknown,
-): obj is { content: { type: string; text?: string }[] } {
+function isClaudeResponse(obj: unknown): obj is { content: { type: string; text?: string }[] } {
   return (
     obj !== null &&
     typeof obj === "object" &&
@@ -226,7 +250,10 @@ function isClaudeResponse(
  */
 function stripActionEmotes(response: string): string {
   // Remove *...* patterns (action emotes) and clean up extra whitespace
-  return response.replace(/\*[^*]+\*/g, '').replace(/\n{3,}/g, '\n\n').trim();
+  return response
+    .replace(/\*[^*]+\*/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
@@ -243,15 +270,15 @@ function gracefullyWrapResponse(response: string): string {
   }
 
   // If ends mid-sentence with comma, add more natural completion
-  if (trimmed.endsWith(',')) {
-    return trimmed.slice(0, -1) + '.';
+  if (trimmed.endsWith(",")) {
+    return trimmed.slice(0, -1) + ".";
   }
 
   // If ends mid-word or incomplete, try to find last complete sentence
-  const lastPeriod = trimmed.lastIndexOf('.');
-  const lastExclamation = trimmed.lastIndexOf('!');
-  const lastQuestion = trimmed.lastIndexOf('?');
-  const lastSemicolon = trimmed.lastIndexOf(';');
+  const lastPeriod = trimmed.lastIndexOf(".");
+  const lastExclamation = trimmed.lastIndexOf("!");
+  const lastQuestion = trimmed.lastIndexOf("?");
+  const lastSemicolon = trimmed.lastIndexOf(";");
 
   const lastPunctuation = Math.max(lastPeriod, lastExclamation, lastQuestion, lastSemicolon);
 
@@ -261,13 +288,13 @@ function gracefullyWrapResponse(response: string): string {
   }
 
   // Otherwise, try to find last complete word/phrase and end it gracefully
-  const lastSpace = trimmed.lastIndexOf(' ', trimmed.length - 1);
+  const lastSpace = trimmed.lastIndexOf(" ", trimmed.length - 1);
   if (lastSpace > 0 && trimmed.length - lastSpace > 10) {
-    return trimmed.substring(0, lastSpace) + '.';
+    return trimmed.substring(0, lastSpace) + ".";
   }
 
   // Last resort: just add a period
-  return trimmed + '.';
+  return trimmed + ".";
 }
 
 /**
@@ -354,10 +381,7 @@ function gracefullyWrapResponse(response: string): string {
  *       500:
  *         description: Claude or TTS call failed
  */
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const requestId = req.headers["x-request-id"] || generateRequestId();
 
   // Apply rate limiting
@@ -379,7 +403,8 @@ async function handler(
     }
 
     const userMessage = req.body.message;
-    const requestPersonality = req.body.personality || generatePersonalityPrompt("a character chatbot");
+    const requestPersonality =
+      req.body.personality || generatePersonalityPrompt("a character chatbot");
     const botName = req.body.botName || "Character";
     const gender = req.body.gender;
     const conversationHistory = req.body.conversationHistory || [];
@@ -394,7 +419,7 @@ async function handler(
       res.status(400).json({ error: "Message is required", requestId });
       return;
     }
-    if (!voiceConfig || typeof voiceConfig !== 'object') {
+    if (!voiceConfig || typeof voiceConfig !== "object") {
       logger.info(`[Chat API] 400 Bad Request: Voice config is required | requestId=${requestId}`);
       res.status(400).json({ error: "Voice config is required", requestId });
       return;
@@ -439,7 +464,10 @@ async function handler(
     let newSummaryCheckpoint: { summary: string; throughMessageId: number } | null = null;
 
     if (botRow) {
-      const unsummarized = await fetchUnsummarizedMessages(botRow.id, botRow.summarizedThroughMessageId);
+      const unsummarized = await fetchUnsummarizedMessages(
+        botRow.id,
+        botRow.summarizedThroughMessageId,
+      );
       if (unsummarized.length > 20) {
         const toSummarize = unsummarized.slice(0, -20);
         const toKeep = unsummarized.slice(-20);
@@ -447,16 +475,27 @@ async function handler(
           role: m.sender === botName ? "assistant" : "user",
           content: m.text,
         }));
-        conversationSummary = await summarizeConversation(anthropic, oldMessages, botName, botRow.summary);
+        conversationSummary = await summarizeConversation(
+          anthropic,
+          oldMessages,
+          botName,
+          botRow.summary,
+        );
         newSummaryCheckpoint = {
           summary: conversationSummary,
           throughMessageId: toSummarize[toSummarize.length - 1].id,
         };
-        limitedHistory = toKeep.map((m) => (m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`));
-        logger.info(`[Chat API] Summarized ${toSummarize.length} old messages (checkpoint) | requestId=${requestId}`);
+        limitedHistory = toKeep.map((m) =>
+          m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`,
+        );
+        logger.info(
+          `[Chat API] Summarized ${toSummarize.length} old messages (checkpoint) | requestId=${requestId}`,
+        );
       } else {
         conversationSummary = botRow.summary || undefined;
-        limitedHistory = unsummarized.map((m) => (m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`));
+        limitedHistory = unsummarized.map((m) =>
+          m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`,
+        );
       }
     } else if (conversationHistory.length > 20) {
       const recentHistory = conversationHistory.slice(-20);
@@ -467,7 +506,9 @@ async function handler(
 
       if (oldMessages.length > 0) {
         conversationSummary = await summarizeConversation(anthropic, oldMessages, botName);
-        logger.info(`[Chat API] Summarized ${oldHistory.length} old messages | requestId=${requestId}`);
+        logger.info(
+          `[Chat API] Summarized ${oldHistory.length} old messages | requestId=${requestId}`,
+        );
       }
 
       limitedHistory = recentHistory;
@@ -508,7 +549,9 @@ CRITICAL CONTEXT INSTRUCTIONS:
     if (cachedReply) {
       logger.info(`[Chat API] Cache hit for key: ${cacheKey} | requestId=${requestId}`);
       const voiceConfigToUse = voiceConfig;
-      logger.info(`[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfigToUse)}`);
+      logger.info(
+        `[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfigToUse)}`,
+      );
       const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
       const ssmlText = buildSsml(cachedReply, selectedVoice);
       const tmpDir = os.tmpdir();
@@ -535,39 +578,54 @@ CRITICAL CONTEXT INSTRUCTIONS:
           // reasoning as the non-streaming and streaming paths below.
           logger.error("Text-to-Speech API error (cache hit):", { error });
           res.status(200).json({ reply: cachedReply, cached: true, requestId });
-          await finalizeChatPersistence(botRow, userMessage, botName, cachedReply, newSummaryCheckpoint, isIntro);
+          await finalizeChatPersistence(
+            botRow,
+            userMessage,
+            botName,
+            cachedReply,
+            newSummaryCheckpoint,
+            isIntro,
+          );
           return;
         }
       }
       try {
         const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-        if (!fs.existsSync(txtFilePath) || fs.readFileSync(txtFilePath, "utf8").trim() !== cachedReply.trim()) {
+        if (
+          !fs.existsSync(txtFilePath) ||
+          fs.readFileSync(txtFilePath, "utf8").trim() !== cachedReply.trim()
+        ) {
           fs.writeFileSync(txtFilePath, cachedReply, "utf8");
         }
       } catch (err) {
         logger.error("Failed to ensure .txt file for audio reply (cache hit):", { error: err });
       }
-      const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
+      const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
       res.status(200).json({
         reply: cachedReply,
         audioFileUrl,
         cached: true,
-        requestId
+        requestId,
       });
-      await finalizeChatPersistence(botRow, userMessage, botName, cachedReply, newSummaryCheckpoint, isIntro);
+      await finalizeChatPersistence(
+        botRow,
+        userMessage,
+        botName,
+        cachedReply,
+        newSummaryCheckpoint,
+        isIntro,
+      );
       return;
     }
 
     // Timeout to avoid hanging
-    const timeout = new Promise((resolve) =>
-      setTimeout(() => resolve({ timeout: true }), 20000),
-    );
+    const timeout = new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), 20000));
 
     // Handle streaming mode
     if (stream) {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache, no-transform');
-      res.setHeader('Connection', 'keep-alive');
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
 
       try {
         const streamResponse = anthropic.messages.stream({
@@ -580,10 +638,10 @@ CRITICAL CONTEXT INSTRUCTIONS:
           stop_sequences: ["User:", "Bot:"],
         });
 
-        let botReply = '';
+        let botReply = "";
 
         for await (const chunk of streamResponse) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+          if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
             const content = chunk.delta.text;
             if (content) {
               botReply += content;
@@ -623,7 +681,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
             ssml: false,
             voice: selectedVoice,
           });
-          audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
+          audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
         } catch (ttsError) {
           logger.error("Text-to-Speech API error (streaming):", { error: ttsError });
         }
@@ -632,8 +690,17 @@ CRITICAL CONTEXT INSTRUCTIONS:
         res.end();
 
         setReplyCache(cacheKey, botReply);
-        logger.info(`${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`);
-        await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint, isIntro);
+        logger.info(
+          `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`,
+        );
+        await finalizeChatPersistence(
+          botRow,
+          userMessage,
+          botName,
+          botReply,
+          newSummaryCheckpoint,
+          isIntro,
+        );
         return;
       } catch (streamErr) {
         logger.error("Streaming error:", { error: streamErr });
@@ -663,21 +730,33 @@ CRITICAL CONTEXT INSTRUCTIONS:
       return;
     }
     if (!isClaudeResponse(result)) {
-      logger.info(`[Chat API] 500 Internal Server Error: Invalid Claude response | requestId=${requestId}`);
+      logger.info(
+        `[Chat API] 500 Internal Server Error: Invalid Claude response | requestId=${requestId}`,
+      );
       throw new Error("Invalid response from Claude");
     }
-    let botReply = result.content[0]?.type === "text" ? (result.content[0] as { type: "text"; text: string }).text.trim() : "";
+    let botReply =
+      result.content[0]?.type === "text"
+        ? (result.content[0] as { type: "text"; text: string }).text.trim()
+        : "";
 
     if (!botReply || botReply.trim() === "") {
-      logger.info(`[Chat API] 500 Internal Server Error: Empty bot response | requestId=${requestId}`);
+      logger.info(
+        `[Chat API] 500 Internal Server Error: Empty bot response | requestId=${requestId}`,
+      );
       throw new Error("Generated bot response is empty.");
     }
 
     botReply = gracefullyWrapResponse(botReply);
 
     const voiceConfigToUse = voiceConfig;
-    const voiceConfigHash = crypto.createHash("sha256").update(JSON.stringify(voiceConfigToUse)).digest("hex");
-    logger.info(`[TTS] Using voice for botName='${botName}', voiceConfigHash=${voiceConfigHash}: ${JSON.stringify(voiceConfigToUse)}`);
+    const voiceConfigHash = crypto
+      .createHash("sha256")
+      .update(JSON.stringify(voiceConfigToUse))
+      .digest("hex");
+    logger.info(
+      `[TTS] Using voice for botName='${botName}', voiceConfigHash=${voiceConfigHash}: ${JSON.stringify(voiceConfigToUse)}`,
+    );
     const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
     const ssmlText = buildSsml(botReply, selectedVoice);
     const tmpDir = os.tmpdir();
@@ -710,15 +789,27 @@ CRITICAL CONTEXT INSTRUCTIONS:
         logger.info(
           `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`,
         );
-        logger.info(`[Chat API] 200 OK: Reply sent without audio (TTS failed) | requestId=${requestId}`);
+        logger.info(
+          `[Chat API] 200 OK: Reply sent without audio (TTS failed) | requestId=${requestId}`,
+        );
         res.status(200).json({ reply: botReply, requestId });
-        await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint, isIntro);
+        await finalizeChatPersistence(
+          botRow,
+          userMessage,
+          botName,
+          botReply,
+          newSummaryCheckpoint,
+          isIntro,
+        );
         return;
       }
     }
     try {
       const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-      if (!fs.existsSync(txtFilePath) || fs.readFileSync(txtFilePath, "utf8").trim() !== botReply.trim()) {
+      if (
+        !fs.existsSync(txtFilePath) ||
+        fs.readFileSync(txtFilePath, "utf8").trim() !== botReply.trim()
+      ) {
         fs.writeFileSync(txtFilePath, botReply, "utf8");
       }
     } catch (err) {
@@ -729,23 +820,29 @@ CRITICAL CONTEXT INSTRUCTIONS:
       `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`,
     );
     logger.info(`[Chat API] 200 OK: Reply and audioFileUrl sent | requestId=${requestId}`);
-    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || '')}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
+    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
     res.status(200).json({
       reply: botReply,
       audioFileUrl,
-      requestId
+      requestId,
     });
-    await finalizeChatPersistence(botRow, userMessage, botName, botReply, newSummaryCheckpoint, isIntro);
+    await finalizeChatPersistence(
+      botRow,
+      userMessage,
+      botName,
+      botReply,
+      newSummaryCheckpoint,
+      isIntro,
+    );
     return;
   } catch (error) {
     logger.error(`API error | requestId=${requestId}:`, { error });
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     logger.info(`[Chat API] 500 Internal Server Error | requestId=${requestId}`);
     res.status(500).json({
       reply: "Error fetching response from bot.",
       error: errorMessage,
-      requestId
+      requestId,
     });
     return;
   }

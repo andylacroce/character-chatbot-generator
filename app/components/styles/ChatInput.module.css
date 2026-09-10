@@ -12,7 +12,7 @@
    - Uses CSS variables from globals.css for theme consistency
    ============================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap");
 
 .chatInputArea {
   position: sticky;
@@ -41,7 +41,7 @@
 .chatInput {
   background: none;
   color: var(--color-text);
-  font-family: 'Lora', var(--font-secondary), var(--font-primary), serif;
+  font-family: "Lora", var(--font-secondary), var(--font-primary), serif;
   border: none;
   padding: 0.3rem 0;
   font-size: 1.1rem;
@@ -76,7 +76,8 @@
   transition: color 0.15s ease;
 }
 
-.chatSendButton:hover, .chatSendButton:focus {
+.chatSendButton:hover,
+.chatSendButton:focus {
   background: none;
   color: var(--button-hover-bg);
   outline: none;
@@ -99,11 +100,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
   color: var(--color-accent);
 }
 
-.iconButton:hover, .iconButton:focus {
+.iconButton:hover,
+.iconButton:focus {
   background: var(--color-primary-container);
   border-color: var(--color-primary);
   color: var(--color-primary);
@@ -122,7 +127,8 @@
   border-color: var(--color-error);
 }
 
-.stopButton:hover, .stopButton:focus {
+.stopButton:hover,
+.stopButton:focus {
   background: color-mix(in srgb, var(--color-error) 14%, transparent);
   border-color: var(--color-error);
   color: var(--color-error);

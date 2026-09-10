@@ -1,163 +1,288 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { generateBotDataWithProgressCancelable } from '../../../app/components/useBotCreation';
-import { api_getVoiceConfigForCharacter } from '../../../app/components/api_getVoiceConfigForCharacter';
-import { persistVoiceConfig } from '../../../src/utils/voiceConfigPersistence';
-import { authenticatedFetch } from '../../../src/utils/api';
+import { generateBotDataWithProgressCancelable } from "../../../app/components/useBotCreation";
+import { api_getVoiceConfigForCharacter } from "../../../app/components/api_getVoiceConfigForCharacter";
+import { persistVoiceConfig } from "../../../src/utils/voiceConfigPersistence";
+import { authenticatedFetch } from "../../../src/utils/api";
 
-jest.mock('../../../app/components/api_getVoiceConfigForCharacter');
-jest.mock('../../../src/utils/voiceConfigPersistence');
-jest.mock('../../../src/utils/api');
+jest.mock("../../../app/components/api_getVoiceConfigForCharacter");
+jest.mock("../../../src/utils/voiceConfigPersistence");
+jest.mock("../../../src/utils/api");
 
 const mockFetch = authenticatedFetch as jest.MockedFunction<typeof authenticatedFetch>;
-const mockGetVoice = api_getVoiceConfigForCharacter as jest.MockedFunction<typeof api_getVoiceConfigForCharacter>;
+const mockGetVoice = api_getVoiceConfigForCharacter as jest.MockedFunction<
+  typeof api_getVoiceConfigForCharacter
+>;
 const mockPersist = persistVoiceConfig as jest.MockedFunction<typeof persistVoiceConfig>;
 
-describe('generateBotDataWithProgressCancelable (unit tests)', () => {
+describe("generateBotDataWithProgressCancelable (unit tests)", () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
 
-  it('succeeds with non-silhouette avatar and voice config', async () => {
+  it("succeeds with non-silhouette avatar and voice config", async () => {
     // personality -> ok
     mockFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({ personality: 'p' }) } as any);
-      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png', gender: 'female' }) } as any);
+      if (url === "/api/generate-personality")
+        return Promise.resolve({ ok: true, json: async () => ({ personality: "p" }) } as any);
+      if (url === "/api/generate-avatar")
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
+        } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
-    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
+    mockGetVoice.mockResolvedValueOnce({
+      name: "en-US-Voice",
+      languageCodes: ["en-US"],
+      ssmlGender: 1,
+      pitch: 0,
+      rate: 1,
+    });
 
     const cancelToken = { cancelled: false } as any;
     const onProgress = jest.fn();
     const setLoadingMessage = jest.fn();
 
-    const bot = await generateBotDataWithProgressCancelable('Alice', onProgress, setLoadingMessage, cancelToken);
+    const bot = await generateBotDataWithProgressCancelable(
+      "Alice",
+      onProgress,
+      setLoadingMessage,
+      cancelToken,
+    );
 
-    expect(bot.avatarUrl).toBe('/img.png');
+    expect(bot.avatarUrl).toBe("/img.png");
     expect(bot.voiceConfig).toBeDefined();
-    expect(mockPersist).toHaveBeenCalledWith('Alice', expect.any(Object));
+    expect(mockPersist).toHaveBeenCalledWith("Alice", expect.any(Object));
   });
 
-  it('uses default image when avatar API returns not ok', async () => {
+  it("uses default image when avatar API returns not ok", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);
-      if (url === '/api/generate-avatar') return Promise.resolve({ ok: false, status: 500 } as any);
+      if (url === "/api/generate-personality")
+        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      if (url === "/api/generate-avatar") return Promise.resolve({ ok: false, status: 500 } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
-    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
+    mockGetVoice.mockResolvedValueOnce({
+      name: "en-US-Voice",
+      languageCodes: ["en-US"],
+      ssmlGender: 1,
+      pitch: 0,
+      rate: 1,
+    });
 
-    const bot = await generateBotDataWithProgressCancelable('Bob', jest.fn(), jest.fn(), { cancelled: false } as any);
-    expect(bot.avatarUrl).toBe('/silhouette.svg');
+    const bot = await generateBotDataWithProgressCancelable("Bob", jest.fn(), jest.fn(), {
+      cancelled: false,
+    } as any);
+    expect(bot.avatarUrl).toBe("/silhouette.svg");
   });
 
-  it('throws when voice config generation fails', async () => {
+  it("throws when voice config generation fails", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);
-      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png' }) } as any);
+      if (url === "/api/generate-personality")
+        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      if (url === "/api/generate-avatar")
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
-    mockGetVoice.mockRejectedValueOnce(new Error('no voice'));
+    mockGetVoice.mockRejectedValueOnce(new Error("no voice"));
 
-    await expect(generateBotDataWithProgressCancelable('Carol', jest.fn(), jest.fn(), { cancelled: false } as any)).rejects.toThrow(/Failed to generate a consistent voice/);
+    await expect(
+      generateBotDataWithProgressCancelable("Carol", jest.fn(), jest.fn(), {
+        cancelled: false,
+      } as any),
+    ).rejects.toThrow(/Failed to generate a consistent voice/);
   });
 
-  it('respects cancellation before personality step', async () => {
+  it("respects cancellation before personality step", async () => {
     // cancel token set to true
-    await expect(generateBotDataWithProgressCancelable('X', jest.fn(), jest.fn(), { cancelled: true } as any)).rejects.toThrow('cancelled');
+    await expect(
+      generateBotDataWithProgressCancelable("X", jest.fn(), jest.fn(), { cancelled: true } as any),
+    ).rejects.toThrow("cancelled");
   });
 
-  it('cancels when cancelRequested during avatar generation', async () => {
+  it("cancels when cancelRequested during avatar generation", async () => {
     // personality resolves immediately, avatar will be delayed
     mockFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);
-      if (url === '/api/generate-avatar') return new Promise((res) => setTimeout(() => res({ ok: true, json: async () => ({ avatarUrl: '/img.png' }) }), 50)) as any;
+      if (url === "/api/generate-personality")
+        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      if (url === "/api/generate-avatar")
+        return new Promise((res) =>
+          setTimeout(() => res({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) }), 50),
+        ) as any;
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
-    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
+    mockGetVoice.mockResolvedValueOnce({
+      name: "en-US-Voice",
+      languageCodes: ["en-US"],
+      ssmlGender: 1,
+      pitch: 0,
+      rate: 1,
+    });
 
     const cancelRef = { cancelled: false } as any;
-    const create = generateBotDataWithProgressCancelable('D', jest.fn(), jest.fn(), cancelRef);
+    const create = generateBotDataWithProgressCancelable("D", jest.fn(), jest.fn(), cancelRef);
     // cancel before avatar resolves
     cancelRef.cancelled = true;
-    await expect(create).rejects.toThrow('cancelled');
+    await expect(create).rejects.toThrow("cancelled");
   });
 
-  it('passes skipPersistence through to /api/generate-avatar and onto the returned Bot', async () => {
+  it("passes skipPersistence through to /api/generate-avatar and onto the returned Bot", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);
-      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: 'data:image/png;base64,abc', gender: 'female' }) } as any);
+      if (url === "/api/generate-personality")
+        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      if (url === "/api/generate-avatar")
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ avatarUrl: "data:image/png;base64,abc", gender: "female" }),
+        } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
-    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
+    mockGetVoice.mockResolvedValueOnce({
+      name: "en-US-Voice",
+      languageCodes: ["en-US"],
+      ssmlGender: 1,
+      pitch: 0,
+      rate: 1,
+    });
 
-    const bot = await generateBotDataWithProgressCancelable('Mickey', jest.fn(), jest.fn(), { cancelled: false } as any, true);
+    const bot = await generateBotDataWithProgressCancelable(
+      "Mickey",
+      jest.fn(),
+      jest.fn(),
+      { cancelled: false } as any,
+      true,
+    );
 
-    const avatarCall = mockFetch.mock.calls.find((c) => c[0] === '/api/generate-avatar');
+    const avatarCall = mockFetch.mock.calls.find((c) => c[0] === "/api/generate-avatar");
     expect(avatarCall).toBeDefined();
-    expect(JSON.parse((avatarCall as any)[1].body)).toEqual({ name: 'Mickey', skipPersistence: true, recognized: true });
+    expect(JSON.parse((avatarCall as any)[1].body)).toEqual({
+      name: "Mickey",
+      skipPersistence: true,
+      recognized: true,
+    });
     expect(bot.skipPersistence).toBe(true);
   });
 
-  it('defaults skipPersistence to false when omitted', async () => {
+  it("defaults skipPersistence to false when omitted", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);
-      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png' }) } as any);
+      if (url === "/api/generate-personality")
+        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      if (url === "/api/generate-avatar")
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
-    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
+    mockGetVoice.mockResolvedValueOnce({
+      name: "en-US-Voice",
+      languageCodes: ["en-US"],
+      ssmlGender: 1,
+      pitch: 0,
+      rate: 1,
+    });
 
-    const bot = await generateBotDataWithProgressCancelable('Sherlock', jest.fn(), jest.fn(), { cancelled: false } as any);
+    const bot = await generateBotDataWithProgressCancelable("Sherlock", jest.fn(), jest.fn(), {
+      cancelled: false,
+    } as any);
 
-    const avatarCall = mockFetch.mock.calls.find((c) => c[0] === '/api/generate-avatar');
-    expect(JSON.parse((avatarCall as any)[1].body)).toEqual({ name: 'Sherlock', skipPersistence: false, recognized: true });
+    const avatarCall = mockFetch.mock.calls.find((c) => c[0] === "/api/generate-avatar");
+    expect(JSON.parse((avatarCall as any)[1].body)).toEqual({
+      name: "Sherlock",
+      skipPersistence: false,
+      recognized: true,
+    });
     expect(bot.skipPersistence).toBe(false);
   });
 
-  it('passes description through to /api/generate-personality', async () => {
+  it("passes description through to /api/generate-personality", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({ personality: 'p', correctedName: 'Zorg' }) } as any);
-      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png' }) } as any);
+      if (url === "/api/generate-personality")
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ personality: "p", correctedName: "Zorg" }),
+        } as any);
+      if (url === "/api/generate-avatar")
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
-    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
+    mockGetVoice.mockResolvedValueOnce({
+      name: "en-US-Voice",
+      languageCodes: ["en-US"],
+      ssmlGender: 1,
+      pitch: 0,
+      rate: 1,
+    });
 
-    await generateBotDataWithProgressCancelable('Zorg', jest.fn(), jest.fn(), { cancelled: false } as any, false, 'A grumpy retired dragon-slayer', 'Tall, scarred, wears a battered cloak', false);
+    await generateBotDataWithProgressCancelable(
+      "Zorg",
+      jest.fn(),
+      jest.fn(),
+      { cancelled: false } as any,
+      false,
+      "A grumpy retired dragon-slayer",
+      "Tall, scarred, wears a battered cloak",
+      false,
+    );
 
-    const personalityCall = mockFetch.mock.calls.find((c) => c[0] === '/api/generate-personality');
-    expect(JSON.parse((personalityCall as any)[1].body)).toEqual({ name: 'Zorg', description: 'A grumpy retired dragon-slayer' });
+    const personalityCall = mockFetch.mock.calls.find((c) => c[0] === "/api/generate-personality");
+    expect(JSON.parse((personalityCall as any)[1].body)).toEqual({
+      name: "Zorg",
+      description: "A grumpy retired dragon-slayer",
+    });
 
-    const avatarCall = mockFetch.mock.calls.find((c) => c[0] === '/api/generate-avatar');
+    const avatarCall = mockFetch.mock.calls.find((c) => c[0] === "/api/generate-avatar");
     expect(JSON.parse((avatarCall as any)[1].body)).toEqual({
-      name: 'Zorg',
+      name: "Zorg",
       skipPersistence: false,
       recognized: false,
-      appearanceDescription: 'Tall, scarred, wears a battered cloak',
+      appearanceDescription: "Tall, scarred, wears a battered cloak",
     });
   });
 
-  it('omits description/appearance and defaults recognized to true when not provided', async () => {
+  it("omits description/appearance and defaults recognized to true when not provided", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);
-      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png' }) } as any);
+      if (url === "/api/generate-personality")
+        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      if (url === "/api/generate-avatar")
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
-    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
+    mockGetVoice.mockResolvedValueOnce({
+      name: "en-US-Voice",
+      languageCodes: ["en-US"],
+      ssmlGender: 1,
+      pitch: 0,
+      rate: 1,
+    });
 
-    await generateBotDataWithProgressCancelable('Plain', jest.fn(), jest.fn(), { cancelled: false } as any);
+    await generateBotDataWithProgressCancelable("Plain", jest.fn(), jest.fn(), {
+      cancelled: false,
+    } as any);
 
-    const personalityCall = mockFetch.mock.calls.find((c) => c[0] === '/api/generate-personality');
-    expect(JSON.parse((personalityCall as any)[1].body)).toEqual({ name: 'Plain' });
+    const personalityCall = mockFetch.mock.calls.find((c) => c[0] === "/api/generate-personality");
+    expect(JSON.parse((personalityCall as any)[1].body)).toEqual({ name: "Plain" });
   });
 
-  it('continues even if persistVoiceConfig throws', async () => {
+  it("continues even if persistVoiceConfig throws", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url === '/api/generate-personality') return Promise.resolve({ ok: true, json: async () => ({}) } as any);
-      if (url === '/api/generate-avatar') return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: '/img.png' }) } as any);
+      if (url === "/api/generate-personality")
+        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+      if (url === "/api/generate-avatar")
+        return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
-    mockGetVoice.mockResolvedValueOnce({ name: 'en-US-Voice', languageCodes: ['en-US'], ssmlGender: 1, pitch: 0, rate: 1 });
-    mockPersist.mockImplementation(() => { throw new Error('persist fail'); });
+    mockGetVoice.mockResolvedValueOnce({
+      name: "en-US-Voice",
+      languageCodes: ["en-US"],
+      ssmlGender: 1,
+      pitch: 0,
+      rate: 1,
+    });
+    mockPersist.mockImplementation(() => {
+      throw new Error("persist fail");
+    });
 
-    const bot = await generateBotDataWithProgressCancelable('Eve', jest.fn(), jest.fn(), { current: false } as any);
+    const bot = await generateBotDataWithProgressCancelable("Eve", jest.fn(), jest.fn(), {
+      current: false,
+    } as any);
     expect(bot.voiceConfig).toBeDefined();
   });
 });

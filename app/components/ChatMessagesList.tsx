@@ -26,20 +26,21 @@ interface ChatMessagesListProps {
 
 const VIRTUALIZE_THRESHOLD = 30;
 
-
-const ChatMessagesList: React.FC<ChatMessagesListProps> = React.memo(({ messages, bot, onAvatarClick }) => {
-  if (messages.length < VIRTUALIZE_THRESHOLD) {
-    return (
-      <>
-        <div className={styles.spacer} />
-        {messages.map((msg, index) => (
-          <ChatMessage key={index} message={msg} bot={bot} onAvatarClick={onAvatarClick} />
-        ))}
-      </>
-    );
-  }
-  return <VirtualizedMessagesList messages={messages} bot={bot} onAvatarClick={onAvatarClick} />;
-});
+const ChatMessagesList: React.FC<ChatMessagesListProps> = React.memo(
+  ({ messages, bot, onAvatarClick }) => {
+    if (messages.length < VIRTUALIZE_THRESHOLD) {
+      return (
+        <>
+          <div className={styles.spacer} />
+          {messages.map((msg, index) => (
+            <ChatMessage key={index} message={msg} bot={bot} onAvatarClick={onAvatarClick} />
+          ))}
+        </>
+      );
+    }
+    return <VirtualizedMessagesList messages={messages} bot={bot} onAvatarClick={onAvatarClick} />;
+  },
+);
 
 ChatMessagesList.displayName = "ChatMessagesList";
 

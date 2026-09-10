@@ -35,11 +35,7 @@ const DisclaimerStyleModal: React.FC<DisclaimerStyleModalProps> = ({
   return (
     <div className={styles.disclaimerBackdrop} data-testid={testId} onClick={onClose}>
       <div className={styles.disclaimerModal} onClick={(e) => e.stopPropagation()}>
-        <button
-          className={styles.disclaimerCloseButton}
-          aria-label={closeLabel}
-          onClick={onClose}
-        >
+        <button className={styles.disclaimerCloseButton} aria-label={closeLabel} onClick={onClose}>
           ×
         </button>
         <div className={styles.disclaimerTitle}>{title}</div>

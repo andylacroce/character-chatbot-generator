@@ -104,23 +104,14 @@ const ResumeBotDropdown: React.FC<ResumeBotDropdownProps> = ({ onSelect }) => {
     <div className={styles.tocSection} data-testid="resume-bot-dropdown">
       <p className={styles.tocLabel}>Previously</p>
       {visibleBots.map((b) => (
-        <button
-          key={b.id}
-          type="button"
-          className={styles.tocRow}
-          onClick={() => handleSelect(b)}
-        >
+        <button key={b.id} type="button" className={styles.tocRow} onClick={() => handleSelect(b)}>
           <span className={styles.tocName}>{b.name}</span>
           <span className={styles.tocDots} aria-hidden="true" />
           <span className={styles.tocTime}>{formatRelativeTime(b.updatedAt)}</span>
         </button>
       ))}
       {hasMore && (
-        <button
-          type="button"
-          className={styles.tocToggle}
-          onClick={() => setExpanded((e) => !e)}
-        >
+        <button type="button" className={styles.tocToggle} onClick={() => setExpanded((e) => !e)}>
           {expanded ? "Show less" : `Show ${bots.length - VISIBLE_LIMIT} more`}
         </button>
       )}

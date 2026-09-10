@@ -11,7 +11,7 @@
    - Uses CSS variables from globals.css for theme consistency
    ============================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap");
 
 .chatHeader {
   position: sticky;
@@ -114,7 +114,7 @@
 
 /* Bot name label styling for legibility */
 .botNameLabel {
-  font-family: 'Playfair Display', var(--font-secondary), var(--font-primary), serif;
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
   font-weight: 500;
   font-size: 1.65rem;
   color: var(--color-text);
@@ -176,7 +176,9 @@
   color: var(--color-text);
   box-shadow: none;
   border: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -225,9 +227,13 @@
   font-weight: 600;
   min-height: 28px;
   min-width: 0;
-  transition: background 0.18s, color 0.18s, border-color 0.18s;
+  transition:
+    background 0.18s,
+    color 0.18s,
+    border-color 0.18s;
 }
-.darkModeToggle:hover, .darkModeToggle:focus {
+.darkModeToggle:hover,
+.darkModeToggle:focus {
   background: var(--color-primary-container);
   color: var(--color-primary);
   border-color: var(--color-primary);

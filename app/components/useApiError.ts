@@ -23,11 +23,13 @@ export function useApiError() {
     if (typeof err === "object" && err !== null && "response" in err) {
       const response = (err as { response?: unknown }).response;
       // Always prefer custom error message from response if present (first, before any status checks)
-      if (response && typeof (response as { data?: unknown }).data === "object" && (response as { data: unknown }).data !== null) {
+      if (
+        response &&
+        typeof (response as { data?: unknown }).data === "object" &&
+        (response as { data: unknown }).data !== null
+      ) {
         const errorData = (response as { data: unknown }).data as Record<string, unknown>;
-        if (
-          typeof errorData.error === "string"
-        ) {
+        if (typeof errorData.error === "string") {
           setError(errorData.error);
           return;
         }
@@ -53,7 +55,12 @@ export function useApiError() {
       return;
     }
     // Handle error objects with a message
-    if (typeof err === "object" && err !== null && "message" in err && typeof (err as { message?: string }).message === "string") {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "message" in err &&
+      typeof (err as { message?: string }).message === "string"
+    ) {
       setError(genericErrorMsg);
       return;
     }

@@ -38,20 +38,23 @@ export const SSML_GENDER = {
  * Default voice for fallback only.
  */
 export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
-  'Default': {
-    languageCodes: ['en-GB'],
-    name: 'en-GB-Wavenet-D',
+  Default: {
+    languageCodes: ["en-GB"],
+    name: "en-GB-Wavenet-D",
     ssmlGender: SSML_GENDER.MALE,
     pitch: 0,
     rate: 1.0,
-    type: 'Wavenet',
+    type: "Wavenet",
   },
 };
 
 function normalizeCharacterName(name: string): string {
-  return name.trim().toLowerCase().replace(/ +/g, ' ').replace(/(^| )\w/g, c => c.toUpperCase());
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/ +/g, " ")
+    .replace(/(^| )\w/g, (c) => c.toUpperCase());
 }
-
 
 /**
  * In-memory cache for voice configs (per process).
@@ -62,7 +65,7 @@ const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
  * Voice configuration from Claude (maps directly to Google TTS parameters).
  */
 export interface VoiceConfig {
-  gender: 'male' | 'female' | 'neutral';
+  gender: "male" | "female" | "neutral";
   languageCode: string; // Language code (e.g., 'en-GB', 'en-US', 'de-DE')
   voiceName: string; // Google TTS voice name (e.g., 'en-GB-Wavenet-D')
   pitch: number; // Pitch adjustment in semitones (-20 to +20)
@@ -75,19 +78,19 @@ export interface VoiceConfig {
  */
 async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): Promise<boolean> {
   try {
-    const { getTTSClient } = await import('./tts');
+    const { getTTSClient } = await import("./tts");
 
     const client = getTTSClient();
 
     // Attempt test synthesis to validate voice is available and functional
     const [response] = await client.synthesizeSpeech({
-      input: { text: 'test' },
+      input: { text: "test" },
       voice: {
         languageCode,
         name: voiceName,
       },
       audioConfig: {
-        audioEncoding: 'MP3' as const,
+        audioEncoding: "MP3" as const,
       },
     });
 
@@ -96,10 +99,13 @@ async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): P
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
     // Voice not found or synthesis failed
-    logger.info("Voice validation failed", sanitizeLogMeta({
-      voiceName,
-      error: errMsg.substring(0, 100)
-    }));
+    logger.info(
+      "Voice validation failed",
+      sanitizeLogMeta({
+        voiceName,
+        error: errMsg.substring(0, 100),
+      }),
+    );
     return false;
   }
 }
@@ -108,9 +114,13 @@ async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): P
  * Fetches complete voice configuration from Claude with retry logic.
  * If Claude returns an invalid voice name, it will retry with error feedback.
  */
-export async function fetchVoiceConfigFromClaude(name: string, maxRetries = 3, genderHint?: string | null): Promise<VoiceConfig> {
-  const { getClaudeModel } = await import('./claudeModelSelector');
-  const { default: anthropic } = await import('./anthropicClient');
+export async function fetchVoiceConfigFromClaude(
+  name: string,
+  maxRetries = 3,
+  genderHint?: string | null,
+): Promise<VoiceConfig> {
+  const { getClaudeModel } = await import("./claudeModelSelector");
+  const { default: anthropic } = await import("./anthropicClient");
 
   const systemPrompt = `You are a voice casting expert for Google Text-to-Speech.
 
@@ -132,10 +142,13 @@ CRITICAL: The "gender" field you return MUST match the actual gender of the spec
 
   const genderHintText = genderHint
     ? ` This character's gender is understood to be "${genderHint}" — pick a voiceName whose actual Google TTS gender matches, and set the "gender" field to match that same voice (not necessarily "${genderHint}" verbatim, if no well-known voice fits).`
-    : '';
+    : "";
 
-  const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
-    { role: "user", content: `Character: "${name}"\nProvide Google TTS voice configuration as JSON.${genderHintText}` }
+  const messages: Array<{ role: "user" | "assistant"; content: string }> = [
+    {
+      role: "user",
+      content: `Character: "${name}"\nProvide Google TTS voice configuration as JSON.${genderHintText}`,
+    },
   ];
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -148,20 +161,29 @@ CRITICAL: The "gender" field you return MUST match the actual gender of the spec
         temperature: 0.3,
       });
 
-      const content = extractJson(response.content[0]?.type === "text" ? response.content[0].text : '{}');
+      const content = extractJson(
+        response.content[0]?.type === "text" ? response.content[0].text : "{}",
+      );
       const config = JSON.parse(content) as VoiceConfig;
 
       // Perform basic schema validation before API call
-      const voiceNamePattern = /^[a-z]{2}-[A-Z]{2}-(Wavenet|Neural2|Studio|Standard|Journey|News|Polyglot)-[A-Z]$/;
+      const voiceNamePattern =
+        /^[a-z]{2}-[A-Z]{2}-(Wavenet|Neural2|Studio|Standard|Journey|News|Polyglot)-[A-Z]$/;
       if (!config.voiceName || !voiceNamePattern.test(config.voiceName)) {
         if (attempt < maxRetries) {
-          logger.warn(`Voice name format invalid on attempt ${attempt}, retrying`, sanitizeLogMeta({
-            attempt,
-            providedVoice: config.voiceName
-          }));
+          logger.warn(
+            `Voice name format invalid on attempt ${attempt}, retrying`,
+            sanitizeLogMeta({
+              attempt,
+              providedVoice: config.voiceName,
+            }),
+          );
           messages.push(
             { role: "assistant", content },
-            { role: "user", content: `ERROR: Voice name "${config.voiceName}" is malformed. Use format: <locale>-<type>-<letter> (e.g., en-US-Wavenet-D). Try again with a valid voice.` }
+            {
+              role: "user",
+              content: `ERROR: Voice name "${config.voiceName}" is malformed. Use format: <locale>-<type>-<letter> (e.g., en-US-Wavenet-D). Try again with a valid voice.`,
+            },
           );
           continue;
         }
@@ -169,18 +191,24 @@ CRITICAL: The "gender" field you return MUST match the actual gender of the spec
       }
 
       // Validate using actual Google TTS API (true validation)
-      const isValid = await isValidGoogleTTSVoice(config.voiceName, config.languageCode || 'en-US');
+      const isValid = await isValidGoogleTTSVoice(config.voiceName, config.languageCode || "en-US");
 
       if (!isValid) {
         if (attempt < maxRetries) {
-          logger.warn(`Voice validation failed on attempt ${attempt}, asking Claude to try another`, sanitizeLogMeta({
-            attempt,
-            voiceName: config.voiceName,
-            languageCode: config.languageCode
-          }));
+          logger.warn(
+            `Voice validation failed on attempt ${attempt}, asking Claude to try another`,
+            sanitizeLogMeta({
+              attempt,
+              voiceName: config.voiceName,
+              languageCode: config.languageCode,
+            }),
+          );
           messages.push(
             { role: "assistant", content },
-            { role: "user", content: `ERROR: Voice "${config.voiceName}" does not exist in Google TTS. Try a different voice variant (different letter: A, B, C, D, etc.) or type (Wavenet, Neural2, Standard).` }
+            {
+              role: "user",
+              content: `ERROR: Voice "${config.voiceName}" does not exist in Google TTS. Try a different voice variant (different letter: A, B, C, D, etc.) or type (Wavenet, Neural2, Standard).`,
+            },
           );
           continue;
         }
@@ -188,34 +216,40 @@ CRITICAL: The "gender" field you return MUST match the actual gender of the spec
       }
 
       // Voice validation succeeded; configuration is ready
-      logger.info("Valid voice configuration from Claude", sanitizeLogMeta({
-        attempt,
-        voiceName: config.voiceName,
-        languageCode: config.languageCode
-      }));
+      logger.info(
+        "Valid voice configuration from Claude",
+        sanitizeLogMeta({
+          attempt,
+          voiceName: config.voiceName,
+          languageCode: config.languageCode,
+        }),
+      );
 
       return normalizeClaudeConfig(config);
     } catch (err) {
       if (attempt === maxRetries) {
         throw err;
       }
-      logger.warn(`Attempt ${attempt} failed, retrying`, sanitizeLogMeta({
-        error: err instanceof Error ? err.message : String(err)
-      }));
+      logger.warn(
+        `Attempt ${attempt} failed, retrying`,
+        sanitizeLogMeta({
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     }
   }
 
-  throw new Error('Failed to get valid voice config from Claude');
+  throw new Error("Failed to get valid voice config from Claude");
 }
 
 /** Clamps and defaults a Claude-provided voice config into a valid VoiceConfig shape. */
 export function normalizeClaudeConfig(config: Partial<VoiceConfig>) {
   return {
-    gender: config.gender || 'male',
-    languageCode: config.languageCode || 'en-US',
-    voiceName: config.voiceName || '',
-    pitch: typeof config.pitch === 'number' ? Math.max(-20, Math.min(20, config.pitch)) : 0,
-    rate: typeof config.rate === 'number' ? Math.max(0.25, Math.min(4.0, config.rate)) : 1.0,
+    gender: config.gender || "male",
+    languageCode: config.languageCode || "en-US",
+    voiceName: config.voiceName || "",
+    pitch: typeof config.pitch === "number" ? Math.max(-20, Math.min(20, config.pitch)) : 0,
+    rate: typeof config.rate === "number" ? Math.max(0.25, Math.min(4.0, config.rate)) : 1.0,
   };
 }
 
@@ -225,7 +259,7 @@ export function normalizeClaudeConfig(config: Partial<VoiceConfig>) {
  */
 export async function getVoiceConfigForCharacter(
   name: string,
-  genderOverride?: string | null
+  genderOverride?: string | null,
 ): Promise<CharacterVoiceConfig> {
   const normalized = normalizeCharacterName(name);
   const cacheKey = genderOverride ? `${normalized}_${genderOverride}` : normalized;
@@ -258,23 +292,29 @@ export async function getVoiceConfigForCharacter(
       type: detectVoiceType(voiceConfig.voiceName),
     };
 
-    logger.info("Voice config from Claude", sanitizeLogMeta({
-      event: "tts_claude_voice",
-      character: normalized,
-      genderOverride: genderOverride || 'none',
-      voice: config.name,
-      pitch: config.pitch,
-      rate: config.rate,
-      type: config.type
-    }));
+    logger.info(
+      "Voice config from Claude",
+      sanitizeLogMeta({
+        event: "tts_claude_voice",
+        character: normalized,
+        genderOverride: genderOverride || "none",
+        voice: config.name,
+        pitch: config.pitch,
+        rate: config.rate,
+        type: config.type,
+      }),
+    );
   } catch (err) {
     // Use Default voice on error or cache miss
-    logger.warn("Falling back to Default voice", sanitizeLogMeta({
-      event: "tts_fallback_default",
-      error: err instanceof Error ? err.message : String(err)
-    }));
+    logger.warn(
+      "Falling back to Default voice",
+      sanitizeLogMeta({
+        event: "tts_fallback_default",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
 
-    config = CHARACTER_VOICE_MAP['Default'];
+    config = CHARACTER_VOICE_MAP["Default"];
   }
 
   // Cache the configuration and return
@@ -283,14 +323,14 @@ export async function getVoiceConfigForCharacter(
 }
 
 export function mapGenderToSsml(effectiveGender?: string | null) {
-  if (effectiveGender === 'female') return SSML_GENDER.FEMALE;
-  if (effectiveGender === 'neutral') return SSML_GENDER.NEUTRAL;
+  if (effectiveGender === "female") return SSML_GENDER.FEMALE;
+  if (effectiveGender === "neutral") return SSML_GENDER.NEUTRAL;
   return SSML_GENDER.MALE;
 }
 
 export function detectVoiceType(voiceName: string) {
-  if (voiceName.includes('Studio')) return 'Studio';
-  if (voiceName.includes('Wavenet')) return 'Wavenet';
-  if (voiceName.includes('Neural2')) return 'Neural2';
-  return 'Standard';
+  if (voiceName.includes("Studio")) return "Studio";
+  if (voiceName.includes("Wavenet")) return "Wavenet";
+  if (voiceName.includes("Neural2")) return "Neural2";
+  return "Standard";
 }

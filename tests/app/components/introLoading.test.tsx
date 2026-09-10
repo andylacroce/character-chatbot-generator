@@ -37,7 +37,7 @@ const mockBot: Bot = {
     ssmlGender: 1,
     pitch: 0,
     rate: 1.0,
-    type: "Wavenet"
+    type: "Wavenet",
   },
 };
 
@@ -59,7 +59,9 @@ describe("ChatPage intro loading behavior", () => {
 
     mockAuthenticatedFetch.mockImplementation((url: string) => {
       if (url === "/api/chat") {
-        return introPromise.then(() => mockResponse({ reply: "Hello! I'm TestCharacter.", audioFileUrl: null }));
+        return introPromise.then(() =>
+          mockResponse({ reply: "Hello! I'm TestCharacter.", audioFileUrl: null }),
+        );
       }
       return Promise.resolve(mockResponse({ status: "ok" }));
     });
@@ -82,10 +84,13 @@ describe("ChatPage intro loading behavior", () => {
     resolveIntro!(mockResponse({ reply: "Hello! I'm TestCharacter.", audioFileUrl: null }));
 
     // Wait for intro to complete and HOLD to be removed
-    await waitFor(() => {
-      expect(sendButton).toHaveTextContent("Send");
-      expect(sendButton).not.toBeDisabled();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        expect(sendButton).toHaveTextContent("Send");
+        expect(sendButton).not.toBeDisabled();
+      },
+      { timeout: 3000 },
+    );
 
     expect(input).not.toBeDisabled();
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
@@ -93,17 +98,20 @@ describe("ChatPage intro loading behavior", () => {
 
   it("removes HOLD after intro completes", async () => {
     mockAuthenticatedFetch.mockResolvedValue(
-      mockResponse({ reply: "Hello! I'm TestCharacter.", audioFileUrl: null })
+      mockResponse({ reply: "Hello! I'm TestCharacter.", audioFileUrl: null }),
     );
 
     render(<ChatPage bot={mockBot} />);
 
     // Wait for intro to complete
-    await waitFor(() => {
-      const sendButton = screen.getByTestId("chat-send-button");
-      expect(sendButton).toHaveTextContent("Send");
-      expect(sendButton).not.toBeDisabled();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        const sendButton = screen.getByTestId("chat-send-button");
+        expect(sendButton).toHaveTextContent("Send");
+        expect(sendButton).not.toBeDisabled();
+      },
+      { timeout: 3000 },
+    );
 
     const input = screen.getByTestId("chat-input");
     expect(input).not.toBeDisabled();
@@ -115,11 +123,14 @@ describe("ChatPage intro loading behavior", () => {
     render(<ChatPage bot={mockBot} />);
 
     // Wait for intro to fail and HOLD to be removed (though error state will show)
-    await waitFor(() => {
-      const sendButton = screen.getByTestId("chat-send-button");
-      // After intro error, the button should still be enabled/disabled based on apiAvailable
-      // In this case it should show HOLD because apiAvailable might be false after error
-      expect(sendButton).toBeInTheDocument();
-    }, { timeout: 3000 });
+    await waitFor(
+      () => {
+        const sendButton = screen.getByTestId("chat-send-button");
+        // After intro error, the button should still be enabled/disabled based on apiAvailable
+        // In this case it should show HOLD because apiAvailable might be false after error
+        expect(sendButton).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
   });
 });

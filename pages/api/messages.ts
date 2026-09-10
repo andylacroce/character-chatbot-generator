@@ -91,11 +91,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const [botRow] = await db
       .select()
       .from(bots)
-      .where(and(
-        eq(bots.userId, userId),
-        eq(bots.name, sanitizedName),
-        eq(bots.environment, getCurrentEnvironment()),
-      ));
+      .where(
+        and(
+          eq(bots.userId, userId),
+          eq(bots.name, sanitizedName),
+          eq(bots.environment, getCurrentEnvironment()),
+        ),
+      );
     if (!botRow) {
       res.status(200).json({ messages: [] });
       return;

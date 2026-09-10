@@ -16,9 +16,7 @@ const ApiUnavailableModal: React.FC<ApiUnavailableModalProps> = ({ show }) => {
   return (
     <div className={styles.modalBackdrop} data-testid="modal-backdrop">
       <div className={styles.modalError} role="alert" data-testid="api-error-message">
-        <span className={styles.apiErrorTitle}>
-          Bot has vanished from the chat.
-        </span>
+        <span className={styles.apiErrorTitle}>Bot has vanished from the chat.</span>
         <span className={styles.apiErrorDesc}>
           The bot is temporarily unavailable or reloading. Please try again soon.
         </span>

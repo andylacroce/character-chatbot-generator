@@ -12,15 +12,19 @@ const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
     const el = ref?.current;
     if (!el || typeof el.focus !== "function") return;
     if (typeof document !== "undefined" && !document.contains(el)) return;
-      // In test environment focus synchronously so tests that assert document.activeElement work.
-      // In other environments defer to next tick so React's act() can batch updates and avoid warnings.
-      if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "test") {
-        try { el.focus(); } catch {}
-      } else {
-        setTimeout(() => {
-          try { el.focus(); } catch {}
-        }, 0);
-      }
+    // In test environment focus synchronously so tests that assert document.activeElement work.
+    // In other environments defer to next tick so React's act() can batch updates and avoid warnings.
+    if (typeof process !== "undefined" && process.env && process.env.NODE_ENV === "test") {
+      try {
+        el.focus();
+      } catch {}
+    } else {
+      setTimeout(() => {
+        try {
+          el.focus();
+        } catch {}
+      }, 0);
+    }
   } catch {}
 };
 
@@ -49,14 +53,14 @@ export function useChatScrollAndFocus({
       try {
         el.scrollTo({
           top: el.scrollHeight,
-          behavior: 'auto' // Use 'auto' instead of 'smooth' for immediate scroll
+          behavior: "auto", // Use 'auto' instead of 'smooth' for immediate scroll
         });
       } catch {
         // Fallback for older browsers
         el.scrollTop = el.scrollHeight;
       }
     }
-  }, [chatBoxRef]);  // Scroll to bottom when NEW messages are added (not when loading older messages)
+  }, [chatBoxRef]); // Scroll to bottom when NEW messages are added (not when loading older messages)
   useEffect(() => {
     // Always auto-scroll when new messages are added to stay at the bottom of conversation
     // Use setTimeout to ensure the DOM has been updated before scrolling
@@ -64,7 +68,7 @@ export function useChatScrollAndFocus({
     const timeoutId = setTimeout(() => {
       scrollToBottom();
     }, 0);
-    
+
     return () => clearTimeout(timeoutId);
   }, [messages.length, scrollToBottom]); // Use messages.length instead of messages array
 
@@ -82,16 +86,21 @@ export function useChatScrollAndFocus({
         const input = inputRef.current;
         if (isMobile && input && document.activeElement === input) {
           // Use scrollIntoView first (helps some browsers adjust viewport)
-          try { input.scrollIntoView({ block: "end", behavior: "auto" }); } catch {}
+          try {
+            input.scrollIntoView({ block: "end", behavior: "auto" });
+          } catch {}
           // Then force page scroll to bottom as a fallback
-          try { window.scrollTo(0, document.body.scrollHeight); } catch {}
+          try {
+            window.scrollTo(0, document.body.scrollHeight);
+          } catch {}
         }
       } catch {}
     };
     window.addEventListener("resize", handleResize);
 
     // Add visualViewport resize listener for Firefox on Android only
-    const isFirefoxAndroid = typeof navigator !== "undefined" &&
+    const isFirefoxAndroid =
+      typeof navigator !== "undefined" &&
       navigator.userAgent.includes("Firefox") &&
       navigator.userAgent.includes("Android");
     let vvHandler: (() => void) | null = null;
@@ -146,15 +155,23 @@ export function useChatScrollAndFocus({
 
           // Add FF Android class when appropriate (preserve previous behavior)
           if (isFirefoxAndroid) {
-            try { document.body.classList.add("ff-android-input-focus"); } catch {}
+            try {
+              document.body.classList.add("ff-android-input-focus");
+            } catch {}
           }
         }, 120);
       } else if (isFirefoxAndroid) {
         // Non-mobile fallback for the Firefox-on-Android special case
         setTimeout(() => {
-          try { input.scrollIntoView({ block: "end", behavior: "smooth" }); } catch {}
-          try { window.scrollTo(0, document.body.scrollHeight); } catch {}
-          try { document.body.classList.add("ff-android-input-focus"); } catch {}
+          try {
+            input.scrollIntoView({ block: "end", behavior: "smooth" });
+          } catch {}
+          try {
+            window.scrollTo(0, document.body.scrollHeight);
+          } catch {}
+          try {
+            document.body.classList.add("ff-android-input-focus");
+          } catch {}
         }, 100);
       }
     };

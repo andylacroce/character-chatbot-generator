@@ -1,235 +1,235 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from "next";
 
 const mockModelsList = jest.fn();
-jest.mock('../../../src/utils/anthropicClient', () => ({
-    __esModule: true,
-    default: { models: { list: (...args: unknown[]) => mockModelsList(...args) } },
+jest.mock("../../../src/utils/anthropicClient", () => ({
+  __esModule: true,
+  default: { models: { list: (...args: unknown[]) => mockModelsList(...args) } },
 }));
 
 const mockListVoices = jest.fn();
 const mockTtsClientCtor = jest.fn();
-jest.mock('@google-cloud/text-to-speech', () => ({
-    __esModule: true,
-    default: {
-        TextToSpeechClient: function TextToSpeechClientMock(opts: unknown) {
-            mockTtsClientCtor(opts);
-            return { listVoices: (...args: unknown[]) => mockListVoices(...args) };
-        },
+jest.mock("@google-cloud/text-to-speech", () => ({
+  __esModule: true,
+  default: {
+    TextToSpeechClient: function TextToSpeechClientMock(opts: unknown) {
+      mockTtsClientCtor(opts);
+      return { listVoices: (...args: unknown[]) => mockListVoices(...args) };
     },
+  },
 }));
 
 const mockGoogleAuth = jest.fn();
-jest.mock('google-auth-library', () => ({
-    GoogleAuth: function GoogleAuthMock(opts: unknown) {
-        mockGoogleAuth(opts);
-        return { kind: 'auth' };
-    },
+jest.mock("google-auth-library", () => ({
+  GoogleAuth: function GoogleAuthMock(opts: unknown) {
+    mockGoogleAuth(opts);
+    return { kind: "auth" };
+  },
 }));
 
 const mockReadFileSync = jest.fn();
-jest.mock('fs', () => ({
-    __esModule: true,
-    default: { readFileSync: (...args: unknown[]) => mockReadFileSync(...args) },
-    readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
+jest.mock("fs", () => ({
+  __esModule: true,
+  default: { readFileSync: (...args: unknown[]) => mockReadFileSync(...args) },
+  readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
 }));
 
 const mockLogEvent = jest.fn();
-jest.mock('../../../src/utils/logger', () => ({
-    __esModule: true,
-    default: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
-    generateRequestId: () => 'generated-id',
-    logEvent: (...args: unknown[]) => mockLogEvent(...args),
-    sanitizeLogMeta: (m: unknown) => m,
+jest.mock("../../../src/utils/logger", () => ({
+  __esModule: true,
+  default: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+  generateRequestId: () => "generated-id",
+  logEvent: (...args: unknown[]) => mockLogEvent(...args),
+  sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import handler from '../../../pages/api/health';
+import handler from "../../../pages/api/health";
 
 const SERVICE_ACCOUNT = JSON.stringify({
-    client_email: 'test@test.iam.gserviceaccount.com',
-    private_key: 'fake-key',
+  client_email: "test@test.iam.gserviceaccount.com",
+  private_key: "fake-key",
 });
 
 function makeRes() {
-    const res: Partial<NextApiResponse> = {};
-    res.status = jest.fn().mockReturnValue(res as NextApiResponse);
-    res.json = jest.fn().mockReturnValue(res as NextApiResponse);
-    return res as NextApiResponse;
+  const res: Partial<NextApiResponse> = {};
+  res.status = jest.fn().mockReturnValue(res as NextApiResponse);
+  res.json = jest.fn().mockReturnValue(res as NextApiResponse);
+  return res as NextApiResponse;
 }
 
 function makeReq(headers: Record<string, string> = {}) {
-    return { headers } as unknown as NextApiRequest;
+  return { headers } as unknown as NextApiRequest;
 }
 
 function claudeHealthy() {
-    mockModelsList.mockResolvedValueOnce({ data: [{ id: 'claude-haiku-4-5-20251001' }] });
+  mockModelsList.mockResolvedValueOnce({ data: [{ id: "claude-haiku-4-5-20251001" }] });
 }
 
 function ttsHealthy() {
-    mockListVoices.mockResolvedValueOnce([{ voices: [{ name: 'en-GB-Wavenet-D' }] }]);
+  mockListVoices.mockResolvedValueOnce([{ voices: [{ name: "en-GB-Wavenet-D" }] }]);
 }
 
-describe('health API', () => {
-    const OLD_ENV = process.env;
+describe("health API", () => {
+  const OLD_ENV = process.env;
 
-    beforeEach(() => {
-        jest.clearAllMocks();
-        process.env = { ...OLD_ENV, GOOGLE_APPLICATION_CREDENTIALS_JSON: SERVICE_ACCOUNT };
-    });
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env = { ...OLD_ENV, GOOGLE_APPLICATION_CREDENTIALS_JSON: SERVICE_ACCOUNT };
+  });
 
-    afterAll(() => {
-        process.env = OLD_ENV;
-    });
+  afterAll(() => {
+    process.env = OLD_ENV;
+  });
 
-    it('returns 200 when both Claude and TTS respond', async () => {
-        claudeHealthy();
-        ttsHealthy();
-        const res = makeRes();
-        await handler(makeReq(), res);
+  it("returns 200 when both Claude and TTS respond", async () => {
+    claudeHealthy();
+    ttsHealthy();
+    const res = makeRes();
+    await handler(makeReq(), res);
 
-        expect(res.status).toHaveBeenCalledWith(200);
-        expect(res.json).toHaveBeenCalledWith({ status: 'ok', requestId: 'generated-id' });
-    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ status: "ok", requestId: "generated-id" });
+  });
 
-    it('checks Claude via models.list and TTS via listVoices, not a real completion/synthesis', async () => {
-        claudeHealthy();
-        ttsHealthy();
-        await handler(makeReq(), makeRes());
+  it("checks Claude via models.list and TTS via listVoices, not a real completion/synthesis", async () => {
+    claudeHealthy();
+    ttsHealthy();
+    await handler(makeReq(), makeRes());
 
-        expect(mockModelsList).toHaveBeenCalledWith({ limit: 1 });
-        expect(mockListVoices).toHaveBeenCalledWith({ languageCode: 'en-GB' });
-    });
+    expect(mockModelsList).toHaveBeenCalledWith({ limit: 1 });
+    expect(mockListVoices).toHaveBeenCalledWith({ languageCode: "en-GB" });
+  });
 
-    it('echoes a caller-supplied request id', async () => {
-        claudeHealthy();
-        ttsHealthy();
-        const res = makeRes();
-        await handler(makeReq({ 'x-request-id': 'caller-id' }), res);
+  it("echoes a caller-supplied request id", async () => {
+    claudeHealthy();
+    ttsHealthy();
+    const res = makeRes();
+    await handler(makeReq({ "x-request-id": "caller-id" }), res);
 
-        expect(res.json).toHaveBeenCalledWith({ status: 'ok', requestId: 'caller-id' });
-    });
+    expect(res.json).toHaveBeenCalledWith({ status: "ok", requestId: "caller-id" });
+  });
 
-    it('builds an explicit auth client from the service account credentials', async () => {
-        claudeHealthy();
-        ttsHealthy();
-        await handler(makeReq(), makeRes());
+  it("builds an explicit auth client from the service account credentials", async () => {
+    claudeHealthy();
+    ttsHealthy();
+    await handler(makeReq(), makeRes());
 
-        expect(mockGoogleAuth).toHaveBeenCalledWith(
-            expect.objectContaining({
-                credentials: expect.objectContaining({ client_email: 'test@test.iam.gserviceaccount.com' }),
-            }),
-        );
-    });
+    expect(mockGoogleAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credentials: expect.objectContaining({ client_email: "test@test.iam.gserviceaccount.com" }),
+      }),
+    );
+  });
 
-    it('reads credentials from disk when the env var holds a path', async () => {
-        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = '/secrets/sa.json';
-        mockReadFileSync.mockReturnValueOnce(SERVICE_ACCOUNT);
-        claudeHealthy();
-        ttsHealthy();
-        const res = makeRes();
-        await handler(makeReq(), res);
+  it("reads credentials from disk when the env var holds a path", async () => {
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = "/secrets/sa.json";
+    mockReadFileSync.mockReturnValueOnce(SERVICE_ACCOUNT);
+    claudeHealthy();
+    ttsHealthy();
+    const res = makeRes();
+    await handler(makeReq(), res);
 
-        expect(mockReadFileSync).toHaveBeenCalledWith('/secrets/sa.json', 'utf8');
-        expect(res.status).toHaveBeenCalledWith(200);
-    });
+    expect(mockReadFileSync).toHaveBeenCalledWith("/secrets/sa.json", "utf8");
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
 
-    it('falls back to application default credentials when the key material is incomplete', async () => {
-        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = JSON.stringify({ project_id: 'p' });
-        claudeHealthy();
-        ttsHealthy();
-        const res = makeRes();
-        await handler(makeReq(), res);
+  it("falls back to application default credentials when the key material is incomplete", async () => {
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = JSON.stringify({ project_id: "p" });
+    claudeHealthy();
+    ttsHealthy();
+    const res = makeRes();
+    await handler(makeReq(), res);
 
-        expect(mockGoogleAuth).not.toHaveBeenCalled();
-        expect(mockTtsClientCtor).toHaveBeenCalledWith(undefined);
-        expect(mockLogEvent).toHaveBeenCalledWith(
-            'info',
-            'health_tts_adc_fallback',
-            expect.any(String),
-            expect.any(Object),
-        );
-        expect(res.status).toHaveBeenCalledWith(200);
-    });
+    expect(mockGoogleAuth).not.toHaveBeenCalled();
+    expect(mockTtsClientCtor).toHaveBeenCalledWith(undefined);
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      "info",
+      "health_tts_adc_fallback",
+      expect.any(String),
+      expect.any(Object),
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
 
-    it('reports a Claude failure as 500 with the error message', async () => {
-        mockModelsList.mockRejectedValueOnce(new Error('anthropic down'));
-        ttsHealthy();
-        const res = makeRes();
-        await handler(makeReq(), res);
+  it("reports a Claude failure as 500 with the error message", async () => {
+    mockModelsList.mockRejectedValueOnce(new Error("anthropic down"));
+    ttsHealthy();
+    const res = makeRes();
+    await handler(makeReq(), res);
 
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith(
-            expect.objectContaining({
-                status: 'error',
-                claude: { status: 'error', error: 'anthropic down' },
-                tts: { status: 'ok', error: null },
-            }),
-        );
-    });
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "error",
+        claude: { status: "error", error: "anthropic down" },
+        tts: { status: "ok", error: null },
+      }),
+    );
+  });
 
-    it('treats a non-array models.list response as unhealthy', async () => {
-        mockModelsList.mockResolvedValueOnce({ data: undefined });
-        ttsHealthy();
-        const res = makeRes();
-        await handler(makeReq(), res);
+  it("treats a non-array models.list response as unhealthy", async () => {
+    mockModelsList.mockResolvedValueOnce({ data: undefined });
+    ttsHealthy();
+    const res = makeRes();
+    await handler(makeReq(), res);
 
-        expect(res.json).toHaveBeenCalledWith(
-            expect.objectContaining({
-                claude: { status: 'error', error: 'No valid Claude response' },
-            }),
-        );
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        claude: { status: "error", error: "No valid Claude response" },
+      }),
+    );
+  });
 
-    it('reports missing TTS credentials as unhealthy', async () => {
-        delete process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-        claudeHealthy();
-        const res = makeRes();
-        await handler(makeReq(), res);
+  it("reports missing TTS credentials as unhealthy", async () => {
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+    claudeHealthy();
+    const res = makeRes();
+    await handler(makeReq(), res);
 
-        expect(res.status).toHaveBeenCalledWith(500);
-        expect(res.json).toHaveBeenCalledWith(
-            expect.objectContaining({
-                tts: { status: 'error', error: 'Missing GOOGLE_APPLICATION_CREDENTIALS_JSON' },
-            }),
-        );
-    });
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tts: { status: "error", error: "Missing GOOGLE_APPLICATION_CREDENTIALS_JSON" },
+      }),
+    );
+  });
 
-    it('treats an empty voices list as unhealthy', async () => {
-        claudeHealthy();
-        mockListVoices.mockResolvedValueOnce([{ voices: [] }]);
-        const res = makeRes();
-        await handler(makeReq(), res);
+  it("treats an empty voices list as unhealthy", async () => {
+    claudeHealthy();
+    mockListVoices.mockResolvedValueOnce([{ voices: [] }]);
+    const res = makeRes();
+    await handler(makeReq(), res);
 
-        expect(res.json).toHaveBeenCalledWith(
-            expect.objectContaining({
-                tts: { status: 'error', error: 'No voices returned from TTS' },
-            }),
-        );
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tts: { status: "error", error: "No voices returned from TTS" },
+      }),
+    );
+  });
 
-    it('stringifies non-Error throws from both probes', async () => {
-        mockModelsList.mockRejectedValueOnce('claude string throw');
-        mockListVoices.mockRejectedValueOnce('tts string throw');
-        const res = makeRes();
-        await handler(makeReq(), res);
+  it("stringifies non-Error throws from both probes", async () => {
+    mockModelsList.mockRejectedValueOnce("claude string throw");
+    mockListVoices.mockRejectedValueOnce("tts string throw");
+    const res = makeRes();
+    await handler(makeReq(), res);
 
-        expect(res.json).toHaveBeenCalledWith(
-            expect.objectContaining({
-                claude: { status: 'error', error: 'claude string throw' },
-                tts: { status: 'error', error: 'tts string throw' },
-            }),
-        );
-    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        claude: { status: "error", error: "claude string throw" },
+        tts: { status: "error", error: "tts string throw" },
+      }),
+    );
+  });
 
-    it('omits the verbose error logs in production', async () => {
-        const originalNodeEnv = process.env.NODE_ENV;
-        Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', configurable: true });
-        mockModelsList.mockRejectedValueOnce(new Error('anthropic down'));
-        ttsHealthy();
-        await handler(makeReq(), makeRes());
-        Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, configurable: true });
+  it("omits the verbose error logs in production", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    Object.defineProperty(process.env, "NODE_ENV", { value: "production", configurable: true });
+    mockModelsList.mockRejectedValueOnce(new Error("anthropic down"));
+    ttsHealthy();
+    await handler(makeReq(), makeRes());
+    Object.defineProperty(process.env, "NODE_ENV", { value: originalNodeEnv, configurable: true });
 
-        const events = mockLogEvent.mock.calls.map((c) => c[1]);
-        expect(events).not.toContain('health_claude_error');
-        expect(events).toContain('health_claude_failed');
-    });
+    const events = mockLogEvent.mock.calls.map((c) => c[1]);
+    expect(events).not.toContain("health_claude_error");
+    expect(events).toContain("health_claude_failed");
+  });
 });

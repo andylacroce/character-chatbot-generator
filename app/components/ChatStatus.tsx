@@ -18,11 +18,11 @@ interface ChatStatusProps {
 }
 
 const ChatStatus: React.FC<ChatStatusProps> = ({ error, retrying }) => {
-  if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-    logEvent('info', 'chat_status_render', 'ChatStatus component rendered', {
-      event: 'chat_status_render',
+  if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+    logEvent("info", "chat_status_render", "ChatStatus component rendered", {
+      event: "chat_status_render",
       retrying,
-      hasError: !!error
+      hasError: !!error,
     });
   }
   return (
@@ -32,9 +32,9 @@ const ChatStatus: React.FC<ChatStatusProps> = ({ error, retrying }) => {
       role="status"
       aria-live="polite"
     >
-      {(retrying || process.env.NODE_ENV === 'test') && (
+      {(retrying || process.env.NODE_ENV === "test") && (
         <div
-          className={`${styles.retrying} ${retrying ? '' : styles.hidden}`}
+          className={`${styles.retrying} ${retrying ? "" : styles.hidden}`}
           data-testid="retrying-message"
         >
           Retrying connection...
