@@ -1,28 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const mockAnthropicCreate = jest.fn();
+const mockModelsList = jest.fn();
 jest.mock('../../../src/utils/anthropicClient', () => ({
     __esModule: true,
-    default: { messages: { create: (...args: unknown[]) => mockAnthropicCreate(...args) } },
+    default: { models: { list: (...args: unknown[]) => mockModelsList(...args) } },
 }));
 
-const mockSynthesizeSpeech = jest.fn();
+const mockListVoices = jest.fn();
 const mockTtsClientCtor = jest.fn();
 jest.mock('@google-cloud/text-to-speech', () => ({
     __esModule: true,
     default: {
         TextToSpeechClient: function TextToSpeechClientMock(opts: unknown) {
             mockTtsClientCtor(opts);
-            return { synthesizeSpeech: (...args: unknown[]) => mockSynthesizeSpeech(...args) };
-        },
-    },
-    protos: {
-        google: {
-            cloud: {
-                texttospeech: {
-                    v1: { SsmlVoiceGender: { MALE: 1 }, AudioEncoding: { MP3: 2 } },
-                },
-            },
+            return { listVoices: (...args: unknown[]) => mockListVoices(...args) };
         },
     },
 }));
@@ -70,11 +61,11 @@ function makeReq(headers: Record<string, string> = {}) {
 }
 
 function claudeHealthy() {
-    mockAnthropicCreate.mockResolvedValueOnce({ content: [{ type: 'text', text: 'pong' }] });
+    mockModelsList.mockResolvedValueOnce({ data: [{ id: 'claude-haiku-4-5-20251001' }] });
 }
 
 function ttsHealthy() {
-    mockSynthesizeSpeech.mockResolvedValueOnce([{ audioContent: Buffer.from('audio') }]);
+    mockListVoices.mockResolvedValueOnce([{ voices: [{ name: 'en-GB-Wavenet-D' }] }]);
 }
 
 describe('health API', () => {
@@ -97,6 +88,15 @@ describe('health API', () => {
 
         expect(res.status).toHaveBeenCalledWith(200);
         expect(res.json).toHaveBeenCalledWith({ status: 'ok', requestId: 'generated-id' });
+    });
+
+    it('checks Claude via models.list and TTS via listVoices, not a real completion/synthesis', async () => {
+        claudeHealthy();
+        ttsHealthy();
+        await handler(makeReq(), makeRes());
+
+        expect(mockModelsList).toHaveBeenCalledWith({ limit: 1 });
+        expect(mockListVoices).toHaveBeenCalledWith({ languageCode: 'en-GB' });
     });
 
     it('echoes a caller-supplied request id', async () => {
@@ -151,7 +151,7 @@ describe('health API', () => {
     });
 
     it('reports a Claude failure as 500 with the error message', async () => {
-        mockAnthropicCreate.mockRejectedValueOnce(new Error('anthropic down'));
+        mockModelsList.mockRejectedValueOnce(new Error('anthropic down'));
         ttsHealthy();
         const res = makeRes();
         await handler(makeReq(), res);
@@ -166,8 +166,8 @@ describe('health API', () => {
         );
     });
 
-    it('treats a non-text Claude response as unhealthy', async () => {
-        mockAnthropicCreate.mockResolvedValueOnce({ content: [{ type: 'image' }] });
+    it('treats a non-array models.list response as unhealthy', async () => {
+        mockModelsList.mockResolvedValueOnce({ data: undefined });
         ttsHealthy();
         const res = makeRes();
         await handler(makeReq(), res);
@@ -193,22 +193,22 @@ describe('health API', () => {
         );
     });
 
-    it('treats an empty TTS response as unhealthy', async () => {
+    it('treats an empty voices list as unhealthy', async () => {
         claudeHealthy();
-        mockSynthesizeSpeech.mockResolvedValueOnce([{ audioContent: null }]);
+        mockListVoices.mockResolvedValueOnce([{ voices: [] }]);
         const res = makeRes();
         await handler(makeReq(), res);
 
         expect(res.json).toHaveBeenCalledWith(
             expect.objectContaining({
-                tts: { status: 'error', error: 'No audio content from TTS' },
+                tts: { status: 'error', error: 'No voices returned from TTS' },
             }),
         );
     });
 
     it('stringifies non-Error throws from both probes', async () => {
-        mockAnthropicCreate.mockRejectedValueOnce('claude string throw');
-        mockSynthesizeSpeech.mockRejectedValueOnce('tts string throw');
+        mockModelsList.mockRejectedValueOnce('claude string throw');
+        mockListVoices.mockRejectedValueOnce('tts string throw');
         const res = makeRes();
         await handler(makeReq(), res);
 
@@ -223,7 +223,7 @@ describe('health API', () => {
     it('omits the verbose error logs in production', async () => {
         const originalNodeEnv = process.env.NODE_ENV;
         Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', configurable: true });
-        mockAnthropicCreate.mockRejectedValueOnce(new Error('anthropic down'));
+        mockModelsList.mockRejectedValueOnce(new Error('anthropic down'));
         ttsHealthy();
         await handler(makeReq(), makeRes());
         Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, configurable: true });

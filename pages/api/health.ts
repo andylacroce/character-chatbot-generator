@@ -1,9 +1,13 @@
 /**
  * Health check endpoint for Claude (Anthropic) and Google TTS.
- * Returns service status for monitoring/uptime probes.
+ * Returns service status for monitoring/uptime probes. Deliberately checks
+ * reachability/auth only (Claude: list models; TTS: list voices) rather than running
+ * a real completion or synthesizing real audio — this runs on every chat session
+ * mount (see useChatController.ts), so a cheap connectivity check avoids paying
+ * inference/synthesis cost just to answer "is this up."
  */
 
-import textToSpeech, { protos } from "@google-cloud/text-to-speech";
+import textToSpeech from "@google-cloud/text-to-speech";
 import { GoogleAuth } from 'google-auth-library';
 import fs from "fs";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
@@ -20,7 +24,10 @@ import anthropic from "../../src/utils/anthropicClient";
  * /health:
  *   get:
  *     summary: Check Claude and Google TTS service health
- *     description: For uptime/monitoring probes. Always returns JSON, never throws.
+ *     description: >
+ *       For uptime/monitoring probes. Always returns JSON, never throws. Checks
+ *       reachability/auth only — Claude via `models.list`, TTS via `listVoices` —
+ *       not a real completion or real audio synthesis.
  *     tags: [Health]
  *     responses:
  *       200:
@@ -73,13 +80,8 @@ export default async function handler(
   let claudeStatus = "ok";
   let claudeError = null;
   try {
-    const result = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      system: "You are a health check bot.",
-      messages: [{ role: "user", content: "ping" }],
-      max_tokens: 10,
-    });
-    if (!result?.content?.[0] || result.content[0].type !== "text") {
+    const result = await anthropic.models.list({ limit: 1 });
+    if (!Array.isArray(result?.data)) {
       throw new Error("No valid Claude response");
     }
   } catch (err: unknown) {
@@ -118,19 +120,9 @@ export default async function handler(
       logEvent("info", "health_tts_adc_fallback", "Falling back to Application Default Credentials (ADC) for TTS client", sanitizeLogMeta({ requestId }));
       ttsClient = new textToSpeech.TextToSpeechClient();
     }
-    const [response] = await ttsClient.synthesizeSpeech({
-      input: { text: "ping" },
-      voice: {
-        languageCode: "en-GB",
-        name: "en-GB-Wavenet-D",
-        ssmlGender: protos.google.cloud.texttospeech.v1.SsmlVoiceGender.MALE,
-      },
-      audioConfig: {
-        audioEncoding: protos.google.cloud.texttospeech.v1.AudioEncoding.MP3,
-      },
-    });
-    if (!response || !response.audioContent) {
-      throw new Error("No audio content from TTS");
+    const [response] = await ttsClient.listVoices({ languageCode: "en-GB" });
+    if (!response?.voices?.length) {
+      throw new Error("No voices returned from TTS");
     }
   } catch (err: unknown) {
     ttsStatus = "error";
