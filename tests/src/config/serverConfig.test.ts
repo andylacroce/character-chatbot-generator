@@ -7,7 +7,7 @@ jest.mock('../../../src/utils/claudeModelSelector', () => ({
     getClaudeModel: jest.fn(() => 'claude-haiku-4-5-20251001'),
 }));
 
-import { AVATAR_TIMEOUT_MS, RESPONSE_CONSTRAINTS, generatePersonalityPrompt } from '../../../src/config/serverConfig';
+import { AVATAR_TIMEOUT_MS, RESPONSE_CONSTRAINTS, CONTENT_GUIDELINES, generatePersonalityPrompt } from '../../../src/config/serverConfig';
 import { getClaudeModel } from '../../../src/utils/claudeModelSelector';
 
 const fullConfig = {
@@ -42,6 +42,7 @@ describe('serverConfig', () => {
             expect(prompt).toContain('BEHAVIOR: Show impatience with the obvious.');
             expect(prompt).toContain('QUIRKS: Plays violin while thinking.');
             expect(prompt).toContain(RESPONSE_CONSTRAINTS);
+            expect(prompt).toContain(CONTENT_GUIDELINES);
         });
 
         it('uses the cheap text-simple tier for this one-shot JSON task', async () => {
@@ -82,6 +83,7 @@ describe('serverConfig', () => {
 
             expect(prompt).toContain('You are Ada Lovelace. Stay in character');
             expect(prompt).toContain(RESPONSE_CONSTRAINTS);
+            expect(prompt).toContain(CONTENT_GUIDELINES);
         });
 
         it('falls back to the simple template when the API call fails', async () => {

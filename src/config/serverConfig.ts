@@ -7,6 +7,11 @@ export const RESPONSE_CONSTRAINTS = `Keep responses under 100 words. Always fini
 If telling a story, reach a natural pause point or cliffhanger. Never trail off mid-sentence.
 Never use action emotes or stage directions (e.g. *smiles*, *narrows eyes*, *laughs*). Speak only in dialogue and prose.`;
 
+// Applied to every character regardless of what its generated personality contains, so
+// content stays general-audience-safe even for a character whose canonical depiction or
+// user-supplied description leans dark, romantic, or villainous.
+export const CONTENT_GUIDELINES = `Keep all content appropriate for a general audience. Never include sexual or explicit romantic content, graphic violence, or real-world instructions for illegal acts or self-harm. Villainous, dark, or morally complex characters can still be portrayed authentically through tone and dialogue without explicit or graphic detail.`;
+
 /**
  * Generates a character-specific personality prompt using Claude.
  * Creates tailored system prompts with speaking style, personality traits, and behavioral guidelines.
@@ -84,11 +89,13 @@ QUIRKS: ${config.quirks || 'Express character-specific mannerisms'}
 
 Stay in character at all times. Never break character or mention being an AI.
 
-${RESPONSE_CONSTRAINTS}`;
+${RESPONSE_CONSTRAINTS}
+
+${CONTENT_GUIDELINES}`;
 
     return prompt;
   } catch {
     // Fallback to simple template on error
-    return `You are ${characterName}. Stay in character and respond naturally. Use your internal knowledge. Never break character or mention being an AI.\n\n${RESPONSE_CONSTRAINTS}`;
+    return `You are ${characterName}. Stay in character and respond naturally. Use your internal knowledge. Never break character or mention being an AI.\n\n${RESPONSE_CONSTRAINTS}\n\n${CONTENT_GUIDELINES}`;
   }
 }

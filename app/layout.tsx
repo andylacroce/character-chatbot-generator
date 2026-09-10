@@ -30,7 +30,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
         <title>Portrayal</title>
         <meta name="description" content="Create and chat with your own AI-powered characters." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/silhouette.svg" type="image/svg+xml" />
+        <link rel="icon" href="/palette-icon.svg" type="image/svg+xml" />
         {/* Open Graph / Facebook */}
         <meta property="og:title" content="Portrayal" />
         <meta property="og:description" content="Create and chat with your own AI-powered characters." />
