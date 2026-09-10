@@ -1,18 +1,20 @@
 /**
  * API endpoint for generating character avatar images.
- * Uses Claude to build a detailed image prompt, then Gemini image generation on
- * Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI) to render the image.
- * Accepts POST requests with a character name and returns either a durable Vercel Blob
- * URL (when a Blob token is configured) or a base64 data URL (fallback).
+ * Uses Claude to build a detailed image prompt, then renders it on free image
+ * providers only — Cloudflare Workers AI (Flux Schnell) first, falling back to
+ * Pollinations.ai if Cloudflare isn't configured or fails. Accepts POST requests
+ * with a character name and returns either a durable Vercel Blob URL (when a Blob
+ * token is configured) or a base64 data URL (fallback).
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { put } from "@vercel/blob";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
-import fs from "fs";
 import logger, { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
+import { generateImageWithCloudflare } from "../../src/utils/cloudflareImageGen";
+import { generateImageWithPollinations } from "../../src/utils/pollinationsImageGen";
 import { sanitizeCharacterName, sanitizeDescription } from "../../src/utils/security";
 import { extractJson } from "../../src/utils/parseClaudeJson";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
@@ -26,71 +28,6 @@ const avatarRateLimit = createRateLimiter({
   max: 5,
   message: "Too many avatar generation requests from this IP, please try again later.",
 });
-
-/**
- * Loads GCP credentials from env var (raw JSON string in Vercel, file path locally).
- */
-function loadGcpCredentials(): Record<string, unknown> {
-  const raw = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-  if (!raw) throw new Error("Missing GOOGLE_APPLICATION_CREDENTIALS_JSON");
-  if (raw.trim().startsWith("{")) {
-    return JSON.parse(raw);
-  }
-  return JSON.parse(fs.readFileSync(raw, "utf8"));
-}
-
-/**
- * Calls Gemini image generation on Google Cloud's Gemini Enterprise Agent Platform
- * (formerly Vertex AI) to generate an image from a prompt.
- * Returns a base64 data URL string, or null if generation fails.
- */
-async function generateImageWithGemini(
-  prompt: string,
-  credentials: Record<string, unknown>,
-  projectId: string,
-): Promise<string | null> {
-  const { GoogleGenAI } = await import("@google/genai");
-
-  const client = new GoogleGenAI({
-    vertexai: true,
-    project: projectId,
-    // Gemini image models are only served from the "global" endpoint, unlike
-    // the legacy Imagen predict API which used a regional (us-central1) endpoint.
-    location: "global",
-    googleAuthOptions: { credentials },
-  });
-
-  const modelId = getClaudeModel("image").primary;
-
-  logEvent("info", "avatar_gemini_call", "Calling Gemini image generation", sanitizeLogMeta({ model: modelId, prompt: prompt.slice(0, 100) }));
-
-  const response = await client.models.generateContent({
-    model: modelId,
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: {
-      responseModalities: ["IMAGE"],
-      imageConfig: { aspectRatio: "1:1", personGeneration: "ALLOW_ALL" },
-    },
-  });
-
-  const candidate = response.candidates?.[0];
-
-  // Check for safety filtering, either on the prompt or the generated candidate.
-  const blockReason = response.promptFeedback?.blockReason;
-  const finishReason = candidate?.finishReason;
-  const safetyBlocked = Boolean(blockReason) || (typeof finishReason === "string" && /SAFETY|PROHIBITED/i.test(finishReason));
-  if (safetyBlocked) {
-    logEvent("warn", "avatar_gemini_safety_filtered", "Gemini image safety filter triggered", sanitizeLogMeta({ blockReason, finishReason }));
-    return null;
-  }
-
-  const imagePart = candidate?.content?.parts?.find((part) => part.inlineData?.data);
-  const b64 = imagePart?.inlineData?.data;
-  if (!b64) return null;
-
-  const mimeType = imagePart.inlineData?.mimeType || "image/png";
-  return `data:${mimeType};base64,${b64}`;
-}
 
 /**
  * Uploads a base64 data URL image to Vercel Blob and returns its durable public URL.
@@ -129,8 +66,8 @@ function avatarCacheKey(sanitizedName: string): string {
 
 /**
  * Looks up a previously-generated avatar shared across every user (and guests) by
- * character name — Gemini image generation is comparatively expensive, so a name
- * generated once is reused from then on. Returns null on a miss, when no
+ * character name — even a free image provider isn't instant, so a name generated
+ * once is reused from then on. Returns null on a miss, when no
  * DATABASE_URL is configured, or on any DB error — caching is a cost optimization,
  * never a requirement for avatar generation to work.
  */
@@ -152,7 +89,7 @@ async function getCachedAvatar(sanitizedName: string): Promise<{ avatarUrl: stri
 /**
  * Stores a successfully-generated avatar in the shared cache. Never called with the
  * `/silhouette.svg` fallback — caching a failure would permanently deny a name a
- * real portrait even after a transient Gemini outage resolves. Best-effort: a
+ * real portrait even after a transient provider outage resolves. Best-effort: a
  * failure here doesn't fail the request, since the caller already has their avatar.
  * `recognized` (see src/db/schema.ts) is what pages/api/chars.ts's public gallery
  * filters on — false for an original character never belongs on a "characters
@@ -181,16 +118,20 @@ async function cacheAvatar(sanitizedName: string, avatarUrl: string, gender: str
  *   post:
  *     summary: Generate a character avatar image
  *     description: >
- *       Two-stage: Claude writes an SFW image-description prompt, then Gemini
- *       image generation (Google Cloud's Gemini Enterprise Agent Platform) renders
- *       a square PNG. When a Vercel Blob token (VERCEL_BLOB_READ_WRITE_TOKEN or
- *       BLOB_READ_WRITE_TOKEN) is configured, the image is uploaded to Blob and a
- *       durable URL is returned; otherwise (e.g. local dev with no Blob store) it
- *       falls back to a base64 data URL. Rate limited to 5 requests/minute/IP since
- *       image generation is comparatively expensive. Falls back to `/silhouette.svg`
- *       (still a 200 response) on any generation failure, missing
- *       GOOGLE_CLOUD_PROJECT, or a safety filter trigger — it never surfaces a 5xx
- *       for a failed generation.
+ *       Two-stage: Claude writes an SFW image-description prompt, then an image
+ *       model renders a square PNG from it — free providers only. Cloudflare
+ *       Workers AI (Flux Schnell) is tried first when CLOUDFLARE_ACCOUNT_ID and
+ *       CLOUDFLARE_API_TOKEN are configured, falling back to Pollinations.ai (free,
+ *       anonymous, no cap) when Cloudflare isn't configured or fails, including
+ *       exhausting its free daily neuron allocation — no paid image provider, no
+ *       payment method ever required. When a Vercel Blob token
+ *       (VERCEL_BLOB_READ_WRITE_TOKEN or BLOB_READ_WRITE_TOKEN) is configured, the
+ *       image is uploaded to Blob and a durable URL is returned; otherwise (e.g.
+ *       local dev with no Blob store) it falls back to a base64 data URL. Rate
+ *       limited to 5 requests/minute/IP since image generation is comparatively
+ *       expensive. Falls back to `/silhouette.svg` (still a 200 response) only when
+ *       neither provider returns an image — it never surfaces a 5xx for a failed
+ *       generation.
  *     tags: [Character]
  *     requestBody:
  *       required: true
@@ -351,42 +292,43 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       logEvent("info", "avatar_prompt_fallback", "Using fallback image prompt", sanitizeLogMeta({ prompt }));
     }
 
-    // Step 2: Generate image using Gemini image generation
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT;
-    if (!projectId) {
-      logEvent("error", "avatar_missing_project", "Missing GOOGLE_CLOUD_PROJECT env var");
-      res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
-      return;
-    }
-
-    let credentials: Record<string, unknown>;
-    try {
-      credentials = loadGcpCredentials();
-    } catch (credErr) {
-      logEvent("error", "avatar_cred_error", "Failed to load GCP credentials", sanitizeLogMeta({ error: credErr instanceof Error ? credErr.message : String(credErr) }));
-      res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
-      return;
-    }
-
-    logEvent("info", "avatar_gemini_start", "Attempting image generation with Gemini", sanitizeLogMeta({ prompt: prompt.slice(0, 100) }));
-
+    // Step 2: Generate image — free providers only, no paid path in this branch.
+    // Cloudflare Workers AI first (when configured), falling back to Pollinations.ai
+    // if Cloudflare isn't configured or fails — including exhausting its free daily
+    // neuron allocation, which Pollinations has no comparable cap on. Same
+    // degrade-gracefully shape as Blob upload and the avatar cache elsewhere in this
+    // handler: a missing/failing provider never blocks generation outright when
+    // another free path is available.
     let avatarUrl: string | null = null;
+
     try {
-      avatarUrl = await generateImageWithGemini(prompt, credentials, projectId);
+      avatarUrl = await generateImageWithCloudflare(prompt);
       if (avatarUrl) {
-        logEvent("info", "avatar_gemini_success", "Image generated successfully with Gemini");
-        if (!bypassPersistence) {
-          avatarUrl = await persistAvatarToBlob(avatarUrl);
-        }
+        logEvent("info", "avatar_cloudflare_success", "Image generated successfully with Cloudflare Workers AI");
       }
     } catch (err) {
-      logEvent("error", "avatar_gemini_error", "Gemini image generation error", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
+      logEvent("error", "avatar_cloudflare_error", "Cloudflare Workers AI image generation error", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
     }
 
     if (!avatarUrl) {
-      logEvent("warn", "avatar_gemini_failed", "Gemini returned no image, using silhouette");
+      try {
+        avatarUrl = await generateImageWithPollinations(prompt);
+        if (avatarUrl) {
+          logEvent("info", "avatar_pollinations_success", "Image generated successfully with Pollinations.ai");
+        }
+      } catch (err) {
+        logEvent("error", "avatar_pollinations_error", "Pollinations.ai image generation error", sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }));
+      }
+    }
+
+    if (!avatarUrl) {
+      logEvent("warn", "avatar_generation_failed", "No provider returned an image, using silhouette");
       res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
       return;
+    }
+
+    if (!bypassPersistence) {
+      avatarUrl = await persistAvatarToBlob(avatarUrl);
     }
 
     if (!bypassSharedCache) {

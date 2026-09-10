@@ -13,30 +13,6 @@ jest.mock('@anthropic-ai/sdk', () => ({
     __esModule: true
 }));
 
-const mockGenerateContent = jest.fn().mockResolvedValue({
-    candidates: [{
-        content: {
-            parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }]
-        }
-    }]
-});
-
-jest.mock('@google/genai', () => ({
-    GoogleGenAI: jest.fn().mockImplementation(() => ({
-        models: { generateContent: mockGenerateContent }
-    }))
-}));
-
-jest.mock('fs', () => ({
-    ...jest.requireActual('fs'),
-    readFileSync: jest.fn().mockReturnValue(JSON.stringify({
-        type: 'service_account',
-        project_id: 'test-project',
-        client_email: 'test@test.iam.gserviceaccount.com',
-        private_key: 'fake-key'
-    }))
-}));
-
 jest.mock("../../src/utils/claudeModelSelector", () => ({
     getClaudeModel: (type: "text" | "text-simple" | "image") => {
         if (type === "image") return { primary: "gemini-3.1-flash-lite-image" };
@@ -50,31 +26,25 @@ jest.mock('express-rate-limit', () => {
 
 describe('generate-avatar API', () => {
     const OLD_ENV = process.env;
+    let mockFetch: jest.Mock;
 
     beforeEach(() => {
         jest.resetModules();
         jest.clearAllMocks();
         process.env = {
             ...OLD_ENV,
-            GOOGLE_CLOUD_PROJECT: 'test-project',
-            GOOGLE_APPLICATION_CREDENTIALS_JSON: JSON.stringify({
-                type: 'service_account',
-                project_id: 'test-project',
-                client_email: 'test@test.iam.gserviceaccount.com',
-                private_key: 'fake-key'
-            }),
+            CLOUDFLARE_ACCOUNT_ID: 'test-account',
+            CLOUDFLARE_API_TOKEN: 'test-token',
             ANTHROPIC_API_KEY: 'test-key'
         };
         mockAnthropicCreate.mockResolvedValue({
             content: [{ type: "text", text: '{"subject":"tall detective","artStyle":"photorealistic","composition":"headshot","iconicElements":"deerstalker hat","negativePrompts":"no duplicates","gender":"male"}' }]
         });
-        mockGenerateContent.mockResolvedValue({
-            candidates: [{
-                content: {
-                    parts: [{ inlineData: { data: fakeB64, mimeType: 'image/png' } }]
-                }
-            }]
+        mockFetch = jest.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ success: true, result: { image: fakeB64 } }),
         });
+        global.fetch = mockFetch as unknown as typeof fetch;
     });
 
     afterAll(() => {
@@ -127,32 +97,58 @@ describe('generate-avatar API', () => {
         expect(data.gender).toBe('male');
     });
 
-    it('returns silhouette fallback when Gemini returns no image data', async () => {
-        mockGenerateContent.mockResolvedValueOnce({
-            candidates: [{ content: { parts: [] } }]
-        });
+    it('calls Cloudflare Workers AI with the account id and bearer token', async () => {
+        const handler = (await import('../../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
+        await handler(req, res);
+        expect(mockFetch).toHaveBeenCalledWith(
+            'https://api.cloudflare.com/client/v4/accounts/test-account/ai/run/@cf/black-forest-labs/flux-1-schnell',
+            expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ Authorization: 'Bearer test-token' }) })
+        );
+    });
+
+    it('falls back to Pollinations when Cloudflare is not configured', async () => {
+        delete process.env.CLOUDFLARE_ACCOUNT_ID;
+        delete process.env.CLOUDFLARE_API_TOKEN;
+        mockFetch.mockResolvedValue({ ok: true, arrayBuffer: async () => Buffer.from('pollinationsdata') });
+
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
         await handler(req, res);
         expect(res._getStatusCode()).toBe(200);
-        const data = res._getJSONData();
-        expect(data.avatarUrl).toBe('/silhouette.svg');
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('image.pollinations.ai'));
+        expect(res._getJSONData().avatarUrl).toMatch(/^data:image\/png;base64,/);
     });
 
-    it('returns silhouette fallback when Gemini fails with an error', async () => {
-        mockGenerateContent.mockRejectedValueOnce(new Error('Gemini API error'));
+    it('falls back to Pollinations when Cloudflare returns no image data', async () => {
+        mockFetch
+            .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, result: {} }) })
+            .mockResolvedValueOnce({ ok: true, arrayBuffer: async () => Buffer.from('pollinationsdata') });
+
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
         await handler(req, res);
         expect(res._getStatusCode()).toBe(200);
-        const data = res._getJSONData();
-        expect(data.avatarUrl).toBe('/silhouette.svg');
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+        expect(res._getJSONData().avatarUrl).toMatch(/^data:image\/png;base64,/);
     });
 
-    it('returns silhouette fallback when safety filter is triggered', async () => {
-        mockGenerateContent.mockResolvedValueOnce({
-            candidates: [{ finishReason: 'IMAGE_SAFETY', content: { parts: [] } }]
-        });
+    it('falls back to Pollinations when Cloudflare fails with an error', async () => {
+        mockFetch
+            .mockRejectedValueOnce(new Error('Cloudflare API error'))
+            .mockResolvedValueOnce({ ok: true, arrayBuffer: async () => Buffer.from('pollinationsdata') });
+
+        const handler = (await import('../../pages/api/generate-avatar')).default;
+        const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
+        await handler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+        expect(res._getJSONData().avatarUrl).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('returns silhouette fallback when both Cloudflare and Pollinations fail', async () => {
+        mockFetch.mockResolvedValue({ ok: false, status: 500, text: async () => 'error' });
+
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
         await handler(req, res);
@@ -166,20 +162,10 @@ describe('generate-avatar API', () => {
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
         await handler(req, res);
-        // Should still attempt Gemini image generation with fallback prompt
+        // Should still attempt image generation with the fallback prompt
         expect(res._getStatusCode()).toBe(200);
         const data = res._getJSONData();
         expect(data.avatarUrl).toBeTruthy();
-    });
-
-    it('returns silhouette fallback when GOOGLE_CLOUD_PROJECT is missing', async () => {
-        delete process.env.GOOGLE_CLOUD_PROJECT;
-        const handler = (await import('../../pages/api/generate-avatar')).default;
-        const { req, res } = createMocks({ method: 'POST', body: { name: 'Sherlock Holmes' } });
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(200);
-        const data = res._getJSONData();
-        expect(data.avatarUrl).toBe('/silhouette.svg');
     });
 
     it('returns silhouette fallback when ANTHROPIC_API_KEY triggers a top-level error', async () => {
@@ -201,29 +187,15 @@ describe('generate-avatar API', () => {
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Test Character' } });
         await handler(req, res);
         expect(res._getStatusCode()).toBe(200);
-        // Verify Gemini was still called (prompt was trimmed, not aborted)
-        expect(mockGenerateContent).toHaveBeenCalled();
+        // Verify Cloudflare was still called (prompt was trimmed, not aborted)
+        expect(mockFetch).toHaveBeenCalled();
     });
 
-    it('returns silhouette when GCP credentials loading fails with a non-Error value', async () => {
-        // Simulate loadGcpCredentials throwing a non-Error (exercises the String(credErr) branch)
-        const fsModule = require('fs');
-        fsModule.readFileSync.mockImplementationOnce(() => { throw 'raw string cred error'; });
-        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = '';
-        const handler = (await import('../../pages/api/generate-avatar')).default;
-        const { req, res } = createMocks({ method: 'POST', body: { name: 'Test Character' } });
-        await handler(req, res);
-        expect(res._getStatusCode()).toBe(200);
-        expect(res._getJSONData().avatarUrl).toBe('/silhouette.svg');
-        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = JSON.stringify({
-            type: 'service_account', project_id: 'test-project',
-            client_email: 'test@test.iam.gserviceaccount.com', private_key: 'fake-key'
-        });
-    });
-
-    it('covers non-Error Gemini failure branch (uses String(err))', async () => {
-        // Throw a plain string (non-Error) from Gemini to exercise String(err) branch
-        mockGenerateContent.mockRejectedValueOnce('plain string error');
+    it('covers non-Error Cloudflare failure branch (uses String(err))', async () => {
+        // Throw a plain string (non-Error) from Cloudflare's fetch to exercise String(err) branch
+        mockFetch
+            .mockRejectedValueOnce('plain string error')
+            .mockResolvedValueOnce({ ok: false, status: 500, text: async () => 'error' });
         const handler = (await import('../../pages/api/generate-avatar')).default;
         const { req, res } = createMocks({ method: 'POST', body: { name: 'Test Character' } });
         await handler(req, res);
