@@ -1,13 +1,3 @@
-/**
- * ChatStatus component
- *
- * Displays error and retrying status messages in the chat UI.
- * Used for user feedback on API/network errors and retry attempts.
- *
- * @param {ChatStatusProps} props - The component props
- * @returns {JSX.Element} The rendered status area
- */
-
 import React from "react";
 import { logEvent } from "../../src/utils/logger";
 import styles from "./styles/ChatStatus.module.css";
@@ -17,6 +7,7 @@ interface ChatStatusProps {
   retrying?: boolean;
 }
 
+/** Displays error and retrying status messages for API/network failures. */
 const ChatStatus: React.FC<ChatStatusProps> = ({ error, retrying }) => {
   if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
     logEvent("info", "chat_status_render", "ChatStatus component rendered", {

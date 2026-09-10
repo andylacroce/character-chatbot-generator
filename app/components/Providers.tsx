@@ -13,6 +13,7 @@
 import React from "react";
 import { SessionProvider } from "next-auth/react";
 
+/** Client-side context provider wrapper (SessionProvider) for the root layout. */
 const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <SessionProvider>{children}</SessionProvider>;
 };

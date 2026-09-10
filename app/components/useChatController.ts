@@ -1,7 +1,3 @@
-/**
- * Chat controller hook that orchestrates chat state, API calls, audio, and logging for the chat UI.
- * Handles message history, retries, intro generation, transcript export, and audio playback toggling.
- */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSession as useAuthSession } from "next-auth/react";
 import { downloadTranscript } from "../../src/utils/downloadTranscript";
@@ -22,7 +18,7 @@ import { STORAGE_KEYS, chatHistoryKey, lastPlayedAudioHashKey } from "../../src/
 const INITIAL_VISIBLE_COUNT = 20;
 const LOAD_MORE_COUNT = 10;
 
-// Safe focus helper: defer focusing to avoid synchronous DOM updates inside async callbacks
+/** Defers focusing an input to avoid synchronous DOM updates inside async callbacks. */
 const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
   try {
     const el = ref?.current;
@@ -36,6 +32,10 @@ const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
   } catch {}
 };
 
+/**
+ * Chat controller hook that orchestrates chat state, API calls, audio, and logging for the chat
+ * UI. Handles message history, retries, intro generation, transcript export, and audio playback.
+ */
 export function useChatController(bot: Bot, onBackToCharacterCreation?: () => void) {
   const historyKey = chatHistoryKey(bot.name);
 
@@ -500,6 +500,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
   ]);
 
   const sendMessage = useCallback(async () => {
+    /** Retries an async operation with exponential backoff. */
     async function retryWithBackoff<T>(
       fn: () => Promise<T>,
       maxRetries = 2,
@@ -914,6 +915,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     };
   }, [chatBoxRef, inputRef]);
 
+  /** Cheap content hash used to detect whether the latest message actually changed. */
   function getMessageHash(msg: Message) {
     return `${msg.sender}__${msg.text}__${msg.audioFileUrl ?? ""}`;
   }

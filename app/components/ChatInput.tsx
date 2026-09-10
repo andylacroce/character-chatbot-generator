@@ -15,6 +15,7 @@ interface ChatInputProps {
   isAudioPlaying: boolean;
 }
 
+/** Message composer: text field, send button, and the audio on/off/stop controls. */
 const ChatInput: React.FC<ChatInputProps> = ({
   input,
   setInput,

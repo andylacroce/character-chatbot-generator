@@ -52,6 +52,7 @@ function escapesRoot(resolved: string, root: string): boolean {
   return !within(real) && !within(root);
 }
 
+/** Reads back the cached source text (`.txt` sidecar) for a previously-synthesized audio file. */
 function getOriginalTextForAudio(sanitizedFile: string): string | null {
   const txtFile = sanitizedFile.replace(/\.mp3$/, ".txt");
   const txtPathTmp = path.join(os.tmpdir(), txtFile);
@@ -66,6 +67,8 @@ function getOriginalTextForAudio(sanitizedFile: string): string | null {
 }
 
 /**
+ * GET /api/audio handler — see the @swagger block below for the documented contract.
+ *
  * @swagger
  * /audio:
  *   get:

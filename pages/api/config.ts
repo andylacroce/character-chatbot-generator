@@ -6,6 +6,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { AVATAR_TIMEOUT_MS } from "../../src/config/serverConfig";
 
 /**
+ * GET /api/config handler — see the @swagger block below for the documented contract.
+ *
  * @swagger
  * /config:
  *   get:

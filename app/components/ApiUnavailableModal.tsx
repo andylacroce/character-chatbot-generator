@@ -11,6 +11,7 @@ interface ApiUnavailableModalProps {
   show: boolean;
 }
 
+/** Full-screen error modal shown when the API is unreachable or rate-limited. */
 const ApiUnavailableModal: React.FC<ApiUnavailableModalProps> = ({ show }) => {
   if (!show) return null;
   return (

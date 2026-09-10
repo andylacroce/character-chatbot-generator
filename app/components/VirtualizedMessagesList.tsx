@@ -26,6 +26,7 @@ const BOT_LINE_HEIGHT = 34;
 const USER_LINE_HEIGHT = 26;
 const ROW_CHROME = 60; // sender byline + vertical padding + divider
 
+/** Estimates a message row's rendered height from its text length, for react-window placement. */
 function estimateRowHeight(message: VisibleMessage | undefined): number {
   if (!message) return ROW_CHROME + BOT_LINE_HEIGHT;
   const isBot = message.sender !== "User";
@@ -51,6 +52,7 @@ interface RowProps {
 // TS inference gap in List's generic signature under this project's moduleResolution —
 // see that file's comment. That makes every named export `any`, so the row props shape is
 // typed by hand here instead of importing RowComponentProps.
+/** Renders a single virtualized message row at react-window's given index/style. */
 function Row({
   index,
   style,
@@ -65,6 +67,7 @@ function Row({
   );
 }
 
+/** Windowed message list (react-window) used once a conversation crosses VIRTUALIZE_THRESHOLD. */
 const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({
   messages,
   bot,

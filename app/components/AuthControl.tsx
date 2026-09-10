@@ -24,6 +24,7 @@ interface AuthControlProps {
 const PREVIEW_STUB_PROVIDER_ID = "preview-stub";
 const PREVIEW_STUB_TEST_EMAIL = "preview-test@example.com";
 
+/** Sign in / sign out control; renders nothing while the session is loading. */
 const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
   const { data: session, status } = useSession();
   const [providerIds, setProviderIds] = useState<string[] | null>(null);

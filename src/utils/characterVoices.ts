@@ -48,6 +48,7 @@ export const CHARACTER_VOICE_MAP: Record<string, CharacterVoiceConfig> = {
   },
 };
 
+/** Normalizes a character name into a stable lookup key for the voice maps/cache. */
 function normalizeCharacterName(name: string): string {
   return name
     .trim()
@@ -322,12 +323,14 @@ export async function getVoiceConfigForCharacter(
   return config;
 }
 
+/** Maps a character's effective gender to the Google TTS SSML gender enum. */
 export function mapGenderToSsml(effectiveGender?: string | null) {
   if (effectiveGender === "female") return SSML_GENDER.FEMALE;
   if (effectiveGender === "neutral") return SSML_GENDER.NEUTRAL;
   return SSML_GENDER.MALE;
 }
 
+/** Infers the Google TTS voice tier (Studio/Wavenet/Neural2/Standard) from a voice name. */
 export function detectVoiceType(voiceName: string) {
   if (voiceName.includes("Studio")) return "Studio";
   if (voiceName.includes("Wavenet")) return "Wavenet";

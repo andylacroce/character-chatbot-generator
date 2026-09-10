@@ -28,6 +28,7 @@ function toDisplayName(name: string): string {
   return name.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** Parses a query-string integer param, falling back when absent/invalid/negative. */
 function parseIntParam(value: unknown, fallback: number): number {
   const n = typeof value === "string" ? parseInt(value, 10) : NaN;
   return Number.isFinite(n) && n >= 0 ? n : fallback;
@@ -52,6 +53,7 @@ interface CharacterEntry {
 const CACHE_TTL_MS = 60_000;
 let cache: { entries: CharacterEntry[]; fetchedAt: number } | null = null;
 
+/** Returns every recognized character's name/avatar, backed by the module-level TTL cache above. */
 async function getAllCharacters(): Promise<CharacterEntry[]> {
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
     return cache.entries;

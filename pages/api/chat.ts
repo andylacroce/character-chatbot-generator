@@ -41,14 +41,11 @@ const chatRateLimit = createRateLimiter({
   message: "Too many chat requests from this IP, please try again later.",
 });
 
-/**
- * Periodic cleanup of audio files from /tmp to prevent disk bloat.
- * Runs every CLEANUP_INTERVAL requests.
- */
 let requestCount = 0;
 const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
 const AUDIO_FILE_MAX_AGE = 24 * 60 * 60 * 1000; // Delete audio files older than 24 hours
 
+/** Periodic cleanup of audio files from /tmp to prevent disk bloat; runs every CLEANUP_INTERVAL requests. */
 function cleanupOldAudioFiles() {
   try {
     const tmpDir = os.tmpdir();
@@ -100,6 +97,7 @@ function stableStringify(obj: unknown): string {
   );
 }
 
+/** Stable hash key for the audio cache, derived from the reply text and voice config. */
 function getAudioCacheKey(text: string, voiceConfig: object) {
   return crypto
     .createHash("sha256")

@@ -14,6 +14,7 @@ interface CharacterInfoModalProps {
   onClose: () => void;
 }
 
+/** Modal explaining which characters are allowed to be created. */
 const CharacterInfoModal: React.FC<CharacterInfoModalProps> = ({ show, onClose }) => (
   <DisclaimerStyleModal
     show={show}

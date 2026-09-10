@@ -6,7 +6,7 @@
 
 import { authenticatedFetch } from "../../src/utils/api";
 
-// API utility to fetch voice config for a character from the backend
+/** Fetches (or triggers generation of) a character's voice config from the backend. */
 export async function api_getVoiceConfigForCharacter(
   name: string,
   gender?: string | null,

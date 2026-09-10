@@ -67,6 +67,7 @@ function formatRelativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
+/** Landing-page list of a signed-in user's saved characters, offered above the sign-in row. */
 const ResumeBotDropdown: React.FC<ResumeBotDropdownProps> = ({ onSelect }) => {
   const { status } = useSession();
   const [bots, setBots] = useState<PersistedBot[] | null>(null);

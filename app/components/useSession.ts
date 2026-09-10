@@ -1,32 +1,25 @@
-// =============================
-// useSession.ts
-// Custom React hook for managing user session state (if applicable).
-// Used for session persistence and user context in the app.
-// =============================
-
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import storage from "../../src/utils/storage";
 import { STORAGE_KEYS } from "../../src/utils/storageKeys";
 
-/**
- * Custom hook to manage session ID and session datetime for chat sessions.
- * Returns [sessionId, sessionDatetime].
- */
-// Test hook: override in tests by replacing `_isBrowser` to simulate SSR/browser
+/** Test hook: override via setIsBrowserForTests to simulate SSR/browser. */
 export let _isBrowser = () => typeof window !== "undefined";
+/** Whether code is running in a browser (vs. SSR). */
 export function isBrowser() {
   return _isBrowser();
 }
 
-// Test helpers: allow tests to override the browser detection function deterministically
+/** Overrides the browser-detection function deterministically in tests. */
 export function setIsBrowserForTests(fn: () => boolean) {
   _isBrowser = fn;
 }
+/** Restores the real browser-detection function after a test. */
 export function resetIsBrowserForTests() {
   _isBrowser = () => typeof window !== "undefined";
 }
 
+/** Generates and returns `[sessionId, sessionDatetime]` for the current chat session. */
 export function useSession(): [string, string] {
   const [sessionId, setSessionId] = useState("");
   const [sessionDatetime, setSessionDatetime] = useState("");

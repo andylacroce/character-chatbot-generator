@@ -20,6 +20,7 @@ interface DisclaimerStyleModalProps {
   children: React.ReactNode;
 }
 
+/** Shared backdrop/box/close-button/title shell for the small lightbox-style modals. */
 const DisclaimerStyleModal: React.FC<DisclaimerStyleModalProps> = ({
   show,
   onClose,

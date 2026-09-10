@@ -17,6 +17,7 @@ interface ModalImageViewerProps {
   onClose: () => void;
 }
 
+/** Full-screen lightbox for viewing an enlarged image (e.g. a character avatar). */
 const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt, onClose }) => {
   if (!show) return null;
   return (

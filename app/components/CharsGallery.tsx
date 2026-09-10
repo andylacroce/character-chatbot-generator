@@ -61,6 +61,7 @@ function supportsViewTransitions(): boolean {
   return typeof document !== "undefined" && "startViewTransition" in document;
 }
 
+/** One polaroid-style tile in the corkboard gallery; reveals itself on scroll. */
 const CharTile: React.FC<{ entry: CharEntry; onOpen: (entry: CharEntry) => void }> = ({
   entry,
   onOpen,
@@ -117,6 +118,7 @@ const CharTile: React.FC<{ entry: CharEntry; onOpen: (entry: CharEntry) => void 
   );
 };
 
+/** Public /chars gallery: paginated, infinite-scroll corkboard of every recognized character portrait. */
 const CharsGallery: React.FC = () => {
   const [characters, setCharacters] = useState<CharEntry[]>([]);
   const [initialLoad, setInitialLoad] = useState(true);

@@ -13,6 +13,7 @@ interface DisclaimerModalProps {
   onClose: () => void;
 }
 
+/** Modal showing the full legal disclaimer text. */
 const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ show, onClose }) => (
   <DisclaimerStyleModal
     show={show}

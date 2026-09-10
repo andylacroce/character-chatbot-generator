@@ -37,8 +37,10 @@ const createBrowserLogger = (): LoggerInstance => {
 /** Initialize logger instance */
 let loggerInstance: LoggerInstance = createBrowserLogger();
 
-// Only attempt to load Winston on actual server runtime, never during build/SSR
-// Use a function-based check that can't be statically analyzed by bundlers
+/**
+ * Loads Winston on actual server runtime only, never during build/SSR — uses a
+ * function-based check that can't be statically analyzed by bundlers.
+ */
 const initializeServerLogger = () => {
   try {
     // Check if window is undefined at runtime (not at build time)
@@ -152,6 +154,7 @@ function serializeError(err: unknown): unknown {
   return err;
 }
 
+/** Recursively serializes a log-meta object, expanding any Error values via serializeError. */
 function serializeMeta(meta: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(meta)) {

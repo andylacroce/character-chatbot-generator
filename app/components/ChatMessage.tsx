@@ -35,7 +35,7 @@ interface ChatMessageProps {
  * This component handles the styling and formatting of messages based on the sender.
  *
  * @function
- * @param {Object} props - The component props
+ * @param {object} props - The component props
  * @param {Message} props.message - The message object containing text and sender information
  * @param {Bot} props.bot - The bot object containing name and avatarUrl for assistant messages
  * @returns {JSX.Element|null} The rendered chat message or null if message is invalid

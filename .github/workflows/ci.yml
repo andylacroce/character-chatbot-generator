@@ -39,8 +39,17 @@ jobs:
       - name: Lint (fail on warnings)
         run: npm run lint -- --max-warnings=0
 
+      - name: Lint markdown
+        run: npm run lint:md
+
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Type check
         run: npm run type-check
+
+      - name: Build code reference (TypeDoc)
+        run: npm run docs:code
 
       - name: Run tests with coverage
         run: npm run test:coverage

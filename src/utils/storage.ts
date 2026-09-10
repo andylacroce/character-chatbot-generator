@@ -5,6 +5,7 @@
 
 const memoryFallback = new Map<string, string>();
 
+/** Whether localStorage exists and is usable in the current environment. */
 function storageAvailable(): boolean {
   try {
     return typeof localStorage !== "undefined" && !!localStorage;
@@ -13,6 +14,7 @@ function storageAvailable(): boolean {
   }
 }
 
+/** Writes a value to localStorage, falling back to an in-memory Map if unavailable. */
 export function setItem(key: string, value: string) {
   try {
     if (storageAvailable()) {
@@ -25,6 +27,7 @@ export function setItem(key: string, value: string) {
   memoryFallback.set(key, value);
 }
 
+/** Reads a value from localStorage, falling back to the in-memory Map if unavailable. */
 export function getItem(key: string): string | null {
   try {
     if (storageAvailable()) return localStorage.getItem(key);
@@ -34,6 +37,7 @@ export function getItem(key: string): string | null {
   return memoryFallback.has(key) ? (memoryFallback.get(key) as string) : null;
 }
 
+/** Removes a value from localStorage, falling back to the in-memory Map if unavailable. */
 export function removeItem(key: string) {
   try {
     if (storageAvailable()) {
@@ -46,6 +50,7 @@ export function removeItem(key: string) {
   memoryFallback.delete(key);
 }
 
+/** JSON.stringify's a value and stores it, silently ignoring stringify errors. */
 export function setJSON(key: string, obj: unknown) {
   try {
     setItem(key, JSON.stringify(obj));
@@ -54,6 +59,7 @@ export function setJSON(key: string, obj: unknown) {
   }
 }
 
+/** Reads and JSON.parse's a stored value, returning null if missing or invalid. */
 export function getJSON<T = unknown>(key: string): T | null {
   const raw = getItem(key);
   if (!raw) return null;
@@ -64,6 +70,7 @@ export function getJSON<T = unknown>(key: string): T | null {
   }
 }
 
+/** Clears the in-memory fallback store; used to reset state between tests. */
 export function clearMemoryFallback() {
   memoryFallback.clear();
 }

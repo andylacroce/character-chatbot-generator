@@ -12,6 +12,8 @@ const recentNames: string[] = [];
 const MAX_RECENT_NAMES = 100;
 
 /**
+ * GET /api/random-character handler — see the @swagger block below for the documented contract.
+ *
  * @swagger
  * /random-character:
  *   get:

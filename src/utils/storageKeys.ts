@@ -19,14 +19,17 @@ export const STORAGE_KEY_PREFIXES = {
   lastPlayedAudioHash: "lastPlayedAudioHash-",
 } as const;
 
+/** Per-character localStorage key for a bot's chat history. */
 export function chatHistoryKey(botName: string): string {
   return `${STORAGE_KEY_PREFIXES.chatHistory}${botName}`;
 }
 
+/** Per-character localStorage key for a bot's voice config. */
 export function voiceConfigKey(botName: string): string {
   return `${STORAGE_KEY_PREFIXES.voiceConfig}${botName}`;
 }
 
+/** Per-character localStorage key for the last-played audio hash (dedupe on reload). */
 export function lastPlayedAudioHashKey(botName: string): string {
   return `${STORAGE_KEY_PREFIXES.lastPlayedAudioHash}${botName}`;
 }

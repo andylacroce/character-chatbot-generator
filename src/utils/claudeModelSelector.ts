@@ -11,6 +11,7 @@
  * pollinationsImageGen.ts.
  */
 
+/** Returns the Claude model id to use for a given call-site tier (see module doc above). */
 export function getClaudeModel(type: "text"): string;
 export function getClaudeModel(type: "text-simple"): string;
 export function getClaudeModel(type: "text" | "text-simple"): string {

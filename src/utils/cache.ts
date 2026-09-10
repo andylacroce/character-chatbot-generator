@@ -5,6 +5,7 @@
 
 import fs from "fs";
 
+/** Whether this process is running on Vercel (file persistence is skipped there). */
 function isVercelEnv() {
   return !!process.env.VERCEL_ENV;
 }
@@ -20,6 +21,7 @@ interface CacheEntry {
 
 const memoryCache: Map<string, CacheEntry> = new Map();
 
+/** Loads the persisted cache file into a Map, returning an empty Map if none exists or it's invalid. */
 function loadCacheFromFile(): Map<string, CacheEntry> {
   if (fs.existsSync(CACHE_FILE)) {
     try {
@@ -38,6 +40,7 @@ function loadCacheFromFile(): Map<string, CacheEntry> {
   return new Map();
 }
 
+/** Persists the cache Map to disk as JSON, best-effort (silently no-ops on failure). */
 function saveCacheToFile(cache: Map<string, CacheEntry>) {
   try {
     // Serialize Map to plain object for JSON persistence
@@ -49,6 +52,7 @@ function saveCacheToFile(cache: Map<string, CacheEntry>) {
   } catch {}
 }
 
+/** Drops expired entries and enforces MAX_CACHE_SIZE via LRU eviction. */
 function cleanupExpiredEntries(cache: Map<string, CacheEntry>): Map<string, CacheEntry> {
   const now = Date.now();
   const cleaned = new Map<string, CacheEntry>();

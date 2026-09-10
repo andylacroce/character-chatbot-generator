@@ -9,6 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/authOptions";
 
+/** Resolves the signed-in user's id for this request, or null for a guest (see module doc above). */
 export async function getSessionUserId(
   req: NextApiRequest,
   res: NextApiResponse,

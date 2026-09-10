@@ -14,6 +14,7 @@ interface DarkModeToggleProps {
   hideLabel?: boolean;
 }
 
+/** Button that toggles dark mode via DarkModeContext. */
 const DarkModeToggle: React.FC<DarkModeToggleProps> = ({ className = "", hideLabel = false }) => {
   const { darkMode, setDarkMode } = useContext(DarkModeContext);
   return (

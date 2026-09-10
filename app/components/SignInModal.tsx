@@ -17,6 +17,7 @@ interface SignInModalProps {
   onClose: () => void;
 }
 
+/** Sign-in lightbox triggered from AuthControl's "Sign in" button. */
 const SignInModal: React.FC<SignInModalProps> = ({ show, onClose }) => (
   <DisclaimerStyleModal
     show={show}

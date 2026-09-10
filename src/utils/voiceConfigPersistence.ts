@@ -1,9 +1,14 @@
+/**
+ * Persists a character's voice config to both localStorage (primary) and a cookie
+ * (fallback, for environments where localStorage is unavailable or cleared).
+ */
 import storage from "./storage";
 import type { CharacterVoiceConfig } from "./characterVoices";
 import { voiceConfigKey } from "./storageKeys";
 
 const VOICE_CONFIG_VERSION = 1;
 
+/** Whether `document.cookie` is available in the current environment. */
 function canUseDocument(): boolean {
   try {
     return typeof document !== "undefined" && typeof document.cookie === "string";
@@ -12,6 +17,7 @@ function canUseDocument(): boolean {
   }
 }
 
+/** Reads a single cookie value by name, or null if absent/unavailable. */
 function getCookie(name: string): string | null {
   if (!canUseDocument()) return null;
   try {
@@ -28,6 +34,7 @@ function getCookie(name: string): string | null {
   return null;
 }
 
+/** Writes a cookie, best-effort (silently no-ops on failure or when unavailable). */
 function setCookie(name: string, value: string, days = 7) {
   if (!canUseDocument()) return;
   try {
@@ -38,6 +45,7 @@ function setCookie(name: string, value: string, days = 7) {
   }
 }
 
+/** Base64-encodes a versioned payload for cookie storage. */
 function encodePayload(payload: unknown): string | null {
   try {
     const json = JSON.stringify({ v: VOICE_CONFIG_VERSION, payload });
@@ -47,6 +55,7 @@ function encodePayload(payload: unknown): string | null {
   }
 }
 
+/** Decodes and validates a cookie-stored voice config payload, or null if invalid/absent. */
 function decodePayload(raw: string | null): CharacterVoiceConfig | null {
   if (!raw) return null;
   try {
@@ -61,6 +70,7 @@ function decodePayload(raw: string | null): CharacterVoiceConfig | null {
   return null;
 }
 
+/** Loads a character's voice config, preferring localStorage and falling back to the cookie. */
 export function loadVoiceConfig(botName: string): CharacterVoiceConfig | null {
   if (!botName) return null;
   try {
@@ -79,6 +89,7 @@ export function loadVoiceConfig(botName: string): CharacterVoiceConfig | null {
   return null;
 }
 
+/** Saves a character's voice config to both localStorage and the cookie fallback. */
 export function persistVoiceConfig(botName: string, config: CharacterVoiceConfig) {
   if (!botName || !config) return;
   try {
@@ -88,6 +99,7 @@ export function persistVoiceConfig(botName: string, config: CharacterVoiceConfig
   if (encoded) setCookie(voiceConfigKey(botName), encoded, 14);
 }
 
+/** Removes a character's voice config from both localStorage and the cookie fallback. */
 export function clearVoiceConfig(botName: string) {
   if (!botName) return;
   try {

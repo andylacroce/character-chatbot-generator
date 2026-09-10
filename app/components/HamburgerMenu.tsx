@@ -1,20 +1,3 @@
-/**
- * HamburgerMenu component
- *
- * Accessible hamburger menu for mobile/desktop navigation.
- * Renders a button and dropdown for menu actions, with keyboard and focus support.
- * Enhances child buttons to close the menu on click.
- *
- * @param {HamburgerMenuProps} props - The component props
- * @returns {JSX.Element} The rendered hamburger menu
- */
-
-// =============================
-// HamburgerMenu.tsx
-// Accessible hamburger menu component for mobile and desktop navigation.
-// Renders a button and dropdown for menu actions, with keyboard and focus support.
-// =============================
-
 import React, { useState, useRef, useEffect } from "react";
 import { flushSync } from "react-dom";
 import styles from "./styles/HamburgerMenu.module.css";
@@ -23,12 +6,18 @@ interface HamburgerMenuProps {
   children: React.ReactNode;
 }
 
+/**
+ * Accessible hamburger menu for mobile/desktop navigation. Renders a button and
+ * dropdown for menu actions, with keyboard and focus support, and enhances
+ * child buttons to close the menu on click.
+ */
 const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
+    /** Closes the menu on any mousedown outside its wrapper. */
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setOpen(false);
@@ -40,7 +29,7 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children }) => {
     };
   }, [open]);
 
-  // Keyboard accessibility: open/close with Enter/Space, close with Escape
+  /** Keyboard accessibility: open/close with Enter/Space, close with Escape. */
   function handleButtonKeyDown(e: React.KeyboardEvent<HTMLButtonElement>) {
     if (e.key === "Enter" || e.key === " ") {
       setOpen((v) => !v);

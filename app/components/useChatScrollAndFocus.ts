@@ -1,12 +1,6 @@
-// =============================
-// useChatScrollAndFocus.ts
-// Custom React hook for managing scroll and input focus in the chat UI.
-// Ensures new messages are visible and input is focused appropriately.
-// =============================
-
 import { useEffect, useCallback } from "react";
 
-// Safe focus helper: defer focusing to avoid synchronous DOM updates inside async callbacks
+/** Defers focusing an input to avoid synchronous DOM updates inside async callbacks. */
 const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
   try {
     const el = ref?.current;
@@ -28,12 +22,7 @@ const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
   } catch {}
 };
 
-/**
- * Custom hook to handle chat scroll and input focus logic for the chat page.
- * @param chatBoxRef - Ref to the chat messages container
- * @param inputRef - Ref to the chat input field
- * @param messages - Array of chat messages
- */
+/** Auto-scrolls the chat container to the latest message and manages input focus. */
 export function useChatScrollAndFocus({
   chatBoxRef,
   inputRef,

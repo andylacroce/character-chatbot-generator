@@ -8,16 +8,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm install              # install deps (also runs scripts/fix-express-tsconfig.cjs via postinstall)
 npm run dev               # next dev --turbopack
 npm run build              # production build
-npm run lint                # eslint . --ext .js,.jsx,.ts,.tsx
+npm run lint                # eslint . --ext .js,.jsx,.ts,.tsx (includes the jsdoc rules — see "Code documentation standard" below)
 npm run lint:fix
 npm run lint:md              # markdownlint over **/*.md
-npm run type-check            # tsc --noEmit
-npm run test                   # jest
+npm run format                # prettier --write . (excludes *.md — markdownlint owns that)
+npm run format:check           # prettier --check .
+npm run type-check               # tsc --noEmit
+npm run docs:code                 # typedoc -> docs-generated/ (gitignored); regenerate on demand, see "Code documentation standard" below
+npm run test                       # jest
 npm run test:watch
-npm run test:coverage           # jest --coverage (enforces 80% global threshold — see jest.config.cjs)
-npm run analyze                  # ANALYZE=true next build (bundle analysis)
-npm run docs:api                  # regenerate public/openapi.json from @swagger JSDoc comments; runs automatically before dev/build
-npm run ci                        # lint --max-warnings=0 && lint:md && type-check && test:coverage && build — run this before considering work done
+npm run test:coverage               # jest --coverage (enforces 80% global threshold — see jest.config.cjs)
+npm run analyze                      # ANALYZE=true next build (bundle analysis)
+npm run docs:api                      # regenerate public/openapi.json from @swagger JSDoc comments; runs automatically before dev/build
+npm run ci                             # lint --max-warnings=0 && lint:md && format:check && type-check && docs:code && test:coverage && build — run this before considering work done
 ```
 
 Run a single test file: `npx jest tests/api/chat.test.ts`
@@ -125,6 +128,15 @@ The app is migrating toward optional user accounts with server-persisted bots/ch
 ### API documentation
 
 Every `pages/api/*.ts` handler carries a `@swagger` JSDoc block (OpenAPI 3.0). `npm run docs:api` (`scripts/generate-openapi.cjs`, via `swagger-jsdoc`) reads those comments and writes `public/openapi.json` — a gitignored, build-time artifact, not something to hand-edit or commit. It runs automatically before `dev`/`build`/`vercel-build`; run it directly after touching a route's annotations. `app/reference/route.ts` serves the interactive UI (`@scalar/nextjs-api-reference`) at `/reference`, reading that same static file — deliberately not scanning route source at request time, since Vercel's serverless bundler doesn't reliably ship raw `.ts` alongside compiled output. The route lives outside `pages/api`, so it isn't subject to `proxy.ts` auth. `swagger-jsdoc`'s glob resolution doesn't match backslash-separated paths, so the script normalizes to forward slashes before passing them in — same class of Windows/POSIX path bug as elsewhere in this repo; keep that in mind if `docs:api` starts reporting 0 documented paths locally.
+
+### Code documentation standard
+
+Distinct from the inline "why" comments described in the global `~/.claude/CLAUDE.md` (default to none; only add one when the reasoning is non-obvious) — this section covers a separate layer: a one-line `/** ... */` JSDoc summary on every top-level exported function, React component, and hook, so the codebase's public API surface is discoverable on its own, independent of any single call site's context.
+
+- **What's required:** a `/**...*/` block with a real summary sentence, placed immediately above the declaration (a blank line, or another statement, in between breaks the association and the linter won't see it). Not required: exhaustive `@param`/`@returns` prose — types and destructured names in the signature already say that; don't duplicate it. `@param`/`@returns` tags are fine to add when genuinely useful (e.g. a non-obvious return contract) but aren't mechanically enforced.
+- **Where it's enforced:** `eslint.config.cjs`'s `eslint-plugin-jsdoc` block, scoped to `app/components/**/*.{ts,tsx}`, `src/**/*.ts`, and `pages/api/**/*.ts` (tests and `.d.ts` files excluded). It requires a doc block on every top-level `function`/arrow-const/hook in those directories (via `jsdoc/require-jsdoc`'s `contexts`, matched by AST position — `Program > ...` — not by export syntax, so both `export const Foo = () => {}` and the `const Foo = () => {}; export default Foo` pattern common in `app/components` are covered) and validates JSDoc syntax itself (`flat/recommended-typescript-flavor`) wherever a block already exists. Runs as part of `npm run lint`, which `npm run ci` gates on with `--max-warnings=0` — a missing or malformed doc block fails CI the same way a lint error would. `@swagger` (this repo's OpenAPI annotation, see above) and `@google-cloud` are allow-listed via `check-tag-names`' `definedTags` rather than flagged as unknown tags.
+- **Where it's exported to:** `npm run docs:code` runs TypeDoc (config: `typedoc.json`) over the same three directories and writes a browsable HTML reference to `docs-generated/` — gitignored, regenerated on demand (same "build artifact, not hand-edited or committed" treatment as `public/openapi.json` above). It's also wired into `npm run ci` (and the GitHub Actions `ci.yml` workflow) as its own step: TypeDoc fails the build on a real generation error, which is a second, independent check on the same comments beyond ESLint's syntax validation. `typedoc.json`'s `blockTags` list is the full TypeDoc default plus `@swagger` — omitting `@swagger` there makes TypeDoc warn on the OpenAPI blocks even though ESLint's `check-tag-names` already allows it, since the two tools maintain separate tag allowlists.
+- **Nested/inline functions are not required to carry a doc block** — the ESLint contexts intentionally match only top-level declarations, not callbacks or helpers defined inside a component/hook body. (One partial exception: `eslint-plugin-jsdoc`'s own default behavior additionally requires a doc block on any `function`-keyword declaration anywhere, including nested ones — arrow-function helpers nested inside a component/hook are unaffected.) Don't over-apply the standard by documenting every inner helper; that's exactly the "explaining what, not why" pattern the global inline-comment preference already warns against.
 
 ### Module system (do not regress)
 

@@ -68,6 +68,7 @@ const progressSteps = [
   },
 ];
 
+/** Landing-page character creation form: name entry, random pick, and the Character Wall CTA. */
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreator = false }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();

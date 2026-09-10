@@ -8,6 +8,7 @@ import type { CharacterValidationResult } from "../../pages/api/validate-charact
 
 type ProgressStep = "personality" | "avatar" | "voice" | null;
 
+/** Drives BotCreator's full character-creation flow: validation, generation progress, and cancellation. */
 export function useBotCreation(onBotCreated: (bot: Bot) => void) {
   const [input, setInput] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -38,6 +39,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
   const pendingDescriptionRef = useRef<string>("");
   const pendingAppearanceRef = useRef<string>("");
 
+  /** Picks a random character name via /api/random-character, falling back to a fixed default. */
   async function getRandomCharacterName(): Promise<string> {
     try {
       const res = await authenticatedFetch(`/api/random-character`);
@@ -59,6 +61,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     }
   }
 
+  /** Calls /api/validate-character for copyright/abuse/recognized-name classification. */
   async function validateCharacterName(name: string): Promise<CharacterValidationResult> {
     try {
       const res = await authenticatedFetch("/api/validate-character", {
@@ -445,7 +448,11 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
   };
 }
 
-// Top-level exported implementation so it can be unit tested independently of the hook
+/**
+ * Runs the personality/avatar/voice generation pipeline for a character, reporting progress
+ * and honoring cancellation. Exported at module scope (not defined inside the hook) so it can
+ * be unit tested independently.
+ */
 export async function generateBotDataWithProgressCancelable(
   originalInputName: string,
   onProgress: (step: ProgressStep) => void,
