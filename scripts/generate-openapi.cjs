@@ -41,8 +41,9 @@ const spec = swaggerJsdoc({
     security: [{ ApiKeyAuth: [] }],
   },
   // swagger-jsdoc's glob resolution doesn't match backslash-separated paths, so
-  // force forward slashes regardless of platform.
-  apis: [path.join(__dirname, "..", "pages", "api", "*.ts").split(path.sep).join("/")],
+  // force forward slashes regardless of platform. Recursive (**) so nested routes
+  // like pages/api/admin/stats.ts are picked up too, not just the top level.
+  apis: [path.join(__dirname, "..", "pages", "api", "**", "*.ts").split(path.sep).join("/")],
 });
 
 const outPath = path.join(__dirname, "..", "public", "openapi.json");

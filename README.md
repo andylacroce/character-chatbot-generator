@@ -13,6 +13,7 @@ pages/api/           # API routes (chat, audio, health, transcript)
    random-character.ts   # Public domain character suggestions
    bots.ts            # List/persist a signed-in user's characters (optional)
    messages.ts        # List a signed-in user's chat history for one character (optional)
+   admin/stats.ts     # Admin-only aggregate usage stats (optional, see Internal Analytics)
 src/
    utils/             # Utilities (TTS, logger, cache, security)
    types/             # TypeScript type definitions
@@ -37,6 +38,7 @@ A Next.js 16 + TypeScript app that provides a character-driven chat UI with Clau
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
 - **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, laid out as a scattered polaroid/corkboard collage — see [Character Wall](#character-wall-chars)
+- **Internal Analytics**: A small self-hosted usage log (no third-party analytics service) plus an admin-only `/admin` stats view — see [Internal Analytics](#internal-analytics-admin)
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 900+ passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
@@ -91,6 +93,8 @@ TTS_TMP_DIR=/custom/temp/path
 # Leave unset locally — the in-process limiter is the right fit for one dev server.
 KV_REST_API_URL=https://your-store.upstash.io
 KV_REST_API_TOKEN=your_rest_token
+# Optional: view aggregate usage stats at /admin (see Internal Analytics below)
+ADMIN_EMAILS=you@example.com
 ```
 
 1. **Google Cloud Setup**
@@ -169,6 +173,7 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 - `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Redis REST endpoint (Vercel KV / Marketplace Redis) used to share API rate-limit counters across serverless instances. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` work too. With neither pair set, limits fall back to an in-process counter, which is per-instance on Vercel and exactly right for local development.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — Enables optional Google account sign-in and server-side persistence (see [Account Persistence](#account-persistence-optional) below). The app is fully functional as a guest with none of these set.
+- `ADMIN_EMAILS` — Comma-separated allowlist of emails allowed to view the internal `/admin` stats page (see [Internal Analytics](#internal-analytics-admin) below). With none set, nobody is admin. Never honored on a Vercel Preview deployment regardless of this value.
 
 ## Avatar Generation
 
@@ -254,6 +259,31 @@ generated once for it to show up here for everyone.
   as part of the same Claude-powered validation round-trip that screens for copyright
   concerns, before a character (and its portrait) can be created at all. Unlike a copyright
   warning, there's no "Continue Anyway" for this check.
+
+## Internal Analytics (`/admin`)
+
+Vercel Analytics/Speed Insights (already wired into `app/layout.tsx`) cover page views and
+performance. This is the *product*-usage layer on top — deliberately a small, self-hosted
+event log rather than a third-party analytics service (Splunk, Datadog, etc.), since this
+app is a single hobby-scale Vercel deployment, not a system that needs that kind of infra
+observability.
+
+- **Why it exists**: most usage — guest sessions, likely the majority of traffic since
+  sign-in isn't required — never touches the database at all, so without this, real usage
+  is largely invisible. An `analytics_events` table (Neon Postgres, same database as
+  [Account Persistence](#account-persistence-optional) above) records a handful of
+  low-frequency, high-signal events: character validation outcomes, which avatar provider
+  actually served an image, and character-creation counts. None of these ever record a
+  character's name or other user-supplied text.
+- **`/admin`** is an admin-only, unlinked-but-reachable page (same reachability model as
+  `/reference`'s API docs) showing aggregate counts only — no per-user or per-guest detail.
+  Gated by the optional `ADMIN_EMAILS` env var (comma-separated allowlist of emails); with
+  none set, nobody can access it. It's never reachable on a Vercel Preview deployment
+  regardless of email match, since Preview's sign-in stub issues sessions with zero identity
+  verification (see [Account Persistence](#account-persistence-optional) above).
+- **Fully optional**: skip `ADMIN_EMAILS` (and even `DATABASE_URL`) and nothing about the
+  rest of the app changes — this is a read-only view for the app's operator, not a
+  user-facing feature.
 
 ## Storage (Client-Side)
 

@@ -36,6 +36,7 @@ import {
   jsonb,
   unique,
   boolean,
+  index,
 } from "drizzle-orm/pg-core";
 import type { CharacterVoiceConfig } from "../utils/characterVoices";
 
@@ -147,3 +148,29 @@ export const avatarCache = pgTable("avatar_cache", {
   recognized: boolean("recognized").default(true).notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
+
+/**
+ * Append-only product-usage event log, backing the admin-only `/admin` stats view
+ * (see pages/api/admin/stats.ts). Exists because most usage — guest sessions, which never
+ * write to `bots`/`messages` at all since there's no account to attach a row to — is
+ * otherwise completely invisible in this database; this is a deliberately small
+ * alternative to a third-party analytics service, not a general-purpose event pipeline.
+ * `environment`-scoped like `bots`, via getCurrentEnvironment() (src/utils/environment.ts),
+ * so local/preview usage never pollutes production counts. `userId` is nullable (a guest
+ * event) and `onDelete: "set null"` rather than `cascade` — deleting a user account should
+ * never retroactively erase historical aggregate counts. Only a handful of low-frequency,
+ * high-signal event names are ever written here (see src/utils/analytics.ts) — deliberately
+ * excludes anything that scales with chat-message volume.
+ */
+export const analyticsEvents = pgTable(
+  "analytics_events",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    environment: text("environment").notNull(),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [index("analytics_events_name_created_idx").on(table.name, table.createdAt)],
+);

@@ -21,6 +21,7 @@ import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import anthropic from "../../src/utils/anthropicClient";
 import { getDb } from "../../src/db/client";
 import { avatarCache } from "../../src/db/schema";
+import { recordEvent } from "../../src/utils/analytics";
 
 /** Rate limiter: 5 requests per minute per IP (avatar generation is expensive). */
 const avatarRateLimit = createRateLimiter({
@@ -264,6 +265,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       "Reusing cached avatar",
       sanitizeLogMeta({ name: sanitizedName }),
     );
+    void recordEvent("avatar_generated", {
+      provider: "cache",
+      recognized: isRecognized,
+      bypassSharedCache,
+    });
     res.status(200).json({ avatarUrl: cached.avatarUrl, gender: cached.gender });
     return;
   }
@@ -346,10 +352,12 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
     // handler: a missing/failing provider never blocks generation outright when
     // another free path is available.
     let avatarUrl: string | null = null;
+    let usedProvider: "cloudflare" | "pollinations" | null = null;
 
     try {
       avatarUrl = await generateImageWithCloudflare(prompt);
       if (avatarUrl) {
+        usedProvider = "cloudflare";
         logEvent(
           "info",
           "avatar_cloudflare_success",
@@ -369,6 +377,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       try {
         avatarUrl = await generateImageWithPollinations(prompt);
         if (avatarUrl) {
+          usedProvider = "pollinations";
           logEvent(
             "info",
             "avatar_pollinations_success",
@@ -391,6 +400,11 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
         "avatar_generation_failed",
         "No provider returned an image, using silhouette",
       );
+      void recordEvent("avatar_generated", {
+        provider: "none",
+        recognized: isRecognized,
+        bypassSharedCache,
+      });
       res.status(200).json({ avatarUrl: "/silhouette.svg", gender: genderOut });
       return;
     }
@@ -402,6 +416,11 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
     if (!bypassSharedCache) {
       await cacheAvatar(sanitizedName, avatarUrl, genderOut, isRecognized);
     }
+    void recordEvent("avatar_generated", {
+      provider: usedProvider,
+      recognized: isRecognized,
+      bypassSharedCache,
+    });
     res.status(200).json({ avatarUrl, gender: genderOut });
     return;
   } catch (e) {

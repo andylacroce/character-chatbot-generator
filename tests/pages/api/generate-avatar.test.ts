@@ -67,6 +67,12 @@ function mockLoggerAndDeps() {
   jest.doMock("../../../src/utils/security", () => ({
     sanitizeCharacterName: (s: string) => (typeof s === "string" ? s.trim() : ""),
   }));
+  // Analytics writes go through the same getDb().insert(...) shape as the avatar cache
+  // below — mocked separately so recordEvent's fire-and-forget insert doesn't get
+  // captured by this file's per-test avatar_cache mockInsert assertions.
+  jest.doMock("../../../src/utils/analytics", () => ({
+    recordEvent: jest.fn().mockResolvedValue(undefined),
+  }));
 }
 
 describe("generate-avatar API", () => {

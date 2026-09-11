@@ -8,6 +8,8 @@ import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { sanitizeCharacterName, sanitizeDescription } from "../../src/utils/security";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
+import { getSessionUserId } from "../../src/utils/getSessionUserId";
+import { recordEvent } from "../../src/utils/analytics";
 
 /** Rate limiter: 20 requests per minute per IP (personality generation is lightweight). */
 const personalityRateLimit = createRateLimiter({
@@ -118,6 +120,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       sanitizeLogMeta({
         name: sanitizedName,
       }),
+    );
+
+    // Deliberately excludes name/personality text — this table is a small internal usage
+    // log, not a place to accumulate user-supplied content (see analyticsEvents doc).
+    const userId = await getSessionUserId(req, res);
+    void recordEvent(
+      "bot_created",
+      { hasDescription: Boolean(sanitizedDescription), guest: !userId },
+      userId,
     );
 
     res.status(200).json({ personality: concisePrompt, correctedName: sanitizedName });

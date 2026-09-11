@@ -12,6 +12,16 @@ jest.mock("../../../src/config/serverConfig", () => ({
   generatePersonalityPrompt: (...args: unknown[]) => mockGeneratePersonalityPrompt(...args),
 }));
 
+const mockGetSessionUserId = jest.fn().mockResolvedValue(null);
+jest.mock("../../../src/utils/getSessionUserId", () => ({
+  getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
+}));
+
+const mockRecordEvent = jest.fn().mockResolvedValue(undefined);
+jest.mock("../../../src/utils/analytics", () => ({
+  recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
+}));
+
 import handler from "../../../pages/api/generate-personality";
 
 function makeRes() {
@@ -76,6 +86,24 @@ describe("generate-personality API", () => {
       personality: "You are Ada Lovelace.",
       correctedName: "Ada Lovelace",
     });
+    expect(mockRecordEvent).toHaveBeenCalledWith(
+      "bot_created",
+      { hasDescription: false, guest: true },
+      null,
+    );
+  });
+
+  it("records the creator as signed-in when a session is present", async () => {
+    mockGetSessionUserId.mockResolvedValueOnce("user-1");
+    mockGeneratePersonalityPrompt.mockResolvedValueOnce("You are Ada Lovelace.");
+    const res = makeRes();
+    await handler(makeReq({ name: "Ada Lovelace", description: "A mathematician" }), res);
+
+    expect(mockRecordEvent).toHaveBeenCalledWith(
+      "bot_created",
+      { hasDescription: true, guest: false },
+      "user-1",
+    );
   });
 
   it("returns 500 and logs when generation throws", async () => {

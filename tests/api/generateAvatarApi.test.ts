@@ -26,6 +26,11 @@ jest.mock("express-rate-limit", () => {
   return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
 });
 
+const mockRecordEvent = jest.fn().mockResolvedValue(undefined);
+jest.mock("../../src/utils/analytics", () => ({
+  recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
+}));
+
 describe("generate-avatar API", () => {
   const OLD_ENV = process.env;
   let mockFetch: jest.Mock;
@@ -93,6 +98,11 @@ describe("generate-avatar API", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
     expect(data.avatarUrl).toMatch(/^data:image\/png;base64,/);
+    expect(mockRecordEvent).toHaveBeenCalledWith("avatar_generated", {
+      provider: "cloudflare",
+      recognized: true,
+      bypassSharedCache: false,
+    });
   });
 
   it("includes gender in response when Claude provides it", async () => {
@@ -172,6 +182,11 @@ describe("generate-avatar API", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
     expect(data.avatarUrl).toBe("/silhouette.svg");
+    expect(mockRecordEvent).toHaveBeenCalledWith("avatar_generated", {
+      provider: "none",
+      recognized: true,
+      bypassSharedCache: false,
+    });
   });
 
   it("handles Claude prompt generation failure gracefully and uses fallback prompt", async () => {

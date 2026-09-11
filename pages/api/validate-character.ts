@@ -9,6 +9,7 @@ import { getClaudeModel } from "../../src/utils/claudeModelSelector";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { extractJson } from "../../src/utils/parseClaudeJson";
 import anthropic from "../../src/utils/anthropicClient";
+import { recordEvent } from "../../src/utils/analytics";
 
 /** Rate limiter: 30 requests per minute per IP. */
 const validationRateLimit = createRateLimiter({
@@ -213,6 +214,13 @@ warningLevel guide (only about copyright/trademark, ignore concern 1 entirely he
         warningLevel: result.warningLevel,
       }),
     );
+    // Deliberately excludes characterName — this table is a small internal usage log, not
+    // a place to accumulate user-supplied content (see src/db/schema.ts's analyticsEvents doc).
+    void recordEvent("character_validated", {
+      warningLevel: result.warningLevel,
+      blocked: result.blocked,
+      recognized: result.recognized,
+    });
 
     res.status(200).json(result);
   } catch (err) {

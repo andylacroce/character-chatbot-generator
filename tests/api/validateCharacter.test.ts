@@ -33,6 +33,11 @@ jest.mock("express-rate-limit", () => {
   return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
 });
 
+const mockRecordEvent = jest.fn().mockResolvedValue(undefined);
+jest.mock("../../src/utils/analytics", () => ({
+  recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
+}));
+
 describe("validate-character API", () => {
   beforeEach(() => {
     jest.resetModules();
@@ -95,6 +100,11 @@ describe("validate-character API", () => {
     expect(data.isPublicDomain).toBe(true);
     expect(data.isSafe).toBe(true);
     expect(data.warningLevel).toBe("none");
+    expect(mockRecordEvent).toHaveBeenCalledWith("character_validated", {
+      warningLevel: "none",
+      blocked: false,
+      recognized: true,
+    });
   });
 
   it("returns warning for copyrighted character", async () => {
