@@ -4,6 +4,12 @@
  * access-control story (fails closed with no ADMIN_EMAILS configured, and refuses admin
  * status entirely on a Vercel Preview deployment, whose sign-in stub issues a session for
  * any typed-in email with no verification at all).
+ *
+ * Every derived rate (creation rate, fallback rate, guest share, etc.) is computed here
+ * rather than left for the client to infer from raw counts — the raw `analytics_events`
+ * rows on their own (boolean strings in jsonb metadata, three unrelated event types sharing
+ * one table) are genuinely ambiguous without knowing the recording call sites in
+ * validate-character.ts/generate-personality.ts/generate-avatar.ts.
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -23,7 +29,38 @@ const adminStatsRateLimit = createRateLimiter({
   message: "Too many requests from this IP, please try again later.",
 });
 
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+
+/** Rounds a ratio to a percentage with one decimal place, or null when the denominator is 0. */
+function pct(numerator: number, denominator: number): number | null {
+  if (denominator <= 0) return null;
+  return Math.round((numerator / denominator) * 1000) / 10;
+}
+
+const EMPTY_STATS = {
+  environment: "unknown",
+  generatedAt: new Date(0).toISOString(),
+  totals: { bots: 0, messages: 0, avgMessagesPerBot: 0 },
+  activity: { createdToday: 0, createdLast7Days: 0, daily: [] as DailyActivityRow[] },
+  funnel: { validated: 0, blocked: 0, created: 0, creationRatePct: null as number | null },
+  validation: {
+    byWarningLevel: [] as { warningLevel: string; total: number }[],
+    unrecognizedCount: 0,
+    unrecognizedPct: null as number | null,
+  },
+  creators: { guestCount: 0, signedInCount: 0, guestPct: null as number | null },
+  avatars: {
+    byProvider: [] as { provider: string; total: number; pct: number }[],
+    fallbackRatePct: null as number | null,
+  },
+};
+
+interface DailyActivityRow {
+  day: string;
+  validated: number;
+  created: number;
+  avatarGenerated: number;
+}
 
 /**
  * Next.js API route handler returning aggregate product-usage stats for the signed-in
@@ -73,12 +110,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   if (!process.env.DATABASE_URL) {
     res.status(200).json({
-      eventCounts: [],
-      dailyCounts: [],
-      avatarProviders: [],
-      validationOutcomes: [],
-      botCreators: [],
-      totals: { bots: 0, messages: 0 },
+      ...EMPTY_STATS,
+      environment: getCurrentEnvironment(),
+      generatedAt: new Date().toISOString(),
     });
     return;
   }
@@ -88,61 +122,144 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const envFilter = eq(analyticsEvents.environment, environment);
 
   try {
-    const [eventCounts, dailyCounts, avatarProviders, validationOutcomes, botCreators, totals] =
-      await Promise.all([
+    const [
+      dailyActivity,
+      validationAgg,
+      validationByLevel,
+      creatorAgg,
+      avatarByProvider,
+      totalsRaw,
+    ] = await Promise.all([
+      db
+        .select({
+          day: sql<string>`to_char(${analyticsEvents.createdAt}, 'YYYY-MM-DD')`,
+          validated: sql<number>`count(*) filter (where ${analyticsEvents.name} = 'character_validated')::int`,
+          created: sql<number>`count(*) filter (where ${analyticsEvents.name} = 'bot_created')::int`,
+          avatarGenerated: sql<number>`count(*) filter (where ${analyticsEvents.name} = 'avatar_generated')::int`,
+        })
+        .from(analyticsEvents)
+        .where(
+          and(envFilter, gte(analyticsEvents.createdAt, new Date(Date.now() - NINETY_DAYS_MS))),
+        )
+        .groupBy(sql`1`)
+        .orderBy(sql`1`) as Promise<DailyActivityRow[]>,
+      db
+        .select({
+          total: count(),
+          blocked: sql<number>`count(*) filter (where metadata->>'blocked' = 'true')::int`,
+          unrecognized: sql<number>`count(*) filter (where metadata->>'recognized' = 'false')::int`,
+        })
+        .from(analyticsEvents)
+        .where(and(envFilter, eq(analyticsEvents.name, "character_validated")))
+        .then(
+          (rows: { total: number; blocked: number; unrecognized: number }[]) =>
+            rows[0] ?? {
+              total: 0,
+              blocked: 0,
+              unrecognized: 0,
+            },
+        ),
+      db
+        .select({
+          warningLevel: sql<string>`coalesce(metadata->>'warningLevel', 'unknown')`,
+          total: count(),
+        })
+        .from(analyticsEvents)
+        .where(and(envFilter, eq(analyticsEvents.name, "character_validated")))
+        .groupBy(sql`1`),
+      db
+        .select({
+          total: count(),
+          guest: sql<number>`count(*) filter (where metadata->>'guest' = 'true')::int`,
+          signedIn: sql<number>`count(*) filter (where metadata->>'guest' = 'false')::int`,
+        })
+        .from(analyticsEvents)
+        .where(and(envFilter, eq(analyticsEvents.name, "bot_created")))
+        .then(
+          (rows: { total: number; guest: number; signedIn: number }[]) =>
+            rows[0] ?? {
+              total: 0,
+              guest: 0,
+              signedIn: 0,
+            },
+        ),
+      db
+        .select({
+          provider: sql<string>`coalesce(metadata->>'provider', 'unknown')`,
+          total: count(),
+        })
+        .from(analyticsEvents)
+        .where(and(envFilter, eq(analyticsEvents.name, "avatar_generated")))
+        .groupBy(sql`1`),
+      Promise.all([
         db
-          .select({ name: analyticsEvents.name, total: count() })
-          .from(analyticsEvents)
-          .where(envFilter)
-          .groupBy(analyticsEvents.name),
+          .select({ total: count() })
+          .from(bots)
+          .where(eq(bots.environment, environment))
+          .then((rows: { total: number }[]) => rows[0]?.total ?? 0),
         db
-          .select({
-            day: sql<string>`to_char(${analyticsEvents.createdAt}, 'YYYY-MM-DD')`,
-            total: count(),
-          })
-          .from(analyticsEvents)
-          .where(
-            and(envFilter, gte(analyticsEvents.createdAt, new Date(Date.now() - THIRTY_DAYS_MS))),
-          )
-          .groupBy(sql`1`)
-          .orderBy(sql`1`),
-        db
-          .select({ provider: sql<string>`metadata->>'provider'`, total: count() })
-          .from(analyticsEvents)
-          .where(and(envFilter, eq(analyticsEvents.name, "avatar_generated")))
-          .groupBy(sql`1`),
-        db
-          .select({ warningLevel: sql<string>`metadata->>'warningLevel'`, total: count() })
-          .from(analyticsEvents)
-          .where(and(envFilter, eq(analyticsEvents.name, "character_validated")))
-          .groupBy(sql`1`),
-        db
-          .select({ guest: sql<string>`metadata->>'guest'`, total: count() })
-          .from(analyticsEvents)
-          .where(and(envFilter, eq(analyticsEvents.name, "bot_created")))
-          .groupBy(sql`1`),
-        Promise.all([
-          db
-            .select({ total: count() })
-            .from(bots)
-            .where(eq(bots.environment, environment))
-            .then((rows: { total: number }[]) => rows[0]?.total ?? 0),
-          db
-            .select({ total: count() })
-            .from(messages)
-            .innerJoin(bots, eq(messages.botId, bots.id))
-            .where(eq(bots.environment, environment))
-            .then((rows: { total: number }[]) => rows[0]?.total ?? 0),
-        ]).then(([botsTotal, messagesTotal]) => ({ bots: botsTotal, messages: messagesTotal })),
-      ]);
+          .select({ total: count() })
+          .from(messages)
+          .innerJoin(bots, eq(messages.botId, bots.id))
+          .where(eq(bots.environment, environment))
+          .then((rows: { total: number }[]) => rows[0]?.total ?? 0),
+      ]).then(([botsTotal, messagesTotal]) => ({ bots: botsTotal, messages: messagesTotal })),
+    ]);
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const sevenDaysAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const createdToday = dailyActivity.find((row) => row.day === todayStr)?.created ?? 0;
+    const createdLast7Days = dailyActivity
+      .filter((row) => row.day >= sevenDaysAgoStr)
+      .reduce((sum, row) => sum + row.created, 0);
+
+    const avatarTotal = avatarByProvider.reduce(
+      (sum: number, row: { total: number }) => sum + row.total,
+      0,
+    );
+    const avatarNone =
+      avatarByProvider.find((row: { provider: string }) => row.provider === "none")?.total ?? 0;
 
     res.status(200).json({
-      eventCounts,
-      dailyCounts,
-      avatarProviders,
-      validationOutcomes,
-      botCreators,
-      totals,
+      environment,
+      generatedAt: new Date().toISOString(),
+      totals: {
+        bots: totalsRaw.bots,
+        messages: totalsRaw.messages,
+        avgMessagesPerBot:
+          totalsRaw.bots > 0 ? Math.round((totalsRaw.messages / totalsRaw.bots) * 10) / 10 : 0,
+      },
+      activity: {
+        createdToday,
+        createdLast7Days,
+        daily: dailyActivity,
+      },
+      funnel: {
+        validated: validationAgg.total,
+        blocked: validationAgg.blocked,
+        created: creatorAgg.total,
+        creationRatePct: pct(creatorAgg.total, validationAgg.total),
+      },
+      validation: {
+        byWarningLevel: validationByLevel,
+        unrecognizedCount: validationAgg.unrecognized,
+        unrecognizedPct: pct(validationAgg.unrecognized, validationAgg.total),
+      },
+      creators: {
+        guestCount: creatorAgg.guest,
+        signedInCount: creatorAgg.signedIn,
+        guestPct: pct(creatorAgg.guest, creatorAgg.total),
+      },
+      avatars: {
+        byProvider: avatarByProvider.map((row: { provider: string; total: number }) => ({
+          provider: row.provider,
+          total: row.total,
+          pct: pct(row.total, avatarTotal) ?? 0,
+        })),
+        fallbackRatePct: pct(avatarNone, avatarTotal),
+      },
     });
   } catch (err) {
     logger.error("Failed to load admin stats:", { error: err });

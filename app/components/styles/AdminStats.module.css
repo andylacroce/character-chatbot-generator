@@ -1,0 +1,453 @@
+/* =============================
+   AdminStats.module.css
+   - Dashboard layout for the internal /admin stats view. Deliberately its own
+     module rather than reusing LegalPage.module.css: that module is a narrow
+     single-column prose layout (a 720px reading column, bullet lists) built for
+     legal copy, not a data dashboard with cards/grids/a chart. Only globals.css
+     tokens (--color-*, --font-primary) are shared, same as every other page module.
+   ============================= */
+
+/* An internal data dashboard, not a reading page — no prose-line-length reason to cap
+   its width at all. No max-width/margin:auto centering: any fixed (or vw-capped) width
+   here letterboxes on a large/ultrawide monitor, which is exactly the complaint this
+   replaced. The page fills the viewport; side padding is the only gutter. */
+.page {
+  /* Single spacing unit for every tile/card grid on this page (.statGrid, .mainGrid,
+     .breakdownGrid) — one value, not three independently-chosen ones, so the gap
+     between tiles reads the same everywhere. */
+  --card-gap: 1.25rem;
+  padding: 2.5rem clamp(1.5rem, 2.5vw, 4rem) 4rem;
+  font-family: var(--font-primary), sans-serif;
+  color: var(--color-text);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.back {
+  display: inline-block;
+  color: var(--color-accent);
+  text-decoration: underline;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text);
+}
+
+/* Two named sub-groups (info, controls), not four loose flex children — that keeps
+   wrapping deterministic. An unwrapped flex row with no grouping (the earlier version)
+   let the browser split badge/timestamp from refresh/interval at whatever point they
+   overflowed, which on a narrow phone landed them on the same visual line with a large,
+   accidental gap between the two clusters instead of either sitting together or
+   cleanly stacking as two rows. With flex-wrap here, each subgroup that doesn't fit
+   falls to its own left-aligned row instead. */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+}
+
+.metaInfo,
+.metaControls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* Same minimal masthead icon-button treatment CharsPage.module.css/BotCreator.module.css use
+   for DarkModeToggle — reproduced here rather than imported cross-module, so this page's look
+   stays consistent without coupling stylesheets (see CharsPage.module.css's own note). */
+.ghostIcon {
+  margin: 0 !important;
+  background: none !important;
+  border: none !important;
+  padding: 0.2rem !important;
+  min-height: 0 !important;
+  box-shadow: none !important;
+  color: var(--color-text-secondary);
+}
+
+.ghostIcon:hover,
+.ghostIcon:focus {
+  background: none !important;
+  color: var(--color-accent);
+  box-shadow: none !important;
+  outline: none;
+}
+
+.refreshButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  line-height: 0;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+}
+
+.refreshButton:hover:not(:disabled),
+.refreshButton:focus-visible {
+  color: var(--color-accent);
+  outline: none;
+}
+
+.refreshButton:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.spinning {
+  animation: adminStatsSpin 0.8s linear infinite;
+}
+
+@keyframes adminStatsSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.refreshSelect {
+  background: var(--color-surface-variant);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-outline);
+  border-radius: 6px;
+  padding: 0.2rem 0.4rem;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.refreshSelect:hover,
+.refreshSelect:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
+/* Environment is stated up front and unmissable — viewing this page locally or on a
+   preview deployment without noticing the badge previously made "totals" ambiguous
+   about which environment's data was even on screen. */
+.envBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+}
+
+.envBadgeProduction {
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.state {
+  color: var(--color-text-secondary);
+  padding: 3rem 0;
+  text-align: center;
+}
+
+/* Chart + funnel sit side by side once there's room for both to breathe, rather than
+   stacking two full-width cards and leaving a wide desktop mostly empty; below that
+   they stack in source order like every other section. Shares --card-gap with
+   .statGrid/.breakdownGrid so the rhythm between tiles/cards reads as one consistent
+   value everywhere, not three separately-tuned numbers. */
+.mainGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--card-gap);
+  align-items: start;
+  margin-bottom: var(--card-gap);
+}
+
+@media (min-width: 1000px) {
+  .mainGrid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* Every .section is a grid item (of .mainGrid or .breakdownGrid) — spacing between
+   sections comes entirely from the parent grid's `gap`. A margin-bottom here used to
+   also apply, and since grid-item margins don't collapse with grid `gap`, a wrapped
+   row got gap + margin stacked (an inconsistent, too-large double gap) instead of
+   just the gap. */
+.section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-outline);
+  border-radius: 14px;
+  padding: 1.4rem 1.5rem 1.6rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.sectionTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-primary);
+}
+
+.sectionHint {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* --- Stat tiles --- */
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--card-gap);
+  margin-bottom: var(--card-gap);
+}
+
+.statTile {
+  background: var(--color-surface);
+  border: 1px solid var(--color-outline);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+
+.statLabel {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 0.3rem;
+}
+
+.statValue {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.1;
+}
+
+.statSub {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* --- Funnel --- */
+
+/* This card sits full-width on its own row on a narrow viewport, but shares a row with
+   the activity chart (2fr/1fr — see .mainGrid) on a wide one, where its own rendered
+   width can be quite narrow despite the viewport being wide. A viewport media query
+   can't see that; a container query — scoped to this card's own inline size — can, so
+   the funnel reliably switches to a stacked layout whenever ITS box gets tight,
+   regardless of why. */
+.funnelCard {
+  container-type: inline-size;
+  container-name: funnel;
+}
+
+.funnel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.funnelStage {
+  flex: 1 1 140px;
+  min-width: 130px;
+  text-align: center;
+}
+
+.funnelValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.funnelLabel {
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  margin-top: 0.15rem;
+}
+
+.funnelArrow {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  padding: 0 0.25rem;
+}
+
+.funnelArrow svg {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 0.15rem;
+}
+
+.calloutRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+}
+
+.callout {
+  background: var(--color-secondary-container);
+  color: var(--color-on-secondary-container);
+  border-radius: 10px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.calloutWarn {
+  background: var(--color-error-container);
+  color: var(--color-on-error-container);
+}
+
+/* --- Breakdown grid (validation / creators / avatars) --- */
+
+.breakdownGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--card-gap);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--color-outline);
+}
+
+.table td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-outline) 40%, transparent);
+}
+
+.table td:last-child,
+.table th:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.splitBar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-surface-variant);
+  margin: 0.75rem 0 0.6rem;
+}
+
+.splitBarGuest {
+  background: var(--color-accent);
+}
+
+.splitBarSignedIn {
+  background: var(--color-primary);
+}
+
+.splitLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+}
+
+.splitLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.splitSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
+/* Stack the funnel vertically whenever its own card gets tight — narrow viewport
+   (mobile) or squeezed into .mainGrid's 1fr sidebar column on a wide one. Rotate only
+   the arrow glyph, not the whole .funnelArrow flex container: rotating the container
+   also rotates its percentage text sideways, which is illegible. */
+@container funnel (max-width: 380px) {
+  .funnel {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+  }
+
+  /* .funnelStage's 140px flex-basis sizes its *width* in the row layout above; carried
+     unchanged into a column flex-direction it instead forces 140px of *height* per
+     stage — far taller than the number+label actually need — which is what was
+     stretching this card with large empty gaps. Reset it to content height here. */
+  .funnelStage {
+    flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .funnelArrow svg {
+    transform: rotate(90deg);
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: 2rem 1rem 3rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+}

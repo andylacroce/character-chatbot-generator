@@ -17,6 +17,7 @@
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { authenticatedFetch } from "../../src/utils/api";
+import { formatRelativeTime } from "../../src/utils/formatRelativeTime";
 import type { Bot } from "./BotCreator";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import styles from "./styles/BotCreator.module.css";
@@ -50,22 +51,6 @@ interface ResumeBotDropdownProps {
 
 /** Rows shown before collapsing behind a "Show N more" toggle. */
 const VISIBLE_LIMIT = 3;
-
-/** Formats an ISO timestamp as a friendly relative time (e.g. "a few minutes ago", "yesterday"). */
-function formatRelativeTime(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const diffMin = Math.round(diffMs / 60000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 5) return "a few minutes ago";
-  if (diffMin < 60) return `${diffMin} minutes ago`;
-  const diffHr = Math.round(diffMin / 60);
-  if (diffHr === 1) return "an hour ago";
-  if (diffHr < 24) return `${diffHr} hours ago`;
-  const diffDay = Math.round(diffHr / 24);
-  if (diffDay === 1) return "yesterday";
-  if (diffDay < 7) return `${diffDay} days ago`;
-  return new Date(iso).toLocaleDateString();
-}
 
 /** Landing-page list of a signed-in user's saved characters, offered above the sign-in row. */
 const ResumeBotDropdown: React.FC<ResumeBotDropdownProps> = ({ onSelect }) => {
