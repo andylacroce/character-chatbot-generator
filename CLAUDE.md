@@ -36,7 +36,7 @@ Next.js 16 (Pages Router API + App Router UI) app. UI in `app/`, API routes in `
 
 `app/components/useChatController.ts` → `authenticatedFetch()` (`src/utils/api.ts`) → `pages/api/chat.ts`. Every client→server call should go through `authenticatedFetch`, not raw `fetch`, so it passes through `proxy.ts` auth and so tests can mock it consistently.
 
-`proxy.ts` is the single choke point for API auth: it validates request origin (localhost, Vercel production/preview auto-pass) and enforces `x-api-key` == `API_SECRET` for external origins. Adding a new deployment domain means updating `allowedHosts` in `proxy.ts` — nowhere else. Host matching is exact (never prefix or substring), and a request with no `Origin`/`Referer` only passes on a safe method (GET/HEAD/OPTIONS) from a first-party host — everything else needs the API key. `tests/proxy.test.ts` pins both directions.
+`proxy.ts` is the single choke point for API auth: it validates request origin (localhost, Vercel production/preview auto-pass) and enforces a constant-time-compared `x-api-key` against `API_SECRET` for external origins. Adding a new deployment domain means updating `allowedHosts` in `proxy.ts` — nowhere else. Host matching is exact (never prefix or substring), and a request with no `Origin`/`Referer` only passes on a safe method (GET/HEAD/OPTIONS) from a first-party host — everything else needs the API key. `tests/proxy.test.ts` pins both directions. **Important caveat, see "Security posture" below:** the Origin/Referer check is real CSRF protection against a browser (JS can't override `Origin`), but is not authentication against a non-browser client, which can set that header to anything it wants.
 
 ### Chat + streaming (`pages/api/chat.ts`)
 
@@ -151,6 +151,46 @@ Distinct from the inline "why" comments described in the global `~/.claude/CLAUD
 ### Module system (do not regress)
 
 `package.json` intentionally has no `"type": "module"` — removing it previously fixed a Vercel `ERR_REQUIRE_ESM` crash where Next's CJS serverless launcher couldn't `require()` compiled API route output. `next.config.mjs` uses an explicit `.mjs` extension instead so it's still treated as ESM. Source (TS, `import`/`export`) compiles fine either way via SWC — don't re-add `"type": "module"`.
+
+### Security posture
+
+Hardening pass completed 2026-09-11. Kept deliberately high-level (this file is public) —
+it records *what* changed and *why*, not exploit-level specifics about anything not yet
+fully closed.
+
+- `proxy.ts`'s Origin/Referer check is CSRF protection (stops a malicious site's
+  browser-side JS from riding a visitor's session) — it isn't a substitute for
+  authenticating every caller. Don't treat an allowed-origin match as proof of a trusted
+  caller when reasoning about request volume/cost; the per-route rate limiter
+  (`src/utils/rateLimit.ts`) is the actual ceiling there, independent of origin. Fully
+  closing this gap would mean either requiring login on guest-usable routes (breaks core
+  UX) or real session/token infrastructure — an accepted tradeoff, not an oversight.
+- The API key comparison in `proxy.ts` uses a constant-time compare (`secureCompare`,
+  hash-then-`timingSafeEqual`) rather than `!==`, now that Proxy defaults to the
+  **Node.js runtime** (Next.js 16; renamed from `middleware.ts`, which defaulted to Edge).
+- `getClientIp()` (`src/utils/rateLimit.ts`) trusts the first `x-forwarded-for` entry,
+  which is correct on Vercel specifically (their edge overwrites this header rather than
+  forwarding a client-supplied value). Revisit if this app is ever self-hosted behind a
+  different reverse proxy — prefer `@vercel/functions`'s `ipAddress()` there.
+- `/api/health` is rate-limited (10/min/IP) and no longer returns raw third-party SDK
+  error text in its response body (still logged server-side via `logEvent`) — it makes two
+  real billed/quota-limited calls per request, so both mattered.
+- `buildSsml()` (`src/utils/voiceHelpers.ts`) XML-escapes `text` before interpolating into
+  SSML — fixes a correctness bug too (ordinary dialogue with `&`/`<` already produced
+  malformed SSML). `/api/audio`'s `text` param is capped at 2000 characters. Letting the
+  client supply this text at all is intentional, not the bug — audio isn't persisted
+  server-side (see Account Persistence phase 3c above), so regenerating it after eviction
+  requires the client to resupply the original text; escaping/capping was the missing part.
+- `scripts/scan-secrets.sh` now matches this app's actual credential shapes (Anthropic
+  keys, Google OAuth secrets, Postgres connection strings, Vercel Blob tokens), not just
+  PEM private-key blocks. `.env.example` is excluded from scanning since its
+  placeholder-shaped values look like credentials by design.
+- `.github/workflows/ci.yml` uses `npm ci`, not `npm install`/`npm update`, for
+  reproducible builds against the committed lockfile.
+- `API_SECRET` was rotated as a precaution. Any external integration outside this repo
+  that authenticates with the API key needs the current value from `.env.local`/Vercel.
+- `next.config.mjs` sends an explicit `Strict-Transport-Security` header alongside the
+  existing CSP/`X-Frame-Options`/`Permissions-Policy` headers.
 
 ## Environment variables
 

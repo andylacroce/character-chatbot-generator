@@ -80,6 +80,13 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: contentSecurityPolicy,
           },
+          {
+            // Vercel forces HTTPS at the edge regardless, but an explicit HSTS header is
+            // cheap defense-in-depth and tells browsers to skip the initial HTTP hop
+            // entirely on repeat visits, not just rely on a redirect.
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
         ],
       },
       {

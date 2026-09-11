@@ -1,5 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+jest.mock("express-rate-limit", () => {
+  return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
+});
+
 const mockModelsList = jest.fn();
 jest.mock("../../../src/utils/anthropicClient", () => ({
   __esModule: true,
@@ -150,19 +154,25 @@ describe("health API", () => {
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
-  it("reports a Claude failure as 500 with the error message", async () => {
+  it("reports a Claude failure as 500 without leaking the raw error message to the client", async () => {
     mockModelsList.mockRejectedValueOnce(new Error("anthropic down"));
     ttsHealthy();
     const res = makeRes();
     await handler(makeReq(), res);
 
     expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status: "error",
-        claude: { status: "error", error: "anthropic down" },
-        tts: { status: "ok", error: null },
-      }),
+    expect(res.json).toHaveBeenCalledWith({
+      status: "error",
+      claude: { status: "error" },
+      tts: { status: "ok" },
+      requestId: "generated-id",
+    });
+    // The detail is still captured server-side, just never returned to the caller.
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      "info",
+      "health_claude_failed",
+      expect.any(String),
+      expect.objectContaining({ error: "anthropic down" }),
     );
   });
 
@@ -174,7 +184,7 @@ describe("health API", () => {
 
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        claude: { status: "error", error: "No valid Claude response" },
+        claude: { status: "error" },
       }),
     );
   });
@@ -188,7 +198,7 @@ describe("health API", () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        tts: { status: "error", error: "Missing GOOGLE_APPLICATION_CREDENTIALS_JSON" },
+        tts: { status: "error" },
       }),
     );
   });
@@ -201,7 +211,7 @@ describe("health API", () => {
 
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        tts: { status: "error", error: "No voices returned from TTS" },
+        tts: { status: "error" },
       }),
     );
   });
@@ -214,9 +224,21 @@ describe("health API", () => {
 
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        claude: { status: "error", error: "claude string throw" },
-        tts: { status: "error", error: "tts string throw" },
+        claude: { status: "error" },
+        tts: { status: "error" },
       }),
+    );
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      "info",
+      "health_claude_failed",
+      expect.any(String),
+      expect.objectContaining({ error: "claude string throw" }),
+    );
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      "info",
+      "health_tts_failed",
+      expect.any(String),
+      expect.objectContaining({ error: "tts string throw" }),
     );
   });
 

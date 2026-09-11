@@ -12,6 +12,20 @@ import { GoogleAuth } from "google-auth-library";
 import fs from "fs";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import anthropic from "../../src/utils/anthropicClient";
+import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
+
+/**
+ * Rate limiter: 10 requests per minute per IP. This endpoint makes real calls to both
+ * Anthropic and Google Cloud (including a fresh OAuth token exchange for TTS) on every
+ * invocation — it fires once per chat-session mount by design, not on a hot path, so a
+ * real cap here matters for cost/quota protection, unlike a route that's naturally
+ * self-limiting.
+ */
+const healthRateLimit = createRateLimiter({
+  name: "health",
+  max: 10,
+  message: "Too many health check requests from this IP, please try again later.",
+});
 
 /**
  * Next.js API route handler for health checks.
@@ -57,24 +71,22 @@ import anthropic from "../../src/utils/anthropicClient";
  *                   properties:
  *                     status:
  *                       type: string
- *                     error:
- *                       type: string
- *                       nullable: true
  *                 tts:
  *                   type: object
  *                   properties:
  *                     status:
  *                       type: string
- *                     error:
- *                       type: string
- *                       nullable: true
  *                 requestId:
  *                   type: string
+ *       429:
+ *         description: Rate limit exceeded
  */
 export default async function handler(
   req: import("next").NextApiRequest,
   res: import("next").NextApiResponse,
 ) {
+  if (!(await applyRateLimit(healthRateLimit, req, res))) return;
+
   const requestId = req.headers["x-request-id"] || generateRequestId();
 
   let claudeStatus = "ok";
@@ -198,10 +210,14 @@ export default async function handler(
       ttsStatus,
     }),
   );
+  // Detailed error messages (from the Anthropic/Google SDKs) are logged above via
+  // logEvent, not returned here — they can reveal internal config details (file paths,
+  // project/service-account identifiers) and this endpoint has no auth boundary beyond
+  // proxy.ts's origin check, so treat the response body as visible to anyone.
   return res.status(500).json({
     status: "error",
-    claude: { status: claudeStatus, error: claudeError },
-    tts: { status: ttsStatus, error: ttsError },
+    claude: { status: claudeStatus },
+    tts: { status: ttsStatus },
     requestId,
   });
 }

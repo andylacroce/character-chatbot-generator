@@ -1,7 +1,29 @@
 // This proxy restricts API access to only allowed origins (local dev and Vercel prod)
 // and requires a valid API key for API routes from external origins.
+//
+// IMPORTANT — what the Origin/Referer check actually guarantees: browsers refuse to let
+// page JS override the Origin header, so this check is solid CSRF protection against
+// another website's browser-side script silently calling this API using a visitor's
+// session. It is NOT authentication against a non-browser client: a raw HTTP client
+// (curl, a script) can set `Origin: https://<allowed-host>` to whatever it likes and pass
+// this check with no credential at all. The real ceiling on that kind of caller is the
+// per-route rate limiter (src/utils/rateLimit.ts), not this header check — don't treat an
+// allowed-origin match as proof of a legitimate caller when reasoning about abuse/cost.
+import { timingSafeEqual, createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { logEvent, sanitizeLogMeta } from "./src/utils/logger";
+
+/**
+ * Constant-time string equality, used for comparing the caller-supplied API key against
+ * the real secret so a timing side-channel can't help an attacker guess it byte-by-byte.
+ * Hashes both sides first so `timingSafeEqual` (which requires equal-length buffers) never
+ * short-circuits on a length mismatch between the two raw strings.
+ */
+function secureCompare(a: string, b: string): boolean {
+  const hashedA = createHash("sha256").update(a).digest();
+  const hashedB = createHash("sha256").update(b).digest();
+  return timingSafeEqual(hashedA, hashedB);
+}
 
 // Hosts (host header / URL authority, i.e. hostname plus optional port) that are
 // treated as first-party. Matching is host-exact on purpose: a substring or prefix
@@ -88,7 +110,7 @@ export function proxy(req: NextRequest) {
 
   // For API routes from external origins, require API key
   const apiKey = req.headers.get("x-api-key");
-  if (!apiKey || apiKey !== apiSecret) {
+  if (!apiKey || !secureCompare(apiKey, apiSecret)) {
     logEvent(
       "warn",
       "api_key_invalid",

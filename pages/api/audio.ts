@@ -92,6 +92,7 @@ function getOriginalTextForAudio(sanitizedFile: string): string | null {
  *         name: text
  *         schema:
  *           type: string
+ *           maxLength: 2000
  *         description: Expected reply text; triggers regeneration on mismatch.
  *       - in: query
  *         name: botName
@@ -116,7 +117,7 @@ function getOriginalTextForAudio(sanitizedFile: string): string | null {
  *               type: string
  *               format: binary
  *       400:
- *         description: File parameter is required
+ *         description: File parameter is required, or text parameter exceeds 2000 characters
  *       403:
  *         description: Resolved path escapes the allowed temp/public roots
  *       404:
@@ -159,6 +160,18 @@ async function handler(
       }),
     );
     return res.status(400).json({ error: "File parameter is required" });
+  }
+  // Caps how much text a single request can demand fresh TTS synthesis for — mirrors
+  // log-message.ts's existing 2000-char cap on chat message text.
+  const MAX_TEXT_LENGTH = 2000;
+  if (typeof expectedText === "string" && expectedText.length > MAX_TEXT_LENGTH) {
+    logEvent(
+      "info",
+      "audio_text_too_long",
+      "Audio API bad request: text parameter exceeds max length",
+      sanitizeLogMeta({ length: expectedText.length }),
+    );
+    return res.status(400).json({ error: "Text parameter too long" });
   }
   // Only allow filename, not path
   const sanitizedFile = path.basename(file);

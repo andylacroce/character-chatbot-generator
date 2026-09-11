@@ -116,6 +116,26 @@ describe("audio API", () => {
       expect(res.json).toHaveBeenCalledWith({ error: "File parameter is required" });
     });
 
+    it("returns 400 when the text param exceeds the max length", async () => {
+      const res = makeRes();
+      await handler(makeReq({ text: "a".repeat(2001) }), res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "Text parameter too long" });
+    });
+
+    it("accepts a text param exactly at the max length", async () => {
+      onDisk([AUDIO, TXT]);
+      const text = "a".repeat(2000);
+      mockFs.readFileSync.mockImplementation((p: string) =>
+        p === TXT ? text : Buffer.from("audio-bytes"),
+      );
+      const res = makeRes();
+      await handler(makeReq({ text }), res);
+
+      expect(res.status).not.toHaveBeenCalledWith(400);
+    });
+
     it("serves a cached file whose sidecar text matches", async () => {
       onDisk([AUDIO, TXT]);
       mockFs.readFileSync.mockImplementation((p: string) =>

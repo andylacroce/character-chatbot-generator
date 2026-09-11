@@ -96,4 +96,19 @@ describe("buildSsml", () => {
     const voice = makeVoice({ name: "en-US-Studio-O" }); // no type
     expect(buildSsml("Test", voice)).toBe("<speak>Test</speak>");
   });
+
+  it("XML-escapes reserved characters for a Studio voice", () => {
+    const voice = makeVoice({ name: "en-US-Studio-M", type: "Studio" });
+    expect(buildSsml(`Tom & Jerry said "hi" <script>`, voice)).toBe(
+      "<speak>Tom &amp; Jerry said &quot;hi&quot; &lt;script&gt;</speak>",
+    );
+  });
+
+  it("XML-escapes reserved characters for a non-Studio voice", () => {
+    const voice = makeVoice({ name: "en-GB-Wavenet-D", pitch: 0, rate: 1.0 });
+    const result = buildSsml(`<break time="10s"/> it's <over>`, voice);
+    expect(result).toBe(
+      '<speak><prosody pitch="0st" rate="100%"> &lt;break time=&quot;10s&quot;/&gt; it&apos;s &lt;over&gt; </prosody></speak>',
+    );
+  });
 });
