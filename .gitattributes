@@ -1,0 +1,13 @@
+# Normalize line endings to LF for text files, regardless of platform or a
+# contributor's local core.autocrlf setting. Prettier's default (endOfLine: "lf",
+# unset in .prettierrc.json) expects LF on disk. Without this file, a Windows
+# checkout with core.autocrlf=true rewrites every tracked text file to CRLF on
+# checkout, and `npm run ci`'s format:check then flags those files as needing
+# formatting even though their actual content matches HEAD exactly — a line-ending
+# artifact, not real drift. See git history around 2026-09-11 for the incident this
+# fixes: files reformatted to "fix" it showed an empty `git diff`.
+* text=auto eol=lf
+
+# Binary assets: never run line-ending normalization or diff as text.
+*.png binary
+*.ico binary
