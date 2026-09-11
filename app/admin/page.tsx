@@ -90,12 +90,22 @@ export default function AdminStatsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshIntervalMs, setRefreshIntervalMs] = useState(DEFAULT_REFRESH_INTERVAL_MS);
   const isMountedRef = useRef(true);
+  // A pure re-render tick — formatRelativeTime(stats.generatedAt) re-derives its string
+  // from Date.now() on every render, but without something forcing a render between
+  // fetches, "Updated 3s ago" would stay frozen at whatever it said when the data last
+  // arrived (up to a full refresh interval later) instead of counting up live.
+  const [, tick] = useState(0);
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => tick((t) => t + 1), 1000);
+    return () => clearInterval(id);
   }, []);
 
   const fetchStats = useCallback(async () => {

@@ -450,4 +450,15 @@
   .title {
     font-size: 1.5rem;
   }
+
+  /* The "Updated Ns ago" text's width changes every second (5s vs 42s vs "a few
+     minutes ago"), which — left to .meta's ordinary flex-wrap — could tip
+     .metaInfo/.metaControls between fitting on one line and wrapping to two,
+     visibly shifting the refresh button/interval select around once a second.
+     Forcing each subgroup to its own full-width row removes that ambiguity: which
+     line each one is on no longer depends on the ticking text's exact width. */
+  .metaInfo,
+  .metaControls {
+    flex: 1 1 100%;
+  }
 }
