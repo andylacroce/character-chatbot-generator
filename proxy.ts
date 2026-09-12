@@ -9,20 +9,28 @@
 // this check with no credential at all. The real ceiling on that kind of caller is the
 // per-route rate limiter (src/utils/rateLimit.ts), not this header check — don't treat an
 // allowed-origin match as proof of a legitimate caller when reasoning about abuse/cost.
-import { timingSafeEqual, createHash } from "crypto";
+import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { logEvent, sanitizeLogMeta } from "./src/utils/logger";
 
 /**
  * Constant-time string equality, used for comparing the caller-supplied API key against
  * the real secret so a timing side-channel can't help an attacker guess it byte-by-byte.
- * Hashes both sides first so `timingSafeEqual` (which requires equal-length buffers) never
- * short-circuits on a length mismatch between the two raw strings.
+ * `timingSafeEqual` itself requires equal-length buffers, so a length mismatch is handled
+ * by still running a constant-time compare against a same-length dummy buffer before
+ * returning false — that avoids a cheap hash-based normalization trick (which reads to
+ * static analysis as password hashing with insufficient computational effort, since
+ * neither operand here is actually a stored password) while keeping the comparison itself
+ * length-independent in timing.
  */
 function secureCompare(a: string, b: string): boolean {
-  const hashedA = createHash("sha256").update(a).digest();
-  const hashedB = createHash("sha256").update(b).digest();
-  return timingSafeEqual(hashedA, hashedB);
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    timingSafeEqual(bufA, Buffer.alloc(bufA.length));
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
 }
 
 // Hosts (host header / URL authority, i.e. hostname plus optional port) that are
