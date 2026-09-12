@@ -41,17 +41,35 @@
  * next-auth's own callback-handler.ts), since a same-email match alone doesn't prove the
  * same person controls both accounts on an untrusted provider. Don't extend this flag to
  * a future provider without first confirming that provider verifies email ownership too.
+ *
+ * Magic-link sign-in (Email provider) is a second, independent addition alongside
+ * Google — unlike Google/Facebook it has no OAuth redirect-URI restriction, so it's
+ * offered on every environment (including preview) whenever it's configured, not just
+ * swapped in on production. It's gated on `EMAIL_SERVER`/`EMAIL_FROM` *and* `adapter`
+ * being present — same degrade-gracefully shape as the adapter itself — since Auth.js
+ * needs somewhere to persist the one-time token (`verificationTokens`, see
+ * src/db/schema.ts) between "link sent" and "link clicked". `EMAIL_SERVER` is a plain
+ * SMTP connection string (`smtp://user:pass@host:port`) handed straight to
+ * `nodemailer.createTransport` — deliberately provider-agnostic (Gmail with an App
+ * Password, Resend's SMTP endpoint, anything else) rather than hardcoding one vendor's
+ * API, so switching providers later is an env var change, not a code change.
  */
 
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
+import EmailProvider from "next-auth/providers/email";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { getDb } from "../db/client";
-import { users, accounts } from "../db/schema";
+import { users, accounts, verificationTokens } from "../db/schema";
+import { sendVerificationRequest } from "../utils/magicLinkEmail";
 
 const adapter = process.env.DATABASE_URL
-  ? DrizzleAdapter(getDb(), { usersTable: users, accountsTable: accounts })
+  ? DrizzleAdapter(getDb(), {
+      usersTable: users,
+      accountsTable: accounts,
+      verificationTokensTable: verificationTokens,
+    })
   : undefined;
 
 const isPreview = process.env.VERCEL_ENV === "preview";
@@ -82,6 +100,19 @@ const providers: NextAuthOptions["providers"] = isPreview
         allowDangerousEmailAccountLinking: true,
       }),
     ];
+
+if (adapter && process.env.EMAIL_SERVER && process.env.EMAIL_FROM) {
+  providers.push(
+    EmailProvider({
+      server: process.env.EMAIL_SERVER,
+      from: process.env.EMAIL_FROM,
+      // Branded to match the app's palette/fonts instead of next-auth's generic default
+      // (which reads "Sign in to <raw host>" on an unstyled gray/blue template) — see
+      // src/utils/magicLinkEmail.ts.
+      sendVerificationRequest,
+    }),
+  );
+}
 
 export const authOptions: NextAuthOptions = {
   adapter,

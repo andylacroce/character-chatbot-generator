@@ -161,6 +161,65 @@ describe("auth/authOptions", () => {
     });
   });
 
+  describe("email (magic-link) provider", () => {
+    it("is absent when EMAIL_SERVER/EMAIL_FROM are not configured, even with an adapter", async () => {
+      await jest.isolateModulesAsync(async () => {
+        process.env.DATABASE_URL = "postgres://user:pass@host/db";
+        delete process.env.EMAIL_SERVER;
+        delete process.env.EMAIL_FROM;
+        const { authOptions } = require("../../../src/auth/authOptions");
+        expect(authOptions.providers.some((p: { id: string }) => p.id === "email")).toBe(false);
+      });
+    });
+
+    it("is absent when EMAIL_SERVER/EMAIL_FROM are set but there is no adapter (no DATABASE_URL)", async () => {
+      await jest.isolateModulesAsync(async () => {
+        delete process.env.DATABASE_URL;
+        process.env.EMAIL_SERVER = "smtps://user:pass@smtp.example.com:465";
+        process.env.EMAIL_FROM = "noreply@example.com";
+        const { authOptions } = require("../../../src/auth/authOptions");
+        expect(authOptions.providers.some((p: { id: string }) => p.id === "email")).toBe(false);
+      });
+    });
+
+    it("is present when EMAIL_SERVER/EMAIL_FROM are set alongside a real adapter", async () => {
+      await jest.isolateModulesAsync(async () => {
+        process.env.DATABASE_URL = "postgres://user:pass@host/db";
+        process.env.EMAIL_SERVER = "smtps://user:pass@smtp.example.com:465";
+        process.env.EMAIL_FROM = "noreply@example.com";
+        const { authOptions } = require("../../../src/auth/authOptions");
+        const email = authOptions.providers.find((p: { id: string }) => p.id === "email");
+        expect(email).toBeDefined();
+        expect(email.options.server).toBe(process.env.EMAIL_SERVER);
+        expect(email.options.from).toBe("noreply@example.com");
+        expect(typeof email.options.sendVerificationRequest).toBe("function");
+      });
+    });
+
+    it("is offered alongside Google on production, not just preview (no OAuth redirect restriction applies to it)", async () => {
+      await jest.isolateModulesAsync(async () => {
+        process.env.DATABASE_URL = "postgres://user:pass@host/db";
+        process.env.EMAIL_SERVER = "smtps://user:pass@smtp.example.com:465";
+        process.env.EMAIL_FROM = "noreply@example.com";
+        delete process.env.VERCEL_ENV;
+        const { authOptions } = require("../../../src/auth/authOptions");
+        expect(authOptions.providers.some((p: { id: string }) => p.id === "google")).toBe(true);
+        expect(authOptions.providers.some((p: { id: string }) => p.id === "email")).toBe(true);
+      });
+    });
+
+    it("passes verificationTokensTable to the Drizzle adapter", async () => {
+      await jest.isolateModulesAsync(async () => {
+        process.env.DATABASE_URL = "postgres://user:pass@host/db";
+        require("../../../src/auth/authOptions");
+        expect(mockDrizzleAdapter).toHaveBeenCalledWith(
+          fakeDb,
+          expect.objectContaining({ verificationTokensTable: expect.anything() }),
+        );
+      });
+    });
+  });
+
   it("uses the JWT session strategy", async () => {
     await jest.isolateModulesAsync(async () => {
       delete process.env.DATABASE_URL;

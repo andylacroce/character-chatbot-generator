@@ -62,7 +62,12 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
       >
         <FaSignOutAlt size={16} className={styles.icon} />
         <span className={styles.nameLabel}>
-          {session.user.name ? `Sign out (${session.user.name})` : "Sign out"}
+          {/* Magic-link users have no `name` (Email provider only ever knows the
+              address) — fall back to email so a signed-in state always shows who
+              you're signed in as, not a bare "Sign out". */}
+          {session.user.name || session.user.email
+            ? `Sign out (${session.user.name ?? session.user.email})`
+            : "Sign out"}
         </span>
       </button>
     );
@@ -80,7 +85,11 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
         <FaSignInAlt size={16} className={styles.icon} />
         <span className={styles.signInLabel}>Sign in</span>
       </button>
-      <SignInModal show={showSignInModal} onClose={() => setShowSignInModal(false)} />
+      <SignInModal
+        show={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+        providerIds={providerIds}
+      />
     </>
   );
 };

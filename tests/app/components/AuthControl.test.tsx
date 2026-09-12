@@ -102,9 +102,19 @@ describe("AuthControl", () => {
     await waitFor(() => expect(mockGetProviders).toHaveBeenCalled());
   });
 
-  it('renders plain "Sign out" when authenticated without a name', async () => {
+  it('falls back to email in "Sign out (email)" when authenticated without a name (e.g. magic-link sign-in)', async () => {
     mockUseSession.mockReturnValue({
       data: { user: { email: "gandalf@example.com" } },
+      status: "authenticated",
+    });
+    render(<AuthControl />);
+    expect(screen.getByText("Sign out (gandalf@example.com)")).toBeInTheDocument();
+    await waitFor(() => expect(mockGetProviders).toHaveBeenCalled());
+  });
+
+  it('renders plain "Sign out" when authenticated without a name or email', async () => {
+    mockUseSession.mockReturnValue({
+      data: { user: {} },
       status: "authenticated",
     });
     render(<AuthControl />);

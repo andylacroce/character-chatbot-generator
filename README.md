@@ -61,6 +61,7 @@ Everything below is an **account you'd need to create**, not just an env var to 
 | **Cloudflare** | [dash.cloudflare.com](https://dash.cloudflare.com) | Optional | Primary (free-tier) avatar image provider (Workers AI, Flux Schnell). Skip it and avatar generation still works via the Pollinations.ai fallback with no config at all | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
 | **Neon** (Postgres) | [neon.tech](https://neon.tech) | Optional | Server-side persistence: saved characters, chat history, the shared avatar cache table. Skip it and the app is a fully-functional guest-only experience | `DATABASE_URL` |
 | **Google Cloud Console → OAuth credentials** | Same GCP project as above, but a *separate* setup step (APIs & Services → Credentials → OAuth client ID) — not the service account key | Optional | "Sign in with Google" on the landing page. Needs `DATABASE_URL` set too, or there's nothing to sign in *for* | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| **Any SMTP sender** (Gmail App Password, Resend, etc.) | No new account needed if you already have an inbox you can send mail from | Optional | Passwordless magic-link sign-in alongside Google. Needs `DATABASE_URL` set too | `EMAIL_SERVER`, `EMAIL_FROM` |
 | **Vercel** | [vercel.com](https://vercel.com) | Optional | Deployment target, plus two of its own add-ons if you want them: **Blob** storage (durable avatar URLs instead of base64 data URLs) and **KV**/Marketplace Redis (shared rate-limit counters across serverless instances) | `VERCEL_BLOB_READ_WRITE_TOKEN`, `KV_REST_API_URL` + `KV_REST_API_TOKEN` |
 | **Upstash** (Redis) | [upstash.com](https://upstash.com) | Optional | Same shared-rate-limit feature as Vercel KV above, if you'd rather provision Redis directly instead of through Vercel's marketplace | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` |
 
@@ -216,6 +217,12 @@ Drizzle ORM), so both survive across devices and browser sessions:
   unverified stub provider stands in for Google, since OAuth redirect matching can't
   follow per-push preview URLs, and signs in immediately with no lightbox — it's a
   smoke-test aid, not a real login.
+- **Magic-link sign-in (optional, alongside Google)**: set `EMAIL_SERVER` (a plain SMTP
+  connection string) and `EMAIL_FROM` to also offer passwordless email sign-in —
+  `SignInModal` shows it whenever the server reports the `email` provider configured.
+  Works with a Gmail App Password, Resend's SMTP endpoint, or any other SMTP provider;
+  see `.env.example`. Unlike Google, it has no OAuth redirect restriction, so it's
+  offered on preview deployments too whenever configured.
 - **Characters**: Created or resumed characters are saved to a `bots` table
   (`POST`/`GET /api/bots`) once signed in. `ResumeBotDropdown` on the landing page lists a
   signed-in user's saved characters, most recently updated first.

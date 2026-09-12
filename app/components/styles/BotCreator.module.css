@@ -756,6 +756,14 @@
   .disclaimerText {
     font-size: 0.88rem;
   }
+
+  .magicLinkForm {
+    flex-direction: column;
+  }
+
+  .magicLinkSubmit {
+    width: 100%;
+  }
 }
 
 /* =============================
@@ -787,6 +795,69 @@
   background: var(--color-primary-container);
   transform: translateY(-1px);
   outline: none;
+}
+
+.signInDivider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.1rem 0;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.signInDivider::before,
+.signInDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-outline);
+}
+
+.magicLinkForm {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.magicLinkInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.65rem 0.9rem;
+  font-family: var(--font-primary), sans-serif;
+  /* 16px, not 0.95rem/~15.2px — anything smaller triggers Safari's auto-zoom-on-focus
+     on iOS, which is jarring inside a modal. */
+  font-size: 16px;
+  color: var(--color-text);
+  background: var(--card-body-bg);
+  border: 1px solid var(--color-outline);
+  border-radius: 8px;
+}
+
+.magicLinkSubmit {
+  padding: 0.65rem 1.1rem;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.magicLinkSubmit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.magicLinkStatus {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.magicLinkStatus[data-tone="error"] {
+  color: var(--color-error);
 }
 
 /* =============================
