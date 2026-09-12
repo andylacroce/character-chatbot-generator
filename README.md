@@ -26,7 +26,7 @@ proxy.ts             # API authentication middleware (Next.js 16)
 
 # Portrayal
 
-A Next.js 16 + TypeScript app that provides a character-driven chat UI with Claude-powered responses and Google Text-to-Speech audio replies.
+A Next.js 16 + TypeScript app for chatting with history's greatest minds, legendary heroes, and literary icons, with Claude-powered responses, factually-grounded personalities, and Google Text-to-Speech audio replies.
 
 ## Key Features
 
@@ -282,11 +282,13 @@ observability.
   low-frequency, high-signal events: character validation outcomes, which avatar provider
   actually served an image, and character-creation counts. None of these ever record a
   character's name or other user-supplied text.
-- **`/admin`** is an admin-only, unlinked-but-reachable page (same reachability model as
-  `/reference`'s API docs) showing aggregate counts only — no per-user or per-guest detail.
-  Gated by the optional `ADMIN_EMAILS` env var (comma-separated allowlist of emails); with
-  none set, nobody can access it. It's never reachable on a Vercel Preview deployment
-  regardless of email match, since Preview's sign-in stub issues sessions with zero identity
+- **`/admin`** is an admin-only page showing aggregate counts only — no per-user or
+  per-guest detail. The access check runs server-side (`isAdminSession()`) and 404s
+  anyone who isn't a confirmed admin before the stats view or its bundle ever renders,
+  rather than loading the page and showing a "not authorized" message. Gated by the
+  optional `ADMIN_EMAILS` env var (comma-separated allowlist of emails); with none set,
+  nobody can access it. It's never reachable on a Vercel Preview deployment regardless of
+  email match, since Preview's sign-in stub issues sessions with zero identity
   verification (see [Account Persistence](#account-persistence-optional) above).
 - **Fully optional**: skip `ADMIN_EMAILS` (and even `DATABASE_URL`) and nothing about the
   rest of the app changes — this is a read-only view for the app's operator, not a

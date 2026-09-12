@@ -24,9 +24,11 @@ const CharacterInfoModal: React.FC<CharacterInfoModalProps> = ({ show, onClose }
     testId="character-info-modal-backdrop"
   >
     <p className={styles.disclaimerText}>
-      Create a chatbot character using well-known public domain figures from classic literature,
-      mythology, or historical figures. Characters from copyrighted or trademarked modern media will
-      trigger a warning.
+      Real people and characters from history, mythology, or classic literature work best: think
+      Cleopatra, Sherlock Holmes, or Zeus. A name from copyrighted or trademarked modern media
+      (Disney, Marvel, and the like) will trigger a warning with public-domain alternatives instead.
+      Don&apos;t see who you&apos;re looking for? If we don&apos;t recognize the name, you can
+      describe the character yourself, including a fully original one.
     </p>
   </DisclaimerStyleModal>
 );

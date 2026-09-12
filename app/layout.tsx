@@ -28,14 +28,17 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
     <html lang="en" className="" suppressHydrationWarning>
       <head>
         <title>Portrayal</title>
-        <meta name="description" content="Create and chat with your own AI-powered characters." />
+        <meta
+          name="description"
+          content="Chat with history's greatest minds, legendary heroes, and literary icons."
+        />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/palette-icon.svg" type="image/svg+xml" />
         {/* Open Graph / Facebook */}
         <meta property="og:title" content="Portrayal" />
         <meta
           property="og:description"
-          content="Create and chat with your own AI-powered characters."
+          content="Chat with history's greatest minds, legendary heroes, and literary icons."
         />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="/andrew.png" />
@@ -44,7 +47,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
         <meta name="twitter:title" content="Portrayal" />
         <meta
           name="twitter:description"
-          content="Create and chat with your own AI-powered characters."
+          content="Chat with history's greatest minds, legendary heroes, and literary icons."
         />
         <meta name="twitter:image" content="/andrew.png" />
       </head>
