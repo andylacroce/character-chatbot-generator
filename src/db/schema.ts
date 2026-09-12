@@ -3,8 +3,9 @@
  *
  * `users`/`accounts` are Auth.js's identity tables — enough for Google sign-in. No
  * `sessions` table: sessions use the JWT strategy, so Auth.js never calls the
- * adapter's session methods. No `verification_tokens` table either, since there's no
- * email/magic-link provider.
+ * adapter's session methods. `verificationTokens` backs the magic-link (Email)
+ * provider — see authOptions.ts — which does need adapter-persisted tokens even
+ * though sessions themselves stay JWT-based.
  *
  * `bots` persists a signed-in user's created characters server-side (phase 3b of
  * account persistence). `(user_id, name, environment)` is unique — recreating a
@@ -68,6 +69,23 @@ export const accounts = pgTable(
     session_state: text("session_state"),
   },
   (account) => [primaryKey({ columns: [account.provider, account.providerAccountId] })],
+);
+
+/**
+ * Magic-link sign-in tokens (Auth.js Email provider). `(identifier, token)` composite
+ * primary key matches Auth.js core's adapter contract exactly — `identifier` is the
+ * email address, `token` the hashed one-time value sent in the link. Rows are
+ * short-lived (consumed on first use, or left to expire per `EmailProvider`'s
+ * `maxAge`) — nothing here needs environment scoping, same reasoning as `users`.
+ */
+export const verificationTokens = pgTable(
+  "verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { mode: "date" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.identifier, table.token] })],
 );
 
 export const bots = pgTable(
