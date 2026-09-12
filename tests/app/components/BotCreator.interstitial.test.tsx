@@ -34,6 +34,10 @@ describe("BotCreator resume/new-chat interstitial", () => {
   beforeEach(() => {
     mockSearchParams.delete("name");
     mockRouter.push.mockClear();
+    // These tests exercise the resume/interstitial flow, not the post-creation name
+    // gate — pre-skip it so handleCreate() proceeds straight through, same as before
+    // that gate existed.
+    localStorage.setItem("chatbot-user-name-gate-skipped", "1");
   });
 
   afterEach(() => {

@@ -56,6 +56,20 @@ describe("chars API", () => {
     });
   });
 
+  it("keeps small connector words lowercase mid-name, but capitalizes them at either end", async () => {
+    mockOrderBy.mockResolvedValue([
+      makeRow("joan of arc"),
+      makeRow("catherine de medici"),
+      makeRow("vincent van gogh"),
+      makeRow("the doctor"),
+    ]);
+    const handler = (await import("../../../pages/api/chars")).default;
+    const { req, res } = createMocks({ method: "GET" });
+    await handler(req, res);
+    const names = (res._getJSONData().characters as Array<{ name: string }>).map((c) => c.name);
+    expect(names).toEqual(["Joan of Arc", "Catherine de Medici", "Vincent van Gogh", "The Doctor"]);
+  });
+
   it("reports hasMore: false on the last page", async () => {
     mockOrderBy.mockResolvedValue([makeRow("ada lovelace")]);
     const handler = (await import("../../../pages/api/chars")).default;

@@ -20,7 +20,8 @@ npm run test:watch
 npm run test:coverage               # jest --coverage (enforces 80% global threshold — see jest.config.cjs)
 npm run analyze                      # ANALYZE=true next build (bundle analysis)
 npm run docs:api                      # regenerate public/openapi.json from @swagger JSDoc comments; runs automatically before dev/build
-npm run ci                             # lint --max-warnings=0 && lint:md && format:check && type-check && docs:code && test:coverage && build — run this before considering work done
+npm run db:check                       # read-only check that schema.ts matches the live DB; runs automatically before dev and as part of ci
+npm run ci                             # lint --max-warnings=0 && lint:md && format:check && type-check && db:check && docs:code && test:coverage && build — run this before considering work done
 ```
 
 Run a single test file: `npx jest tests/api/chat.test.ts`
@@ -90,12 +91,16 @@ Each provider function returns `null` on any failure (missing config, non-2xx re
 
 **`recognized: false` (an original character) is excluded from the shared `avatar_cache` table, but still gets a durable Blob upload.** This is a narrower bypass than `skipPersistence` (the copyright-override flag): an original character's name/portrait means something only to its own creator — sharing it cross-user by name (like every other cached avatar) would be actively wrong, not just wasteful — but unlike a copyright override, there's no reason to deny the creator their own durable, saved avatar. `bypassSharedCache` (`skipPersistence === true || recognized === false`) gates only `getCachedAvatar`/`cacheAvatar`; the separate `bypassPersistence` (`skipPersistence === true` alone) still gates the Blob upload, unchanged.
 
+**Fuzzy name matching happens one step earlier, in `pages/api/generate-personality.ts`** — before an avatar is ever generated, so a misspelling reuses the existing cache row instead of spawning a duplicate. `generatePersonalityPrompt` (`src/config/serverConfig.ts`) fetches up to 300 existing `avatar_cache` names (`fetchExistingCharacterNames`, newest first, no-op without `DATABASE_URL`) and folds them into the *same* Claude call that already generates the personality, asking it to return a `correctedName`: the input with spelling/casing fixed, or — when the input is clearly a misspelling or minor variant of one of those existing names — that exact existing name instead. This is a single reused call, not an extra round trip. `correctedName` then flows through unchanged to `/api/generate-avatar`, whose `avatarCacheKey()` lowercases it for the lookup — so "sherlok holmes" naturally hits the same row as an existing "Sherlock Holmes" rather than creating "sherlok holmes" as a second, permanently-misspelled entry.
+
+**`avatarCache.displayName`** (`src/db/schema.ts`) stores that properly-cased `correctedName` at write time (`cacheAvatar` in `generate-avatar.ts`) — the one place the correct casing is actually known, since Claude produced it. `pages/api/chars.ts` prefers this column over its own regex-based `toDisplayName` reconstruction, which is necessarily lossier (it can't know "III" should stay uppercase, or that "of"/"van"/"da" stay lowercase mid-name, purely from a lowercased string). Nullable — rows written before this column existed fall back to the regex reconstruction; `scripts/backfill-avatar-display-names.cjs` (`npm run chars:backfill-display-names`, optionally `--dry-run`) asks Claude to fill in `display_name` for any row still missing one, same opt-in-cleanup shape as `chars:reclassify` below.
+
 ### Character Wall (`/chars`)
 
 A public, no-auth gallery of every *recognized* portrait in the shared `avatar_cache` — every actual character/person name and AI-generated portrait this app has ever produced, on one page. Nothing here is per-user data; a row is already discoverable by anyone who types that exact name into the creator, so listing them publicly discloses nothing new. Original characters (see "Original characters" above) are excluded — `pages/api/chars.ts` filters `WHERE recognized = true` — since an invented name/portrait means something only to the person who made it up, not to a visitor browsing a "characters anyone can chat with" wall. Rows written before the `recognized` column existed default to `true` (non-destructive: nothing existing silently disappears); `scripts/reclassify-avatar-cache.cjs` (`npm run chars:reclassify`, optionally `--dry-run`) re-runs the recognized classification over already-cached names for anyone who wants that historical cleanup — not run automatically, since it costs a Claude call per batch against shared production data and changes what's publicly visible.
 
 - **`pages/api/chars.ts`** — `GET`-only, paginated (`limit`/`offset`, default 60, max 100, `hasMore` in the response). Backed by an in-process cache of the full row list with a 60s TTL (`getAllCharacters()`), so infinite-scroll pagination from many concurrent visitors costs at most one `avatar_cache` table scan per minute per warm instance, not one query per page fetch. Per-instance only (resets on cold start, not shared across serverless instances) — the same tradeoff class as the rate limiter's default MemoryStore; sharing it across instances would mean pulling in the Redis store already wired up in `rateLimitStore.ts`, not worth it for data that changes this slowly.
-- **`app/components/CharsGallery.tsx`** — renders the gallery as a scrapbook/corkboard collage, not a grid: `display:flex; flex-wrap` with each polaroid-style tile given a size, rotation angle, and pushpin color chosen by an independent hash of the character's name (`hashString` — djb2), so the scatter looks hand-placed and stays stable across reloads/pagination rather than reshuffling. Infinite scroll via a callback ref + `IntersectionObserver` on a sentinel div — a callback ref, not a plain `useRef`+`useEffect` pair, because the sentinel `<div>` only exists once `characters.length > 0`; an effect keyed on `loadMore` would attach once at mount (while the ref is still `null`) and never re-attach once the sentinel actually appears, since `loadMore`'s identity doesn't change at that point. A native `<dialog>` (`showModal()`/`close()`) is the click-through lightbox — free focus-trapping and Escape-to-close, no modal library — opened/closed inside `document.startViewTransition()` when the browser supports it (feature-detected; no-op fallback otherwise) for a cross-fade instead of a hard cut.
+- **`app/components/CharsGallery.tsx`** — renders the gallery as a scrapbook/corkboard collage, not a grid: `display:flex; flex-wrap` with each polaroid-style tile given a size, rotation angle, and pushpin color chosen by an independent hash of the character's name (`hashString` — djb2), so the scatter looks hand-placed and stays stable across reloads/pagination rather than reshuffling. Infinite scroll via a callback ref + `IntersectionObserver` on a sentinel div — a callback ref, not a plain `useRef`+`useEffect` pair, because the sentinel `<div>` only exists once `characters.length > 0`; an effect keyed on `loadMore` would attach once at mount (while the ref is still `null`) and never re-attach once the sentinel actually appears, since `loadMore`'s identity doesn't change at that point. A native `<dialog>` (`showModal()`/`close()`) is the click-through lightbox — free focus-trapping and Escape-to-close, no modal library — opened/closed inside `document.startViewTransition()` when the browser supports it (feature-detected; no-op fallback otherwise) for a cross-fade instead of a hard cut. Its header is the same shared `AppHeader` the landing page uses (see "Unified header" below) — `useAccountMenu()`'s identity chip sits on the right, and the header's center slot holds a small "← Back to Portrayal" link in place of the landing page's character carousel.
 - **"Chat with this character" launches straight into a chat, not the landing page.** The lightbox's link is `/?name=<encoded name>` — the exact same launch point `BotCreator.tsx` already reads via `useSearchParams()`. Landing on that URL never shows the ordinary creator form (input, Random button, footer links): `BotCreator`'s `isLaunchingFromUrl` flag hides all of it in favor of a bare loading spinner, so the transition reads as "opening a chat," not "landing on the creator page, which then happens to fill itself in." Resolution order once there:
   1. Signed in + a saved `bots` row with that exact name (case-insensitive) already exists → resume it via the same `persistedBotToBot()` mapping `ResumeBotDropdown` uses (exported from `ResumeBotDropdown.tsx` alongside `PersistedBot`), so it's the user's actual saved personality/voice/avatar, not a fresh regeneration.
   2. Otherwise (guest, or no saved match) → falls through to the ordinary `handleCreate()` generation pipeline.
@@ -104,7 +109,7 @@ A public, no-auth gallery of every *recognized* portrait in the shared `avatar_c
 
 ### Client-side storage
 
-`src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Known keys: `chatbot-bot`, `chatbot-history-<bot.name>`, `voiceConfig-<bot.name>` (versioned — use the versioned helpers in `storage.ts`, never write the shape directly), `audioEnabled`, `darkMode`, `bot-session-id`. Never store secrets or PII here; it's client-side only.
+`src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Known keys: `chatbot-bot`, `chatbot-history-<bot.name>`, `voiceConfig-<bot.name>` (versioned — use the versioned helpers in `storage.ts`, never write the shape directly), `audioEnabled`, `darkMode`, `bot-session-id`, `chatbot-user-name` and `chatbot-user-name-gate-skipped` (the visitor's own preferred name and whether they've dismissed the name gate — see "Personalized greeting" below). Never store secrets or PII here; it's client-side only.
 
 ### Account persistence (in progress)
 
@@ -123,7 +128,130 @@ The app is migrating toward optional user accounts with server-persisted bots/ch
   - **Write path:** after every response path (cache hit, streaming, non-streaming) sends its reply, `finalizeChatPersistence` fire-and-forget-inserts the user/bot message pair into `messages` and, if this turn advanced the checkpoint, updates `bots.summary`/`summarizedThroughMessageId` — best-effort, same resilience pattern as TTS and the avatar cache; a write failure is logged and never discards an already-generated reply. The intro message ("Introduce yourself...") goes through this same `/api/chat` path, so it's persisted with no special-casing.
   - **Read path:** `GET /api/messages?botName=<name>` (new, GET-only — messages are never written through a directly-callable endpoint) returns a signed-in user's chat history for one saved character, oldest-first, capped at 200. `useChatController.ts` seeds its `messages` state from local storage instantly on mount (unchanged, so perceived load time doesn't regress), then — only when signed in — fetches this endpoint in the background and adopts the server's list only if it's *longer* than what's already loaded (the new-device / cleared-storage case). Local storage stays the fast per-device cache; the server is the durable, multi-device source of truth.
   - Schema changes for this phase were applied via `npm run db:push` same as prior phases — remember to run it again after pulling `src/db/schema.ts` changes, since a mismatched live DB fails every `bots`/`messages` query with a missing-column/relation error (caught and logged, degrades to guest-like behavior — silent, easy to miss without checking server logs).
+  - **This exact failure mode (edit `schema.ts`, forget `db:push`) broke live dev/prod twice** — once for `users.preferred_name`, once for `avatar_cache.display_name` — before `scripts/check-db-schema.cjs` (`npm run db:check`) existed. It's a read-only guardrail: it regex-scans `schema.ts` for declared columns, compares them against `information_schema.columns` for the same tables in the real database, and fails loudly (non-zero exit) if `schema.ts` has a column the live DB doesn't. Wired into both `predev` (so it surfaces the moment you start `next dev` locally) and `npm run ci` (so it's part of the gate before calling work done) — it silently no-ops without `DATABASE_URL`, which is also why it's a no-op on GitHub Actions CI specifically (no DB credentials there); it only has teeth against a real `DATABASE_URL`, i.e. local dev. It never runs `db:push` itself or writes anything — closing the gap this way, rather than trying to auto-apply schema changes, keeps `db:push` an explicit, reviewed action against a shared production database.
 - **Tracking:** [GitHub issue #830](https://github.com/andylacroce/character-chatbot-generator/issues/830) covers the whole migration across all phases. Keep it current as work lands — check off a phase's checkbox in the issue body (`gh issue edit 830 --body-file <file>`) and post a short progress comment (`gh issue comment 830 --body "..."`) when a phase completes or a significant sub-step is verified working, not just at the very end.
+
+### Personalized greeting (the visitor's own name)
+
+Independent of the account-persistence migration above: the app also tracks the *human's*
+own preferred name (what a character should call them), not just the character's.
+`users.preferredName` (`src/db/schema.ts`) is deliberately separate from Auth.js's own
+`users.name` (populated from the OAuth profile, used only for `AuthControl.tsx`'s "Sign
+out (X)" label) — this one is explicit, user-typed, and never inferred from a sign-in
+provider.
+
+- **Capture point: a one-time gate, not a standing field.** `useBotCreation.ts`'s
+  `handleCreate()` pauses itself (`showNameGateModal`) the first time a browser submits a
+  character with no name known yet (`userNameCtx.isResolved && !name && !hasSkippedGate`),
+  showing `NameCaptureModal` (`mode="gate"`) — "Continue" saves the typed name and resumes
+  generation, "Skip for now" marks `chatbot-user-name-gate-skipped` (so it never asks again
+  in that browser) and resumes anyway. This single insertion point covers every path that
+  calls `handleCreate()` (the form, the validation/description-modal continuations, the
+  `?name=` URL auto-launch effect) for free. Two earlier placements — a masthead icon, then
+  a field stacked above the character-name input — both tested badly (missed, or cluttered
+  the primary flow) before landing on this contextual gate.
+- **Editable anytime via the account menu, not just at creation.** `useAccountMenu.tsx`'s
+  "Add your name" / "Change your name" item opens the same `NameCaptureModal` in
+  `mode="edit"` — see "Unified header" below for where that menu appears.
+- **Guest:** stored client-side only, in localStorage under `STORAGE_KEYS.userName`
+  (`chatbot-user-name`) and `STORAGE_KEYS.userNameGateSkipped` (`chatbot-user-name-gate-skipped`
+  — see `src/utils/storageKeys.ts`). `useChatController.ts` reads the name directly and sends
+  it as `userName` on every `/api/chat` request.
+- **Signed in:** `pages/api/user-profile.ts` (`GET`/`POST`, same guest/no-`DATABASE_URL`
+  200-no-op shape as `pages/api/bots.ts`) persists it to `users.preferredName`.
+  `useUserName.ts` seeds the DB once from any pre-existing guest-entered localStorage value
+  on first sign-in, so switching from guest to signed-in doesn't require retyping it.
+- **Server precedence (`pages/api/chat.ts`):** for a signed-in user, the DB value wins once
+  one is set — same server-authoritative-once-saved rationale as `personality` for a saved
+  bot, so a later request can't spoof a different name for an account that already has one.
+  Otherwise the client-supplied `userName` (sanitized via `sanitizeUserName`,
+  `src/utils/security.ts` — keeps apostrophes/hyphens, unlike `sanitizeCharacterName`) is
+  used. When present, it's added to the system prompt as a `<user_name>` block, following
+  the same wrap-in-tags prompt-injection mitigation as `<character_persona>`/
+  `<conversation_summary>`, and folded into the reply cache key — otherwise two
+  differently-named users asking an identical question could get a cross-contaminated
+  cached reply that greets the wrong person.
+- **Shown live in the chat transcript, not just spoken by the character.** `ChatMessage.tsx`
+  displays the visitor's name instead of the generic "Me" on their own messages, threaded
+  down from a single `useUserName()` instance in `ChatPage.tsx` through `ChatMessagesList`/
+  `VirtualizedMessagesList` — so changing it via the account menu updates every
+  already-rendered message immediately, not just new ones. `downloadTranscript.ts`/
+  `pages/api/transcript.ts` accept the same `userName` and use it in place of "Me" in the
+  downloaded HTML transcript too.
+- Optional everywhere: no name (or Skip) just means the generic "Me"/no personalized
+  greeting — nothing else changes. Not part of the `messages` table — it's a per-turn
+  system-prompt addition and a display-only transcript substitution, not persisted chat
+  content itself.
+- **Sign-in is reachable from the same flow, not a separate mechanism.** Both
+  `NameCaptureModal` (when `onRequestSignIn` is passed) and `useAccountMenu`'s own
+  `AuthControl` share **one** `SignInModal` instance per page (`AuthControl`'s
+  `onRequestSignIn` prop skips its own internal modal in favor of the caller's). This isn't
+  just tidiness: `AuthControl` used to be rendered *inside* the hamburger's dropdown and
+  render its own `SignInModal` inline — since a `position: fixed` modal is still a DOM
+  descendant of whatever rendered it, `HamburgerMenu.module.css`'s dropdown-item reset
+  (`.menuDropdown button { border: none; background: none; ... }`) was silently stripping
+  the sign-in buttons' real styling. Hoisting to one shared modal per page, rendered as a
+  sibling of the header rather than inside the dropdown, fixed it structurally instead of
+  patching around it.
+
+### Unified header
+
+`app/components/AppHeader.tsx` (renamed from `ChatHeader.tsx`) is the one header
+component shared by the chat page, the landing page, and the Character Wall — rather than
+each page owning its own masthead markup that has to be kept in visual sync by hand. It's
+deliberately generic: `{ menuItems, menuTrigger?, menuTriggerAriaLabel?, menuSide?: "left" |
+"right", center, extra? }` — a hamburger (or an identity-chip trigger, see below) plus dark
+mode toggle on `menuSide`, an arbitrary `center` slot, and an optional `extra` slot on the
+opposite side. Its own CSS module only carries the generic shell/chrome (the sticky bar,
+the left/center/right grid, the toggle row) — page-specific content (avatar buttons, brand
+links, menu-item icons) lives in that page's own `.module.css`, per this repo's "no shared
+CSS modules" convention.
+
+- **`ChatPage.tsx`** uses `menuSide="left"` with a plain 3-bar hamburger: menu items are
+  Back to Character Creator, Download Transcript, "Change/Add your name", Character Wall;
+  `center` is the character's avatar + name; `extra` is a brand link back to the landing
+  page. It renders its own `NameCaptureModal` (`mode="edit"`) directly and deliberately
+  does **not** use `useAccountMenu()` below — chat's hamburger has no identity chip,
+  sign-in, or admin item, preserving the pre-existing "no sign-in control in the chat
+  header" decision (see "Personalized greeting" above and Phase 3a).
+- **`BotCreator.tsx`** (landing page) and **`CharsGallery.tsx`** (`/chars`) both use
+  `menuSide="right"` with an **identity-chip trigger** instead of a bare hamburger icon —
+  `menuTrigger={identityLabel}` renders the visitor's name/email/"Guest" as the clickable
+  chip itself, so account status is visible at a glance rather than hidden behind a
+  generic icon. Both pages get this identity chip, its menu items (change name, sign
+  in/out, and an admin-only link — see below), and its modals from one shared hook,
+  `app/components/useAccountMenu.tsx`, instead of each page reimplementing the same
+  sign-in/name-edit/admin logic — extracted after the two pages' inline copies started
+  drifting apart. `BotCreator.tsx`'s `center` slot is `LandingCharacterCarousel` (below);
+  `CharsGallery.tsx`'s is a "← Back to Portrayal" link.
+- **`useAccountMenu.tsx`** returns `{ userNameCtx, identityLabel, menuItems, modals,
+  requestSignIn }`. `menuItems` always includes the name-edit button and `<AuthControl
+  onRequestSignIn={requestSignIn}>`; it conditionally adds an "Admin Stats" link
+  (`FaUserShield` icon) when a cheap client-visible check
+  (`GET /api/admin/is-admin` — see "Internal analytics" below) reports the signed-in
+  caller is an admin. `modals` renders exactly one shared `NameCaptureModal` (`mode="edit"`)
+  and one shared `SignInModal` per page — the same DRY consolidation described in
+  "Personalized greeting" above, now generalized to cover the admin link too.
+- **`LandingCharacterCarousel.tsx`** is the landing page's `center` slot: a small
+  auto-advancing rotation through recognized characters, reusing the exact same data
+  `CharsGallery`/`pages/api/chars.ts` already serves (`GET /api/chars?limit=100`), shuffled
+  client-side (Fisher-Yates) so the same 20-character rotation doesn't show in the same
+  order on every load. Auto-advances every 4s, pauses on hover/focus; clicking a portrait
+  navigates via `/?name=<encoded name>` — the exact same launch point the Character Wall's
+  own lightbox uses (see "Character Wall" above), so it resolves resume-vs-fresh-create
+  identically. Portrait and name-label sizes are fixed (not content-sized) specifically to
+  prevent header layout shift as the carousel advances through names of very different
+  lengths — an earlier version let a long name reflow the header's height on every tick.
+- **A CSS specificity bug worth knowing about if the header ever shifts layout again:**
+  `AppHeader.module.css` originally had a generic `.headerCenter > button { display: block;
+  }` rule (specificity 0,1,1) meant for the chat page's avatar button. Because the
+  carousel's own root element is also a `<button>` directly inside `.headerCenter`, that
+  rule silently beat the carousel's own `.carousel { display: flex; }` (specificity 0,1,0)
+  and collapsed it to block layout, which is what caused the shift. Fixed by deleting the
+  generic rule from `AppHeader.module.css` and adding `display: block` directly to the
+  specific `.avatarButton` class in `ChatPage.module.css` where it actually belongs —
+  a reminder that a broad selector living in a *shared* CSS module can reach into and break
+  a completely different component that happens to share the same DOM shape.
 
 ### Internal analytics (`/admin`)
 
@@ -131,7 +259,8 @@ Vercel Analytics/Speed Insights (`app/layout.tsx`) cover page views and performa
 
 - **`analytics_events`** (`src/db/schema.ts`) is an append-only event log — `name`, `environment`-scoped like `bots`, a nullable `userId` (null = guest), and a `metadata` jsonb blob. It exists specifically because guest usage — likely most traffic, since sign-in isn't required — never touches `bots`/`messages` at all, so without this table most real usage is invisible. `src/utils/analytics.ts`'s `recordEvent()` writes to it fire-and-forget, no-op without `DATABASE_URL`, matching the exact resilience pattern used by the avatar cache and bot-persistence writes elsewhere.
 - **Only 3 low-frequency, high-signal events are instrumented:** `character_validated` (`pages/api/validate-character.ts`, success path only — the fail-open branch isn't a real classification and would corrupt the signal), `avatar_generated` (`pages/api/generate-avatar.ts`, tagging which provider actually served the image: `cache` | `cloudflare` | `pollinations` | `none`), and `bot_created` (`pages/api/generate-personality.ts`). Deliberately **not** instrumented: anything that scales with chat-message volume (guest traffic could be large; `messages` already covers signed-in volume) and TTS synthesis (lower-signal). None of the three ever record character names or other user-supplied text — this is a small internal usage log, not a place to accumulate user content, and doing so would also undermine `skipPersistence`'s guarantee that a copyright-override character leaves no durable trace.
-- **`/admin`** (`app/admin/page.tsx` + `GET /api/admin/stats`) is an unlinked-but-reachable internal stats view (same reachability model as `/reference`'s API docs) showing aggregate counts — no per-user or per-guest detail. Gated by `src/utils/isAdmin.ts`: a signed-in session whose email is in the optional `ADMIN_EMAILS` env var (comma-separated). **Fails closed** — no `ADMIN_EMAILS` configured means nobody is admin, the opposite default of every other optional feature in this app, because this one grants read access to aggregate activity rather than a convenience for the caller's own data.
+- **`/admin`** (`app/admin/page.tsx` + `GET /api/admin/stats`) is an unlinked-but-reachable internal stats view (same reachability model as `/reference`'s API docs) showing aggregate counts — no per-user or per-guest detail. Gated by `src/utils/isAdmin.ts`: a signed-in session whose email is in the optional `ADMIN_EMAILS` env var (comma-separated). **Fails closed** — no `ADMIN_EMAILS` configured means nobody is admin, the opposite default of every other optional feature in this app, because this one grants read access to aggregate activity rather than a convenience for the caller's own data. The page itself 404s a non-admin visitor (`notFound()`, via `isAdminSession()`) rather than rendering the stats shell and then showing a "not authorized" message.
+- **Discoverable via the account menu, not just a memorized URL.** `pages/api/admin/is-admin.ts` is a cheap, DB-free `GET` wrapping the same `isAdmin()` check the page itself enforces — it always returns `200 { isAdmin: boolean }` (never 401/403, since it isn't itself a security boundary, just a display decision) and is rate-limited 30/min. `useAccountMenu.tsx` (see "Unified header" above) calls it only while `useSession()` reports `"authenticated"`, and shows an "Admin Stats" link (`FaUserShield` icon, styled identically to the menu's other items — including no underline, matched via `HamburgerMenu.module.css`'s generic `.menuDropdown a` reset) only when it reports `true`. The page and `/api/admin/stats` still enforce their own access control regardless of whether this link is ever rendered.
 - **Never honored on a Vercel Preview deployment, regardless of email match.** Preview swaps Google sign-in for a stub `Credentials` provider that issues a session for *any typed-in email with zero verification* (see "Account persistence" phase 2 above) — without this exclusion, anyone who knows or guesses the admin's email could self-assign it on a preview URL and pass the `ADMIN_EMAILS` check. `isAdmin()` checks `process.env.VERCEL_ENV === "preview"` first and refuses admin status outright before ever consulting the email list. Google OAuth can't succeed on preview anyway (no wildcard redirect URI), so this only excludes the one sign-in path that was never trustworthy.
 - The API route itself also enforces standard access control independent of the page: 401 with no session, 403 signed in but not listed, both before any DB query runs. The page's own `useSession()` check is UX only (avoid a loading flash); nothing sensitive is ever server-rendered into the page shell for a non-admin.
 
@@ -204,6 +333,12 @@ silently drift again.
 - **Client-side (`app/components`) already follows this convention exclusively** — every
   hook/component logs via `logEvent`, never raw `console.*`. Keep new client code
   consistent with that rather than introducing a second style.
+- **Not mechanically enforced beyond the syntax rules above.** ESLint can ban raw
+  `console.*`/`logger.*` calls, but it can't know whether a *new* failure path should have
+  gotten a `logEvent` call at all — that's a judgment call, same as whether this file or
+  README needs updating for a given change. Review both deliberately before opening a PR
+  (the PR template's checklist exists specifically for this) rather than assuming
+  `npm run ci` passing means logging/docs are current — it doesn't check either.
 
 ### Module system (do not regress)
 

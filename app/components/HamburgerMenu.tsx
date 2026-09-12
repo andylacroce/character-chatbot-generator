@@ -4,6 +4,20 @@ import styles from "./styles/HamburgerMenu.module.css";
 
 interface HamburgerMenuProps {
   children: React.ReactNode;
+  /**
+   * "right" opens the dropdown from the button's right edge instead of its left — for
+   * a hamburger positioned near a header's right edge, so the dropdown doesn't overflow
+   * off-screen. Defaults to "left" (the original chat-header placement).
+   */
+  align?: "left" | "right";
+  /**
+   * Custom trigger content replacing the default 3-bar icon — e.g. an identity chip
+   * showing the visitor's current name or "Guest", so that status is visible without
+   * opening the menu at all; opening it surfaces the actions (change name, sign in/out).
+   */
+  trigger?: React.ReactNode;
+  /** Accessible label for a custom trigger — ignored when using the default icon. */
+  triggerAriaLabel?: string;
 }
 
 /**
@@ -11,7 +25,12 @@ interface HamburgerMenuProps {
  * dropdown for menu actions, with keyboard and focus support, and enhances
  * child buttons to close the menu on click.
  */
-const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children }) => {
+const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
+  children,
+  align = "left",
+  trigger,
+  triggerAriaLabel,
+}) => {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -66,18 +85,27 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children }) => {
   });
 
   return (
-    <div className={styles.menuWrapper} ref={wrapperRef}>
+    <div
+      className={`${styles.menuWrapper} ${align === "right" ? styles.menuWrapperRight : ""}`.trim()}
+      ref={wrapperRef}
+    >
       <button
-        className={styles.hamburger}
-        aria-label="Open menu"
+        className={trigger ? styles.triggerButton : styles.hamburger}
+        aria-label={trigger ? (triggerAriaLabel ?? "Open menu") : "Open menu"}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={handleButtonKeyDown}
       >
-        <span className={styles.bar}></span>
-        <span className={styles.bar}></span>
-        <span className={styles.bar}></span>
+        {trigger ?? (
+          <>
+            <span className={styles.bar}></span>
+            <span className={styles.bar}></span>
+            <span className={styles.bar}></span>
+          </>
+        )}
       </button>
+      {/* Right-alignment is handled by .menuWrapperRight's descendant selector on the
+          wrapper above — the dropdown itself doesn't need its own conditional class. */}
       {open && <div className={styles.menuDropdown}>{enhancedChildren}</div>}
     </div>
   );

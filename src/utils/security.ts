@@ -162,3 +162,17 @@ export function sanitizeDescription(description: string): string {
   const sanitized = description.replace(/[<>`]/g, "").trim();
   return sanitized.length > 500 ? sanitized.substring(0, 500) : sanitized;
 }
+
+/**
+ * Validates and sanitizes the human user's own preferred name (used to personalize a
+ * character's greeting). Unlike sanitizeCharacterName, apostrophes and hyphens are
+ * preserved since real names legitimately use them (e.g. "O'Brien", "Mary-Jane") —
+ * only HTML/script injection vectors are stripped.
+ * @param {string} name - The raw name text
+ * @returns {string} The sanitized name, capped at 50 characters
+ */
+export function sanitizeUserName(name: string): string {
+  if (typeof name !== "string") return "";
+  const sanitized = name.replace(/[<>`]/g, "").trim();
+  return sanitized.length > 50 ? sanitized.substring(0, 50) : sanitized;
+}

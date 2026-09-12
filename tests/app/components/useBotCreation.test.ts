@@ -23,9 +23,21 @@ jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
 }));
 
 import { useBotCreation } from "../../../app/components/useBotCreation";
+import type { UserNameContext } from "../../../app/components/useUserName";
 
 // Shared test type used across multiple cases
 type VoiceCfg = { name: string; languageCodes: string[] };
+
+// isResolved: false means "we don't know yet" — the name gate never triggers with
+// this default, matching every one of these tests' original pre-gate behavior. Tests
+// specifically exercising the gate override this per-case.
+const mockUserNameCtx: UserNameContext = {
+  name: "",
+  setName: jest.fn(),
+  isResolved: false,
+  hasSkippedGate: false,
+  markGateSkipped: jest.fn(),
+};
 
 describe("useBotCreation tests", () => {
   beforeEach(() => {
@@ -38,7 +50,7 @@ describe("useBotCreation tests", () => {
       json: async () => ({ name: "  Alice  ", suggestions: ["Bob"] }),
     });
 
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     await act(async () => {
       await result.current.handleRandomCharacter();
@@ -54,7 +66,7 @@ describe("useBotCreation tests", () => {
       json: async () => ({ suggestions: ["Zeus", "Athena"] }),
     });
 
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     await act(async () => {
       await result.current.handleRandomCharacter();
@@ -75,7 +87,7 @@ describe("useBotCreation tests", () => {
         json: async () => ({ name: "Bob", suggestions: ["Yuki"] }),
       });
 
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     await act(async () => {
       await result.current.handleRandomCharacter();
@@ -91,7 +103,7 @@ describe("useBotCreation tests", () => {
   it("handleRandomCharacter falls back to Sherlock Holmes on fetch error", async () => {
     mockAuthFetch.mockRejectedValueOnce(new Error("network"));
 
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     await act(async () => {
       await result.current.handleRandomCharacter();
@@ -117,7 +129,7 @@ describe("useBotCreation tests", () => {
       throw new Error("logger failure");
     });
 
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
     await act(async () => {
       await result.current.handleRandomCharacter();
     });
@@ -147,7 +159,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("ErrAvatar"));
     await act(async () => {
@@ -178,7 +190,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(null);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     // Set input and call handleCreate
     act(() => result.current.setInput("Bob"));
@@ -218,7 +230,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Jill"));
     await act(async () => {
@@ -260,7 +272,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("TroubleMaker"));
 
@@ -296,7 +308,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Defaulty"));
 
@@ -331,7 +343,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Prod"));
     await act(async () => {
@@ -370,7 +382,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Picasso"));
 
@@ -402,7 +414,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Silhouetto"));
 
@@ -433,7 +445,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockRejectedValueOnce(new Error("voice failure"));
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("BrokenVoice"));
 
@@ -470,7 +482,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Vocal"));
     await act(async () => {
@@ -510,7 +522,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("PersistFail"));
     await act(async () => {
@@ -545,7 +557,7 @@ describe("useBotCreation tests", () => {
     persistence.persistVoiceConfig.mockClear();
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("TypoName"));
     await act(async () => {
@@ -589,7 +601,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockReturnValueOnce(voicePromise);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Sill"));
 
@@ -623,7 +635,7 @@ describe("useBotCreation tests", () => {
   });
 
   it("handleCreate sets error on empty input", async () => {
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     await act(async () => {
       result.current.setInput("");
@@ -634,7 +646,7 @@ describe("useBotCreation tests", () => {
   });
 
   it("handleCancel marks active run cancelled (or no-op) and clears loading/progress", () => {
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     act(() => result.current.handleCancel());
 
@@ -660,7 +672,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Spider-Man"));
     act(() => {
@@ -703,7 +715,7 @@ describe("useBotCreation tests", () => {
     } as VoiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
     act(() => {
       result.current.setInput("TestChar");
     });
@@ -719,7 +731,7 @@ describe("useBotCreation tests", () => {
     (global as unknown as { window?: Window }).window = undefined;
 
     mockAuthFetch.mockResolvedValue({ ok: true, json: async () => ({ name: "Random Hero" }) });
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
     await act(async () => {
       await result.current.handleRandomCharacter();
     });
@@ -732,7 +744,7 @@ describe("useBotCreation tests", () => {
     (global as unknown as { window?: Window }).window = undefined;
 
     mockAuthFetch.mockRejectedValue(new Error("API error"));
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
     await act(async () => {
       await result.current.handleRandomCharacter();
     });
@@ -760,7 +772,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Spider-Man"));
     await act(async () => {
@@ -801,7 +813,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Some Abusive Name"));
     await act(async () => {
@@ -839,7 +851,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Unknown"));
     await act(async () => {
@@ -890,7 +902,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Sherlock Holmes"));
     await act(async () => {
@@ -924,7 +936,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Test"));
     await act(async () => {
@@ -953,7 +965,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("BadShape"));
     await act(async () => {
@@ -1001,7 +1013,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Mario"));
 
@@ -1053,7 +1065,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Pokemon"));
 
@@ -1079,7 +1091,7 @@ describe("useBotCreation tests", () => {
   });
 
   it("handleValidationSuggestion updates input with selected suggestion", async () => {
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     act(() => result.current.setInput("Copyrighted"));
 
@@ -1129,7 +1141,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Test"));
     await act(async () => {
@@ -1166,7 +1178,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Test"));
     await act(async () => {
@@ -1180,7 +1192,7 @@ describe("useBotCreation tests", () => {
   it("handleRandomCharacter with response not ok", async () => {
     mockAuthFetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
 
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     await act(async () => {
       await result.current.handleRandomCharacter();
@@ -1192,7 +1204,7 @@ describe("useBotCreation tests", () => {
   it("handleRandomCharacter with empty name in response", async () => {
     mockAuthFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ name: "   " }) });
 
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     await act(async () => {
       await result.current.handleRandomCharacter();
@@ -1205,7 +1217,7 @@ describe("useBotCreation tests", () => {
     // name is a number — not a string; should fall back
     mockAuthFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ name: 123 as unknown }) });
 
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     await act(async () => {
       await result.current.handleRandomCharacter();
@@ -1239,7 +1251,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Odd"));
     await act(async () => {
@@ -1266,7 +1278,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("NoPersonality"));
     await act(async () => {
@@ -1294,7 +1306,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Gen"));
     await act(async () => {
@@ -1323,7 +1335,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Original"));
     await act(async () => {
@@ -1374,7 +1386,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Stepper"));
 
@@ -1418,7 +1430,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Cancelable"));
     // Start creation
@@ -1461,7 +1473,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("AvatarCancel"));
     // Start creation
@@ -1511,7 +1523,7 @@ describe("useBotCreation tests", () => {
     );
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("VoiceCancel"));
     act(() => {
@@ -1570,7 +1582,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Persistent"));
     await act(async () => {
@@ -1601,7 +1613,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     const evt = { preventDefault: jest.fn() } as unknown as React.FormEvent;
 
@@ -1623,7 +1635,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Loggy"));
     await act(async () => {
@@ -1662,7 +1674,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Test"));
     await act(async () => {
@@ -1679,7 +1691,7 @@ describe("useBotCreation tests", () => {
 
     mockAuthFetch.mockRejectedValueOnce(new Error("Network error"));
 
-    const { result } = renderHook(() => useBotCreation(() => {}));
+    const { result } = renderHook(() => useBotCreation(() => {}, mockUserNameCtx));
 
     await act(async () => {
       await result.current.handleRandomCharacter();
@@ -1709,7 +1721,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("ValFail"));
     await act(async () => {
@@ -1745,7 +1757,7 @@ describe("useBotCreation tests", () => {
     (persistModule.persistVoiceConfig as jest.Mock).mockClear();
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("PersistOK"));
     await act(async () => {
@@ -1780,7 +1792,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Zorblax"));
     await act(async () => {
@@ -1824,7 +1836,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Known"));
     await act(async () => {
@@ -1861,7 +1873,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Zorblax"));
     await act(async () => {
@@ -1909,7 +1921,7 @@ describe("useBotCreation tests", () => {
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("Zorblax"));
     await act(async () => {
@@ -1946,7 +1958,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => result.current.setInput("NoGender"));
     await act(async () => {

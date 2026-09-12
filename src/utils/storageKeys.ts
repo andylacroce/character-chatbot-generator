@@ -10,6 +10,10 @@ export const STORAGE_KEYS = {
   darkMode: "darkMode",
   sessionId: "bot-session-id",
   sessionDatetime: "bot-session-datetime",
+  userName: "chatbot-user-name",
+  // Set once a guest explicitly dismisses the post-creation name gate, so it
+  // doesn't reappear on every subsequent character in this browser.
+  userNameGateSkipped: "chatbot-user-name-gate-skipped",
 } as const;
 
 /** Prefixes for keys that are suffixed per-character by bot name. */

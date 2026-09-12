@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "predev": "npm run docs:api",
+    "predev": "npm run docs:api && npm run db:check",
     "build": "npm run docs:api && next build",
-    "ci": "npm run lint -- --max-warnings=0 && npm run lint:md && npm run format:check && npm run type-check && npm run docs:code && npm run test:coverage && npm run build",
+    "ci": "npm run lint -- --max-warnings=0 && npm run lint:md && npm run format:check && npm run type-check && npm run db:check && npm run docs:code && npm run test:coverage && npm run build",
     "vercel-build": "npm run docs:api && next build",
     "docs:api": "node scripts/generate-openapi.cjs",
     "docs:code": "typedoc",
@@ -25,9 +25,11 @@
     "type-check:watch": "tsc --noEmit --watch",
     "analyze": "ANALYZE=true next build",
     "db:push": "drizzle-kit push",
+    "db:check": "node scripts/check-db-schema.cjs",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
-    "chars:reclassify": "node scripts/reclassify-avatar-cache.cjs"
+    "chars:reclassify": "node scripts/reclassify-avatar-cache.cjs",
+    "chars:backfill-display-names": "node scripts/backfill-avatar-display-names.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

@@ -22,23 +22,38 @@ interface ChatMessagesListProps {
   }>;
   bot: Bot;
   onAvatarClick?: () => void;
+  /** The visitor's own preferred name — see ChatMessage.tsx. */
+  userName?: string;
 }
 
 const VIRTUALIZE_THRESHOLD = 30;
 
 const ChatMessagesList: React.FC<ChatMessagesListProps> = React.memo(
-  ({ messages, bot, onAvatarClick }) => {
+  ({ messages, bot, onAvatarClick, userName }) => {
     if (messages.length < VIRTUALIZE_THRESHOLD) {
       return (
         <>
           <div className={styles.spacer} />
           {messages.map((msg, index) => (
-            <ChatMessage key={index} message={msg} bot={bot} onAvatarClick={onAvatarClick} />
+            <ChatMessage
+              key={index}
+              message={msg}
+              bot={bot}
+              onAvatarClick={onAvatarClick}
+              userName={userName}
+            />
           ))}
         </>
       );
     }
-    return <VirtualizedMessagesList messages={messages} bot={bot} onAvatarClick={onAvatarClick} />;
+    return (
+      <VirtualizedMessagesList
+        messages={messages}
+        bot={bot}
+        onAvatarClick={onAvatarClick}
+        userName={userName}
+      />
+    );
   },
 );
 

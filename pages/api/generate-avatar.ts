@@ -116,12 +116,22 @@ async function cacheAvatar(
 ): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   try {
+    // sanitizedName is the properly-cased name as Claude produced it (generate-
+    // personality's correctedName) — capture it as displayName here, since this is the
+    // one place that casing is actually known; the lowercased characterName key stays
+    // case-insensitive for lookups. See src/db/schema.ts's avatarCache doc comment.
     await getDb()
       .insert(avatarCache)
-      .values({ characterName: avatarCacheKey(sanitizedName), avatarUrl, gender, recognized })
+      .values({
+        characterName: avatarCacheKey(sanitizedName),
+        avatarUrl,
+        gender,
+        recognized,
+        displayName: sanitizedName,
+      })
       .onConflictDoUpdate({
         target: avatarCache.characterName,
-        set: { avatarUrl, gender, recognized },
+        set: { avatarUrl, gender, recognized, displayName: sanitizedName },
       });
   } catch (err) {
     logEvent(

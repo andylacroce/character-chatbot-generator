@@ -6,7 +6,7 @@
 
 import React, { useContext } from "react";
 import { DarkModeContext } from "./DarkModeContext";
-import styles from "./styles/ChatHeader.module.css";
+import styles from "./styles/AppHeader.module.css";
 import { FaSun, FaMoon } from "react-icons/fa";
 
 interface DarkModeToggleProps {

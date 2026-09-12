@@ -49,6 +49,13 @@ export const users = pgTable("users", {
   email: text("email").unique().notNull(),
   emailVerified: timestamp("email_verified", { mode: "date" }),
   image: text("image"),
+  // Distinct from `name` above (which Auth.js populates from the OAuth profile and
+  // AuthControl.tsx uses only for the "Sign out (X)" label): this is what the user
+  // explicitly typed in as the name they want a character to greet them by — see
+  // pages/api/user-profile.ts and pages/api/chat.ts's greeting injection. Nullable,
+  // purely additive; a guest's equivalent lives client-side only (localStorage key
+  // "chatbot-user-name", see src/utils/storage.ts's known-keys doc in CLAUDE.md).
+  preferredName: text("preferred_name"),
 });
 
 export const accounts = pgTable(
@@ -158,12 +165,22 @@ export const messages = pgTable("messages", {
  * unrecognized distinction) keep showing on the gallery rather than silently vanishing;
  * scripts/reclassify-avatar-cache.cjs can re-run the recognized classification over
  * existing rows for anyone who wants that historical cleanup.
+ *
+ * `displayName` is the properly-cased name as Claude itself produced it (generate-
+ * personality's `correctedName`, e.g. "Richard III", "Joan of Arc") — captured once at
+ * write time in pages/api/generate-avatar.ts's `cacheAvatar`, since that's the one place
+ * the correct casing is actually known; `characterName` (the primary key) stays
+ * lowercased so lookups are case-insensitive. Nullable: rows written before this column
+ * existed fall back to pages/api/chars.ts's regex-based `toDisplayName` reconstruction,
+ * which is necessarily lossier (it can't know a name is a Roman numeral or a proper
+ * noun exception on its own) than the name Claude already generated correctly.
  */
 export const avatarCache = pgTable("avatar_cache", {
   characterName: text("character_name").primaryKey(),
   avatarUrl: text("avatar_url").notNull(),
   gender: text("gender"),
   recognized: boolean("recognized").default(true).notNull(),
+  displayName: text("display_name"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 

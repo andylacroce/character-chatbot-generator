@@ -19,13 +19,21 @@ import styles from "./styles/AuthControl.module.css";
 
 interface AuthControlProps {
   className?: string;
+  /**
+   * When provided, "Sign in" calls this instead of opening AuthControl's own
+   * SignInModal — for a caller (e.g. a hamburger menu) that needs the modal to render
+   * outside its own DOM subtree, so it doesn't inherit that subtree's styling (a menu
+   * dropdown's item-reset CSS, for instance) and to share one modal instance across
+   * every "sign in" entry point instead of each rendering its own.
+   */
+  onRequestSignIn?: () => void;
 }
 
 const PREVIEW_STUB_PROVIDER_ID = "preview-stub";
 const PREVIEW_STUB_TEST_EMAIL = "preview-test@example.com";
 
 /** Sign in / sign out control; renders nothing while the session is loading. */
-const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
+const AuthControl: React.FC<AuthControlProps> = ({ className = "", onRequestSignIn }) => {
   const { data: session, status } = useSession();
   const [providerIds, setProviderIds] = useState<string[] | null>(null);
   const [showSignInModal, setShowSignInModal] = useState(false);
@@ -45,6 +53,10 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
     if (!providerIds || providerIds.length === 0) return;
     if (providerIds.includes(PREVIEW_STUB_PROVIDER_ID)) {
       signIn(PREVIEW_STUB_PROVIDER_ID, { email: PREVIEW_STUB_TEST_EMAIL });
+      return;
+    }
+    if (onRequestSignIn) {
+      onRequestSignIn();
       return;
     }
     setShowSignInModal(true);
@@ -85,11 +97,13 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "" }) => {
         <FaSignInAlt size={16} className={styles.icon} />
         <span className={styles.signInLabel}>Sign in</span>
       </button>
-      <SignInModal
-        show={showSignInModal}
-        onClose={() => setShowSignInModal(false)}
-        providerIds={providerIds}
-      />
+      {!onRequestSignIn && (
+        <SignInModal
+          show={showSignInModal}
+          onClose={() => setShowSignInModal(false)}
+          providerIds={providerIds}
+        />
+      )}
     </>
   );
 };

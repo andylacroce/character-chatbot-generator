@@ -70,6 +70,10 @@ const transcriptRateLimit = createRateLimiter({
  *               exportedAt:
  *                 type: string
  *                 nullable: true
+ *               userName:
+ *                 type: string
+ *                 nullable: true
+ *                 description: The visitor's preferred name, shown instead of "Me" on their own messages.
  *     responses:
  *       200:
  *         description: HTML transcript document
@@ -103,7 +107,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Extract messages from request body (sent by downloadTranscript utility)
-  const { messages, bot, exportedAt } = req.body;
+  const { messages, bot, exportedAt, userName } = req.body;
+  const senderName = typeof userName === "string" && userName.trim() ? userName.trim() : "Me";
 
   if (!Array.isArray(messages)) {
     logEvent(
@@ -369,7 +374,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const isUser = msg.sender === "User";
             return `
               <div class="message ${isUser ? "user-message" : "bot-message"}">
-                <strong class="${isUser ? "user-sender" : "bot-sender"}">${isUser ? "Me" : bot ? escapeHtml(bot.name) : escapeHtml(msg.sender)}:</strong>
+                <strong class="${isUser ? "user-sender" : "bot-sender"}">${isUser ? escapeHtml(senderName) : bot ? escapeHtml(bot.name) : escapeHtml(msg.sender)}:</strong>
                 <span class="message-text">${sanitizeForDisplay(msg.text)}</span>
               </div>
             `;

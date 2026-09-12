@@ -30,6 +30,17 @@ jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
 }));
 
 import { useBotCreation } from "../../../app/components/useBotCreation";
+import type { UserNameContext } from "../../../app/components/useUserName";
+
+// isResolved: false ("we don't know yet") means the name gate never triggers — these
+// tests exercise generation itself, not the gate.
+const mockUserNameCtx: UserNameContext = {
+  name: "",
+  setName: jest.fn(),
+  isResolved: false,
+  hasSkippedGate: false,
+  markGateSkipped: jest.fn(),
+};
 
 const baseBot: Bot = {
   name: "TestHero",
@@ -69,7 +80,7 @@ describe("useBotCreation generateBotDataWithProgressCancelable branches", () => 
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => {
       result.current.setInput("Alice");
@@ -117,7 +128,7 @@ describe("useBotCreation generateBotDataWithProgressCancelable branches", () => 
     mockApiGetVoiceConfigForCharacter.mockResolvedValue(baseBot.voiceConfig);
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     // Start first generation for Alpha
     act(() => {
@@ -159,7 +170,7 @@ describe("useBotCreation generateBotDataWithProgressCancelable branches", () => 
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => {
       result.current.setInput("Bob");
@@ -184,7 +195,7 @@ describe("useBotCreation generateBotDataWithProgressCancelable branches", () => 
     mockApiGetVoiceConfigForCharacter.mockRejectedValue(new Error("voice fail"));
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => {
       result.current.setInput("Charlie");
@@ -221,7 +232,7 @@ describe("useBotCreation generateBotDataWithProgressCancelable branches", () => 
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     act(() => {
       result.current.setInput("Dana");
@@ -255,7 +266,7 @@ describe("useBotCreation generateBotDataWithProgressCancelable branches", () => 
     });
 
     const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated));
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
 
     // Ensure fresh state
     act(() => {
