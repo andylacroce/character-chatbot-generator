@@ -61,7 +61,7 @@ const progressSteps = [
   },
   {
     key: "avatar",
-    label: "Generating portrait, this may take a minute",
+    label: "Generating portrait",
   },
   {
     key: "voice",
@@ -135,8 +135,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // loading state nobody actually perceives as "loading". `randomizing` still disables
   // the Random button itself, below, as lightweight double-click protection.
   const isBusy = loading || validating;
-  const [elapsed, setElapsed] = useState<number>(0);
-  const [MAX_AVATAR_SECONDS, setMaxAvatarSeconds] = useState<number | null>(null);
   // Guard flag only — never read by the render output, so a ref (not state) avoids an
   // unnecessary extra render on top of the one handleCreate() itself already triggers.
   const hasAutoSubmittedRef = useRef<boolean>(false);
@@ -146,9 +144,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // useBotCreation doesn't memoize its return values, so handleCreate/onBotCreated
   // get a new identity on every BotCreator render. The URL-launch effect below reads
   // them through these refs instead of listing them as effect dependencies — otherwise
-  // any unrelated re-render while the /api/bots lookup is in flight (e.g. the separate
-  // /api/config fetch resolving) would tear down and re-fire the effect, and since the
-  // lookup hadn't dispatched yet, the StrictMode-hang-fix cleanup below would reset the
+  // any unrelated re-render while the /api/bots lookup is in flight would tear down and
+  // re-fire the effect, and since the lookup hadn't dispatched yet, the StrictMode-hang-fix
+  // cleanup below would reset the
   // guard and fire a duplicate /api/bots request — repeatedly, on every such re-render.
   const handleCreateRef = useRef(handleCreate);
   const onBotCreatedRef = useRef(onBotCreated);
@@ -298,42 +296,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
       }
     };
   }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus, launchCancelled]);
-  useEffect(() => {
-    // fetch server-side config (safe subset) so UI matches server timeout
-    let mounted = true;
-    authenticatedFetch("/api/config")
-      .then((r) => r.json())
-      .then((data) => {
-        if (mounted && data && typeof data.avatarTimeoutSeconds === "number")
-          setMaxAvatarSeconds(data.avatarTimeoutSeconds);
-      })
-      .catch(() => {
-        /* ignore, fall back to 60 */
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-  useEffect(() => {
-    // A ticking elapsed-seconds counter is inherently effect-driven (setInterval can't run
-    // during render), so resetting it to 0 here whenever the timer starts/stops is the
-    // actual side effect, not state that could be computed during render instead.
-    let timer: number | null = null;
-    if (loading && progress === "avatar" && MAX_AVATAR_SECONDS !== null) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setElapsed(0);
-      timer = window.setInterval(
-        () => setElapsed((e) => Math.min(e + 1, MAX_AVATAR_SECONDS)),
-        1000,
-      );
-    } else {
-      setElapsed(0);
-    }
-    return () => {
-      if (timer) window.clearInterval(timer);
-    };
-  }, [loading, progress, MAX_AVATAR_SECONDS]);
-
   return (
     <>
       <AppHeader
@@ -520,16 +482,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           {loading && currentStep && (
             <div className={styles.progressContainer} data-testid="bot-creator-progress">
               <span className={styles.genericSpinner} aria-label="Loading" />
-              <div className={styles.progressText}>
-                {loadingMessage || currentStep.label}
-                {loading && progress === "avatar" && MAX_AVATAR_SECONDS !== null && (
-                  <span className={styles.elapsedTime}>
-                    {elapsed < MAX_AVATAR_SECONDS
-                      ? ` (${elapsed}s)`
-                      : ` (${MAX_AVATAR_SECONDS}s max)`}
-                  </span>
-                )}
-              </div>
+              <div className={styles.progressText}>{loadingMessage || currentStep.label}</div>
               <button
                 type="button"
                 className={styles.textLink}

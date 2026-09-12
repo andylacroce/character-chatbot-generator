@@ -1,6 +1,4 @@
 // Server-side runtime configuration shared by API handlers.
-// Keep server-only values here; expose safe values to the client via an API route.
-export const AVATAR_TIMEOUT_MS = 60_000; // 60 seconds
 
 // Shared personality template constants
 export const RESPONSE_CONSTRAINTS = `Keep responses under 100 words. Always finish your current thought with proper punctuation before stopping.

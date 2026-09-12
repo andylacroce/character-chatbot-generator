@@ -8,7 +8,6 @@ jest.mock("../../../src/utils/claudeModelSelector", () => ({
 }));
 
 import {
-  AVATAR_TIMEOUT_MS,
   RESPONSE_CONSTRAINTS,
   CONTENT_GUIDELINES,
   generatePersonalityPrompt,
@@ -29,10 +28,6 @@ function claudeReturns(text: string) {
 
 describe("serverConfig", () => {
   beforeEach(() => jest.clearAllMocks());
-
-  it("exposes a sane avatar timeout", () => {
-    expect(AVATAR_TIMEOUT_MS).toBe(60_000);
-  });
 
   describe("generatePersonalityPrompt", () => {
     it("builds a prompt from the structured JSON Claude returns", async () => {
