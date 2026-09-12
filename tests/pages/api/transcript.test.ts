@@ -131,6 +131,29 @@ describe("transcript API", () => {
       expect(html).toContain("Greetings.");
     });
 
+    it("shows the visitor's preferred name instead of Me when supplied", async () => {
+      const res = makeRes();
+      await handler(makeReq({ messages, userName: "Andy" }), res);
+
+      const html = sentHtml(res);
+      expect(html).toContain("Andy:");
+      expect(html).not.toContain(">Me<");
+    });
+
+    it("escapes HTML in a supplied userName", async () => {
+      const res = makeRes();
+      await handler(makeReq({ messages, userName: "<script>alert(1)</script>" }), res);
+
+      expect(sentHtml(res)).not.toContain("<script>alert(1)</script>");
+    });
+
+    it("falls back to Me when userName is blank or not a string", async () => {
+      const res = makeRes();
+      await handler(makeReq({ messages, userName: "   " }), res);
+
+      expect(sentHtml(res)).toContain("Me:");
+    });
+
     it("generates a timestamp when the client does not supply one", async () => {
       const res = makeRes();
       await handler(makeReq({ messages }), res);

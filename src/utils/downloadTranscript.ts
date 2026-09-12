@@ -13,12 +13,14 @@ import { authenticatedFetch } from "./api";
  *
  * @param {Array<object>} messages - The array of chat messages to include in the transcript.
  * @param {object} bot - The bot/character information including name and avatarUrl.
+ * @param {string} [userName] - The visitor's preferred name, shown instead of "Me" on their own messages.
  * @returns {Promise<void>} Resolves when the download is triggered.
  * @throws {Error} If the transcript fetch fails or browser APIs are unavailable.
  */
 export async function downloadTranscript(
   messages: Array<Record<string, unknown>> | Message[],
   bot?: { name: string; avatarUrl: string },
+  userName?: string,
 ) {
   if (!Array.isArray(messages)) {
     throw new Error("Transcript must be an array");
@@ -41,7 +43,7 @@ export async function downloadTranscript(
     response = await authenticatedFetch("/api/transcript", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: safeMessages, exportedAt: friendlyTime, bot }),
+      body: JSON.stringify({ messages: safeMessages, exportedAt: friendlyTime, bot, userName }),
     });
   } catch (err) {
     // Network request failed

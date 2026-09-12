@@ -38,7 +38,7 @@ describe("serverConfig", () => {
     it("builds a prompt from the structured JSON Claude returns", async () => {
       claudeReturns(JSON.stringify(fullConfig));
 
-      const prompt = await generatePersonalityPrompt("Sherlock Holmes");
+      const { prompt } = await generatePersonalityPrompt("Sherlock Holmes");
 
       expect(prompt).toContain("You are Sherlock Holmes.");
       expect(prompt).toContain("SPEAKING STYLE: formal and articulate");
@@ -64,7 +64,7 @@ describe("serverConfig", () => {
     it("substitutes defaults for fields Claude omits", async () => {
       claudeReturns(JSON.stringify({ speakingStyle: "terse" }));
 
-      const prompt = await generatePersonalityPrompt("Ada Lovelace");
+      const { prompt } = await generatePersonalityPrompt("Ada Lovelace");
 
       expect(prompt).toContain("SPEAKING STYLE: terse");
       expect(prompt).toContain("PERSONALITY: Stay true to character");
@@ -76,7 +76,7 @@ describe("serverConfig", () => {
     it("extracts JSON that Claude wrapped in prose or fences", async () => {
       claudeReturns("Here you go:\n```json\n" + JSON.stringify(fullConfig) + "\n```");
 
-      const prompt = await generatePersonalityPrompt("Sherlock Holmes");
+      const { prompt } = await generatePersonalityPrompt("Sherlock Holmes");
 
       expect(prompt).toContain("SPEAKING STYLE: formal and articulate");
     });
@@ -84,7 +84,7 @@ describe("serverConfig", () => {
     it("falls back to the simple template when Claude returns unparseable JSON", async () => {
       claudeReturns("not json at all");
 
-      const prompt = await generatePersonalityPrompt("Ada Lovelace");
+      const { prompt } = await generatePersonalityPrompt("Ada Lovelace");
 
       expect(prompt).toContain("You are Ada Lovelace. Stay in character");
       expect(prompt).toContain(RESPONSE_CONSTRAINTS);
@@ -94,7 +94,7 @@ describe("serverConfig", () => {
     it("falls back to the simple template when the API call fails", async () => {
       mockCreate.mockRejectedValueOnce(new Error("network down"));
 
-      const prompt = await generatePersonalityPrompt("Ada Lovelace");
+      const { prompt } = await generatePersonalityPrompt("Ada Lovelace");
 
       expect(prompt).toContain("You are Ada Lovelace. Stay in character");
     });
@@ -104,10 +104,47 @@ describe("serverConfig", () => {
       // structured path with every field defaulted rather than the error fallback.
       mockCreate.mockResolvedValueOnce({ content: [{ type: "image" }] });
 
-      const prompt = await generatePersonalityPrompt("Ada Lovelace");
+      const { prompt } = await generatePersonalityPrompt("Ada Lovelace");
 
       expect(prompt).toContain("SPEAKING STYLE: Natural and authentic to character");
       expect(prompt).toContain("QUIRKS: Express character-specific mannerisms");
+    });
+
+    it("returns Claude's correctedName, used in the built prompt too", async () => {
+      claudeReturns(JSON.stringify({ ...fullConfig, correctedName: "Sherlock Holmes" }));
+
+      const { prompt, correctedName } = await generatePersonalityPrompt("sherlok holmes");
+
+      expect(correctedName).toBe("Sherlock Holmes");
+      expect(prompt).toContain("You are Sherlock Holmes.");
+    });
+
+    it("falls back to the original name when Claude omits correctedName", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+
+      const { correctedName } = await generatePersonalityPrompt("Ada Lovelace");
+
+      expect(correctedName).toBe("Ada Lovelace");
+    });
+
+    it("falls back to the original name on the error path too", async () => {
+      mockCreate.mockRejectedValueOnce(new Error("network down"));
+
+      const { correctedName } = await generatePersonalityPrompt("Ada Lovelace");
+
+      expect(correctedName).toBe("Ada Lovelace");
+    });
+
+    it("passes existingNames through to the prompt for fuzzy matching", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+
+      await generatePersonalityPrompt("sherlok holmes", undefined, [
+        "Sherlock Holmes",
+        "Cleopatra",
+      ]);
+
+      const { system } = mockCreate.mock.calls[0][0];
+      expect(system).toContain("EXISTING_NAMES: Sherlock Holmes, Cleopatra");
     });
   });
 });

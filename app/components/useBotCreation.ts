@@ -5,11 +5,15 @@ import type { Bot } from "./BotCreator";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { persistVoiceConfig } from "../../src/utils/voiceConfigPersistence";
 import type { CharacterValidationResult } from "../../pages/api/validate-character";
+import type { UserNameContext } from "./useUserName";
 
 type ProgressStep = "personality" | "avatar" | "voice" | null;
 
-/** Drives BotCreator's full character-creation flow: validation, generation progress, and cancellation. */
-export function useBotCreation(onBotCreated: (bot: Bot) => void) {
+/**
+ * Drives BotCreator's full character-creation flow: a one-time "what's your name" gate
+ * (when unknown), validation, generation progress, and cancellation.
+ */
+export function useBotCreation(onBotCreated: (bot: Bot) => void, userNameCtx: UserNameContext) {
   const [input, setInput] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -23,11 +27,19 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
   // character/person Claude actually knows about, so we ask the user to describe who
   // they want instead of letting Claude improvise from just a name.
   const [showDescriptionModal, setShowDescriptionModal] = useState<boolean>(false);
+  // Shown once, right after Create is submitted, when this browser doesn't know the
+  // visitor's own preferred name yet and hasn't already skipped it — see the top of
+  // handleCreate below.
+  const [showNameGateModal, setShowNameGateModal] = useState<boolean>(false);
   // Cancellation token object per generation run. Each run assigns a fresh object so
   // previously-cancelled runs remain cancelled even if a new run starts.
   const cancelRequested = useRef<{ cancelled: boolean } | null>(null);
   const lastRandomNameRef = useRef<string>("");
   const proceedWithoutValidationRef = useRef<boolean>(false);
+  // Set (then consumed) by handleNameGateSave/Skip so the next handleCreate() call
+  // resumes past the gate instead of showing it again — same "resume the paused run"
+  // idiom as proceedWithoutValidationRef above.
+  const skipNameGateRef = useRef<boolean>(false);
   // Set from the validation result for the run currently in flight and read when
   // building the /api/generate-avatar request — see generateBotDataWithProgressCancelable.
   // Defaults true (fail open, same as the field's server-side default) so a run that
@@ -95,6 +107,24 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
       setError("Please enter a name or character.");
       return;
     }
+
+    // Pause here, once, the first time this browser doesn't yet know the visitor's own
+    // preferred name (and hasn't already skipped being asked) — resolved only once we
+    // authoritatively know there's no name (isResolved), so an already-named signed-in
+    // user isn't asked again just because /api/user-profile hadn't returned yet. This
+    // covers every path that calls handleCreate() (form submit, the validation/
+    // description-modal continuations below, and the ?name= URL auto-launch effect) for
+    // free, since they all funnel through this one function.
+    if (
+      !skipNameGateRef.current &&
+      userNameCtx.isResolved &&
+      !userNameCtx.name &&
+      !userNameCtx.hasSkippedGate
+    ) {
+      setShowNameGateModal(true);
+      return;
+    }
+    skipNameGateRef.current = false;
 
     // One cancellation token for this entire run — validation through generation —
     // so handleCancel() can interrupt it at any step, not just once generation has
@@ -290,6 +320,23 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     setProgress(null);
   };
 
+  /** Saves the name-gate's entered name (if any) and resumes the paused creation run. */
+  const handleNameGateSave = (name: string) => {
+    if (name.trim()) userNameCtx.setName(name.trim());
+    else userNameCtx.markGateSkipped();
+    setShowNameGateModal(false);
+    skipNameGateRef.current = true;
+    handleCreate();
+  };
+
+  /** Dismisses the name gate without a name and resumes the paused creation run. */
+  const handleNameGateSkip = () => {
+    userNameCtx.markGateSkipped();
+    setShowNameGateModal(false);
+    skipNameGateRef.current = true;
+    handleCreate();
+  };
+
   const handleValidationContinue = () => {
     setShowValidationModal(false);
     proceedWithoutValidationRef.current = true;
@@ -435,6 +482,7 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     validationResult,
     showValidationModal,
     showDescriptionModal,
+    showNameGateModal,
     cancelRequested,
     lastRandomNameRef,
     handleCreate,
@@ -445,6 +493,8 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void) {
     handleValidationSuggestion,
     handleDescriptionSubmit,
     handleDescriptionCancel,
+    handleNameGateSave,
+    handleNameGateSkip,
   };
 }
 

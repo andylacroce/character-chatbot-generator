@@ -1,0 +1,106 @@
+/* =============================
+   LandingCharacterCarousel.module.css
+   - Rotating portrait "stage" in the landing header's center slot — a small, self-
+     contained echo of ChatHeader's own avatar-ring treatment (same accent glow),
+     scaled down since this is decorative/navigational, not the page's main focus.
+   ============================= */
+
+.carousel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  background: none;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  font-family: var(--font-primary), sans-serif;
+  max-width: 100%;
+  text-align: center;
+}
+
+.portraitWrap {
+  display: block;
+  border-radius: 50%;
+  /* New key per character (see the component) re-triggers this animation, giving a
+     soft cross-fade/rise on every rotation instead of a hard cut. */
+  animation: portraitIn 0.5s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portraitWrap,
+  .nameLabel {
+    animation: none !important;
+  }
+}
+
+@keyframes portraitIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.portrait {
+  display: block;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--color-surface-variant);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent),
+    0 10px 26px color-mix(in srgb, var(--color-accent) 25%, transparent);
+  transition: box-shadow 0.2s ease;
+}
+
+.carousel:hover .portrait,
+.carousel:focus-visible .portrait {
+  box-shadow:
+    0 0 0 2px var(--color-accent),
+    0 8px 20px color-mix(in srgb, var(--color-accent) 32%, transparent);
+}
+
+.carousel:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+.nameLabel {
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--color-text);
+  /* A fixed width AND height (not viewport-, content-, or line-count-relative) so
+     this slot's rendered size never changes between rotations — AppHeader's grid
+     gives this column `auto` width, and any name-dependent size would visibly shift
+     the header's side controls left/right on every rotation. Wraps to 2 lines
+     (most names fit fully that way) before falling back to an ellipsis. */
+  width: 210px;
+  height: 2.4em;
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-overflow: ellipsis;
+  animation: portraitIn 0.5s ease both;
+}
+
+@media (max-width: 600px) {
+  .portrait {
+    width: 92px;
+    height: 92px;
+  }
+  .nameLabel {
+    font-size: 1.15rem;
+    width: 160px;
+  }
+}

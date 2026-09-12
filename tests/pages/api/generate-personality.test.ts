@@ -22,6 +22,12 @@ jest.mock("../../../src/utils/analytics", () => ({
   recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
 }));
 
+const mockLimit = jest.fn().mockResolvedValue([]);
+const mockOrderBy = jest.fn(() => ({ limit: mockLimit }));
+const mockFrom = jest.fn(() => ({ orderBy: mockOrderBy }));
+const mockSelect = jest.fn(() => ({ from: mockFrom }));
+jest.mock("../../../src/db/client", () => ({ getDb: () => ({ select: mockSelect }) }));
+
 import handler from "../../../pages/api/generate-personality";
 
 function makeRes() {
@@ -76,11 +82,16 @@ describe("generate-personality API", () => {
   });
 
   it("returns the generated personality and the sanitized name", async () => {
-    mockGeneratePersonalityPrompt.mockResolvedValueOnce("You are Ada Lovelace.");
+    mockGeneratePersonalityPrompt.mockResolvedValueOnce({
+      prompt: "You are Ada Lovelace.",
+      correctedName: "Ada Lovelace",
+    });
     const res = makeRes();
     await handler(makeReq({ name: "  Ada Lovelace  " }), res);
 
-    expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("Ada Lovelace");
+    // No DATABASE_URL configured in this test env, so fetchExistingCharacterNames
+    // degrades to [] rather than touching a real DB.
+    expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("Ada Lovelace", undefined, []);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       personality: "You are Ada Lovelace.",
@@ -93,9 +104,26 @@ describe("generate-personality API", () => {
     );
   });
 
+  it("returns Claude's fuzzy-matched correctedName when it differs from the input", async () => {
+    mockGeneratePersonalityPrompt.mockResolvedValueOnce({
+      prompt: "You are Sherlock Holmes.",
+      correctedName: "Sherlock Holmes",
+    });
+    const res = makeRes();
+    await handler(makeReq({ name: "sherlok holmes" }), res);
+
+    expect(res.json).toHaveBeenCalledWith({
+      personality: "You are Sherlock Holmes.",
+      correctedName: "Sherlock Holmes",
+    });
+  });
+
   it("records the creator as signed-in when a session is present", async () => {
     mockGetSessionUserId.mockResolvedValueOnce("user-1");
-    mockGeneratePersonalityPrompt.mockResolvedValueOnce("You are Ada Lovelace.");
+    mockGeneratePersonalityPrompt.mockResolvedValueOnce({
+      prompt: "You are Ada Lovelace.",
+      correctedName: "Ada Lovelace",
+    });
     const res = makeRes();
     await handler(makeReq({ name: "Ada Lovelace", description: "A mathematician" }), res);
 
@@ -127,5 +155,48 @@ describe("generate-personality API", () => {
     await handler(makeReq({ name: "Ada Lovelace" }), res);
 
     expect(mockGeneratePersonalityPrompt).not.toHaveBeenCalled();
+  });
+
+  describe("fuzzy-matching against existing characters (DATABASE_URL configured)", () => {
+    const OLD_ENV = process.env;
+
+    beforeEach(() => {
+      process.env = { ...OLD_ENV, DATABASE_URL: "postgres://user:pass@host/db" };
+    });
+
+    afterAll(() => {
+      process.env = OLD_ENV;
+    });
+
+    it("passes existing display names (falling back to characterName) to generatePersonalityPrompt", async () => {
+      mockLimit.mockResolvedValueOnce([
+        { characterName: "sherlock holmes", displayName: "Sherlock Holmes" },
+        { characterName: "cleopatra", displayName: null },
+      ]);
+      mockGeneratePersonalityPrompt.mockResolvedValueOnce({
+        prompt: "You are Sherlock Holmes.",
+        correctedName: "Sherlock Holmes",
+      });
+      const res = makeRes();
+      await handler(makeReq({ name: "sherlok holmes" }), res);
+
+      expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("sherlok holmes", undefined, [
+        "Sherlock Holmes",
+        "cleopatra",
+      ]);
+    });
+
+    it("degrades to an empty list when the existing-names lookup fails", async () => {
+      mockLimit.mockRejectedValueOnce(new Error("db down"));
+      mockGeneratePersonalityPrompt.mockResolvedValueOnce({
+        prompt: "You are Ada Lovelace.",
+        correctedName: "Ada Lovelace",
+      });
+      const res = makeRes();
+      await handler(makeReq({ name: "Ada Lovelace" }), res);
+
+      expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("Ada Lovelace", undefined, []);
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
   });
 });

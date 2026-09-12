@@ -1,6 +1,7 @@
 /* =============================
    BotCreator.module.css
-   - Styles for the BotCreator landing page: masthead, hero, form, and modals
+   - Styles for the BotCreator landing page: hero, form, and modals (the masthead
+     itself is now AppHeader's shared shell — see AppHeader.module.css)
    - Uses CSS variables from globals.css for theme consistency
    - Designed for accessibility and responsive layout
    ============================= */
@@ -11,160 +12,6 @@
    so the display face leans into that rather than reading as a modern app.
    Everything else stays on the app's existing Inter (--font-primary). */
 @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap");
-
-/* ===== Masthead ===== */
-
-.masthead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.9rem 1.6rem;
-  border-bottom: 1px solid var(--color-outline);
-  font-family: var(--font-primary), sans-serif;
-}
-
-.logoMark {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--color-primary);
-  /* Lets .paletteIcon's rotateY read as a real 3D coin-flip instead of a flat
-     horizontal squish — perspective has to live on an ancestor of the
-     transformed element, not the element itself. */
-  perspective: 300px;
-}
-
-/* Rests, flips like a coin, rests again — periodic rather than a continuous
-   spin, so it stays a "did that just move?" touch rather than something
-   distracting in your peripheral vision. Rotation and color are two separate,
-   synced animations (not one) so the color can hold steady through each rest
-   AND through the flip's motion itself, only snapping to the next color the
-   instant a flip lands — "land, then change", not a blend mid-turn. */
-.paletteIcon {
-  animation:
-    paletteFlipRotate 10s ease-in-out infinite,
-    paletteFlipColor 10s linear infinite;
-}
-
-/* Each "flip" is a full 360deg turn, not a half turn to 120/240deg — only
-   multiples of 180deg render as a flat, undistorted icon; anything else is a
-   foreshortened, squished-looking angle, which is what read as broken/jerky
-   before. A full spin always lands back at the same flat orientation, so
-   every rest (0/360/720/1080deg) looks identical and correct, and the loop
-   restart (1080deg -> 0deg next iteration) is seamless. */
-@keyframes paletteFlipRotate {
-  0%,
-  20% {
-    transform: rotateY(0deg);
-  }
-  33% {
-    transform: rotateY(360deg);
-  }
-  53% {
-    transform: rotateY(360deg);
-  }
-  66% {
-    transform: rotateY(720deg);
-  }
-  86% {
-    transform: rotateY(720deg);
-  }
-  99%,
-  100% {
-    transform: rotateY(1080deg);
-  }
-}
-
-/* Cycles through the app's own accent colors, one per landed position —
-   percentages matched to paletteFlipRotate's landing points above. */
-@keyframes paletteFlipColor {
-  0%,
-  32% {
-    color: var(--color-primary);
-  }
-  33%,
-  65% {
-    color: var(--color-accent);
-  }
-  66%,
-  98% {
-    color: var(--color-success);
-  }
-  99%,
-  100% {
-    color: var(--color-primary);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .paletteIcon {
-    animation: none;
-  }
-}
-
-.mastheadWord {
-  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
-  font-size: 1.3rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--color-primary);
-}
-
-.mastheadUtility {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  /* Without this, a narrow mobile viewport lets .masthead's space-between
-     squeeze this flex item below its content width, wrapping "Sign in" into
-     two lines instead of letting the (already-wrapping) title text take the
-     width pressure. */
-  flex-shrink: 0;
-}
-
-.ghostIcon {
-  /* Overrides DarkModeToggle's own ChatHeader.module.css .darkModeToggle class
-     (chip background, margin-left: auto) so it reads as a minimal masthead icon
-     instead of the chat header's labeled button. */
-  margin: 0 !important;
-  background: none !important;
-  border: none !important;
-  padding: 0.2rem !important;
-  min-height: 0 !important;
-  box-shadow: none !important;
-  color: var(--color-text-secondary);
-}
-
-.ghostIcon:hover,
-.ghostIcon:focus {
-  background: none !important;
-  color: var(--color-accent);
-  box-shadow: none !important;
-  outline: none;
-}
-
-.ghostAuth {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.2rem;
-  display: flex;
-  align-items: center;
-  font-family: var(--font-primary), sans-serif;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--color-accent);
-}
-
-.ghostAuth:hover,
-.ghostAuth:focus {
-  color: var(--color-primary);
-  outline: none;
-}
-
-.ghostAuth:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 /* ===== Page / form shell ===== */
 
@@ -211,17 +58,16 @@
   min-height: 100%;
   box-sizing: border-box;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem 3rem;
+  /* Top padding is deliberately small — AppHeader (now a tall, portrait-led header)
+     already provides its own bottom padding/border as visual separation, so a large
+     additional gap here just reads as dead space above the hero. */
+  padding: 0.4rem 1.5rem 3rem;
 }
 
 @media (max-width: 600px) {
-  .masthead {
-    padding: 0.8rem 1.1rem;
-  }
-
   .formInner {
     max-width: 100%;
-    padding: 2rem 1.1rem 2.2rem;
+    padding: 0.3rem 1.1rem 2.2rem;
   }
 }
 
@@ -784,7 +630,7 @@
   font-weight: 600;
   color: var(--color-text);
   background: var(--card-body-bg);
-  border: 1px solid var(--color-outline);
+  border: 1px solid var(--color-text-secondary);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -829,7 +675,7 @@
   font-size: 16px;
   color: var(--color-text);
   background: var(--card-body-bg);
-  border: 1px solid var(--color-outline);
+  border: 1px solid var(--color-text-secondary);
   border-radius: 8px;
 }
 
@@ -858,6 +704,98 @@
 
 .magicLinkStatus[data-tone="error"] {
   color: var(--color-error);
+}
+
+/* =============================
+   NAME CAPTURE MODAL STYLES
+   Reuses .disclaimerBackdrop/.disclaimerModal/.disclaimerCloseButton/.disclaimerText above.
+   ============================= */
+
+.nameCaptureInput {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.65rem 0.9rem;
+  font-family: var(--font-primary), sans-serif;
+  /* 16px avoids Safari's auto-zoom-on-focus inside a modal on iOS. */
+  font-size: 16px;
+  color: var(--color-text);
+  background: var(--card-body-bg);
+  border: 1px solid var(--color-text-secondary);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.nameCaptureInput::placeholder {
+  color: var(--input-placeholder);
+  font-style: italic;
+}
+
+.nameCaptureActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.nameCaptureSaveButton {
+  flex: 1;
+  padding: 0.65rem 1.1rem;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.nameCaptureSaveButton:hover,
+.nameCaptureSaveButton:focus {
+  background: var(--button-hover-bg);
+  outline: none;
+}
+
+.nameCaptureSkipLink {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  padding: 0.5rem 0;
+}
+
+.nameCaptureSkipLink:hover,
+.nameCaptureSkipLink:focus {
+  color: var(--color-text);
+  outline: none;
+}
+
+.nameCaptureSwitchLink {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.nameCaptureSwitchLink button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: underline;
+  padding: 0;
+}
+
+.nameCaptureSwitchLink button:hover,
+.nameCaptureSwitchLink button:focus {
+  color: var(--color-primary);
+  outline: none;
 }
 
 /* =============================
@@ -1065,7 +1003,7 @@
   width: 100%;
   padding: 0.75rem;
   margin-top: 0.5rem;
-  border: 1px solid var(--color-outline);
+  border: 1px solid var(--color-text-secondary);
   border-radius: 8px;
   background: var(--color-surface);
   color: var(--color-text);

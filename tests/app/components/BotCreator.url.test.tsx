@@ -37,6 +37,10 @@ describe("BotCreator URL parameter functionality", () => {
     // Reset search params
     mockSearchParams.delete("name");
     mockUseSession.mockReturnValue({ data: null, status: "unauthenticated" });
+    // These tests exercise URL-launch behavior, not the post-creation name gate —
+    // pre-skip it so handleCreate() proceeds straight through, same as before that
+    // gate existed.
+    localStorage.setItem("chatbot-user-name-gate-skipped", "1");
     // mock fetch to return avatarTimeoutSeconds = 3
     // @ts-expect-error test-mock: assign mocked fetch to global
     global.fetch = jest.fn(() =>
@@ -275,9 +279,10 @@ describe("BotCreator URL parameter functionality", () => {
     expect(screen.queryByTestId("disclaimer-modal-backdrop")).not.toBeInTheDocument();
   });
 
-  it("renders the Sign in control alongside the dark mode toggle", async () => {
+  it("renders the Sign in control inside the account menu", async () => {
     render(<BotCreator onBotCreated={() => {}} />);
     await screen.findByLabelText("Character name");
+    fireEvent.click(screen.getByLabelText("Account: Guest. Open menu"));
     expect(screen.getByLabelText("Sign in")).toBeInTheDocument();
   });
 
@@ -288,6 +293,7 @@ describe("BotCreator URL parameter functionality", () => {
 
     // Should render without crashing despite config fetch failure
     expect(screen.getByLabelText("Character name")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Account: Guest. Open menu"));
     await waitFor(() => expect(screen.getByLabelText("Sign in")).not.toBeDisabled());
   });
 

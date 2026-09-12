@@ -13,15 +13,16 @@ import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { FaPalette } from "react-icons/fa";
 import { authenticatedFetch } from "../../src/utils/api";
 import styles from "./styles/BotCreator.module.css";
-import DarkModeToggle from "./DarkModeToggle";
-import AuthControl from "./AuthControl";
+import AppHeader from "./AppHeader";
+import LandingCharacterCarousel from "./LandingCharacterCarousel";
 import ResumeBotDropdown, { type PersistedBot, persistedBotToBot } from "./ResumeBotDropdown";
 import DisclaimerModal from "./DisclaimerModal";
 import CharacterInfoModal from "./CharacterInfoModal";
 import { useBotCreation } from "./useBotCreation";
+import { useAccountMenu } from "./useAccountMenu";
+import { NameCaptureModal } from "./NameCaptureModal";
 import { CopyrightWarningModal } from "./CopyrightWarningModal";
 import { CharacterDescriptionModal } from "./CharacterDescriptionModal";
 
@@ -75,6 +76,11 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   const searchParams = useSearchParams();
   const nameFromUrl = searchParams?.get("name") || null;
   const { status: sessionStatus } = useSession();
+  // The visitor's own name/account menu (identity chip, change-name + sign-in/out items
+  // and modals) — shared with CharsGallery.tsx and ChatPage.tsx's own account menus.
+  // userNameCtx is passed into useBotCreation so it can pause handleCreate() with a
+  // one-time gate the first time this browser doesn't know the visitor's name yet.
+  const { userNameCtx, identityLabel, menuItems, modals, requestSignIn } = useAccountMenu();
   const {
     input,
     setInput,
@@ -87,6 +93,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     validationResult,
     showValidationModal,
     showDescriptionModal,
+    showNameGateModal,
     handleCreate,
     handleCancel,
     handleRandomCharacter,
@@ -95,7 +102,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     handleValidationSuggestion,
     handleDescriptionSubmit,
     handleDescriptionCancel,
-  } = useBotCreation(onBotCreated);
+    handleNameGateSave,
+    handleNameGateSkip,
+  } = useBotCreation(onBotCreated, userNameCtx);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -327,16 +336,13 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
 
   return (
     <>
-      <header className={styles.masthead}>
-        <span className={styles.logoMark}>
-          <FaPalette size={22} aria-hidden="true" className={styles.paletteIcon} />
-          <span className={styles.mastheadWord}>Portrayal</span>
-        </span>
-        <div className={styles.mastheadUtility}>
-          <DarkModeToggle className={styles.ghostIcon} hideLabel />
-          <AuthControl className={styles.ghostAuth} />
-        </div>
-      </header>
+      <AppHeader
+        menuSide="right"
+        menuTrigger={identityLabel}
+        menuTriggerAriaLabel={`Account: ${identityLabel}. Open menu`}
+        menuItems={menuItems}
+        center={<LandingCharacterCarousel />}
+      />
       <form onSubmit={handleCreate} className={styles.formContainer} autoComplete="off">
         <div className={styles.formInner}>
           {!isLaunchingFromUrl && !interstitial && (
@@ -587,6 +593,17 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           onCancel={handleDescriptionCancel}
         />
       )}
+
+      <NameCaptureModal
+        show={showNameGateModal}
+        onClose={handleNameGateSkip}
+        mode="gate"
+        currentName={userNameCtx.name}
+        onSave={handleNameGateSave}
+        onSkip={handleNameGateSkip}
+        onRequestSignIn={requestSignIn}
+      />
+      {modals}
     </>
   );
 };

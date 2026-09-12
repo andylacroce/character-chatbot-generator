@@ -10,8 +10,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { authenticatedFetch } from "../../src/utils/api";
-import DarkModeToggle from "./DarkModeToggle";
-import AuthControl from "./AuthControl";
+import AppHeader from "./AppHeader";
+import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/CharsPage.module.css";
 
 interface CharEntry {
@@ -120,6 +120,7 @@ const CharTile: React.FC<{ entry: CharEntry; onOpen: (entry: CharEntry) => void 
 
 /** Public /chars gallery: paginated, infinite-scroll corkboard of every recognized character portrait. */
 const CharsGallery: React.FC = () => {
+  const { identityLabel, menuItems, modals } = useAccountMenu();
   const [characters, setCharacters] = useState<CharEntry[]>([]);
   const [initialLoad, setInitialLoad] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -219,86 +220,91 @@ const CharsGallery: React.FC = () => {
   }, []);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link href="/" className={styles.back}>
-          &larr; Back<span className={styles.backFull}> to Portrayal</span>
-        </Link>
-        <div className={styles.topBarControls}>
-          <DarkModeToggle className={styles.ghostIcon} hideLabel />
-          <AuthControl className={styles.ghostAuth} />
+    <>
+      <AppHeader
+        menuSide="right"
+        menuTrigger={identityLabel}
+        menuTriggerAriaLabel={`Account: ${identityLabel}. Open menu`}
+        menuItems={menuItems}
+        center={
+          <Link href="/" className={styles.backLink}>
+            &larr; Back<span className={styles.backLinkFull}> to Portrayal</span>
+          </Link>
+        }
+      />
+      {modals}
+      <div className={styles.page}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>The Character Wall</h1>
         </div>
-      </div>
-      <div className={styles.header}>
-        <h1 className={styles.title}>The Character Wall</h1>
-      </div>
 
-      {error && characters.length === 0 && (
-        <p className={styles.state}>
-          Couldn&apos;t load the gallery right now — try again in a bit.
-        </p>
-      )}
-      {!error && initialLoad && <p className={styles.state}>Loading portraits&hellip;</p>}
-      {!initialLoad && characters.length === 0 && !error && (
-        <p className={styles.state}>No characters yet — go create the first one!</p>
-      )}
+        {error && characters.length === 0 && (
+          <p className={styles.state}>
+            Couldn&apos;t load the gallery right now — try again in a bit.
+          </p>
+        )}
+        {!error && initialLoad && <p className={styles.state}>Loading portraits&hellip;</p>}
+        {!initialLoad && characters.length === 0 && !error && (
+          <p className={styles.state}>No characters yet — go create the first one!</p>
+        )}
 
-      {characters.length > 0 && (
-        <>
-          <div className={styles.board}>
-            {characters.map((entry, index) => (
-              <CharTile key={`${entry.name}-${index}`} entry={entry} onOpen={openLightbox} />
-            ))}
-          </div>
-          <div ref={sentinelCallbackRef} className={styles.sentinel} aria-hidden="true" />
-          {loadingMore && <p className={styles.loadingMore}>Loading more&hellip;</p>}
-        </>
-      )}
+        {characters.length > 0 && (
+          <>
+            <div className={styles.board}>
+              {characters.map((entry, index) => (
+                <CharTile key={`${entry.name}-${index}`} entry={entry} onOpen={openLightbox} />
+              ))}
+            </div>
+            <div ref={sentinelCallbackRef} className={styles.sentinel} aria-hidden="true" />
+            {loadingMore && <p className={styles.loadingMore}>Loading more&hellip;</p>}
+          </>
+        )}
 
-      {/* Native <dialog> lightbox — showModal()/close() give focus-trapping and
+        {/* Native <dialog> lightbox — showModal()/close() give focus-trapping and
           Escape-to-close for free, no modal library needed. Backdrop click closes
           it via the click-target check below; ::backdrop is styled in the CSS
           module for the dim/blur behind it. */}
-      <dialog
-        ref={dialogRef}
-        className={styles.lightbox}
-        onClick={(e) => {
-          if (e.target === dialogRef.current) closeLightbox();
-        }}
-        onClose={() => setSelected(null)}
-      >
-        {selected && (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={selected.avatarUrl}
-              alt={selected.name}
-              className={styles.lightboxImage}
-              onClick={closeLightbox}
-            />
-            <p className={styles.lightboxName}>{selected.name}</p>
-            {/* Same launch point the landing page itself uses for a name typed
+        <dialog
+          ref={dialogRef}
+          className={styles.lightbox}
+          onClick={(e) => {
+            if (e.target === dialogRef.current) closeLightbox();
+          }}
+          onClose={() => setSelected(null)}
+        >
+          {selected && (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={selected.avatarUrl}
+                alt={selected.name}
+                className={styles.lightboxImage}
+                onClick={closeLightbox}
+              />
+              <p className={styles.lightboxName}>{selected.name}</p>
+              {/* Same launch point the landing page itself uses for a name typed
                 into the creator (BotCreator's ?name= auto-submit effect) — it
                 resumes this signed-in user's own saved character by that exact
                 name if one exists, or creates a fresh one otherwise. */}
-            <Link
-              href={`/?name=${encodeURIComponent(selected.name)}`}
-              className={styles.lightboxChat}
-            >
-              Chat with {selected.name} &rarr;
-            </Link>
-            <button
-              type="button"
-              className={styles.lightboxClose}
-              aria-label="Close"
-              onClick={closeLightbox}
-            >
-              &times;
-            </button>
-          </>
-        )}
-      </dialog>
-    </div>
+              <Link
+                href={`/?name=${encodeURIComponent(selected.name)}`}
+                className={styles.lightboxChat}
+              >
+                Chat with {selected.name} &rarr;
+              </Link>
+              <button
+                type="button"
+                className={styles.lightboxClose}
+                aria-label="Close"
+                onClick={closeLightbox}
+              >
+                &times;
+              </button>
+            </>
+          )}
+        </dialog>
+      </div>
+    </>
   );
 };
 

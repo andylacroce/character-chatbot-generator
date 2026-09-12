@@ -38,8 +38,9 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
 - **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, laid out as a scattered polaroid/corkboard collage — see [Character Wall](#character-wall-chars)
-- **Internal Analytics**: A small self-hosted usage log (no third-party analytics service) plus an admin-only `/admin` stats view — see [Internal Analytics](#internal-analytics-admin)
-- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 900+ passing tests
+- **Personalized Greeting**: Characters can greet you by name — a one-time, skippable prompt the first time you create a character, editable anytime from the account menu — see [Personalized Greeting](#personalized-greeting)
+- **Internal Analytics**: A small self-hosted usage log (no third-party analytics service) plus an admin-only `/admin` stats view, with a nav link that only appears for signed-in admins — see [Internal Analytics](#internal-analytics-admin)
+- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,100+ passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
 
@@ -266,6 +267,27 @@ generated once for it to show up here for everyone.
   as part of the same Claude-powered validation round-trip that screens for copyright
   concerns, before a character (and its portrait) can be created at all. Unlike a copyright
   warning, there's no "Continue Anyway" for this check.
+- **Fuzzy name matching**: typing a slight misspelling or alternate spelling of an
+  already-created character (e.g. "sherlok holmes") reuses that character's existing
+  portrait and casing instead of generating a near-duplicate — Claude checks new names
+  against a sample of existing ones as part of the personality-generation call it's
+  already making, so this costs no extra API round trip.
+
+## Personalized Greeting
+
+Characters can greet you by name. The first time you create a character without one
+known yet, a small skippable prompt asks what to call you — decline and it just never
+asks again in that browser. Set anytime from the account menu (click your name, or
+"Guest", in the header) via "Add your name" / "Change your name".
+
+- **Guest or signed in**: guests keep it in local storage; signing in persists it
+  server-side (same Neon Postgres database as [Account Persistence](#account-persistence-optional))
+  so it follows you across devices.
+- **Shows up everywhere**: the character's greeting, your own messages in the chat
+  transcript (in place of the generic "Me"), and downloaded transcript files all use it
+  live — changing your name updates already-open chats immediately, not just new ones.
+- **Optional, always**: skip it and nothing changes except the character calling you
+  "friend" instead of by name.
 
 ## Internal Analytics (`/admin`)
 
@@ -290,6 +312,12 @@ observability.
   nobody can access it. It's never reachable on a Vercel Preview deployment regardless of
   email match, since Preview's sign-in stub issues sessions with zero identity
   verification (see [Account Persistence](#account-persistence-optional) above).
+- **Discoverable, if you're an admin**: a cheap `GET /api/admin/is-admin` check (no
+  database query — just the same session/allowlist check the page itself enforces) lets
+  the account menu show an "Admin Stats" link only to signed-in admins, instead of it
+  being an unlinked URL you have to remember. This is a convenience, not the security
+  boundary — the page and its data endpoint enforce their own access control regardless
+  of whether the link is visible.
 - **Fully optional**: skip `ADMIN_EMAILS` (and even `DATABASE_URL`) and nothing about the
   rest of the app changes — this is a read-only view for the app's operator, not a
   user-facing feature.
@@ -309,6 +337,10 @@ signed-in user too (the server is the durable copy; see
 - `audioEnabled` — Audio toggle state
 - `darkMode` — Theme preference
 - `bot-session-id` — Session tracking
+- `chatbot-user-name` — The visitor's own name (guests only; a signed-in user's name is
+  persisted server-side instead — see [Personalized Greeting](#personalized-greeting))
+- `chatbot-user-name-gate-skipped` — Set once a guest dismisses the post-creation name
+  prompt, so it doesn't reappear on that browser
 
 **Important**: Never store secrets or PII in client storage. All data is client-side only.
 

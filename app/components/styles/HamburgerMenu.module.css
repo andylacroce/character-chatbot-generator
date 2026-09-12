@@ -30,6 +30,32 @@
   transition: all 0.3s;
 }
 
+/* Identity chip trigger (name/"Guest") — an alternative to the default 3-bar icon,
+   for a hamburger whose whole point is surfacing status at a glance, not just an
+   entry point to a menu. */
+.triggerButton {
+  background: none;
+  border: 1px solid var(--color-outline);
+  border-radius: 999px;
+  cursor: pointer;
+  padding: 0.32em 0.85em;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triggerButton:hover,
+.triggerButton:focus {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  outline: none;
+}
+
 .menuDropdown {
   position: absolute;
   top: 2.5rem;
@@ -47,16 +73,30 @@
   gap: 0.15rem;
 }
 
-/* Also matches a plain <a>/next/link dropdown item (e.g. the Character Wall
-   link in ChatHeader.tsx) so it's normalized identically to a <button> one —
-   without this, an anchor keeps its own font-weight/padding/width instead of
-   matching its button siblings, since none of that is a <button>-only default. */
+/* For a hamburger positioned near the right edge of its header (e.g. the landing
+   masthead) — opening from the button's right edge instead keeps the dropdown from
+   overflowing off-screen. */
+.menuWrapperRight {
+  align-items: flex-end;
+}
+
+.menuWrapperRight .menuDropdown {
+  left: auto;
+  right: 0;
+}
+
+/* Also matches a plain <a>/next/link dropdown item (e.g. useAccountMenu's Admin Stats
+   link, ChatPage's Character Wall link) so it's normalized identically to a <button>
+   one — without this, an anchor keeps its own font-weight/padding/width/underline
+   instead of matching its button siblings, since none of that is a <button>-only
+   default. */
 .menuDropdown button,
 .menuDropdown a {
   background: none;
   border: none;
   color: inherit;
   font: inherit;
+  text-decoration: none;
   padding: 0.5em 0.6em;
   text-align: left;
   cursor: pointer;

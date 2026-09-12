@@ -10,6 +10,43 @@ import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { generatePersonalityPrompt } from "../../src/config/serverConfig";
 import { getSessionUserId } from "../../src/utils/getSessionUserId";
 import { recordEvent } from "../../src/utils/analytics";
+import { desc } from "drizzle-orm";
+import { getDb } from "../../src/db/client";
+import { avatarCache } from "../../src/db/schema";
+
+// Capped so this stays a cheap, bounded addition to a call already being made — not a
+// full table dump on every character creation. Ordering by recency is an arbitrary but
+// reasonable bias (no principled way to guess which existing names a given typo is
+// closest to without the fuzzy-match step itself), and the cap is generous enough for
+// this app's hobby-scale character count.
+const MAX_EXISTING_NAMES_FOR_MATCHING = 300;
+
+/**
+ * Fetches a bounded sample of already-cached character names, for `generatePersonalityPrompt`'s
+ * fuzzy-match step — so "sherlok holmes" resolves to the same avatar_cache row as an
+ * existing "Sherlock Holmes" instead of spawning a misspelled duplicate. Returns [] on
+ * any error or when no DATABASE_URL is configured — fuzzy matching is a nice-to-have,
+ * never a requirement for character creation to work.
+ */
+async function fetchExistingCharacterNames(): Promise<string[]> {
+  if (!process.env.DATABASE_URL) return [];
+  try {
+    const rows = await getDb()
+      .select({ characterName: avatarCache.characterName, displayName: avatarCache.displayName })
+      .from(avatarCache)
+      .orderBy(desc(avatarCache.createdAt))
+      .limit(MAX_EXISTING_NAMES_FOR_MATCHING);
+    return rows.map((row) => row.displayName || row.characterName);
+  } catch (err) {
+    logEvent(
+      "warn",
+      "personality_existing_names_fetch_failed",
+      "Failed to fetch existing character names for fuzzy matching",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+    return [];
+  }
+}
 
 /** Rate limiter: 20 requests per minute per IP (personality generation is lightweight). */
 const personalityRateLimit = createRateLimiter({
@@ -64,6 +101,11 @@ const personalityRateLimit = createRateLimiter({
  *                   type: string
  *                 correctedName:
  *                   type: string
+ *                   description: >
+ *                     `name` with spelling/capitalization corrected. When it's a likely
+ *                     misspelling or minor variant of an already-created character, this
+ *                     is that existing character's exact name instead, so the two share
+ *                     one avatar_cache entry rather than the typo spawning a duplicate.
  *       400:
  *         description: Valid name required, or invalid character name
  *       405:
@@ -109,9 +151,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
     );
 
-    const concisePrompt = sanitizedDescription
-      ? await generatePersonalityPrompt(sanitizedName, sanitizedDescription)
-      : await generatePersonalityPrompt(sanitizedName);
+    const existingNames = await fetchExistingCharacterNames();
+    const { prompt: concisePrompt, correctedName } = await generatePersonalityPrompt(
+      sanitizedName,
+      sanitizedDescription,
+      existingNames,
+    );
 
     logEvent(
       "info",
@@ -119,6 +164,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       "Personality prompt generated",
       sanitizeLogMeta({
         name: sanitizedName,
+        renamed: correctedName !== sanitizedName,
       }),
     );
 
@@ -131,7 +177,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       userId,
     );
 
-    res.status(200).json({ personality: concisePrompt, correctedName: sanitizedName });
+    res.status(200).json({ personality: concisePrompt, correctedName });
   } catch (err) {
     logEvent(
       "error",

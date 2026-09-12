@@ -11,6 +11,8 @@ interface VirtualizedMessagesListProps {
   bot: Bot;
   onAvatarClick?: () => void;
   maxHeight?: number;
+  /** The visitor's own preferred name — see ChatMessage.tsx. */
+  userName?: string;
 }
 
 // Message rows are variable height in the "immersive stage" layout — bot replies
@@ -40,6 +42,7 @@ interface RowProps {
   visibleMessages: VisibleMessage[];
   bot: Bot;
   onAvatarClick?: () => void;
+  userName?: string;
 }
 
 // Module-scope (not defined inside VirtualizedMessagesList) so react-window isn't handed a
@@ -59,10 +62,16 @@ function Row({
   visibleMessages,
   bot,
   onAvatarClick,
+  userName,
 }: RowProps & { index: number; style: React.CSSProperties }) {
   return (
     <div style={style}>
-      <ChatMessage message={visibleMessages[index]} bot={bot} onAvatarClick={onAvatarClick} />
+      <ChatMessage
+        message={visibleMessages[index]}
+        bot={bot}
+        onAvatarClick={onAvatarClick}
+        userName={userName}
+      />
     </div>
   );
 }
@@ -73,6 +82,7 @@ const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({
   bot,
   onAvatarClick,
   maxHeight = 480,
+  userName,
 }) => {
   const itemCount = messages.length;
   const heights = React.useMemo(() => messages.map(estimateRowHeight), [messages]);
@@ -102,7 +112,7 @@ const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({
         width={"100%"}
         overscanCount={4}
         rowComponent={Row}
-        rowProps={{ visibleMessages, bot, onAvatarClick }}
+        rowProps={{ visibleMessages, bot, onAvatarClick, userName }}
         className={styles.list}
       />
     </div>

@@ -6,6 +6,7 @@
    ============================= */
 
 @import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap");
 
 /* --- Main Chat Layout --- */
 /*
@@ -255,4 +256,164 @@
 
 .closeButton:hover {
   color: var(--color-error);
+}
+
+/* =============================
+   Header content — the pieces ChatPage hands to AppHeader's center/extra/menuItems
+   slots. AppHeader.module.css owns only the generic header shell; content rendered
+   inside it is styled by whoever builds that content, same as any other component.
+   ============================= */
+
+.avatarButton {
+  display: block;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  overflow: hidden;
+  /* The silhouette.svg fallback (and any avatar with transparency) is a dark
+     glyph on a transparent ground — without an opaque backdrop behind it, it
+     nearly disappears against this page's own dark background, reading as
+     "the portrait is too small" when it's actually a contrast problem. */
+  background: var(--color-surface-variant);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent),
+    0 8px 22px color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+.avatarButton:hover,
+.avatarButton:focus {
+  background: var(--color-surface-variant);
+  outline: none;
+}
+
+.avatarImage {
+  display: block;
+  /* Crops in slightly so the frame reads as filled rather than a small icon
+     floating in empty space — matters most for the generic silhouette
+     fallback, but also tightens up real generated portraits. */
+  transform: scale(1.18);
+  object-fit: cover;
+}
+
+/* Bot name label styling for legibility */
+.botNameLabel {
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-weight: 500;
+  font-size: 1.65rem;
+  color: var(--color-text);
+  letter-spacing: 0.01em;
+  margin-top: 0.65rem;
+  margin-bottom: 0.2rem;
+  line-height: 1.15;
+  text-align: center;
+  word-break: break-word;
+}
+
+.brandLink {
+  display: flex;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--color-outline);
+  transition: border-color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.brandLink:hover,
+.brandLink:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.brandImage {
+  display: block;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Hamburger dropdown items: "Back to Character Creator", "Download Transcript",
+   "Change your name" — ghost text rows instead of a filled pill, matching the
+   landing page's .footerLink/.textLink treatment. */
+.menuItemLink {
+  font-size: 0.86rem;
+  font-family: var(--font-primary);
+  font-weight: 600;
+  padding: 0.55em 0.7em;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-text);
+  box-shadow: none;
+  border: none;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7em;
+  min-width: 0;
+  width: 100%;
+  letter-spacing: 0.01em;
+  /* This class also dresses up a real <a>/next/link (the Character Wall menu
+     item) alongside the plain <button>s it was originally written for —
+     buttons never carry a browser-default underline, so this reset was never
+     needed until an anchor started using the same class. */
+  text-decoration: none;
+}
+
+.menuItemLink:hover,
+.menuItemLink:focus {
+  background: var(--color-primary-container);
+  color: var(--color-primary);
+  outline: none;
+}
+
+/* Extra breathing room above this button when it's stacked above another
+   dropdown item ("Back to Character Creator" sits above "Download Transcript"). */
+.stackedAbove {
+  margin-bottom: 0.2rem;
+}
+
+.linkIcon {
+  color: var(--color-primary);
+}
+
+@media (max-width: 600px) {
+  .botNameLabel {
+    font-size: 1.2rem;
+    margin-top: 0.4rem;
+  }
+
+  .avatarImage {
+    width: 72px !important;
+    height: 72px !important;
+    margin: 0 auto 0.2rem auto !important;
+    display: block !important;
+  }
+
+  .brandLink {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 40px;
+    min-width: 0;
+    margin: 0 0.2rem;
+  }
+
+  .brandImage {
+    width: 32px !important;
+    height: auto !important;
+    aspect-ratio: 1/1;
+    display: block !important;
+    object-fit: contain;
+  }
+
+  .menuItemLink {
+    font-size: 0.78rem;
+    padding: 0.5em 0.6em;
+    border-radius: 6px;
+    margin-left: 0;
+    min-width: 0;
+  }
 }

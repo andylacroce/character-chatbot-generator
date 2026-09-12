@@ -28,6 +28,11 @@ interface ChatMessageProps {
   // Opens the shared portrait lightbox (owned by ChatPage) — same modal the
   // header's avatar opens, so there's one modal instance, not one per message.
   onAvatarClick?: () => void;
+  // The visitor's own preferred name (see useUserName.ts) — shown on their own
+  // messages instead of the generic "Me" when set. Passed down from ChatPage's single
+  // useUserName() instance, so every message re-renders live if the name changes
+  // mid-session, not just new ones going forward.
+  userName?: string;
 }
 
 /**
@@ -40,7 +45,7 @@ interface ChatMessageProps {
  * @param {Bot} props.bot - The bot object containing name and avatarUrl for assistant messages
  * @returns {JSX.Element|null} The rendered chat message or null if message is invalid
  */
-const ChatMessage = React.memo(({ message, bot, onAvatarClick }: ChatMessageProps) => {
+const ChatMessage = React.memo(({ message, bot, onAvatarClick, userName }: ChatMessageProps) => {
   // Validate message object to prevent rendering errors
   if (!message || typeof message.text !== "string" || typeof message.sender !== "string") {
     if (typeof window !== "undefined") {
@@ -90,7 +95,7 @@ const ChatMessage = React.memo(({ message, bot, onAvatarClick }: ChatMessageProp
             />
           </button>
         )}
-        <span className={senderClass}>{isUser ? "Me" : bot.name}</span>
+        <span className={senderClass}>{isUser ? userName || "Me" : bot.name}</span>
       </div>
       <div className={styles.messageText}>{sanitizeForReact(message.text)}</div>
     </div>

@@ -1,6 +1,10 @@
 import path from "path";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { bots as botsTable, messages as messagesTable } from "../../../src/db/schema";
+import {
+  bots as botsTable,
+  messages as messagesTable,
+  users as usersTable,
+} from "../../../src/db/schema";
 import handlerDefault from "../../../pages/api/chat";
 
 // Phase 3c: chat.ts looks up a signed-in user's saved character before deciding whether to
@@ -17,6 +21,7 @@ jest.mock("../../../src/utils/getSessionUserId", () => ({
 // (both `chat.ts` and this file import the same schema module instance, so `===` holds).
 let mockBotRows: unknown[] = [];
 let mockMessageRows: unknown[] = [];
+let mockUserRows: unknown[] = [];
 const mockInsertValues = jest.fn().mockResolvedValue(undefined);
 const mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
 const mockUpdateSet = jest.fn(() => ({ where: mockUpdateWhere }));
@@ -27,6 +32,9 @@ const mockDb = {
         return {
           where: jest.fn(() => ({ orderBy: jest.fn().mockResolvedValue(mockMessageRows) })),
         };
+      }
+      if (table === usersTable) {
+        return { where: jest.fn().mockResolvedValue(mockUserRows) };
       }
       return { where: jest.fn().mockResolvedValue(mockBotRows) };
     }),
@@ -137,7 +145,8 @@ jest.mock("../../../src/utils/conversationSummarizer", () => ({
 }));
 
 jest.mock("../../../src/config/serverConfig", () => ({
-  generatePersonalityPrompt: () => "default personality",
+  generatePersonalityPrompt: () =>
+    Promise.resolve({ prompt: "default personality", correctedName: "a character chatbot" }),
 }));
 
 const handler = handlerDefault as (req: NextApiRequest, res: NextApiResponse) => Promise<void>;
@@ -203,6 +212,7 @@ describe("chat API", () => {
     mockGetSessionUserId.mockResolvedValue(null);
     mockBotRows = [];
     mockMessageRows = [];
+    mockUserRows = [];
     mockInsertValues.mockResolvedValue(undefined);
     mockUpdateWhere.mockResolvedValue(undefined);
   });
@@ -485,6 +495,34 @@ describe("chat API", () => {
       expect(mockCreate.mock.calls[0][0].system).toContain("default personality");
     });
 
+    it("includes a <user_name> block and greeting instruction when userName is provided", async () => {
+      claudeSays("Greetings.");
+      await handler(makeReq({ userName: "Andy" }), makeRes());
+
+      const { system } = mockCreate.mock.calls[0][0];
+      expect(system).toContain("<user_name>\nAndy\n</user_name>");
+      expect(system).toContain("that's the human's preferred name");
+    });
+
+    it("sanitizes a client-supplied userName before using it", async () => {
+      claudeSays("Greetings.");
+      await handler(makeReq({ userName: "  Andy <script> " }), makeRes());
+
+      expect(mockCreate.mock.calls[0][0].system).toContain(
+        "<user_name>\nAndy script\n</user_name>",
+      );
+    });
+
+    it("omits the <user_name> block when no userName is given", async () => {
+      claudeSays("Greetings.");
+      await handler(makeReq(), makeRes());
+
+      // The injection guard's instructional text mentions the <user_name> tag by name
+      // regardless (same as <conversation_summary> above) — check for the closing tag,
+      // only present when a block was actually appended.
+      expect(mockCreate.mock.calls[0][0].system).not.toContain("</user_name>");
+    });
+
     it("passes short histories through without summarizing", async () => {
       claudeSays("Greetings.");
       // History arrives as prefixed strings, the shape buildClaudeMessages parses.
@@ -558,6 +596,17 @@ describe("chat API", () => {
         cached: true,
         requestId: "generated-id",
       });
+    });
+
+    it("varies the cache key by userName, so differently-named users don't share a reply", async () => {
+      claudeSays("Greetings.");
+      await handler(makeReq({ userName: "Andy" }), makeRes());
+      claudeSays("Greetings.");
+      await handler(makeReq({ userName: "Someone Else" }), makeRes());
+
+      const [firstKey] = mockGetReplyCache.mock.calls[0];
+      const [secondKey] = mockGetReplyCache.mock.calls[1];
+      expect(firstKey).not.toEqual(secondKey);
     });
 
     it("still answers when the cached sidecar text file cannot be read", async () => {
@@ -708,8 +757,9 @@ describe("chat API", () => {
       await handler(makeReq({ personality: "A client-supplied persona." }), makeRes());
 
       expect(mockCreate.mock.calls[0][0].system).toContain("A client-supplied persona.");
-      // No bot row means fetchUnsummarizedMessages is never reached.
-      expect(mockDb.select).toHaveBeenCalledTimes(1);
+      // No bot row means fetchUnsummarizedMessages is never reached, but the preferred-name
+      // lookup always runs for a signed-in user regardless of whether a bot was found.
+      expect(mockDb.select).toHaveBeenCalledTimes(2);
     });
 
     it("uses the saved character's own personality and message history instead of the client-supplied values", async () => {
@@ -773,6 +823,26 @@ describe("chat API", () => {
           summarizedThroughMessageId: 5, // id of the last message folded into the summary
         }),
       );
+    });
+
+    it("prefers the signed-in user's stored preferred name over a client-supplied one", async () => {
+      mockBotRows = [makeBotRow()];
+      mockUserRows = [{ preferredName: "Ada Lovelace" }];
+      claudeSays("Greetings.");
+      await handler(makeReq({ userName: "Someone Else" }), makeRes());
+
+      expect(mockCreate.mock.calls[0][0].system).toContain(
+        "<user_name>\nAda Lovelace\n</user_name>",
+      );
+    });
+
+    it("falls back to the client-supplied userName when this user has no stored preferred name yet", async () => {
+      mockBotRows = [makeBotRow()];
+      mockUserRows = [{ preferredName: null }];
+      claudeSays("Greetings.");
+      await handler(makeReq({ userName: "Andy" }), makeRes());
+
+      expect(mockCreate.mock.calls[0][0].system).toContain("<user_name>\nAndy\n</user_name>");
     });
 
     it("persists the user's message and the bot's reply after a successful turn", async () => {
@@ -858,6 +928,9 @@ describe("chat API", () => {
         .mockImplementationOnce(() => ({
           from: jest.fn(() => ({ where: jest.fn().mockResolvedValue(mockBotRows) })),
         })) // bot lookup
+        .mockImplementationOnce(() => ({
+          from: jest.fn(() => ({ where: jest.fn().mockResolvedValue([]) })),
+        })) // preferred-name lookup
         .mockImplementationOnce(() => ({
           from: jest.fn(() => ({
             where: jest.fn(() => ({ orderBy: jest.fn().mockRejectedValue(new Error("db down")) })),

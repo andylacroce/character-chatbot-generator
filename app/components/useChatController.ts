@@ -15,6 +15,16 @@ import { loadVoiceConfig, persistVoiceConfig } from "../../src/utils/voiceConfig
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { STORAGE_KEYS, chatHistoryKey, lastPlayedAudioHashKey } from "../../src/utils/storageKeys";
 
+/**
+ * The visitor's own preferred name (see useUserName.ts), read directly from localStorage
+ * here rather than threaded through as a prop — a signed-in user's server-stored value
+ * takes precedence server-side once set, so the client never needs to know which source
+ * will actually apply.
+ */
+function getStoredUserName(): string | undefined {
+  return storage.getItem(STORAGE_KEYS.userName) || undefined;
+}
+
 const INITIAL_VISIBLE_COUNT = 20;
 const LOAD_MORE_COUNT = 10;
 
@@ -36,7 +46,11 @@ const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
  * Chat controller hook that orchestrates chat state, API calls, audio, and logging for the chat
  * UI. Handles message history, retries, intro generation, transcript export, and audio playback.
  */
-export function useChatController(bot: Bot, onBackToCharacterCreation?: () => void) {
+export function useChatController(
+  bot: Bot,
+  onBackToCharacterCreation?: () => void,
+  userName?: string,
+) {
   const historyKey = chatHistoryKey(bot.name);
 
   // Memoize messages loading from localStorage
@@ -436,6 +450,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
                 voiceConfig,
                 gender: bot.gender,
                 conversationHistory: [],
+                userName: getStoredUserName(),
                 // This prompt is an internal mechanism to elicit an introduction, not
                 // something the user typed — tells the server not to persist it as a
                 // real "User" turn in a signed-in user's saved chat history.
@@ -594,6 +609,7 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
               voiceConfig,
               gender: bot.gender,
               conversationHistory,
+              userName: getStoredUserName(),
             }),
           }).then((res) => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -701,7 +717,11 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
 
   const handleDownloadTranscript = async () => {
     try {
-      await downloadTranscript(messages as Message[], { name: bot.name, avatarUrl: bot.avatarUrl });
+      await downloadTranscript(
+        messages as Message[],
+        { name: bot.name, avatarUrl: bot.avatarUrl },
+        userName,
+      );
       if (typeof window !== "undefined") {
         logEvent(
           "info",

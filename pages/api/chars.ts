@@ -23,9 +23,49 @@ const charsRateLimit = createRateLimiter({
 const DEFAULT_LIMIT = 60;
 const MAX_LIMIT = 100;
 
+// Small connector words conventionally kept lowercase mid-name in English display text
+// (e.g. "Joan of Arc", "Catherine de Medici", "Leonardo da Vinci", "Vincent van Gogh") —
+// but still capitalized as the first or last word of a name.
+const LOWERCASE_MID_NAME_WORDS = new Set([
+  "of",
+  "the",
+  "a",
+  "an",
+  "and",
+  "de",
+  "da",
+  "di",
+  "du",
+  "la",
+  "le",
+  "van",
+  "von",
+  "der",
+  "den",
+  "el",
+  "al",
+]);
+
+// A regnal/ordinal suffix ("iii", "iv", "xiv") should render fully uppercase
+// ("III", "IV", "XIV"), not just its first letter ("Iii") — matches on the Roman
+// numeral alphabet only, so it never fires on an ordinary short word.
+const ROMAN_NUMERAL = /^[ivxlcdm]+$/i;
+
 /** "sherlock holmes" -> "Sherlock Holmes" for display; storage keeps it lowercased. */
 function toDisplayName(name: string): string {
-  return name.replace(/\b\w/g, (c) => c.toUpperCase());
+  const words = name.split(" ");
+  return words
+    .map((word, i) => {
+      const isMidWord = i > 0 && i < words.length - 1;
+      if (isMidWord && LOWERCASE_MID_NAME_WORDS.has(word.toLowerCase())) {
+        return word.toLowerCase();
+      }
+      if (ROMAN_NUMERAL.test(word)) {
+        return word.toUpperCase();
+      }
+      return word.replace(/\b\w/g, (c) => c.toUpperCase());
+    })
+    .join(" ");
 }
 
 /** Parses a query-string integer param, falling back when absent/invalid/negative. */
@@ -67,7 +107,11 @@ async function getAllCharacters(): Promise<CharacterEntry[]> {
     .where(eq(avatarCache.recognized, true))
     .orderBy(desc(avatarCache.createdAt));
   const entries = rows.map((row) => ({
-    name: toDisplayName(row.characterName),
+    // Prefer the properly-cased name captured at generation time (see
+    // src/db/schema.ts's avatarCache.displayName doc comment) — the regex-based
+    // reconstruction below is a fallback only for rows written before that column
+    // existed (or run through scripts/backfill-avatar-display-names.cjs).
+    name: row.displayName || toDisplayName(row.characterName),
     avatarUrl: row.avatarUrl,
   }));
   cache = { entries, fetchedAt: Date.now() };
