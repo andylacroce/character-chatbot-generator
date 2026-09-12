@@ -20,7 +20,8 @@ npm run test:watch
 npm run test:coverage               # jest --coverage (enforces 80% global threshold — see jest.config.cjs)
 npm run analyze                      # ANALYZE=true next build (bundle analysis)
 npm run docs:api                      # regenerate public/openapi.json from @swagger JSDoc comments; runs automatically before dev/build
-npm run ci                             # lint --max-warnings=0 && lint:md && format:check && type-check && docs:code && test:coverage && build — run this before considering work done
+npm run db:check                       # read-only check that schema.ts matches the live DB; runs automatically before dev and as part of ci
+npm run ci                             # lint --max-warnings=0 && lint:md && format:check && type-check && db:check && docs:code && test:coverage && build — run this before considering work done
 ```
 
 Run a single test file: `npx jest tests/api/chat.test.ts`
@@ -127,6 +128,7 @@ The app is migrating toward optional user accounts with server-persisted bots/ch
   - **Write path:** after every response path (cache hit, streaming, non-streaming) sends its reply, `finalizeChatPersistence` fire-and-forget-inserts the user/bot message pair into `messages` and, if this turn advanced the checkpoint, updates `bots.summary`/`summarizedThroughMessageId` — best-effort, same resilience pattern as TTS and the avatar cache; a write failure is logged and never discards an already-generated reply. The intro message ("Introduce yourself...") goes through this same `/api/chat` path, so it's persisted with no special-casing.
   - **Read path:** `GET /api/messages?botName=<name>` (new, GET-only — messages are never written through a directly-callable endpoint) returns a signed-in user's chat history for one saved character, oldest-first, capped at 200. `useChatController.ts` seeds its `messages` state from local storage instantly on mount (unchanged, so perceived load time doesn't regress), then — only when signed in — fetches this endpoint in the background and adopts the server's list only if it's *longer* than what's already loaded (the new-device / cleared-storage case). Local storage stays the fast per-device cache; the server is the durable, multi-device source of truth.
   - Schema changes for this phase were applied via `npm run db:push` same as prior phases — remember to run it again after pulling `src/db/schema.ts` changes, since a mismatched live DB fails every `bots`/`messages` query with a missing-column/relation error (caught and logged, degrades to guest-like behavior — silent, easy to miss without checking server logs).
+  - **This exact failure mode (edit `schema.ts`, forget `db:push`) broke live dev/prod twice** — once for `users.preferred_name`, once for `avatar_cache.display_name` — before `scripts/check-db-schema.cjs` (`npm run db:check`) existed. It's a read-only guardrail: it regex-scans `schema.ts` for declared columns, compares them against `information_schema.columns` for the same tables in the real database, and fails loudly (non-zero exit) if `schema.ts` has a column the live DB doesn't. Wired into both `predev` (so it surfaces the moment you start `next dev` locally) and `npm run ci` (so it's part of the gate before calling work done) — it silently no-ops without `DATABASE_URL`, which is also why it's a no-op on GitHub Actions CI specifically (no DB credentials there); it only has teeth against a real `DATABASE_URL`, i.e. local dev. It never runs `db:push` itself or writes anything — closing the gap this way, rather than trying to auto-apply schema changes, keeps `db:push` an explicit, reviewed action against a shared production database.
 - **Tracking:** [GitHub issue #830](https://github.com/andylacroce/character-chatbot-generator/issues/830) covers the whole migration across all phases. Keep it current as work lands — check off a phase's checkbox in the issue body (`gh issue edit 830 --body-file <file>`) and post a short progress comment (`gh issue comment 830 --body "..."`) when a phase completes or a significant sub-step is verified working, not just at the very end.
 
 ### Personalized greeting (the visitor's own name)
@@ -331,6 +333,12 @@ silently drift again.
 - **Client-side (`app/components`) already follows this convention exclusively** — every
   hook/component logs via `logEvent`, never raw `console.*`. Keep new client code
   consistent with that rather than introducing a second style.
+- **Not mechanically enforced beyond the syntax rules above.** ESLint can ban raw
+  `console.*`/`logger.*` calls, but it can't know whether a *new* failure path should have
+  gotten a `logEvent` call at all — that's a judgment call, same as whether this file or
+  README needs updating for a given change. Review both deliberately before opening a PR
+  (the PR template's checklist exists specifically for this) rather than assuming
+  `npm run ci` passing means logging/docs are current — it doesn't check either.
 
 ### Module system (do not regress)
 

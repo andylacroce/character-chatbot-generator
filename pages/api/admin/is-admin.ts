@@ -8,6 +8,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { isAdmin } from "../../../src/utils/isAdmin";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
+import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 
 /** Rate limiter: 30 requests per minute per IP — cheap enough to allow a generous budget. */
 const isAdminRateLimit = createRateLimiter({
@@ -53,6 +54,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  const admin = await isAdmin(req, res).catch(() => false);
+  const admin = await isAdmin(req, res).catch((err) => {
+    // Recoverable and worth a human's attention: the account menu just won't show the
+    // admin link this request, but a broken isAdmin() check (e.g. an auth/session
+    // problem) is unusual enough to be worth a trace rather than a silent swallow.
+    logEvent(
+      "warn",
+      "admin_is_admin_check_failed",
+      "isAdmin check threw; failing closed to false",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+    return false;
+  });
   res.status(200).json({ isAdmin: admin });
 }
