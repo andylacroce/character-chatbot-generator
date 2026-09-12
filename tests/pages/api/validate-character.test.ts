@@ -151,6 +151,8 @@ describe("validate-character API", () => {
     const req = {
       method: "POST",
       body: { name: "Spam" },
+      headers: {},
+      socket: {},
     } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
 

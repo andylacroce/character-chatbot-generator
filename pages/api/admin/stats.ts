@@ -20,7 +20,7 @@ import { getCurrentEnvironment } from "../../../src/utils/environment";
 import { getSessionUserId } from "../../../src/utils/getSessionUserId";
 import { isAdmin } from "../../../src/utils/isAdmin";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
-import logger from "../../../src/utils/logger";
+import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as other authenticated routes. */
 const adminStatsRateLimit = createRateLimiter({
@@ -105,6 +105,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
   if (!(await isAdmin(req, res))) {
+    // Security-relevant: a signed-in user without admin access hit an admin-only route.
+    logEvent(
+      "warn",
+      "admin_stats_forbidden",
+      "Non-admin user denied access to admin stats",
+      sanitizeLogMeta({ userId }),
+    );
     res.status(403).json({ error: "Not authorized" });
     return;
   }
@@ -262,7 +269,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
   } catch (err) {
-    logger.error("Failed to load admin stats:", { error: err });
+    logEvent(
+      "error",
+      "admin_stats_load_failed",
+      "Failed to load admin stats",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
     res.status(500).json({ error: "Failed to load stats" });
   }
 }

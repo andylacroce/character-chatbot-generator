@@ -99,16 +99,11 @@ jest.mock("ipinfo", () => ({
   default: (...args: unknown[]) => mockIpinfo(...args),
 }));
 
-const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+const mockLogEvent = jest.fn();
 jest.mock("../../../src/utils/logger", () => ({
   __esModule: true,
-  default: {
-    info: (...a: unknown[]) => mockLogger.info(...a),
-    warn: (...a: unknown[]) => mockLogger.warn(...a),
-    error: (...a: unknown[]) => mockLogger.error(...a),
-  },
   generateRequestId: () => "generated-id",
-  logEvent: jest.fn(),
+  logEvent: (...args: unknown[]) => mockLogEvent(...args),
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
@@ -316,8 +311,10 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        "Failed to ensure .txt file for audio reply:",
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "warn",
+        "chat_txt_write_failed",
+        expect.any(String),
         expect.any(Object),
       );
     });
@@ -336,8 +333,10 @@ describe("chat API", () => {
         reply: "Greetings, traveller.",
         requestId: "generated-id",
       });
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        "Text-to-Speech API error:",
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        "chat_tts_failed",
+        expect.any(String),
         expect.any(Object),
       );
     });
@@ -436,7 +435,12 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockLogger.error).toHaveBeenCalledWith("IP info error:", expect.any(Object));
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "warn",
+        "chat_ip_lookup_failed",
+        expect.any(String),
+        expect.any(Object),
+      );
     });
 
     it("skips the IP lookup entirely when no address is available", async () => {
@@ -566,8 +570,10 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        "Failed to ensure .txt file for audio reply (cache hit):",
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "warn",
+        "chat_txt_write_failed",
+        expect.any(String),
         expect.any(Object),
       );
     });
@@ -838,8 +844,10 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        "Failed to look up bot for chat persistence:",
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        "chat_bot_lookup_failed",
+        expect.any(String),
         expect.any(Object),
       );
     });
@@ -860,8 +868,10 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        "Failed to fetch unsummarized messages:",
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        "chat_unsummarized_fetch_failed",
+        expect.any(String),
         expect.any(Object),
       );
     });
@@ -878,8 +888,10 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        "Failed to persist summary checkpoint:",
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        "chat_persist_summary_failed",
+        expect.any(String),
         expect.any(Object),
       );
     });
@@ -892,8 +904,10 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        "Failed to persist chat turn:",
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        "chat_persist_turn_failed",
+        expect.any(String),
         expect.any(Object),
       );
     });

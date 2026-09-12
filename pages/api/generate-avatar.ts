@@ -11,7 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { put } from "@vercel/blob";
 import { eq } from "drizzle-orm";
 import crypto from "crypto";
-import logger, { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
 import { generateImageWithCloudflare } from "../../src/utils/cloudflareImageGen";
 import { generateImageWithPollinations } from "../../src/utils/pollinationsImageGen";
@@ -334,13 +334,15 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
         sanitizeLogMeta({ prompt, gender: genderOut }),
       );
     } catch (promptErr) {
-      logger.warn("Failed to generate dynamic image prompt, using fallback:", { error: promptErr });
       prompt = `Original, stylized character illustration loosely inspired by the name "${sanitizedName}", depicting a generic archetype rather than any real person's actual likeness or any specific copyrighted character design. Single subject, one person, one face; head-and-shoulders portrait (frontal or 3/4) with neutral background and even soft lighting. Do NOT create collages, side-by-side photos, split/composite images, reflections, or duplicates. Exclude text, watermarks, logos, extra limbs, extra faces, real-person likeness, exact copyrighted designs, or any compositing.`;
       logEvent(
-        "info",
+        "warn",
         "avatar_prompt_fallback",
-        "Using fallback image prompt",
-        sanitizeLogMeta({ prompt }),
+        "Failed to generate dynamic image prompt, using fallback",
+        sanitizeLogMeta({
+          prompt,
+          error: promptErr instanceof Error ? promptErr.message : String(promptErr),
+        }),
       );
     }
 

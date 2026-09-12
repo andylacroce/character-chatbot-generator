@@ -11,7 +11,7 @@ import { desc, eq } from "drizzle-orm";
 import { getDb } from "../../src/db/client";
 import { avatarCache } from "../../src/db/schema";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
-import logger from "../../src/utils/logger";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
 /** Rate limiter: 60 requests per minute per IP — higher than most since infinite scroll on the gallery fires one request per batch. */
 const charsRateLimit = createRateLimiter({
@@ -150,7 +150,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       hasMore: offset + limit < all.length,
     });
   } catch (err) {
-    logger.error("Failed to list characters:", { error: err });
+    logEvent(
+      "error",
+      "chars_list_failed",
+      "Failed to list characters",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
     res.status(500).json({ error: "Failed to list characters" });
   }
 }

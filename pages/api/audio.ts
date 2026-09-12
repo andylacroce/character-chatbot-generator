@@ -437,20 +437,12 @@ async function handler(
   const filePath = normalizedAudioFilePath || normalizedLocalFilePath;
   if (!filePath || !fs.existsSync(filePath)) {
     logEvent(
-      "warn",
-      "audio_not_found",
-      "Audio API not found: file not found after all regen attempts",
-      sanitizeLogMeta({
-        file: sanitizedFile,
-      }),
-    );
-    logEvent(
       "error",
-      "audio_not_found_error",
+      "audio_not_found",
       "Audio file not found after all regen attempts",
       sanitizeLogMeta({
         file: sanitizedFile,
-        error: regenError,
+        error: regenError instanceof Error ? regenError.message : regenError,
       }),
     );
     return res.status(404).json({ error: "File not found after all regeneration attempts" });
@@ -459,14 +451,6 @@ async function handler(
   try {
     audioContent = fs.readFileSync(filePath);
   } catch (err) {
-    logEvent(
-      "info",
-      "audio_internal_error_reading_file",
-      "Audio API internal error: error reading file",
-      sanitizeLogMeta({
-        file: filePath,
-      }),
-    );
     logEvent(
       "error",
       "audio_read_error",

@@ -54,6 +54,35 @@ module.exports = [
       "@typescript-eslint/triple-slash-reference": "off",
     },
   },
+  // Logging standard (see CLAUDE.md's "Logging standards" section): every app/src/API
+  // log line goes through src/utils/logger.ts, not a raw console call, so it's captured
+  // by the same server-side (Winston) / client-side (browser) formatting either way.
+  {
+    files: ["app/**/*.{ts,tsx}", "src/**/*.ts", "pages/**/*.ts"],
+    ignores: ["**/*.test.{ts,tsx}", "src/utils/logger.ts"],
+    rules: {
+      "no-console": "warn",
+    },
+  },
+  // Within API routes specifically, every log call is a structured event (logEvent),
+  // not a bare logger.info/warn/error — that's what gives every log line a stable,
+  // greppable `event` name instead of a hand-formatted message string. src/utils/logger.ts
+  // itself and its tests are exempt (they implement/exercise the `logger` object).
+  {
+    files: ["pages/api/**/*.ts"],
+    ignores: ["**/*.test.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            "CallExpression[callee.object.name='logger'][callee.property.name=/^(info|warn|error)$/]",
+          message:
+            "Use logEvent(level, event, message, meta) instead of logger.<level>() in API routes, so every log line carries a structured event name (see CLAUDE.md's Logging standards).",
+        },
+      ],
+    },
+  },
   // Documentation standard (see CLAUDE.md's "Code documentation standard" section):
   // every top-level function/component/hook in the app/src/API layers carries a
   // one-line JSDoc summary, checked for correct JSDoc syntax and consumed by

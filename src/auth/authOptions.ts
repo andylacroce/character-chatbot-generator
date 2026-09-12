@@ -63,6 +63,7 @@ import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { getDb } from "../db/client";
 import { users, accounts, verificationTokens } from "../db/schema";
 import { sendVerificationRequest } from "../utils/magicLinkEmail";
+import { logEvent, sanitizeLogMeta } from "../utils/logger";
 
 const adapter = process.env.DATABASE_URL
   ? DrizzleAdapter(getDb(), {
@@ -119,6 +120,29 @@ export const authOptions: NextAuthOptions = {
   providers,
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
+  // NextAuth's default logger writes straight to console, bypassing this app's
+  // structured logEvent format — that would make adapter/DB failures (a failed
+  // users/accounts write on sign-in, a bad verification token) invisible to the
+  // same log queries every other route's failures show up in. `code` identifies
+  // the specific NextAuth error/warning (e.g. "adapter_error_getUserByAccount");
+  // kept in meta rather than the event name so this stays one greppable event.
+  logger: {
+    error(code, metadata) {
+      const err = metadata instanceof Error ? metadata : (metadata as { error?: Error })?.error;
+      logEvent(
+        "error",
+        "auth_error",
+        "NextAuth error",
+        sanitizeLogMeta({
+          code,
+          error: err instanceof Error ? err.message : String(metadata),
+        }),
+      );
+    },
+    warn(code) {
+      logEvent("warn", "auth_warning", "NextAuth warning", sanitizeLogMeta({ code }));
+    },
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) token.sub = user.id;

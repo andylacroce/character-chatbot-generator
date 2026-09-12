@@ -6,7 +6,7 @@
 import { BlobNotFoundError, head, put } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
-import logger, { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
+import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { escapeHtml } from "../../src/utils/security";
 
 /**
@@ -222,7 +222,15 @@ export default async function handler(
           token: blobToken,
         });
       } catch (error) {
-        logger.error("[Log API] Error appending to Vercel Blob:", { error });
+        logEvent(
+          "error",
+          "log_api_blob_write_failed",
+          "Error appending to Vercel Blob",
+          sanitizeLogMeta({
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
         res.status(500).json({ error: "Internal Server Error" });
         return;
       }
@@ -242,7 +250,15 @@ export default async function handler(
         fs.mkdirSync(logDir, { recursive: true });
         fs.appendFileSync(resolvedFilePath, logEntry, "utf8");
       } catch (error) {
-        logger.error("[Log API] Error appending to local file:", { error });
+        logEvent(
+          "error",
+          "log_api_file_write_failed",
+          "Error appending to local file",
+          sanitizeLogMeta({
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
         res.status(500).json({ error: "Internal Server Error" });
         return;
       }
@@ -267,11 +283,15 @@ export default async function handler(
     res.status(200).json({ success: true, requestId });
     return;
   } catch (error) {
-    logger.error("Internal Server Error", {
-      event: "log_api_internal_error",
-      requestId,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logEvent(
+      "error",
+      "log_api_internal_error",
+      "Internal Server Error",
+      sanitizeLogMeta({
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
     res.status(500).json({ error: "Internal Server Error", requestId });
   }
 }

@@ -297,9 +297,9 @@ describe("generate-avatar API", () => {
 
       expect(res.json).toHaveBeenCalled();
       expect(mockLogEvent).toHaveBeenCalledWith(
-        "info",
+        "warn",
         "avatar_prompt_fallback",
-        "Using fallback image prompt",
+        "Failed to generate dynamic image prompt, using fallback",
         expect.any(Object),
       );
       const result = (res.json as jest.Mock).mock.calls[0][0];

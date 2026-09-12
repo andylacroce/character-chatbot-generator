@@ -12,7 +12,7 @@ import { getSessionUserId } from "../../src/utils/getSessionUserId";
 import { sanitizeCharacterName } from "../../src/utils/security";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { getCurrentEnvironment } from "../../src/utils/environment";
-import logger from "../../src/utils/logger";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
 /** Rate limiter: 20 requests per minute per IP. */
 const botsRateLimit = createRateLimiter({
@@ -126,7 +126,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .limit(50);
       res.status(200).json({ bots: rows });
     } catch (err) {
-      logger.error("Failed to list bots:", { error: err });
+      logEvent(
+        "error",
+        "bots_list_failed",
+        "Failed to list bots",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
       res.status(500).json({ error: "Failed to list characters" });
     }
     return;
@@ -163,7 +168,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     res.status(200).json({ persisted: true });
   } catch (err) {
-    logger.error("Failed to persist bot:", { error: err });
+    logEvent(
+      "error",
+      "bots_persist_failed",
+      "Failed to persist bot",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
     res.status(500).json({ error: "Failed to save character" });
   }
 }

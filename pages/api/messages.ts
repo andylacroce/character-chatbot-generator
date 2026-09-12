@@ -16,7 +16,7 @@ import { getSessionUserId } from "../../src/utils/getSessionUserId";
 import { sanitizeCharacterName } from "../../src/utils/security";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { getCurrentEnvironment } from "../../src/utils/environment";
-import logger from "../../src/utils/logger";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 
 /** Rate limiter: 30 requests per minute per IP. */
 const messagesRateLimit = createRateLimiter({
@@ -114,7 +114,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       messages: rows.reverse().map((m) => ({ sender: m.sender, text: m.text })),
     });
   } catch (err) {
-    logger.error("Failed to list messages:", { error: err });
+    logEvent(
+      "error",
+      "messages_list_failed",
+      "Failed to list messages",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
     res.status(500).json({ error: "Failed to list messages" });
   }
 }

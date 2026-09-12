@@ -998,11 +998,6 @@ export function useChatController(bot: Bot, onBackToCharacterCreation?: () => vo
     };
   }, [stopAudio]);
 
-  useEffect(() => {
-    // Debugging: log retrying state
-    // console.debug("Retrying state updated", { event: "chat_retrying_state", retrying });
-  }, [retrying]);
-
   return {
     messages,
     input,

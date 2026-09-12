@@ -4,7 +4,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from "next";
-import logger from "../../src/utils/logger";
+import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { sanitizeForDisplay, escapeHtml } from "../../src/utils/security";
 
@@ -86,7 +86,12 @@ const transcriptRateLimit = createRateLimiter({
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
-    logger.info(`[Transcript API] 405 Method Not Allowed for ${req.method}`);
+    logEvent(
+      "info",
+      "transcript_method_not_allowed",
+      "Method not allowed",
+      sanitizeLogMeta({ method: req.method }),
+    );
     res.setHeader("Allow", ["POST"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
     return;
@@ -101,22 +106,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { messages, bot, exportedAt } = req.body;
 
   if (!Array.isArray(messages)) {
-    logger.info(`[Transcript API] 400 Bad Request: Messages array required`);
-    logger.error("[Transcript API] Invalid request: Messages array required in JSON body.");
+    logEvent(
+      "info",
+      "transcript_bad_request",
+      "Messages array required",
+      sanitizeLogMeta({ reason: "not_an_array" }),
+    );
     res.status(400).json({ error: "Messages array required" });
     return;
   }
 
   // Validate required fields and types
   if (bot !== undefined && (typeof bot !== "object" || bot === null)) {
+    logEvent(
+      "info",
+      "transcript_bad_request",
+      "bot must be an object",
+      sanitizeLogMeta({ reason: "invalid_bot" }),
+    );
     res.status(400).json({ error: "bot must be an object" });
     return;
   }
   if (bot && typeof bot.name !== "string") {
+    logEvent(
+      "info",
+      "transcript_bad_request",
+      "bot.name must be a string",
+      sanitizeLogMeta({ reason: "invalid_bot_name" }),
+    );
     res.status(400).json({ error: "bot.name must be a string" });
     return;
   }
   if (bot && typeof bot.avatarUrl !== "string") {
+    logEvent(
+      "info",
+      "transcript_bad_request",
+      "bot.avatarUrl must be a string",
+      sanitizeLogMeta({ reason: "invalid_bot_avatar_url" }),
+    );
     res.status(400).json({ error: "bot.avatarUrl must be a string" });
     return;
   }
@@ -127,6 +154,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       typeof msg.sender !== "string" ||
       typeof msg.text !== "string"
     ) {
+      logEvent(
+        "info",
+        "transcript_bad_request",
+        "Invalid message format",
+        sanitizeLogMeta({ reason: "invalid_message_format" }),
+      );
       res.status(400).json({ error: "Invalid message format" });
       return;
     }
@@ -134,7 +167,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Ensure message count is reasonable to prevent resource exhaustion
   if (messages.length > 10000) {
-    logger.info(`[Transcript API] 400 Bad Request: Too many messages (${messages.length})`);
+    logEvent(
+      "warn",
+      "transcript_bad_request",
+      "Too many messages",
+      sanitizeLogMeta({ reason: "too_many_messages", count: messages.length }),
+    );
     res.status(400).json({ error: "Too many messages (max 10000)" });
     return;
   }
@@ -143,12 +181,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const totalSize = JSON.stringify(messages).length;
   if (totalSize > 5 * 1024 * 1024) {
     // 5MB size limit
-    logger.info(`[Transcript API] 400 Bad Request: Transcript too large (${totalSize} bytes)`);
+    logEvent(
+      "warn",
+      "transcript_bad_request",
+      "Transcript too large",
+      sanitizeLogMeta({ reason: "too_large", totalSize }),
+    );
     res.status(400).json({ error: "Transcript too large (max 5MB)" });
     return;
   }
-
-  logger.info(`[Transcript API] Received messages for download: ${messages.length}`);
 
   // Use friendly timestamp if provided, otherwise generate machine-readable one
   const displayTimestamp =
@@ -173,8 +214,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const pad = (n: number) => n.toString().padStart(2, "0");
   const datetime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
   const filename = `Character Chat Transcript ${datetime}.html`;
-
-  logger.info(`[Transcript API] Generated filename: ${filename}`);
 
   // Generate formatted HTML transcript with styling and safety measures.
   // Palette, type pairing (Inter for labels, Playfair Display for titles, Lora for
@@ -344,7 +383,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   // CodeQL [js/reflected-xss] - All user inputs are validated and properly HTML-escaped before insertion into the HTML template
   res.status(200).send(htmlTranscript);
-  logger.info(`[Transcript API] 200 OK: Transcript sent for display, messages=${messages.length}`);
+  logEvent(
+    "info",
+    "transcript_sent",
+    "Transcript sent for display",
+    sanitizeLogMeta({ messageCount: messages.length }),
+  );
 }
 
 /**

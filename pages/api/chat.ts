@@ -15,7 +15,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import ipinfo from "ipinfo";
-import logger, { generateRequestId } from "../../src/utils/logger";
+import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { setReplyCache, getReplyCache } from "../../src/utils/cache";
 import crypto from "crypto";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
@@ -71,10 +71,20 @@ function cleanupOldAudioFiles() {
     }
 
     if (cleanedCount > 0) {
-      logger.info(`Cleaned up ${cleanedCount} old audio files`);
+      logEvent(
+        "info",
+        "chat_audio_cleanup",
+        "Cleaned up old audio files",
+        sanitizeLogMeta({ cleanedCount }),
+      );
     }
   } catch (err) {
-    logger.error("Error during audio file cleanup:", { error: err });
+    logEvent(
+      "error",
+      "chat_audio_cleanup_failed",
+      "Audio file cleanup failed",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
   }
 }
 
@@ -133,7 +143,12 @@ async function lookupBot(userId: string, botName: string): Promise<BotRow | null
       );
     return rows[0] ?? null;
   } catch (err) {
-    logger.error("Failed to look up bot for chat persistence:", { error: err });
+    logEvent(
+      "error",
+      "chat_bot_lookup_failed",
+      "Failed to look up bot for chat persistence",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
     return null;
   }
 }
@@ -159,7 +174,12 @@ async function fetchUnsummarizedMessages(
       )
       .orderBy(asc(messagesTable.id));
   } catch (err) {
-    logger.error("Failed to fetch unsummarized messages:", { error: err });
+    logEvent(
+      "error",
+      "chat_unsummarized_fetch_failed",
+      "Failed to fetch unsummarized messages",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
     return [];
   }
 }
@@ -189,7 +209,12 @@ async function persistChatTurn(
         ];
     await getDb().insert(messagesTable).values(rows);
   } catch (err) {
-    logger.error("Failed to persist chat turn:", { error: err });
+    logEvent(
+      "error",
+      "chat_persist_turn_failed",
+      "Failed to persist chat turn",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
   }
 }
 
@@ -206,7 +231,12 @@ async function persistSummaryCheckpoint(
       .set({ summary, summarizedThroughMessageId: throughMessageId, updatedAt: new Date() })
       .where(eq(bots.id, botId));
   } catch (err) {
-    logger.error("Failed to persist summary checkpoint:", { error: err });
+    logEvent(
+      "error",
+      "chat_persist_summary_failed",
+      "Failed to persist summary checkpoint",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
   }
 }
 
@@ -388,7 +418,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method !== "POST") {
-    logger.info(`[Chat API] 405 Method Not Allowed for ${req.method} | requestId=${requestId}`);
+    logEvent(
+      "info",
+      "chat_method_not_allowed",
+      "Method not allowed",
+      sanitizeLogMeta({ method: req.method, requestId }),
+    );
     res.setHeader("Allow", ["POST"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
     return;
@@ -413,12 +448,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const isIntro = req.body.isIntro === true;
 
     if (!userMessage) {
-      logger.info(`[Chat API] 400 Bad Request: Message is required | requestId=${requestId}`);
+      logEvent(
+        "info",
+        "chat_bad_request_message",
+        "Message is required",
+        sanitizeLogMeta({ requestId }),
+      );
       res.status(400).json({ error: "Message is required", requestId });
       return;
     }
     if (!voiceConfig || typeof voiceConfig !== "object") {
-      logger.info(`[Chat API] 400 Bad Request: Voice config is required | requestId=${requestId}`);
+      logEvent(
+        "info",
+        "chat_bad_request_voice_config",
+        "Voice config is required",
+        sanitizeLogMeta({ requestId }),
+      );
       res.status(400).json({ error: "Voice config is required", requestId });
       return;
     }
@@ -443,11 +488,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         const locationData = await ipinfo(userIp as string);
         userLocation = `${locationData.city}, ${locationData.region}, ${locationData.country}`;
       } catch (error) {
-        logger.error("IP info error:", { error });
+        logEvent(
+          "warn",
+          "chat_ip_lookup_failed",
+          "IP info lookup failed",
+          sanitizeLogMeta({
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
       }
     }
-
-    const timestamp = new Date().toISOString();
 
     // Conversation summarization keeps the context window manageable once history exceeds
     // 20 messages. For a saved character (botRow), this reads from the messages table and
@@ -486,8 +537,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         limitedHistory = toKeep.map((m) =>
           m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`,
         );
-        logger.info(
-          `[Chat API] Summarized ${toSummarize.length} old messages (checkpoint) | requestId=${requestId}`,
+        logEvent(
+          "info",
+          "chat_summarized_checkpoint",
+          "Summarized old messages into rolling checkpoint",
+          sanitizeLogMeta({ requestId, count: toSummarize.length }),
         );
       } else {
         conversationSummary = botRow.summary || undefined;
@@ -504,8 +558,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       if (oldMessages.length > 0) {
         conversationSummary = await summarizeConversation(anthropic, oldMessages, botName);
-        logger.info(
-          `[Chat API] Summarized ${oldHistory.length} old messages | requestId=${requestId}`,
+        logEvent(
+          "info",
+          "chat_summarized_legacy",
+          "Summarized old client-supplied history",
+          sanitizeLogMeta({ requestId, count: oldHistory.length }),
         );
       }
 
@@ -545,10 +602,21 @@ CRITICAL CONTEXT INSTRUCTIONS:
     });
     const cachedReply = getReplyCache(cacheKey);
     if (cachedReply) {
-      logger.info(`[Chat API] Cache hit for key: ${cacheKey} | requestId=${requestId}`);
+      // Logs a hash rather than the cache key itself — the key embeds the full
+      // personality and recent history, which shouldn't be written to logs verbatim.
+      const cacheKeyHash = crypto.createHash("sha256").update(cacheKey).digest("hex").slice(0, 16);
+      logEvent(
+        "info",
+        "chat_cache_hit",
+        "Serving cached reply",
+        sanitizeLogMeta({ requestId, cacheKeyHash }),
+      );
       const voiceConfigToUse = voiceConfig;
-      logger.info(
-        `[TTS] Using voice for botName='${botName}': ${JSON.stringify(voiceConfigToUse)}`,
+      logEvent(
+        "info",
+        "chat_tts_voice_selected",
+        "TTS voice config selected",
+        sanitizeLogMeta({ requestId, botName, voiceConfig: voiceConfigToUse }),
       );
       const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
       const ssmlText = buildSsml(cachedReply, selectedVoice);
@@ -574,7 +642,15 @@ CRITICAL CONTEXT INSTRUCTIONS:
           // Audio is an enhancement, not a requirement — the reply text is already
           // known-good (it's cached), so a TTS failure shouldn't discard it. Same
           // reasoning as the non-streaming and streaming paths below.
-          logger.error("Text-to-Speech API error (cache hit):", { error });
+          logEvent(
+            "error",
+            "chat_tts_failed_cache_hit",
+            "TTS synthesis failed for cached reply",
+            sanitizeLogMeta({
+              requestId,
+              error: error instanceof Error ? error.message : String(error),
+            }),
+          );
           res.status(200).json({ reply: cachedReply, cached: true, requestId });
           await finalizeChatPersistence(
             botRow,
@@ -596,7 +672,16 @@ CRITICAL CONTEXT INSTRUCTIONS:
           fs.writeFileSync(txtFilePath, cachedReply, "utf8");
         }
       } catch (err) {
-        logger.error("Failed to ensure .txt file for audio reply (cache hit):", { error: err });
+        logEvent(
+          "warn",
+          "chat_txt_write_failed",
+          "Failed to write .txt companion file for audio reply",
+          sanitizeLogMeta({
+            requestId,
+            cached: true,
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
       }
       const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
       res.status(200).json({
@@ -605,6 +690,18 @@ CRITICAL CONTEXT INSTRUCTIONS:
         cached: true,
         requestId,
       });
+      logEvent(
+        "info",
+        "chat_reply_sent",
+        "Reply sent",
+        sanitizeLogMeta({
+          requestId,
+          botName,
+          cached: true,
+          streamed: false,
+          hasAudio: true,
+        }),
+      );
       await finalizeChatPersistence(
         botRow,
         userMessage,
@@ -649,6 +746,12 @@ CRITICAL CONTEXT INSTRUCTIONS:
         }
 
         if (!botReply || botReply.trim() === "") {
+          logEvent(
+            "warn",
+            "chat_stream_empty_response",
+            "Streamed response was empty",
+            sanitizeLogMeta({ requestId }),
+          );
           res.write(`data: ${JSON.stringify({ error: "Empty response", done: true })}\n\n`);
           res.end();
           return;
@@ -681,15 +784,36 @@ CRITICAL CONTEXT INSTRUCTIONS:
           });
           audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
         } catch (ttsError) {
-          logger.error("Text-to-Speech API error (streaming):", { error: ttsError });
+          logEvent(
+            "error",
+            "chat_tts_failed_streaming",
+            "TTS synthesis failed for streamed reply",
+            sanitizeLogMeta({
+              requestId,
+              error: ttsError instanceof Error ? ttsError.message : String(ttsError),
+            }),
+          );
         }
 
         res.write(`data: ${JSON.stringify({ reply: botReply, audioFileUrl, done: true })}\n\n`);
         res.end();
 
         setReplyCache(cacheKey, botReply);
-        logger.info(
-          `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`,
+        logEvent(
+          "info",
+          "chat_reply_sent",
+          "Reply sent",
+          sanitizeLogMeta({
+            requestId,
+            botName,
+            userIp,
+            userLocation,
+            userMessageLength: userMessage.length,
+            botReplyLength: botReply.length,
+            cached: false,
+            streamed: true,
+            hasAudio: !!audioFileUrl,
+          }),
         );
         await finalizeChatPersistence(
           botRow,
@@ -701,7 +825,15 @@ CRITICAL CONTEXT INSTRUCTIONS:
         );
         return;
       } catch (streamErr) {
-        logger.error("Streaming error:", { error: streamErr });
+        logEvent(
+          "error",
+          "chat_stream_failed",
+          "Streaming chat response failed",
+          sanitizeLogMeta({
+            requestId,
+            error: streamErr instanceof Error ? streamErr.message : String(streamErr),
+          }),
+        );
         res.write(`data: ${JSON.stringify({ error: "Streaming failed", done: true })}\n\n`);
         res.end();
         return;
@@ -723,13 +855,21 @@ CRITICAL CONTEXT INSTRUCTIONS:
     ]);
 
     if (result && typeof result === "object" && "timeout" in result) {
-      logger.info(`[Chat API] 408 Request Timeout | requestId=${requestId}`);
+      logEvent(
+        "warn",
+        "chat_timeout",
+        "Request timed out waiting for Claude",
+        sanitizeLogMeta({ requestId }),
+      );
       res.status(408).json({ reply: "Request timed out.", requestId });
       return;
     }
     if (!isClaudeResponse(result)) {
-      logger.info(
-        `[Chat API] 500 Internal Server Error: Invalid Claude response | requestId=${requestId}`,
+      logEvent(
+        "error",
+        "chat_invalid_claude_response",
+        "Invalid response shape from Claude",
+        sanitizeLogMeta({ requestId }),
       );
       throw new Error("Invalid response from Claude");
     }
@@ -739,8 +879,11 @@ CRITICAL CONTEXT INSTRUCTIONS:
         : "";
 
     if (!botReply || botReply.trim() === "") {
-      logger.info(
-        `[Chat API] 500 Internal Server Error: Empty bot response | requestId=${requestId}`,
+      logEvent(
+        "error",
+        "chat_empty_bot_response",
+        "Generated bot response was empty",
+        sanitizeLogMeta({ requestId }),
       );
       throw new Error("Generated bot response is empty.");
     }
@@ -748,12 +891,11 @@ CRITICAL CONTEXT INSTRUCTIONS:
     botReply = gracefullyWrapResponse(botReply);
 
     const voiceConfigToUse = voiceConfig;
-    const voiceConfigHash = crypto
-      .createHash("sha256")
-      .update(JSON.stringify(voiceConfigToUse))
-      .digest("hex");
-    logger.info(
-      `[TTS] Using voice for botName='${botName}', voiceConfigHash=${voiceConfigHash}: ${JSON.stringify(voiceConfigToUse)}`,
+    logEvent(
+      "info",
+      "chat_tts_voice_selected",
+      "TTS voice config selected",
+      sanitizeLogMeta({ requestId, botName, voiceConfig: voiceConfigToUse }),
     );
     const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
     const ssmlText = buildSsml(botReply, selectedVoice);
@@ -782,13 +924,31 @@ CRITICAL CONTEXT INSTRUCTIONS:
         // most for the very first message in a conversation (the intro), where a
         // TTS-only failure used to surface as "failed to generate intro", forcing
         // the user to recreate the bot even though the actual text was fine.
-        logger.error("Text-to-Speech API error:", { error });
-        setReplyCache(cacheKey, botReply);
-        logger.info(
-          `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`,
+        logEvent(
+          "error",
+          "chat_tts_failed",
+          "TTS synthesis failed for reply",
+          sanitizeLogMeta({
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+          }),
         );
-        logger.info(
-          `[Chat API] 200 OK: Reply sent without audio (TTS failed) | requestId=${requestId}`,
+        setReplyCache(cacheKey, botReply);
+        logEvent(
+          "info",
+          "chat_reply_sent",
+          "Reply sent without audio (TTS failed)",
+          sanitizeLogMeta({
+            requestId,
+            botName,
+            userIp,
+            userLocation,
+            userMessageLength: userMessage.length,
+            botReplyLength: botReply.length,
+            cached: false,
+            streamed: false,
+            hasAudio: false,
+          }),
         );
         res.status(200).json({ reply: botReply, requestId });
         await finalizeChatPersistence(
@@ -811,19 +971,40 @@ CRITICAL CONTEXT INSTRUCTIONS:
         fs.writeFileSync(txtFilePath, botReply, "utf8");
       }
     } catch (err) {
-      logger.error("Failed to ensure .txt file for audio reply:", { error: err });
+      logEvent(
+        "warn",
+        "chat_txt_write_failed",
+        "Failed to write .txt companion file for audio reply",
+        sanitizeLogMeta({
+          requestId,
+          cached: false,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     }
     setReplyCache(cacheKey, botReply);
-    logger.info(
-      `${timestamp}|${userIp}|${userLocation}|${userMessage.replace(/"/g, '""')}|${botReply.replace(/"/g, '""')}|requestId=${requestId}`,
-    );
-    logger.info(`[Chat API] 200 OK: Reply and audioFileUrl sent | requestId=${requestId}`);
     const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
     res.status(200).json({
       reply: botReply,
       audioFileUrl,
       requestId,
     });
+    logEvent(
+      "info",
+      "chat_reply_sent",
+      "Reply sent",
+      sanitizeLogMeta({
+        requestId,
+        botName,
+        userIp,
+        userLocation,
+        userMessageLength: userMessage.length,
+        botReplyLength: botReply.length,
+        cached: false,
+        streamed: false,
+        hasAudio: true,
+      }),
+    );
     await finalizeChatPersistence(
       botRow,
       userMessage,
@@ -834,9 +1015,13 @@ CRITICAL CONTEXT INSTRUCTIONS:
     );
     return;
   } catch (error) {
-    logger.error(`API error | requestId=${requestId}:`, { error });
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    logger.info(`[Chat API] 500 Internal Server Error | requestId=${requestId}`);
+    logEvent(
+      "error",
+      "chat_request_failed",
+      "Chat request failed",
+      sanitizeLogMeta({ requestId, error: errorMessage }),
+    );
     res.status(500).json({
       reply: "Error fetching response from bot.",
       error: errorMessage,

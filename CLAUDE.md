@@ -148,6 +148,63 @@ Distinct from the inline "why" comments described in the global `~/.claude/CLAUD
 - **Where it's exported to:** `npm run docs:code` runs TypeDoc (config: `typedoc.json`) over the same three directories and writes a browsable HTML reference to `docs-generated/` — gitignored, regenerated on demand (same "build artifact, not hand-edited or committed" treatment as `public/openapi.json` above). It's also wired into `npm run ci` (and the GitHub Actions `ci.yml` workflow) as its own step: TypeDoc fails the build on a real generation error, which is a second, independent check on the same comments beyond ESLint's syntax validation. `typedoc.json`'s `blockTags` list is the full TypeDoc default plus `@swagger` — omitting `@swagger` there makes TypeDoc warn on the OpenAPI blocks even though ESLint's `check-tag-names` already allows it, since the two tools maintain separate tag allowlists.
 - **Nested/inline functions are not required to carry a doc block** — the ESLint contexts intentionally match only top-level declarations, not callbacks or helpers defined inside a component/hook body. (One partial exception: `eslint-plugin-jsdoc`'s own default behavior additionally requires a doc block on any `function`-keyword declaration anywhere, including nested ones — arrow-function helpers nested inside a component/hook are unaffected.) Don't over-apply the standard by documenting every inner helper; that's exactly the "explaining what, not why" pattern the global inline-comment preference already warns against.
 
+### Logging standards
+
+Audited and standardized 2026-09-12 — before this, `pages/api/chat.ts` and a few newer
+routes (`bots.ts`, `messages.ts`, `chars.ts`, `admin/stats.ts`, `transcript.ts`) had drifted
+onto an ad-hoc `logger.info`/`logger.error` pattern (hand-formatted message strings, no
+`event` field) instead of the structured convention already dominant everywhere else
+(`audio.ts`, `generate-avatar.ts`, `health.ts`, `log-message.ts`, `validate-character.ts`,
+`generate-personality.ts`, `random-character.ts`, and all of `app/components`). All server
+routes now follow the same convention described here, and it's ESLint-enforced so it can't
+silently drift again.
+
+- **Every log line is `logEvent(level, event, message, meta)`** (`src/utils/logger.ts`),
+  never a raw `logger.info`/`.warn`/`.error(string, meta)` call or a bare `console.*`. The
+  `event` field is what makes logs greppable/alertable by kind rather than by matching a
+  hand-formatted message string.
+- **Event names are `snake_case`, prefixed by the route or domain they belong to** —
+  `chat_*`, `audio_*`, `avatar_*`, `bots_*`, `messages_*`, `chars_*`, `admin_stats_*`,
+  `transcript_*`, `log_api_*`, `health_*`, `rate_limit_exceeded`. One sanctioned exception:
+  `auth_error`/`auth_warning` (NextAuth's own internal error/warning `code`, e.g.
+  `adapter_error_getUserByAccount`, goes in `meta.code` rather than the event name — those
+  codes aren't this app's to rename, and inlining them would fragment one auth-failure
+  event into dozens of ad-hoc ones).
+- **Level semantics:** `info` for expected lifecycle events (a reply was sent, a cache hit,
+  a 400 for a routine bad request); `warn` for something recoverable or security-relevant
+  worth a human's attention (a rate limit tripped, a non-admin hit `/api/admin/stats`, a
+  text/audio mismatch); `error` for an actual failure — something that surfaces as a 500,
+  discards work, or means a downstream call genuinely broke.
+- **Wrap `meta` in `sanitizeLogMeta()`** so long strings are truncated and nested objects
+  don't blow up the log line. Never log full user-authored content (a chat message, a bot
+  reply, a personality prompt, a cache key built from any of those) on a routine path —
+  log lengths/hashes/ids instead (see `chat.ts`'s `chat_reply_sent`/`chat_cache_hit`
+  events). A short, truncated snippet is acceptable only for a rare, bounded diagnostic
+  path investigating a specific bug (e.g. `audio.ts`'s `audio_text_mismatch_regen`) — not
+  as a routine per-request trace.
+- **Don't double-log one failure at two levels** — a single `logEvent` call per failure,
+  not an `error` and a `warn`/`info` pair carrying the same information (this used to
+  happen in a few places, e.g. `audio.ts`'s not-found/read-error paths; fixed as part of
+  the 2026-09-12 audit). The one deliberate exception is `health.ts`: its `error`-level
+  detail is gated behind `NODE_ENV !== "production"` and an unconditional lower-detail
+  `info`-level event always fires alongside it — since this endpoint is hit on every chat
+  session mount and external providers have transient blips, error-level (which tends to
+  drive alerting) is intentionally suppressed in production while still leaving an audit
+  trail. Don't "fix" that one back into a single call without re-reading why it's split.
+- **Centralize cross-cutting logging instead of repeating it per route.** Rate-limit
+  exceeded (429) logging lives once inside `applyRateLimit` (`src/utils/rateLimit.ts`),
+  tagged with the limiter's `name` — every rate-limited route gets it for free rather than
+  each call site logging its own copy.
+- **Enforcement:** `eslint.config.cjs` has two rules backing this — `no-console` (scoped to
+  `app/**`, `src/**`, `pages/**`, excluding `src/utils/logger.ts` itself and tests) bans
+  raw `console.*`, and a `no-restricted-syntax` rule scoped to `pages/api/**/*.ts` bans
+  `logger.info(`/`.warn(`/`.error(` calls specifically, so a route can't quietly regress to
+  the pre-2026-09-12 ad-hoc pattern. Both run as part of `npm run lint`, which `npm run ci`
+  gates on with `--max-warnings=0` — same enforcement shape as the JSDoc standard above.
+- **Client-side (`app/components`) already follows this convention exclusively** — every
+  hook/component logs via `logEvent`, never raw `console.*`. Keep new client code
+  consistent with that rather than introducing a second style.
+
 ### Module system (do not regress)
 
 `package.json` intentionally has no `"type": "module"` — removing it previously fixed a Vercel `ERR_REQUIRE_ESM` crash where Next's CJS serverless launcher couldn't `require()` compiled API route output. `next.config.mjs` uses an explicit `.mjs` extension instead so it's still treated as ESM. Source (TS, `import`/`export`) compiles fine either way via SWC — don't re-add `"type": "module"`.

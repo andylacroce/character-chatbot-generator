@@ -220,7 +220,12 @@ describe("log-message API", () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ error: "Internal Server Error" });
-      expect(mockLoggerError).toHaveBeenCalled();
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        "log_api_file_write_failed",
+        expect.any(String),
+        expect.any(Object),
+      );
     });
   });
 

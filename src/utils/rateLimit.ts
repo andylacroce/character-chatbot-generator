@@ -27,6 +27,7 @@
 import rateLimit from "express-rate-limit";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createRateLimitStore, rateLimitLogger } from "./rateLimitStore";
+import { logEvent, sanitizeLogMeta } from "./logger";
 
 /**
  * Extracts the real client IP from a request, handling proxy headers.
@@ -67,7 +68,7 @@ export function createRateLimiter({
   message,
   windowMs = 60 * 1000,
 }: RateLimiterOptions) {
-  return rateLimit({
+  const limiter = rateLimit({
     windowMs,
     max,
     message: { error: message },
@@ -78,6 +79,9 @@ export function createRateLimiter({
     passOnStoreError: true,
     logger: rateLimitLogger,
   });
+  // Stashed so applyRateLimit can log a rate_limit_exceeded event with the route
+  // name, without every call site having to pass it through separately.
+  return Object.assign(limiter, { limiterName: name });
 }
 
 /**
@@ -94,5 +98,14 @@ export async function applyRateLimit(
   await new Promise<void>((resolve) => {
     limiter(req, res, () => resolve());
   });
-  return !res.headersSent;
+  const allowed = !res.headersSent;
+  if (!allowed) {
+    logEvent(
+      "warn",
+      "rate_limit_exceeded",
+      "Rate limit exceeded",
+      sanitizeLogMeta({ route: limiter.limiterName, ip: getClientIp(req) }),
+    );
+  }
+  return allowed;
 }

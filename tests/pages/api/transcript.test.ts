@@ -1,8 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+const mockLogEvent = jest.fn();
 jest.mock("../../../src/utils/logger", () => ({
   __esModule: true,
-  default: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+  logEvent: (...args: unknown[]) => mockLogEvent(...args),
+  sanitizeLogMeta: (m: unknown) => m,
 }));
 
 import handler, { isValidAvatarUrl } from "../../../pages/api/transcript";
