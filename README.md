@@ -48,7 +48,7 @@ DOM and React Native.
 
 ## Development
 
-```
+```bash
 npm install
 npm test    # jest
 npm run build  # tsc -> dist/
