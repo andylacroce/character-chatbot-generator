@@ -24,6 +24,21 @@ which triggers an automatic `tsc` build (via the `prepare` script) on install:
   server never trusts the client's sanitized value.
 - **Storage key constants** (`src/storageKeys.ts`) — key name strings shared
   between the web app's `localStorage` and the mobile app's `AsyncStorage`.
+- **Brand tokens** (`src/theme.ts`) — light/dark color palettes (mirrors the web
+  app's `app/globals.css`/`app/darkmode.css`) and wordmark/copy strings (mirrors
+  `BotCreator.tsx`'s hero section). The web app doesn't consume these yet — it
+  still hand-maintains its own CSS copies; keep both in sync by eye until/unless
+  it migrates to generate its CSS from here.
+
+**Tried and reverted:** a `src/icons.ts` with hand-drawn icon path data (extracted
+from the web app's `ChatInput.tsx` inline SVGs), meant to be rendered via
+`react-native-svg` on mobile for pixel-identical glyphs. Even after two rounds of
+fixes (splitting a compound multi-subpath `<Path>` into simple ones, ruling out
+several other theories), the mobile client's send button still failed to render
+reliably on a real Android device — not reproducible in any preview. Removed
+rather than keep chasing it; mobile now uses `@expo/vector-icons` (a different,
+merely similar-looking glyph) for those icons instead. If revisiting true
+cross-platform icon sharing, treat this as a known-hard problem, not a quick add.
 
 ## What doesn't belong here
 

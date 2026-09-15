@@ -15,6 +15,16 @@ export interface CharacterVoiceConfig {
   type?: string;
 }
 
+/**
+ * POST /api/get-voice-config request body. Missing from this file's swagger-mirroring
+ * convention until now — pages/api/get-voice-config.ts exists and is real, it was just
+ * never added here. Response body is a CharacterVoiceConfig.
+ */
+export interface GetVoiceConfigRequest {
+  name: string;
+  gender?: string | null;
+}
+
 /** One turn in a chat transcript, as sent in `conversationHistory` / rendered in the UI. */
 export interface ChatMessage {
   sender: string;
@@ -41,10 +51,23 @@ export interface ChatRequest {
   personality?: string;
   botName?: string;
   gender?: string;
-  conversationHistory?: ChatMessage[];
+  /**
+   * Pre-formatted "User: <text>" / "Bot: <text>" lines, oldest first — NOT ChatMessage
+   * objects. pages/api/chat.ts feeds this straight into buildClaudeMessages(), which
+   * calls .startsWith() on each entry; sending {sender,text} objects 500s with
+   * "t.startsWith is not a function". See useChatController.ts's own conversion of
+   * `messages` before it builds this field.
+   */
+  conversationHistory?: string[];
   voiceConfig: CharacterVoiceConfig;
   stream?: boolean;
   userName?: string;
+  /**
+   * Marks a hidden "introduce yourself" turn (see useChatController.ts's intro-generation
+   * effect) — the synthetic prompt used to elicit it is never shown to the user or counted
+   * as a real turn. Read as req.body.isIntro in pages/api/chat.ts.
+   */
+  isIntro?: boolean;
 }
 
 /** POST /api/chat JSON response (non-streaming). */
@@ -61,9 +84,15 @@ export type ChatStreamFrame =
   | { chunk: string; done: false }
   | { reply: string; audioFileUrl?: string; done: true };
 
-/** POST /api/validate-character request body. */
+/**
+ * POST /api/validate-character request body. Was mistyped here as `{characterName}` —
+ * pages/api/validate-character.ts actually reads `req.body.name` (its own swagger
+ * requestBody schema agrees: `required: [name]`). `characterName` only exists on the
+ * *response* (CharacterValidationResult, below). Sending `{characterName}` 400s with
+ * "Valid character name required".
+ */
 export interface ValidateCharacterRequest {
-  characterName: string;
+  name: string;
 }
 
 /**
@@ -148,4 +177,9 @@ export interface PersistedMessage {
 /** GET/POST /api/user-profile — the human visitor's own preferred name. */
 export interface UserProfile {
   preferredName: string | null;
+}
+
+/** GET /api/random-character response. */
+export interface RandomCharacterResponse {
+  name: string;
 }
