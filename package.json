@@ -76,7 +76,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.5",
-    "eslint-plugin-jsdoc": "^64.3.9",
+    "eslint-plugin-jsdoc": "^64.3.10",
     "express": "^5.2.1",
     "ipinfo": "^1.5.2",
     "jest": "^30.5.1",
