@@ -1,4 +1,85 @@
+/* =============================
+   NotFound.module.css
+   - 404 page styled to match the landing page's editorial theme (Playfair Display
+     headline, warm palette tokens from globals.css) instead of the previous unstyled
+     default. Its own module per this repo's no-shared-CSS-modules convention.
+   ============================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap");
+
 .container {
-  padding: 2rem;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
   text-align: center;
+  box-sizing: border-box;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-primary), sans-serif;
+}
+
+.kicker {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.headline {
+  margin: 0;
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-weight: 700;
+  font-size: 5.5rem;
+  line-height: 1;
+  color: var(--color-primary);
+}
+
+.subhead {
+  margin: 0;
+  max-width: 420px;
+  font-size: 1.05rem;
+  color: var(--color-text-secondary);
+}
+
+.homeCta {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 1.4rem;
+  padding: 0.7rem 1.5rem;
+  border-radius: 999px;
+  background: var(--color-secondary);
+  color: var(--color-on-secondary);
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  box-shadow: 0 3px 10px rgba(51, 89, 94, 0.25);
+  transition: all 0.2s ease;
+}
+
+.homeCta:hover,
+.homeCta:focus-visible {
+  background: var(--send-button-hover-bg);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(51, 89, 94, 0.35);
+  outline: none;
+}
+
+.homeCta:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(51, 89, 94, 0.25);
+}
+
+@media (max-width: 600px) {
+  .headline {
+    font-size: 4rem;
+  }
 }
