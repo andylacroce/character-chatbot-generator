@@ -2,6 +2,13 @@
 
 This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
 
+## 2026-09-17 — Guessing game (chain mode)
+
+- Added a "guess who" chain game (`/game`) as a second mode alongside ordinary chat: chat with a real, named character who naturally steers the conversation toward a different, hidden figure; guesses are typed into the same chat box (no separate guess control) and classified server-side on every turn. A correct guess promotes the hidden figure to be the new chat partner, continuing the chain and building a streak; a second wrong guess (or a voluntary give-up, with an in-app confirmation) ends the run and always reveals the answer.
+- `app/components/ChatShell.tsx` extracted the shared chat-screen UI (header, transcript, input, audio controls) out of `ChatPage.tsx`; both the game and ordinary chat now render through the same shell instead of two independently-drifting copies.
+- Fixed a real hang found in dev: `pollinationsImageGen.ts`/`cloudflareImageGen.ts`'s avatar-image `fetch()` calls had no timeout, so a stalled free/anonymous provider could hang avatar generation (and anything that calls it, like the game's round-start) indefinitely instead of degrading gracefully. Both now carry a 25s `AbortSignal.timeout`.
+- Fixed the game's staged "starting…" spinner wrapping back to its first message instead of holding on the last stage while a slow request was still in flight, which read as the request having silently restarted.
+
 ## 2026-09-08 to 2026-09-12 — Logging cleanup, admin hardening, personalized greetings
 
 - Replaced the last paid dependency in avatar generation with two free, no-payment-required image providers: Cloudflare Workers AI (`flux-1-schnell`, 10,000 free "neurons"/day) tried first, falling back to Pollinations.ai's uncapped anonymous tier (#855).

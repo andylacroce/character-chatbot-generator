@@ -26,7 +26,11 @@ export async function generateImageWithPollinations(prompt: string): Promise<str
     sanitizeLogMeta({ prompt: prompt.slice(0, 100) }),
   );
 
-  const response = await fetch(url);
+  // Anonymous and unauthenticated, so there's no daily-cap protection to fall back on if
+  // it stalls — a bounded timeout is the only thing standing between a slow/stuck request
+  // here and the whole avatar (and, for the guessing game, the whole round-start) hanging
+  // forever, since a plain fetch() has no default timeout of its own.
+  const response = await fetch(url, { signal: AbortSignal.timeout(25000) });
   if (!response.ok) {
     logEvent(
       "warn",

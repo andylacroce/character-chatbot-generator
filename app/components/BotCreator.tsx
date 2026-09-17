@@ -356,6 +356,33 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                   </svg>
                   Pick from the Character Wall
                 </Link>
+                <Link href="/game" className={styles.wallCta}>
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    aria-hidden="true"
+                    focusable="false"
+                  >
+                    <circle
+                      cx="10"
+                      cy="10"
+                      r="7.2"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeDasharray="2.2 2.2"
+                    />
+                    <path
+                      d="M8 8.3c0-1.1.9-1.9 2-1.9s2 .7 2 1.7c0 1.3-2 1.4-2 2.9"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                    />
+                    <circle cx="10" cy="13.6" r="0.9" fill="currentColor" />
+                  </svg>
+                  Play the Guessing Game
+                </Link>
               </div>
 
               <div className={styles.orDivider} role="separator" aria-label="or">

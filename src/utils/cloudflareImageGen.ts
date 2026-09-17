@@ -44,6 +44,10 @@ export async function generateImageWithCloudflare(prompt: string): Promise<strin
     // 8 steps is Flux Schnell's max — it's a distilled few-step model, more steps don't
     // improve quality but do cost more Workers AI neurons.
     body: JSON.stringify({ prompt, steps: 8 }),
+    // A bounded timeout, since a plain fetch() has no default one — without it, a stalled
+    // request here hangs the whole avatar (and, for the guessing game, round-start) call
+    // forever instead of falling through to the Pollinations fallback below.
+    signal: AbortSignal.timeout(25000),
   });
 
   if (!response.ok) {

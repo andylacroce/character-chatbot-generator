@@ -185,7 +185,10 @@ describe("generate-avatar API", () => {
 
         // Only one fetch call — to Pollinations, never to Cloudflare's API.
         expect(mockFetch).toHaveBeenCalledTimes(1);
-        expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("image.pollinations.ai"));
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining("image.pollinations.ai"),
+          expect.anything(),
+        );
         expect(res.json).toHaveBeenCalledWith({ avatarUrl: pollinationsDataUrl, gender: "female" });
       });
     });

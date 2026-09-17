@@ -140,7 +140,10 @@ describe("generate-avatar API", () => {
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("image.pollinations.ai"));
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("image.pollinations.ai"),
+      expect.anything(),
+    );
     expect(res._getJSONData().avatarUrl).toMatch(/^data:image\/png;base64,/);
   });
 
