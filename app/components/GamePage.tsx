@@ -15,7 +15,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { FaHome, FaQuestionCircle } from "react-icons/fa";
+import { FaFlag, FaHome, FaQuestionCircle } from "react-icons/fa";
 import ChatShell from "./ChatShell";
 import GameInstructionsModal from "./GameInstructionsModal";
 import storage from "../../src/utils/storage";
@@ -149,7 +149,7 @@ function GamePage() {
         <span>Back to Home</span>
       </Link>
       <button className={styles.menuItemLink} type="button" onClick={handleGiveUpClick}>
-        <FaQuestionCircle size={18} className={styles.linkIcon} />
+        <FaFlag size={18} className={styles.linkIcon} />
         <span>Give Up</span>
       </button>
       <button

@@ -34,22 +34,22 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({ show, onC
       testId="game-instructions-modal-backdrop"
     >
       <p className={styles.disclaimerText}>
-        You&apos;ll chat with a real, named historical or mythological figure. There&apos;s no
-        secret about who <em>they</em> are, but as you talk, they&apos;ll start steering the
-        conversation toward someone else entirely, dropping hints about that other person without
-        ever naming them.
+        You&apos;re chatting with a real, named character, no mystery there. But as the conversation
+        goes on, they&apos;ll start steering it toward someone else entirely: a different person
+        they have in mind, dropping hints without ever saying the name.
       </p>
       <p className={styles.disclaimerText}>
-        Ask them anything to draw out more clues, then type your guess for who they&apos;re
-        describing right into the same chat box. There&apos;s no separate guess control, just keep
-        talking. Guesses don&apos;t have to be exact: a nickname or a good description works too,
-        and if it&apos;s not clear whether you meant a question or a guess, they&apos;ll ask you to
-        confirm.
+        Ask questions to pull out more clues. When you think you know who they mean, type your guess
+        right into the same chat box, there&apos;s no separate guess button, just keep talking. You
+        don&apos;t need the exact full name; a nickname or good description works too. If it&apos;s
+        unclear whether you&apos;re asking a question or guessing, they&apos;ll check with you
+        before deciding.
       </p>
       <p className={styles.disclaimerText}>
-        Guess right and that person joins the chat next, continuing the chain and building your
-        streak. You get one wrong guess per person before a run ends, or give up anytime to see the
-        answer.
+        Guess right and that person becomes your new chat partner, hinting at someone else in turn,
+        so keep the streak going as long as you can. You get one wrong guess per person: a second
+        wrong guess ends the run and reveals the answer. You can also give up anytime to see who it
+        was.
       </p>
       <div className={styles.nameCaptureActions}>
         <button type="button" className={styles.nameCaptureSaveButton} onClick={onClose}>

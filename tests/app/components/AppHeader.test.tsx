@@ -28,16 +28,12 @@ describe("AppHeader", () => {
     expect(screen.getByText("Extra content")).toBeInTheDocument();
   });
 
-  it("uses a custom trigger and its aria-label when provided", () => {
-    render(
-      <AppHeader
-        menuItems={<button>Item</button>}
-        center={<div>Center</div>}
-        menuTrigger={<span>Guest</span>}
-        menuTriggerAriaLabel="Account: Guest. Open menu"
-      />,
-    );
-    expect(screen.getByLabelText("Account: Guest. Open menu")).toHaveTextContent("Guest");
+  it("folds the dark-mode toggle into the hamburger dropdown instead of a separate header control", () => {
+    render(<AppHeader menuItems={<button>Item</button>} center={<div>Center</div>} />);
+    expect(screen.queryByLabelText(/switch to (dark|light) mode/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Open menu"));
+    expect(screen.getByLabelText(/switch to (dark|light) mode/i)).toBeInTheDocument();
   });
 
   it("swaps the hamburger to the right side when menuSide is right", () => {

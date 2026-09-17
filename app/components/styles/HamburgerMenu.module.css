@@ -30,32 +30,6 @@
   transition: all 0.3s;
 }
 
-/* Identity chip trigger (name/"Guest") — an alternative to the default 3-bar icon,
-   for a hamburger whose whole point is surfacing status at a glance, not just an
-   entry point to a menu. */
-.triggerButton {
-  background: none;
-  border: 1px solid var(--color-outline);
-  border-radius: 999px;
-  cursor: pointer;
-  padding: 0.32em 0.85em;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--color-text);
-  max-width: 40vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.triggerButton:hover,
-.triggerButton:focus {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  outline: none;
-}
-
 .menuDropdown {
   position: absolute;
   top: 2.5rem;

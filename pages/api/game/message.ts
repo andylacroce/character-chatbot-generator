@@ -66,7 +66,7 @@ Decide a "status":
 - "ambiguous": the message hedges ("I think it might be", "could it be", "I'm guessing") or asks a question about whether it's a specific person ("is it X?", "would it be X?") rather than stating a definitive identification. The player hasn't committed to a guess.
 - "none": an ordinary question or comment, not a guess attempt at all (e.g. "Tell me about your work" or "What era are you from?").
 
-If status is "clear", also decide "correct": whether the identification actually matches the hidden character. Accept nicknames, aliases, translations, and unambiguous descriptions, not just an exact name match — including partial name matches where a single unambiguous figure is meant. If status is not "clear", set "correct" to false.
+If status is "clear", also decide "correct": whether the identification actually matches the hidden character. Accept nicknames, aliases, translations, epithets/titles, and unambiguous descriptions of that same individual, not just an exact name match. But be strict about identity: a guess is only "correct" if it names the literal same individual as the hidden character. Two different people or characters are never a match just because they're closely related — family members, rivals, foils, or other characters from the same story, play, myth, or historical event are each a distinct wrong answer. For example, if the hidden character is "Laertes", a guess of "Hamlet" is incorrect even though they appear in the same play — Hamlet is a different character. If status is not "clear", set "correct" to false.
 
 Return ONLY valid JSON: {"status": "clear" | "ambiguous" | "none", "correct": boolean}`,
       messages: [

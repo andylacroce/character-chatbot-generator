@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import { flushSync } from "react-dom";
 import styles from "./styles/HamburgerMenu.module.css";
 
 interface HamburgerMenuProps {
@@ -10,27 +9,14 @@ interface HamburgerMenuProps {
    * off-screen. Defaults to "left" (the original chat-header placement).
    */
   align?: "left" | "right";
-  /**
-   * Custom trigger content replacing the default 3-bar icon — e.g. an identity chip
-   * showing the visitor's current name or "Guest", so that status is visible without
-   * opening the menu at all; opening it surfaces the actions (change name, sign in/out).
-   */
-  trigger?: React.ReactNode;
-  /** Accessible label for a custom trigger — ignored when using the default icon. */
-  triggerAriaLabel?: string;
 }
 
 /**
  * Accessible hamburger menu for mobile/desktop navigation. Renders a button and
- * dropdown for menu actions, with keyboard and focus support, and enhances
- * child buttons to close the menu on click.
+ * dropdown for menu actions, with keyboard and focus support, and closes the dropdown
+ * whenever anything inside it is clicked.
  */
-const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
-  children,
-  align = "left",
-  trigger,
-  triggerAriaLabel,
-}) => {
+const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children, align = "left" }) => {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -57,32 +43,16 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
     }
   }
 
-  // Enhance children to close menu on click
-  const enhancedChildren = React.Children.map(children, (child) => {
-    if (!React.isValidElement(child)) return child;
-    // Enhance if native button or a function/class component with onClick prop
-    const isButtonLike =
-      child.type === "button" ||
-      (typeof child.type === "string" && child.type === "button") ||
-      (typeof child.type === "function" &&
-        child.props &&
-        Object.prototype.hasOwnProperty.call(child.props, "onClick"));
-    if (isButtonLike && child.props) {
-      const originalOnClick = (
-        child as React.ReactElement<{ onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void }>
-      ).props.onClick;
-      return React.cloneElement(
-        child as React.ReactElement<{ onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void }>,
-        {
-          onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-            flushSync(() => setOpen(false));
-            if (originalOnClick) originalOnClick(e);
-          },
-        },
-      );
-    }
-    return child;
-  });
+  // Closes the menu on any click inside the dropdown, via bubbling — this reaches every
+  // actionable child (button, link, or component rendering one) regardless of how deeply
+  // it's nested or whether it's wrapped in a Fragment, unlike the previous approach of
+  // cloning direct children with an enhanced onClick, which silently missed anything
+  // passed in as a single Fragment (menuItems is always `<>...</>` in every caller) —
+  // real menu items never actually got the auto-close behavior, leaving the dropdown
+  // open behind whatever the click did (e.g. a confirmation dialog or another modal).
+  // The child's own onClick still fires first (real DOM bubbling is innermost-first),
+  // so this never races with the action the click was meant to perform.
+  const handleDropdownClick = () => setOpen(false);
 
   return (
     <div
@@ -90,23 +60,23 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
       ref={wrapperRef}
     >
       <button
-        className={trigger ? styles.triggerButton : styles.hamburger}
-        aria-label={trigger ? (triggerAriaLabel ?? "Open menu") : "Open menu"}
+        className={styles.hamburger}
+        aria-label="Open menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         onKeyDown={handleButtonKeyDown}
       >
-        {trigger ?? (
-          <>
-            <span className={styles.bar}></span>
-            <span className={styles.bar}></span>
-            <span className={styles.bar}></span>
-          </>
-        )}
+        <span className={styles.bar}></span>
+        <span className={styles.bar}></span>
+        <span className={styles.bar}></span>
       </button>
       {/* Right-alignment is handled by .menuWrapperRight's descendant selector on the
           wrapper above — the dropdown itself doesn't need its own conditional class. */}
-      {open && <div className={styles.menuDropdown}>{enhancedChildren}</div>}
+      {open && (
+        <div className={styles.menuDropdown} onClick={handleDropdownClick}>
+          {children}
+        </div>
+      )}
     </div>
   );
 };

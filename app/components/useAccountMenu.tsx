@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Shared "account" bundle for a page's AppHeader hamburger: the identity chip label
- * ("Guest" or the visitor's name), the menu items (change name, an "Admin Stats" link
- * when the signed-in caller is an admin, sign in/out), and the modals those items open
- * (NameCaptureModal, SignInModal). Used identically by BotCreator.tsx and
- * CharsGallery.tsx — the two pages with an identity-chip trigger — so this logic lives
- * in exactly one place instead of being copy-pasted per page. Deliberately not used by
- * ChatPage.tsx, which keeps its own plain hamburger-icon menu (no identity chip, no
- * sign-in/admin items) — see its own doc comment for why sign-in stays out of chat.
+ * Shared "account" bundle for a page's AppHeader hamburger: menu items leading with a
+ * non-interactive identity label ("Guest" or the visitor's name), then change-name, an
+ * "Admin Stats" link when the signed-in caller is an admin, and sign in/out — plus the
+ * modals those items open (NameCaptureModal, SignInModal). Used identically by
+ * BotCreator.tsx and CharsGallery.tsx so this logic lives in exactly one place instead
+ * of being copy-pasted per page. Deliberately not used by ChatPage.tsx/GamePage.tsx,
+ * which keep their own plain menus with no identity label or sign-in/admin items — see
+ * ChatPage.tsx's own doc comment for why sign-in stays out of chat.
  */
 
 import React, { useEffect, useState } from "react";
@@ -20,13 +20,17 @@ import AuthControl from "./AuthControl";
 import { NameCaptureModal } from "./NameCaptureModal";
 import SignInModal from "./SignInModal";
 import { useUserName, type UserNameContext } from "./useUserName";
+import styles from "./styles/useAccountMenu.module.css";
 
 export interface AccountMenu {
   /** The visitor's own name/sign-in context — e.g. for useBotCreation's post-creation name gate. */
   userNameCtx: UserNameContext;
-  /** Label for the hamburger's trigger chip: the visitor's name, their account name/email, or "Guest". */
-  identityLabel: string;
-  /** Menu items to render inside the page's AppHeader `menuItems` slot. */
+  /**
+   * Menu items to render inside the page's AppHeader `menuItems` slot — leads with a
+   * non-interactive identity label (the visitor's name, account name/email, or "Guest")
+   * so account status is visible on opening the menu, since there's no separate identity
+   * chip trigger anymore (see AppHeader.tsx).
+   */
   menuItems: React.ReactNode;
   /** Modals to render alongside the page's AppHeader (name-capture edit mode, shared sign-in). */
   modals: React.ReactNode;
@@ -93,6 +97,7 @@ export function useAccountMenu(): AccountMenu {
 
   const menuItems = (
     <>
+      <div className={styles.identityLabel}>{identityLabel}</div>
       <button type="button" onClick={() => setShowEditNameModal(true)}>
         <FaUser size={16} />
         <span>{userNameCtx.name ? "Change your name" : "Add your name"}</span>
@@ -128,5 +133,5 @@ export function useAccountMenu(): AccountMenu {
     </>
   );
 
-  return { userNameCtx, identityLabel, menuItems, modals, requestSignIn };
+  return { userNameCtx, menuItems, modals, requestSignIn };
 }

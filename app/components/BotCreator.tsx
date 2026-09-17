@@ -80,7 +80,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // and modals) — shared with CharsGallery.tsx and ChatPage.tsx's own account menus.
   // userNameCtx is passed into useBotCreation so it can pause handleCreate() with a
   // one-time gate the first time this browser doesn't know the visitor's name yet.
-  const { userNameCtx, identityLabel, menuItems, modals, requestSignIn } = useAccountMenu();
+  const { userNameCtx, menuItems, modals, requestSignIn } = useAccountMenu();
   const {
     input,
     setInput,
@@ -298,13 +298,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus, launchCancelled]);
   return (
     <>
-      <AppHeader
-        menuSide="right"
-        menuTrigger={identityLabel}
-        menuTriggerAriaLabel={`Account: ${identityLabel}. Open menu`}
-        menuItems={menuItems}
-        center={<LandingCharacterCarousel />}
-      />
+      <AppHeader menuSide="right" menuItems={menuItems} center={<LandingCharacterCarousel />} />
       <form onSubmit={handleCreate} className={styles.formContainer} autoComplete="off">
         <div className={styles.formInner}>
           {!isLaunchingFromUrl && !interstitial && (

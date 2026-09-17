@@ -1,0 +1,19 @@
+/* =============================
+   useAccountMenu.module.css
+   - Just the identity label prepended to the account menu's dropdown items (the
+     visitor's name/email or "Guest") — everything else in the dropdown (name-edit
+     button, admin link, AuthControl) is a plain button/link already normalized by
+     HamburgerMenu.module.css's generic `.menuDropdown button, .menuDropdown a` reset.
+   ============================= */
+
+.identityLabel {
+  padding: 0.4em 0.6em 0.5em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

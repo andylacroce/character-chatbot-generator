@@ -1,11 +1,19 @@
 /**
- * Shared sticky app header — the hamburger + dark-mode-toggle combo (with its
- * responsive inline-on-desktop/stacked-on-mobile layout), a focal center slot, and an
- * optional extra slot on the opposite side. Used by both the chat page (hamburger on
- * the left, avatar+name centered, a personal brand link on the right) and the landing
- * page (hamburger on the right, alongside the visitor's identity chip, a rotating
- * character carousel centered) — one implementation of the header chrome instead of
- * two pages each reinventing the same sticky/responsive shell.
+ * Shared sticky app header — the hamburger dropdown and a focal center slot, plus an
+ * optional extra slot on the opposite side. Used by the chat page (hamburger on the
+ * left, avatar+name centered, a personal brand link on the right), the game page (same
+ * shape as chat), and the landing page (hamburger on the right, a rotating character
+ * carousel centered) — one implementation of the header chrome instead of three pages
+ * each reinventing the same sticky/responsive shell.
+ *
+ * The dark-mode toggle lives inside the hamburger dropdown (appended here, after each
+ * caller's own `menuItems`) rather than as its own header control — previously every
+ * page rendered a separate toggle button beside/below the hamburger, which ate a whole
+ * extra row of vertical space on a mobile header that already has to fit a name, an
+ * avatar, and (on the landing page) an identity chip in ~390px. A signed-in user's
+ * identity/name status is folded into the dropdown the same way, by whichever page's
+ * `menuItems` includes it (see useAccountMenu.tsx) — there's no separate identity-chip
+ * trigger anymore, every page uses the plain 3-bar icon.
  */
 
 import React from "react";
@@ -16,14 +24,10 @@ import DarkModeToggle from "./DarkModeToggle";
 interface AppHeaderProps {
   /** Content for the hamburger's dropdown. */
   menuItems: React.ReactNode;
-  /** Custom hamburger trigger (e.g. the landing page's "Guest"/name identity chip) — omit for the default 3-bar icon. */
-  menuTrigger?: React.ReactNode;
-  menuTriggerAriaLabel?: string;
   /**
-   * Which side the hamburger + dark-mode-toggle combo renders on. Chat uses "left"
-   * (its original placement); the landing page uses "right" (an account-style control
-   * reads naturally there, and it keeps the wordmark-adjacent side clear). The
-   * dropdown opens from whichever edge keeps it on-screen.
+   * Which side the hamburger renders on. Chat/game use "left" (their original
+   * placement); the landing page and Character Wall use "right". The dropdown opens
+   * from whichever edge keeps it on-screen.
    */
   menuSide?: "left" | "right";
   /** Center content — chat's avatar+name button, or the landing page's character carousel. */
@@ -32,33 +36,14 @@ interface AppHeaderProps {
   extra?: React.ReactNode;
 }
 
-/** Shared sticky header: hamburger + dark mode toggle, a center focal slot, and an optional extra slot. */
-const AppHeader: React.FC<AppHeaderProps> = ({
-  menuItems,
-  menuTrigger,
-  menuTriggerAriaLabel,
-  menuSide = "left",
-  center,
-  extra,
-}) => {
+/** Shared sticky header: hamburger (dark mode toggle folded into its dropdown), a center focal slot, and an optional extra slot. */
+const AppHeader: React.FC<AppHeaderProps> = ({ menuItems, menuSide = "left", center, extra }) => {
   const menuCombo = (
-    <>
-      <div className={styles.menuAndToggleRow}>
-        <HamburgerMenu
-          trigger={menuTrigger}
-          triggerAriaLabel={menuTriggerAriaLabel}
-          align={menuSide}
-        >
-          {menuItems}
-        </HamburgerMenu>
-        <span className={styles.desktopToggle}>
-          <DarkModeToggle className={styles.darkModeToggle} />
-        </span>
-      </div>
-      <span className={styles.mobileToggle}>
-        <DarkModeToggle className={styles.darkModeToggle} />
-      </span>
-    </>
+    <HamburgerMenu align={menuSide}>
+      {menuItems}
+      <div className={styles.menuDivider} role="separator" />
+      <DarkModeToggle className={styles.menuDarkModeToggle} />
+    </HamburgerMenu>
   );
 
   return (
