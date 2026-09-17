@@ -17,10 +17,12 @@ import React from "react";
 import Link from "next/link";
 import { FaFlag, FaHome, FaQuestionCircle } from "react-icons/fa";
 import ChatShell from "./ChatShell";
+import BackHomeLink from "./BackHomeLink";
 import GameInstructionsModal from "./GameInstructionsModal";
 import storage from "../../src/utils/storage";
 import { STORAGE_KEYS } from "../../src/utils/storageKeys";
 import { useGameController } from "./useGameController";
+import { useAccountMenu } from "./useAccountMenu";
 import type { Bot } from "./BotCreator";
 import styles from "./styles/GamePage.module.css";
 
@@ -52,6 +54,10 @@ function GamePage() {
     sendMessage,
     handleKeyDown,
   } = useGameController();
+
+  // Shared with BotCreator.tsx/CharsGallery.tsx/ChatPage.tsx — identity label, change-name
+  // and sign-in/out/admin items, folded into this page's own menu below.
+  const { menuItems: accountMenuItems, modals: accountModals } = useAccountMenu();
 
   const [showInstructions, setShowInstructions] = React.useState(false);
   const [showGiveUpConfirmation, setShowGiveUpConfirmation] = React.useState(false);
@@ -126,9 +132,7 @@ function GamePage() {
               <div className={styles.startProgressText}>{startProgressMessage}</div>
             </div>
           )}
-          <Link href="/" className={styles.backLink}>
-            Back to Home
-          </Link>
+          <BackHomeLink className={styles.startBackHome} />
         </div>
       </div>
     );
@@ -145,11 +149,11 @@ function GamePage() {
   const menuItems = (
     <>
       <Link href="/" className={styles.menuItemLink} onClick={handleBackToHome}>
-        <FaHome size={18} className={styles.linkIcon} />
+        <FaHome size={18} className="menuIcon" />
         <span>Back to Home</span>
       </Link>
       <button className={styles.menuItemLink} type="button" onClick={handleGiveUpClick}>
-        <FaFlag size={18} className={styles.linkIcon} />
+        <FaFlag size={18} className="menuIcon" />
         <span>Give Up</span>
       </button>
       <button
@@ -157,9 +161,11 @@ function GamePage() {
         type="button"
         onClick={() => setShowInstructions(true)}
       >
-        <FaQuestionCircle size={18} className={styles.linkIcon} />
+        <FaQuestionCircle size={18} className="menuIcon" />
         <span>How to Play</span>
       </button>
+      <div className="menuDivider" role="separator" />
+      {accountMenuItems}
     </>
   );
 
@@ -213,6 +219,7 @@ function GamePage() {
       belowName={belowName}
       modals={
         <>
+          {accountModals}
           <GameInstructionsModal show={showInstructions} onClose={closeInstructions} />
           {showGiveUpConfirmation && giveUpConfirmation}
         </>

@@ -102,7 +102,7 @@ Each provider function returns `null` on any failure (missing config, non-2xx re
 A public, no-auth gallery of every *recognized* portrait in the shared `avatar_cache` — every actual character/person name and AI-generated portrait this app has ever produced, on one page. Nothing here is per-user data; a row is already discoverable by anyone who types that exact name into the creator, so listing them publicly discloses nothing new. Original characters (see "Original characters" above) are excluded — `pages/api/chars.ts` filters `WHERE recognized = true` — since an invented name/portrait means something only to the person who made it up, not to a visitor browsing a "characters anyone can chat with" wall. Rows written before the `recognized` column existed default to `true` (non-destructive: nothing existing silently disappears); `scripts/reclassify-avatar-cache.cjs` (`npm run chars:reclassify`, optionally `--dry-run`) re-runs the recognized classification over already-cached names for anyone who wants that historical cleanup — not run automatically, since it costs a Claude call per batch against shared production data and changes what's publicly visible.
 
 - **`pages/api/chars.ts`** — `GET`-only, paginated (`limit`/`offset`, default 60, max 100, `hasMore` in the response). Backed by an in-process cache of the full row list with a 60s TTL (`getAllCharacters()`), so infinite-scroll pagination from many concurrent visitors costs at most one `avatar_cache` table scan per minute per warm instance, not one query per page fetch. Per-instance only (resets on cold start, not shared across serverless instances) — the same tradeoff class as the rate limiter's default MemoryStore; sharing it across instances would mean pulling in the Redis store already wired up in `rateLimitStore.ts`, not worth it for data that changes this slowly.
-- **`app/components/CharsGallery.tsx`** — renders the gallery as a scrapbook/corkboard collage, not a grid: `display:flex; flex-wrap` with each polaroid-style tile given a size, rotation angle, and pushpin color chosen by an independent hash of the character's name (`hashString` — djb2), so the scatter looks hand-placed and stays stable across reloads/pagination rather than reshuffling. Infinite scroll via a callback ref + `IntersectionObserver` on a sentinel div — a callback ref, not a plain `useRef`+`useEffect` pair, because the sentinel `<div>` only exists once `characters.length > 0`; an effect keyed on `loadMore` would attach once at mount (while the ref is still `null`) and never re-attach once the sentinel actually appears, since `loadMore`'s identity doesn't change at that point. A native `<dialog>` (`showModal()`/`close()`) is the click-through lightbox — free focus-trapping and Escape-to-close, no modal library — opened/closed inside `document.startViewTransition()` when the browser supports it (feature-detected; no-op fallback otherwise) for a cross-fade instead of a hard cut. Its header is the same shared `AppHeader` the landing page uses (see "Unified header" below) — `useAccountMenu()`'s identity chip sits on the right, and the header's center slot holds a small "← Back to Portrayal" link in place of the landing page's character carousel.
+- **`app/components/CharsGallery.tsx`** — renders the gallery as a scrapbook/corkboard collage, not a grid: `display:flex; flex-wrap` with each polaroid-style tile given a size, rotation angle, and pushpin color chosen by an independent hash of the character's name (`hashString` — djb2), so the scatter looks hand-placed and stays stable across reloads/pagination rather than reshuffling. Infinite scroll via a callback ref + `IntersectionObserver` on a sentinel div — a callback ref, not a plain `useRef`+`useEffect` pair, because the sentinel `<div>` only exists once `characters.length > 0`; an effect keyed on `loadMore` would attach once at mount (while the ref is still `null`) and never re-attach once the sentinel actually appears, since `loadMore`'s identity doesn't change at that point. A native `<dialog>` (`showModal()`/`close()`) is the click-through lightbox — free focus-trapping and Escape-to-close, no modal library — opened/closed inside `document.startViewTransition()` when the browser supports it (feature-detected; no-op fallback otherwise) for a cross-fade instead of a hard cut. Its header is the same shared `AppHeader` the landing page uses (see "Unified header" below) — the header's center slot holds a `BackHomeLink` pill button in place of the landing page's character carousel, and `useAccountMenu()`'s items (identity label, change name, sign in/out, admin) live in the plain hamburger dropdown on the right, same as every other page.
 - **"Chat with this character" launches straight into a chat, not the landing page.** The lightbox's link is `/?name=<encoded name>` — the exact same launch point `BotCreator.tsx` already reads via `useSearchParams()`. Landing on that URL never shows the ordinary creator form (input, Random button, footer links): `BotCreator`'s `isLaunchingFromUrl` flag hides all of it in favor of a bare loading spinner, so the transition reads as "opening a chat," not "landing on the creator page, which then happens to fill itself in." Resolution order once there:
   1. Signed in + a saved `bots` row with that exact name (case-insensitive) already exists → resume it via the same `persistedBotToBot()` mapping `ResumeBotDropdown` uses (exported from `ResumeBotDropdown.tsx` alongside `PersistedBot`), so it's the user's actual saved personality/voice/avatar, not a fresh regeneration.
   2. Otherwise (guest, or no saved match) → falls through to the ordinary `handleCreate()` generation pipeline.
@@ -226,41 +226,67 @@ provider.
 ### Unified header
 
 `app/components/AppHeader.tsx` (renamed from `ChatHeader.tsx`) is the one header
-component shared by the chat page, the landing page, and the Character Wall — rather than
-each page owning its own masthead markup that has to be kept in visual sync by hand. It's
-deliberately generic: `{ menuItems, menuTrigger?, menuTriggerAriaLabel?, menuSide?: "left" |
-"right", center, extra? }` — a hamburger (or an identity-chip trigger, see below) plus dark
-mode toggle on `menuSide`, an arbitrary `center` slot, and an optional `extra` slot on the
-opposite side. Its own CSS module only carries the generic shell/chrome (the sticky bar,
-the left/center/right grid, the toggle row) — page-specific content (avatar buttons, brand
-links, menu-item icons) lives in that page's own `.module.css`, per this repo's "no shared
-CSS modules" convention.
+component shared by the chat page, the game page, the landing page, and the Character
+Wall — rather than each page owning its own masthead markup that has to be kept in visual
+sync by hand. It's deliberately generic: `{ menuItems, menuSide?: "left" | "right", center,
+extra? }` — a plain 3-bar hamburger on `menuSide`, an arbitrary `center` slot, and an
+optional `extra` slot on the opposite side. Its own CSS module only carries the generic
+shell/chrome (the sticky bar, the left/center/right grid) — page-specific content (avatar
+buttons, brand links, menu-item icons) lives in that page's own `.module.css`, per this
+repo's "no shared CSS modules" convention (a rule aimed specifically at descendant
+selectors that could reach into another component's DOM — see the CSS-specificity bug
+below — not a ban on sharing a genuinely atomic, single-class rule: the `.menuDivider`
+separating a page's own menu items from `useAccountMenu`'s below lives once in
+`app/globals.css`'s utility section and is referenced by its literal class name, not
+copy-pasted per module — see `feedback_no_shared_css_modules` memory for why this was
+tightened after an early draft duplicated it three times).
 
-- **`ChatPage.tsx`** uses `menuSide="left"` with a plain 3-bar hamburger: menu items are
-  Back to Character Creator, Download Transcript, "Change/Add your name", Character Wall;
-  `center` is the character's avatar + name; `extra` is a brand link back to the landing
-  page. It renders its own `NameCaptureModal` (`mode="edit"`) directly and deliberately
-  does **not** use `useAccountMenu()` below — chat's hamburger has no identity chip,
-  sign-in, or admin item, preserving the pre-existing "no sign-in control in the chat
-  header" decision (see "Personalized greeting" above and Phase 3a).
-- **`BotCreator.tsx`** (landing page) and **`CharsGallery.tsx`** (`/chars`) both use
-  `menuSide="right"` with an **identity-chip trigger** instead of a bare hamburger icon —
-  `menuTrigger={identityLabel}` renders the visitor's name/email/"Guest" as the clickable
-  chip itself, so account status is visible at a glance rather than hidden behind a
-  generic icon. Both pages get this identity chip, its menu items (change name, sign
-  in/out, and an admin-only link — see below), and its modals from one shared hook,
-  `app/components/useAccountMenu.tsx`, instead of each page reimplementing the same
-  sign-in/name-edit/admin logic — extracted after the two pages' inline copies started
-  drifting apart. `BotCreator.tsx`'s `center` slot is `LandingCharacterCarousel` (below);
-  `CharsGallery.tsx`'s is a "← Back to Portrayal" link.
-- **`useAccountMenu.tsx`** returns `{ userNameCtx, identityLabel, menuItems, modals,
-  requestSignIn }`. `menuItems` always includes the name-edit button and `<AuthControl
-  onRequestSignIn={requestSignIn}>`; it conditionally adds an "Admin Stats" link
-  (`FaUserShield` icon) when a cheap client-visible check
+- **There is no separate identity-chip trigger** — every page uses the plain 3-bar icon.
+  The dark-mode toggle and, for whichever page's `menuItems` includes it, a signed-in
+  user's identity/name status are both folded into the hamburger's own dropdown
+  (appended by `AppHeader.tsx` after each caller's `menuItems`) instead of separate header
+  controls. This replaced an earlier design with a dedicated `menuTrigger`/identity-chip
+  prop — consolidated so a mobile header didn't have to fit a name, an avatar, a toggle,
+  and a chip all in ~390px at once.
+- **`useAccountMenu.tsx`** is the shared "account" bundle every page's header now uses —
+  `BotCreator.tsx` (landing page), `CharsGallery.tsx` (`/chars`), `ChatPage.tsx`, and
+  `GamePage.tsx` all call it and append its `menuItems` after their own page-specific
+  items (a `menuDivider` separates the two groups). It returns `{ userNameCtx, menuItems,
+  modals, requestSignIn }`: `menuItems` leads with a non-interactive identity label
+  ("Guest" or the visitor's name/email), then the change-name button, an "Admin Stats"
+  link (`FaUserShield` icon) when a cheap client-visible check
   (`GET /api/admin/is-admin` — see "Internal analytics" below) reports the signed-in
-  caller is an admin. `modals` renders exactly one shared `NameCaptureModal` (`mode="edit"`)
-  and one shared `SignInModal` per page — the same DRY consolidation described in
-  "Personalized greeting" above, now generalized to cover the admin link too.
+  caller is an admin, then `<AuthControl onRequestSignIn={requestSignIn}>`. `modals`
+  renders exactly one shared `NameCaptureModal` (`mode="edit"`) and one shared
+  `SignInModal` per page — a DRY consolidation extracted after per-page inline copies of
+  this logic started drifting apart (see "Personalized greeting" above).
+  `BotCreator.tsx`/`CharsGallery.tsx` use it as their *entire* menu (no other items of
+  their own); `ChatPage.tsx`/`GamePage.tsx` put it after their existing page-specific
+  items (Back to Character Creator/Download Transcript/Character Wall, and Back to
+  Home/Give Up/How to Play, respectively) — chat and the game no longer keep sign-in out
+  of their headers, a deliberate reversal of an earlier "no sign-in control in the chat
+  header" decision (see git history around 2026-09-17 if that decision's original
+  rationale is ever worth revisiting).
+- **`BotCreator.tsx`**'s `center` slot is `LandingCharacterCarousel` (below);
+  `CharsGallery.tsx`'s is a `BackHomeLink` pill button (`app/components/BackHomeLink.tsx`
+  — a house glyph + "Back to Home", styled like an outlined pill, the one consistent
+  look for this action outside a dropdown; also used by the guessing game's start
+  screen, see "Guessing game" below); `ChatPage.tsx`/`GamePage.tsx` (via the shared
+  `ChatShell.tsx`) use `menuSide="left"` with the character's avatar + name as `center`
+  and a personal brand link as `extra`.
+- **Signing in and signing out both always redirect to `/`** (every `signIn(...)` call in
+  `AuthControl.tsx`/`SignInModal.tsx`, and `AuthControl.tsx`'s `signOut(...)`, pass
+  `callbackUrl: "/"`) regardless of which page triggered them — now that sign-in/out are
+  reachable from the chat and game headers too, NextAuth's own default (redirect back to
+  the current URL) would otherwise drop a visitor back into the middle of a chat/game
+  session either way. `callbackUrl` alone isn't sufficient, though: `app/index.tsx`'s
+  `Home` renders `ChatPage` instead of the landing page whenever a bot session is still
+  in localStorage, regardless of navigation intent, so landing on `/` would otherwise
+  still show whatever chat was already open. `clearStoredBot()`
+  (`src/utils/getValidBotFromStorage.ts`) — the same cleanup `handleBackToCharacterCreation`
+  already does — is called immediately before the Google/preview-stub `signIn()` and
+  `signOut()` calls (not the magic-link one, which doesn't navigate immediately) so `/`
+  reliably renders the actual landing page afterward.
 - **`LandingCharacterCarousel.tsx`** is the landing page's `center` slot: a small
   auto-advancing rotation through recognized characters, reusing the exact same data
   `CharsGallery`/`pages/api/chars.ts` already serves (`GET /api/chars?limit=100`), shuffled

@@ -375,10 +375,6 @@
   margin-bottom: 0.2rem;
 }
 
-.linkIcon {
-  color: var(--color-primary);
-}
-
 @media (max-width: 600px) {
   .botNameLabel {
     font-size: 1.2rem;

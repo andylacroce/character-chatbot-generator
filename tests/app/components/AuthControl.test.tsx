@@ -47,7 +47,7 @@ describe("AuthControl", () => {
     expect(screen.getByTestId("sign-in-modal-backdrop")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /continue with google/i }));
-    expect(mockSignIn).toHaveBeenCalledWith("google");
+    expect(mockSignIn).toHaveBeenCalledWith("google", { callbackUrl: "/" });
   });
 
   it("signs in as the fixed test identity on the preview stub, with no lightbox", async () => {
@@ -59,7 +59,10 @@ describe("AuthControl", () => {
     await waitFor(() => expect(screen.getByLabelText("Sign in")).not.toBeDisabled());
 
     fireEvent.click(screen.getByLabelText("Sign in"));
-    expect(mockSignIn).toHaveBeenCalledWith("preview-stub", { email: "preview-test@example.com" });
+    expect(mockSignIn).toHaveBeenCalledWith("preview-stub", {
+      email: "preview-test@example.com",
+      callbackUrl: "/",
+    });
     expect(screen.queryByTestId("sign-in-modal-backdrop")).not.toBeInTheDocument();
   });
 
@@ -129,7 +132,7 @@ describe("AuthControl", () => {
     });
     render(<AuthControl />);
     fireEvent.click(screen.getByLabelText("Sign out"));
-    expect(mockSignOut).toHaveBeenCalledWith();
+    expect(mockSignOut).toHaveBeenCalledWith({ callbackUrl: "/" });
     await waitFor(() => expect(mockGetProviders).toHaveBeenCalled());
   });
 });

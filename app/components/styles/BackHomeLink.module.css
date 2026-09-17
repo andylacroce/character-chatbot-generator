@@ -1,0 +1,36 @@
+/* =============================
+   BackHomeLink.module.css
+   - The "Back to Home" pill button's own shell (outline, pill radius, ghost hover) —
+     matches DarkModeToggle's outlined-pill treatment (see AppHeader.module.css) so it
+     reads as the same family of header control, while its icon/label sizing matches a
+     hamburger dropdown item's so the two feel like one visual language app-wide.
+   ============================= */
+
+.backHomeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-family: var(--font-primary), sans-serif;
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--color-text);
+  background: none;
+  border: 1px solid var(--color-outline);
+  border-radius: 999px;
+  padding: 0.4em 0.9em;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.backHomeButton:hover,
+.backHomeButton:focus {
+  background: var(--color-primary-container);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  outline: none;
+}

@@ -2,6 +2,14 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import GamePage from "../../../app/components/GamePage";
 
+// GamePage now folds useAccountMenu's items (identity label, change name, sign in/out,
+// admin) into its own menu — default to unauthenticated so those assertions are
+// unaffected by account-persistence behavior.
+jest.mock("next-auth/react", () => ({
+  useSession: () => ({ data: null, status: "unauthenticated" }),
+  getProviders: () => Promise.resolve({}),
+}));
+
 const mockStartGame = jest.fn();
 const mockQuitGame = jest.fn();
 const mockGiveUp = jest.fn();

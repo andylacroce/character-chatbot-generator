@@ -76,9 +76,10 @@
   gap: 0.6rem;
 }
 
-/* Same minimal masthead icon-button treatment CharsPage.module.css/BotCreator.module.css use
-   for DarkModeToggle — reproduced here rather than imported cross-module, so this page's look
-   stays consistent without coupling stylesheets (see CharsPage.module.css's own note). */
+/* Minimal masthead icon-button treatment for this standalone page's own DarkModeToggle —
+   /admin doesn't use the shared AppHeader/hamburger (see CLAUDE.md's "Internal dashboards
+   should be full-width" convention), so its toggle isn't folded into a dropdown like every
+   other page's. */
 .ghostIcon {
   margin: 0 !important;
   background: none !important;

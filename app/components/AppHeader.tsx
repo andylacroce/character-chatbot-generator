@@ -41,7 +41,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ menuItems, menuSide = "left", cen
   const menuCombo = (
     <HamburgerMenu align={menuSide}>
       {menuItems}
-      <div className={styles.menuDivider} role="separator" />
+      <div className="menuDivider" role="separator" />
       <DarkModeToggle className={styles.menuDarkModeToggle} />
     </HamburgerMenu>
   );

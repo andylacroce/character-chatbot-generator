@@ -9,6 +9,7 @@ import { mockResponse } from "../../../helpers/mockResponse";
 // unaffected by account-persistence behavior.
 jest.mock("next-auth/react", () => ({
   useSession: () => ({ data: null, status: "unauthenticated" }),
+  getProviders: () => Promise.resolve({}),
 }));
 
 const mockAuthenticatedFetch = jest.fn();
@@ -107,7 +108,16 @@ describe("ChatPage header content (moved from ChatHeader into AppHeader's slots)
     fireEvent.click(screen.getByLabelText(/open menu/i));
     fireEvent.click(screen.getByText("Add your name"));
     expect(screen.getByText("Change your name")).toBeInTheDocument();
-    expect(screen.queryByText("Sign in instead")).not.toBeInTheDocument();
+    // The chat header now folds in useAccountMenu's items, so "sign in instead" is
+    // offered here too, same as every other page's name-capture modal.
+    expect(screen.getByText("Sign in instead")).toBeInTheDocument();
+  });
+
+  it("includes the shared account menu (identity label, sign in) in the hamburger", () => {
+    render(<ChatPage bot={mockBot} />);
+    fireEvent.click(screen.getByLabelText(/open menu/i));
+    expect(screen.getByText("Guest")).toBeInTheDocument();
+    expect(screen.getByLabelText(/sign in/i)).toBeInTheDocument();
   });
 
   it("opens the shared portrait lightbox when the header avatar is clicked", () => {

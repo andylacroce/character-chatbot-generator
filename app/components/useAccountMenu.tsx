@@ -4,11 +4,10 @@
  * Shared "account" bundle for a page's AppHeader hamburger: menu items leading with a
  * non-interactive identity label ("Guest" or the visitor's name), then change-name, an
  * "Admin Stats" link when the signed-in caller is an admin, and sign in/out — plus the
- * modals those items open (NameCaptureModal, SignInModal). Used identically by
- * BotCreator.tsx and CharsGallery.tsx so this logic lives in exactly one place instead
- * of being copy-pasted per page. Deliberately not used by ChatPage.tsx/GamePage.tsx,
- * which keep their own plain menus with no identity label or sign-in/admin items — see
- * ChatPage.tsx's own doc comment for why sign-in stays out of chat.
+ * modals those items open (NameCaptureModal, SignInModal). Used by every page's header
+ * (BotCreator.tsx, CharsGallery.tsx, ChatPage.tsx, GamePage.tsx) — each appends its own
+ * page-specific items first, then this hook's `menuItems`, so this logic lives in
+ * exactly one place instead of being copy-pasted per page.
  */
 
 import React, { useEffect, useState } from "react";
@@ -95,20 +94,28 @@ export function useAccountMenu(): AccountMenu {
     ? userNameCtx.name || session.user.name || session.user.email || "Signed in"
     : userNameCtx.name || "Guest";
 
+  // Ordered as: who-you-are (label), the one personal setting a guest can already
+  // touch (name), then the account action that upgrades that identity (sign in/out).
+  // Admin Stats is a different category entirely — site administration, not personal
+  // account management — so it gets its own divider afterward rather than being
+  // sandwiched between name-editing and sign-in.
   const menuItems = (
     <>
       <div className={styles.identityLabel}>{identityLabel}</div>
       <button type="button" onClick={() => setShowEditNameModal(true)}>
-        <FaUser size={16} />
+        <FaUser size={18} className="menuIcon" />
         <span>{userNameCtx.name ? "Change your name" : "Add your name"}</span>
       </button>
-      {isAdmin && (
-        <Link href="/admin">
-          <FaUserShield size={16} />
-          <span>Admin Stats</span>
-        </Link>
-      )}
       <AuthControl onRequestSignIn={requestSignIn} />
+      {isAdmin && (
+        <>
+          <div className="menuDivider" role="separator" />
+          <Link href="/admin">
+            <FaUserShield size={18} className="menuIcon" />
+            <span>Admin Stats</span>
+          </Link>
+        </>
+      )}
     </>
   );
 

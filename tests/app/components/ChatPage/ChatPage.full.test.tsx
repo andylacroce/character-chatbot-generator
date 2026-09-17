@@ -11,6 +11,7 @@ import { mockResponse } from "../../../helpers/mockResponse";
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
 jest.mock("next-auth/react", () => ({
   useSession: () => ({ data: null, status: "unauthenticated" }),
+  getProviders: () => Promise.resolve({}),
 }));
 
 // Mock authenticatedFetch instead of axios

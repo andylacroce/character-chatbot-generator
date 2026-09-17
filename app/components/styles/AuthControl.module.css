@@ -1,9 +1,11 @@
 /* =============================
    AuthControl.module.css
-   - Sign in / sign out control. The button's own visual treatment (ghost
-     button, colors, hover) comes from whatever className the caller passes
-     in (e.g. BotCreator.module.css's .ghostAuth) — these classes only cover
-     the internal icon/label layout that's the same regardless of caller.
+   - Sign in / sign out control, rendered as a row inside useAccountMenu's dropdown.
+     Icon color/size comes from globals.css's shared `.menuIcon` (applied alongside
+     `.icon` below, which only adds flex-shrink: 0 so a long email can't squeeze the
+     icon), and font-size/spacing come from HamburgerMenu.module.css's generic
+     `.menuDropdown button` reset — kept unset here so every dropdown row (this one,
+     useAccountMenu's own items, a page's own menu items) reads at the same size.
    ============================= */
 
 .signOutButton {
@@ -16,13 +18,10 @@
 }
 
 .icon {
-  color: var(--color-accent);
   flex-shrink: 0;
 }
 
 .nameLabel {
-  font-size: 0.92rem;
-  margin-left: 0.18em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -30,7 +29,5 @@
 }
 
 .signInLabel {
-  font-size: 0.92rem;
-  margin-left: 0.18em;
   white-space: nowrap;
 }

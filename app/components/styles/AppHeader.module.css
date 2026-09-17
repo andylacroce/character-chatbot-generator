@@ -142,12 +142,6 @@
   justify-content: flex-start;
 }
 
-.menuDivider {
-  border: none;
-  border-top: 1px solid var(--color-outline);
-  margin: 0.3rem 0.2rem;
-}
-
 @media (max-width: 800px) {
   .chatHeaderContent {
     padding-left: 4vw !important;

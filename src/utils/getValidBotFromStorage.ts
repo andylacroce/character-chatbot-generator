@@ -20,3 +20,17 @@ export function getValidBotFromStorage(): Bot | null {
   storage.removeItem(STORAGE_KEYS.botTimestamp);
   return null;
 }
+
+/**
+ * Clears the active bot session pointer from localStorage — the same two keys
+ * `app/index.tsx`'s "Back to Character Creator" clears. Used anywhere else that needs
+ * a guaranteed landing on the actual creator page rather than whichever view the root
+ * route happens to render from leftover storage state (see AuthControl.tsx/
+ * SignInModal.tsx: without this, navigating to "/" after signing in or out still shows
+ * ChatPage if a bot session was already stored, since Home reads localStorage on every
+ * mount regardless of navigation intent).
+ */
+export function clearStoredBot() {
+  storage.removeItem(STORAGE_KEYS.bot);
+  storage.removeItem(STORAGE_KEYS.botTimestamp);
+}

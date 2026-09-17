@@ -11,6 +11,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { authenticatedFetch } from "../../src/utils/api";
 import AppHeader from "./AppHeader";
+import BackHomeLink from "./BackHomeLink";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/CharsPage.module.css";
 
@@ -221,15 +222,7 @@ const CharsGallery: React.FC = () => {
 
   return (
     <>
-      <AppHeader
-        menuSide="right"
-        menuItems={menuItems}
-        center={
-          <Link href="/" className={styles.backLink}>
-            &larr; Back<span className={styles.backLinkFull}> to Portrayal</span>
-          </Link>
-        }
-      />
+      <AppHeader menuSide="right" menuItems={menuItems} center={<BackHomeLink />} />
       {modals}
       <div className={styles.page}>
         <div className={styles.header}>
