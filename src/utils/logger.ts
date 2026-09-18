@@ -73,6 +73,7 @@ const initializeServerLogger = () => {
             combine: (...args: unknown[]) => unknown;
             timestamp: () => unknown;
             printf: (fn: (...args: unknown[]) => string) => unknown;
+            json: () => unknown;
           }
         | undefined;
     };
@@ -112,7 +113,22 @@ const initializeServerLogger = () => {
       ) => setTimeout(fn, 0, ...args);
     }
 
-    const transports: unknown[] = [new winston.transports!.Console()];
+    // Human-readable format for the terminal — unchanged from before.
+    const consoleFormat = winston.format!.combine(
+      winston.format!.timestamp(),
+      winston.format!.printf((info: unknown) => {
+        const { timestamp, level, message, ...meta } = info as {
+          timestamp: string;
+          level: string;
+          message: string;
+          [key: string]: unknown;
+        };
+        const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
+        return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
+      }),
+    );
+
+    const transports: unknown[] = [new winston.transports!.Console({ format: consoleFormat })];
 
     // Dev-only: also persist every structured log line (now including the
     // per-request http_request_completed event from withRequestLog.ts, so
@@ -127,6 +143,18 @@ const initializeServerLogger = () => {
     // receives this app's own already-structured winston log events, once.
     // Skipped in production — Vercel's filesystem is ephemeral/read-only
     // outside /tmp and function logs are already captured by the platform.
+    //
+    // The file gets its own format — one JSON object per line (NDJSON),
+    // e.g. {"timestamp":"...","level":"info","message":"...","event":"...",
+    // ...meta} — deliberately different from the Console transport's
+    // human-readable text. `logEvent`/`logger.*` already pass `event` and
+    // every meta field as flat top-level properties on winston's own log
+    // call, so `format.json()` needs no other change to produce this
+    // shape. This is forward-compatible with feeding a real log pipeline
+    // (Filebeat/Logstash into Kibana, Datadog, CloudWatch, etc.) later —
+    // those all ingest newline-delimited JSON natively — without having to
+    // touch this file again; nothing is wired up to actually ship anywhere
+    // yet, this only shapes what's already being written locally.
     if (process.env.NODE_ENV === "development") {
       try {
         const nodeRequire = require as NodeRequire;
@@ -137,6 +165,7 @@ const initializeServerLogger = () => {
         transports.push(
           new winston.transports!.File({
             filename: path.join(logDir, "dev.log"),
+            format: winston.format!.combine(winston.format!.timestamp(), winston.format!.json()),
             // Bounds unattended growth over a long dev session: once dev.log
             // hits 5MB it rotates to dev1.log (tailable keeps the newest
             // entries under the original filename rather than the oldest),
@@ -154,19 +183,6 @@ const initializeServerLogger = () => {
 
     const logger = winston.createLogger({
       level: "info",
-      format: winston.format!.combine(
-        winston.format!.timestamp(),
-        winston.format!.printf((info: unknown) => {
-          const { timestamp, level, message, ...meta } = info as {
-            timestamp: string;
-            level: string;
-            message: string;
-            [key: string]: unknown;
-          };
-          const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
-          return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
-        }),
-      ),
       transports,
     });
 
