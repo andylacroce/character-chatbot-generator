@@ -12,12 +12,16 @@
 
 /* --- Standalone start / game-over screen (shown before ChatShell renders) --- */
 
+/* No explicit width here — same scrollbar-gutter reasoning as ChatPage.module.css's
+   .chatLayout (this is that screen's equivalent, shown before ChatShell renders): a
+   normal-flow block already fills its containing block's actual width, which
+   `width: 100vw` would override with the full viewport width including any reserved
+   scrollbar gutter. */
 .standaloneScreen {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100vh;
-  width: 100vw;
   background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-primary);

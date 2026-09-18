@@ -126,12 +126,4 @@ describe("ChatPage header content (moved from ChatHeader into AppHeader's slots)
     // ModalImageViewer is dynamically imported; presence of the enlarged image confirms it opened.
     expect(screen.getAllByAltText("Gandalf").length).toBeGreaterThan(1);
   });
-
-  it("visiting the personal brand link refocuses the chat input", async () => {
-    render(<ChatPage bot={mockBot} />);
-    const input = await screen.findByRole("textbox");
-    input.blur();
-    fireEvent.click(screen.getByLabelText(/visit andy lacroce's website/i));
-    expect(input).toHaveFocus();
-  });
 });

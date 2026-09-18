@@ -1,10 +1,21 @@
 /**
- * Shared sticky app header — the hamburger dropdown and a focal center slot, plus an
- * optional extra slot on the opposite side. Used by the chat page (hamburger on the
- * left, avatar+name centered, a personal brand link on the right), the game page (same
- * shape as chat), and the landing page (hamburger on the right, a rotating character
- * carousel centered) — one implementation of the header chrome instead of three pages
- * each reinventing the same sticky/responsive shell.
+ * Shared sticky app header — the hamburger dropdown and a focal center slot. Used by
+ * the chat page (avatar+name centered), the game page (same shape as chat), the
+ * landing page (a rotating character carousel centered), and the Character Wall/admin
+ * pages — one implementation of the header chrome instead of every page reinventing
+ * the same sticky/responsive shell.
+ *
+ * The hamburger has a single standing position — the header's right side, on every
+ * page — rather than the left/right split an earlier version had (chat/game on the
+ * left, everything else on the right). Standardized 2026-09-17 after a live mobile
+ * report that the icon "sits too far right-aligned"; the real bug turned out to be
+ * that whichever edge it was on, it had zero breathing room beyond the page's own
+ * content padding (see `.headerRight`'s mobile rule in AppHeader.module.css). Fixing
+ * that plus giving the icon one consistent location everywhere was simpler and more
+ * predictable than maintaining matching clearance on two mirrored edges. Chat/game's
+ * personal brand link (Andy's site) that used to occupy the header's other side was
+ * removed rather than relocated — the user confirmed they're fine losing it in
+ * exchange for the consistent hamburger position.
  *
  * The dark-mode toggle lives inside the hamburger dropdown (appended here, after each
  * caller's own `menuItems`) rather than as its own header control — previously every
@@ -24,34 +35,24 @@ import DarkModeToggle from "./DarkModeToggle";
 interface AppHeaderProps {
   /** Content for the hamburger's dropdown. */
   menuItems: React.ReactNode;
-  /**
-   * Which side the hamburger renders on. Chat/game use "left" (their original
-   * placement); the landing page and Character Wall use "right". The dropdown opens
-   * from whichever edge keeps it on-screen.
-   */
-  menuSide?: "left" | "right";
   /** Center content — chat's avatar+name button, or the landing page's character carousel. */
   center: React.ReactNode;
-  /** Content for the side opposite the hamburger (e.g. chat's personal brand link). */
-  extra?: React.ReactNode;
 }
 
-/** Shared sticky header: hamburger (dark mode toggle folded into its dropdown), a center focal slot, and an optional extra slot. */
-const AppHeader: React.FC<AppHeaderProps> = ({ menuItems, menuSide = "left", center, extra }) => {
-  const menuCombo = (
-    <HamburgerMenu align={menuSide}>
-      {menuItems}
-      <div className="menuDivider" role="separator" />
-      <DarkModeToggle className={styles.menuDarkModeToggle} />
-    </HamburgerMenu>
-  );
-
+/** Shared sticky header: a centered focal slot, and the hamburger (dark mode toggle folded into its dropdown) always on the right. */
+const AppHeader: React.FC<AppHeaderProps> = ({ menuItems, center }) => {
   return (
     <div className={styles.chatHeader} data-testid="app-header" role="banner">
       <div className={styles.chatHeaderContent}>
-        <div className={styles.headerLeft}>{menuSide === "left" ? menuCombo : extra}</div>
+        <div className={styles.headerLeft} />
         <div className={styles.headerCenter}>{center}</div>
-        <div className={styles.headerRight}>{menuSide === "right" ? menuCombo : extra}</div>
+        <div className={styles.headerRight}>
+          <HamburgerMenu>
+            {menuItems}
+            <div className="menuDivider" role="separator" />
+            <DarkModeToggle className={styles.menuDarkModeToggle} />
+          </HamburgerMenu>
+        </div>
       </div>
     </div>
   );

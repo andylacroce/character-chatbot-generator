@@ -39,8 +39,10 @@ jest.mock("../../src/utils/analytics", () => ({
 }));
 
 const mockScrubCachedAvatar = jest.fn().mockResolvedValue(false);
+const mockScrubUserBotsByName = jest.fn().mockResolvedValue(0);
 jest.mock("../../src/utils/avatarGeneration", () => ({
   scrubCachedAvatar: (...args: unknown[]) => mockScrubCachedAvatar(...args),
+  scrubUserBotsByName: (...args: unknown[]) => mockScrubUserBotsByName(...args),
 }));
 
 const mockGetBlocklistEntry = jest.fn().mockResolvedValue(null);
@@ -64,6 +66,7 @@ describe("validate-character API", () => {
     jest.clearAllMocks();
     mockLogWarning.mockResolvedValue(undefined);
     mockScrubCachedAvatar.mockResolvedValue(false);
+    mockScrubUserBotsByName.mockResolvedValue(0);
     mockGetBlocklistEntry.mockResolvedValue(null);
     mockAddToBlocklist.mockResolvedValue(undefined);
     mockRemoveFromBlocklist.mockResolvedValue(false);
@@ -267,17 +270,19 @@ describe("validate-character API", () => {
       "Elsa",
       "Elsa is a trademarked Disney character.",
       "claude",
+      "copyright",
     );
     // Independent, append-only record of the event, regardless of any later block/allow action.
     expect(mockLogWarning).toHaveBeenCalledWith("Elsa", "Elsa is a trademarked Disney character.");
   });
 
-  it("short-circuits to a hard block, without calling Claude, for a name already on the blocklist", async () => {
+  it("short-circuits to a hard block, without calling Claude, for a name already on the blocklist (copyright category)", async () => {
     mockGetBlocklistEntry.mockResolvedValueOnce({
       characterName: "elsa",
       displayName: "Elsa",
       reason: "Elsa is a trademarked Disney character.",
       source: "claude",
+      category: "copyright",
       createdAt: new Date(),
     });
 
@@ -288,15 +293,40 @@ describe("validate-character API", () => {
     const data = res._getJSONData();
     expect(data.scrubbed).toBe(true);
     expect(data.warningLevel).toBe("warning");
+    expect(data.blocked).toBe(false);
     expect(data.reason).toBe("This character is no longer available. Please try a different name.");
     expect(mockCreate).not.toHaveBeenCalled();
     expect(mockScrubCachedAvatar).toHaveBeenCalledWith("Elsa");
+    expect(mockScrubUserBotsByName).toHaveBeenCalledWith("Elsa");
     expect(mockRecordEvent).toHaveBeenCalledWith(
       "character_validated",
       expect.objectContaining({ scrubbed: true }),
     );
     // No fresh classification happened, so there's nothing new to log.
     expect(mockLogWarning).not.toHaveBeenCalled();
+  });
+
+  it("short-circuits to a hard, never-overridable block for a name already on the blocklist under the content category", async () => {
+    mockGetBlocklistEntry.mockResolvedValueOnce({
+      characterName: "bill cosby",
+      displayName: "Bill Cosby",
+      reason: "Living person with a serious real-world criminal conviction.",
+      source: "admin",
+      category: "content",
+      createdAt: new Date(),
+    });
+
+    const handler = (await import("../../pages/api/validate-character")).default;
+    const { req, res } = createMocks({ method: "POST", body: { name: "Bill Cosby" } });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.blocked).toBe(true);
+    expect(data.scrubbed).toBeUndefined();
+    expect(data.warningLevel).toBe("none");
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockScrubCachedAvatar).toHaveBeenCalledWith("Bill Cosby");
+    expect(mockScrubUserBotsByName).toHaveBeenCalledWith("Bill Cosby");
   });
 
   it("does not call scrubCachedAvatar for a caution-level or safe name", async () => {
@@ -310,7 +340,7 @@ describe("validate-character API", () => {
     expect(mockScrubCachedAvatar).not.toHaveBeenCalled();
   });
 
-  it("returns blocked: true for an abusive name, independent of warningLevel", async () => {
+  it("returns blocked: true for an abusive name, independent of warningLevel, and persists it to the blocklist", async () => {
     mockCreate.mockResolvedValueOnce({
       content: [
         {
@@ -337,6 +367,51 @@ describe("validate-character API", () => {
     const data = res._getJSONData();
     expect(data.blocked).toBe(true);
     expect(data.warningLevel).toBe("none");
+    // A fresh blocked:true result is persisted the same way a copyright "warning" is,
+    // so a repeat attempt gets the fast, deterministic block instead of relying on
+    // this non-deterministic classification catching it again every time.
+    expect(mockAddToBlocklist).toHaveBeenCalledWith(
+      "Some Abusive Name",
+      "This name contains a slur.",
+      "claude",
+      "content",
+    );
+    expect(mockScrubCachedAvatar).toHaveBeenCalledWith("Some Abusive Name");
+    expect(mockScrubUserBotsByName).toHaveBeenCalledWith("Some Abusive Name");
+  });
+
+  it("returns blocked: true for a living person with a serious real-world legal risk (e.g. Bill Cosby), independent of warningLevel", async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            blocked: true,
+            isPublicDomain: true,
+            isSafe: false,
+            warningLevel: "none",
+            reason:
+              "Living person with extensive credible allegations and a criminal conviction for sexual assault.",
+            suggestions: [],
+          }),
+        },
+      ],
+    });
+
+    const handler = (await import("../../pages/api/validate-character")).default;
+    const { req, res } = createMocks({ method: "POST", body: { name: "Bill Cosby" } });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.blocked).toBe(true);
+    expect(mockAddToBlocklist).toHaveBeenCalledWith(
+      "Bill Cosby",
+      "Living person with extensive credible allegations and a criminal conviction for sexual assault.",
+      "claude",
+      "content",
+    );
+    expect(mockScrubCachedAvatar).toHaveBeenCalledWith("Bill Cosby");
+    expect(mockScrubUserBotsByName).toHaveBeenCalledWith("Bill Cosby");
   });
 
   it("defaults blocked to false when Claude omits the field", async () => {

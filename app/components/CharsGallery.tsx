@@ -222,7 +222,7 @@ const CharsGallery: React.FC = () => {
 
   return (
     <>
-      <AppHeader menuSide="right" menuItems={menuItems} center={<BackHomeLink />} />
+      <AppHeader menuItems={menuItems} center={<BackHomeLink />} />
       {modals}
       <div className={styles.page}>
         <div className={styles.header}>

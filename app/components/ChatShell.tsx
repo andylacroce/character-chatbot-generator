@@ -2,13 +2,13 @@
 
 /**
  * The shared chat screen shell: sticky header (clickable avatar + portrait lightbox,
- * name, brand link), scrollable transcript, input bar with audio controls, and status
- * line. Extracted out of ChatPage.tsx so the guessing game (GamePage.tsx) renders the
- * exact same chat UI instead of a lookalike copy — everything page-specific (menu
- * items, modals, banners, what goes on the input) is a prop, everything else (layout,
- * the avatar lightbox, ARIA roles, the brand link) lives here once. Mirrors why
- * AppHeader itself was extracted (see its own doc comment) — one implementation of the
- * shared chrome instead of two pages each reinventing it.
+ * name), scrollable transcript, input bar with audio controls, and status line.
+ * Extracted out of ChatPage.tsx so the guessing game (GamePage.tsx) renders the exact
+ * same chat UI instead of a lookalike copy — everything page-specific (menu items,
+ * modals, banners, what goes on the input) is a prop, everything else (layout, the
+ * avatar lightbox, ARIA roles) lives here once. Mirrors why AppHeader itself was
+ * extracted (see its own doc comment) — one implementation of the shared chrome
+ * instead of two pages each reinventing it.
  */
 
 import React from "react";
@@ -84,14 +84,10 @@ function ChatShell({
 }: ChatShellProps) {
   const [showImageModal, setShowImageModal] = React.useState(false);
   const handleAvatarClick = React.useCallback(() => setShowImageModal(true), []);
-  const handleHeaderLinkClick = React.useCallback(() => {
-    inputRef.current?.focus();
-  }, [inputRef]);
 
   return (
     <div className={styles.chatLayout} data-testid="chat-layout">
       <AppHeader
-        menuSide="left"
         menuItems={menuItems}
         center={
           <>
@@ -113,24 +109,6 @@ function ChatShell({
             <div className={styles.botNameLabel}>{bot.name}</div>
             {belowName}
           </>
-        }
-        extra={
-          <a
-            href="https://www.andrewlacroce.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={handleHeaderLinkClick}
-            aria-label="Visit Andy Lacroce's website"
-            className={styles.brandLink}
-          >
-            <Image
-              src="/andrew.png"
-              alt="Andrew"
-              width={50}
-              height={50}
-              className={styles.brandImage}
-            />
-          </a>
         }
       />
       {modals}

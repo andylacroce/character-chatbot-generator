@@ -523,57 +523,57 @@ export default function AdminModerationView() {
   );
 
   return (
-    <div className={styles.page}>
+    <>
       <AppHeader
-        menuSide="right"
         menuItems={fullMenuItems}
         center={<h1 className={styles.title}>Character moderation</h1>}
       />
       {modals}
+      <div className={styles.page}>
+        <div className={styles.header}>
+          <p className={styles.subtitle}>
+            Names here short-circuit copyright/trademark validation before it ever calls Claude — an
+            allowed name is always safe, a blocked name is always rejected with a generic message,
+            regardless of what a fresh classification might say.
+          </p>
+        </div>
 
-      <div className={styles.header}>
-        <p className={styles.subtitle}>
-          Names here short-circuit copyright/trademark validation before it ever calls Claude — an
-          allowed name is always safe, a blocked name is always rejected with a generic message,
-          regardless of what a fresh classification might say.
-        </p>
+        {status === "loading" && <p className={styles.state}>Loading session…</p>}
+        {status === "unauthenticated" && <p className={styles.state}>Not signed in.</p>}
+
+        {status === "authenticated" && (
+          <>
+            <WarningLogSection onChanged={handleChanged} />
+
+            <div className={styles.grid}>
+              <ModerationSection
+                title="Allowed"
+                hint="Always classified as safe (warningLevel: none), skipping Claude entirely."
+                apiPath="/api/admin/allowlist"
+                namePlaceholder="Character name to allow"
+                addButtonLabel="Allow"
+                removeButtonLabel="Remove"
+                emptyMessage="No manually-allowed names."
+                transferTo={{ apiPath: "/api/admin/blocklist", label: "Move to Blocked" }}
+                refreshKey={refreshKey}
+                onChanged={handleChanged}
+              />
+              <ModerationSection
+                title="Blocked"
+                hint="Always rejected with a generic message, skipping Claude entirely."
+                apiPath="/api/admin/blocklist"
+                namePlaceholder="Character name to block"
+                addButtonLabel="Block"
+                removeButtonLabel="Unblock"
+                emptyMessage="No blocked names."
+                transferTo={{ apiPath: "/api/admin/allowlist", label: "Move to Allowed" }}
+                refreshKey={refreshKey}
+                onChanged={handleChanged}
+              />
+            </div>
+          </>
+        )}
       </div>
-
-      {status === "loading" && <p className={styles.state}>Loading session…</p>}
-      {status === "unauthenticated" && <p className={styles.state}>Not signed in.</p>}
-
-      {status === "authenticated" && (
-        <>
-          <WarningLogSection onChanged={handleChanged} />
-
-          <div className={styles.grid}>
-            <ModerationSection
-              title="Allowed"
-              hint="Always classified as safe (warningLevel: none), skipping Claude entirely."
-              apiPath="/api/admin/allowlist"
-              namePlaceholder="Character name to allow"
-              addButtonLabel="Allow"
-              removeButtonLabel="Remove"
-              emptyMessage="No manually-allowed names."
-              transferTo={{ apiPath: "/api/admin/blocklist", label: "Move to Blocked" }}
-              refreshKey={refreshKey}
-              onChanged={handleChanged}
-            />
-            <ModerationSection
-              title="Blocked"
-              hint="Always rejected with a generic message, skipping Claude entirely."
-              apiPath="/api/admin/blocklist"
-              namePlaceholder="Character name to block"
-              addButtonLabel="Block"
-              removeButtonLabel="Unblock"
-              emptyMessage="No blocked names."
-              transferTo={{ apiPath: "/api/admin/allowlist", label: "Move to Allowed" }}
-              refreshKey={refreshKey}
-              onChanged={handleChanged}
-            />
-          </div>
-        </>
-      )}
-    </div>
+    </>
   );
 }

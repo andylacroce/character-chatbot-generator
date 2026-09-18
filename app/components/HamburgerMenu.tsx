@@ -3,20 +3,16 @@ import styles from "./styles/HamburgerMenu.module.css";
 
 interface HamburgerMenuProps {
   children: React.ReactNode;
-  /**
-   * "right" opens the dropdown from the button's right edge instead of its left — for
-   * a hamburger positioned near a header's right edge, so the dropdown doesn't overflow
-   * off-screen. Defaults to "left" (the original chat-header placement).
-   */
-  align?: "left" | "right";
 }
 
 /**
  * Accessible hamburger menu for mobile/desktop navigation. Renders a button and
  * dropdown for menu actions, with keyboard and focus support, and closes the dropdown
- * whenever anything inside it is clicked.
+ * whenever anything inside it is clicked. Always sits at its wrapper's right edge and
+ * opens the dropdown from that same edge — see AppHeader.tsx's doc comment for why the
+ * hamburger has one standing position rather than a per-page left/right choice.
  */
-const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children, align = "left" }) => {
+const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -55,10 +51,7 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children, align = "left" 
   const handleDropdownClick = () => setOpen(false);
 
   return (
-    <div
-      className={`${styles.menuWrapper} ${align === "right" ? styles.menuWrapperRight : ""}`.trim()}
-      ref={wrapperRef}
-    >
+    <div className={styles.menuWrapper} ref={wrapperRef}>
       <button
         className={styles.hamburger}
         aria-label="Open menu"
@@ -70,8 +63,6 @@ const HamburgerMenu: React.FC<HamburgerMenuProps> = ({ children, align = "left" 
         <span className={styles.bar}></span>
         <span className={styles.bar}></span>
       </button>
-      {/* Right-alignment is handled by .menuWrapperRight's descendant selector on the
-          wrapper above — the dropdown itself doesn't need its own conditional class. */}
       {open && (
         <div className={styles.menuDropdown} onClick={handleDropdownClick}>
           {children}

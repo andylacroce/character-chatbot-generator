@@ -24,6 +24,13 @@ jest.mock("../../../../src/utils/characterAllowlist", () => ({
   removeFromAllowlist: (...args: unknown[]) => mockRemoveFromAllowlist(...args),
 }));
 
+const mockScrubCachedAvatar = jest.fn();
+const mockScrubUserBotsByName = jest.fn();
+jest.mock("../../../../src/utils/avatarGeneration", () => ({
+  scrubCachedAvatar: (...args: unknown[]) => mockScrubCachedAvatar(...args),
+  scrubUserBotsByName: (...args: unknown[]) => mockScrubUserBotsByName(...args),
+}));
+
 jest.mock("express-rate-limit", () => {
   return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
 });
@@ -35,6 +42,8 @@ describe("admin/blocklist API", () => {
     mockAddToBlocklist.mockResolvedValue(undefined);
     mockRemoveFromBlocklist.mockResolvedValue(true);
     mockRemoveFromAllowlist.mockResolvedValue(false);
+    mockScrubCachedAvatar.mockResolvedValue(false);
+    mockScrubUserBotsByName.mockResolvedValue(0);
   });
 
   it("returns 401 for a guest (no session)", async () => {
@@ -90,7 +99,7 @@ describe("admin/blocklist API", () => {
       expect(data.entries[0].characterName).toBe("elsa");
     });
 
-    it("POST adds a name with source 'admin'", async () => {
+    it("POST adds a name with source 'admin', defaulting to category 'content', and scrubs it immediately", async () => {
       const handler = (await import("../../../../pages/api/admin/blocklist")).default;
       const { req, res } = createMocks({
         method: "POST",
@@ -98,9 +107,33 @@ describe("admin/blocklist API", () => {
       });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
-      expect(mockAddToBlocklist).toHaveBeenCalledWith("Fake Character", "Testing", "admin");
+      expect(mockAddToBlocklist).toHaveBeenCalledWith(
+        "Fake Character",
+        "Testing",
+        "admin",
+        "content",
+      );
       // A name is never on both lists — blocking also un-allows it.
       expect(mockRemoveFromAllowlist).toHaveBeenCalledWith("Fake Character");
+      // Scrubbed right away, not just for future requests — see module doc comment.
+      expect(mockScrubCachedAvatar).toHaveBeenCalledWith("Fake Character");
+      expect(mockScrubUserBotsByName).toHaveBeenCalledWith("Fake Character");
+    });
+
+    it("POST honors an explicit category: 'copyright'", async () => {
+      const handler = (await import("../../../../pages/api/admin/blocklist")).default;
+      const { req, res } = createMocks({
+        method: "POST",
+        body: { name: "Fake Franchise Character", reason: "Testing", category: "copyright" },
+      });
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+      expect(mockAddToBlocklist).toHaveBeenCalledWith(
+        "Fake Franchise Character",
+        "Testing",
+        "admin",
+        "copyright",
+      );
     });
 
     it("POST returns 400 for a missing/blank name", async () => {

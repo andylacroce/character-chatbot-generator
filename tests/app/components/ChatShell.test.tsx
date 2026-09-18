@@ -106,13 +106,4 @@ describe("ChatShell", () => {
     render(<ChatShell {...baseProps({ error: "Something went wrong" })} />);
     expect(screen.getByText("Something went wrong")).toBeInTheDocument();
   });
-
-  it("focuses the input when the brand link is clicked", () => {
-    const inputRef: React.RefObject<HTMLInputElement | null> = { current: null };
-    render(<ChatShell {...baseProps({ inputRef })} />);
-    const inputEl = screen.getByTestId("chat-input") as HTMLInputElement;
-    inputEl.blur();
-    fireEvent.click(screen.getByLabelText(/visit andy lacroce's website/i));
-    expect(inputEl).toHaveFocus();
-  });
 });

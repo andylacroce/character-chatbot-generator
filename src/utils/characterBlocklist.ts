@@ -24,6 +24,7 @@ export interface BlocklistEntry {
   displayName: string | null;
   reason: string | null;
   source: string;
+  category: string;
   createdAt: Date;
 }
 
@@ -54,11 +55,16 @@ export async function getBlocklistEntry(name: string): Promise<BlocklistEntry | 
  * Adds (or refreshes) a name on the blocklist. Best-effort — a write failure is
  * logged and swallowed rather than failing the caller's request, since the caller's
  * own response to the user doesn't depend on this succeeding.
+ *
+ * `category` is required (not defaulted) so every call site states explicitly which
+ * fast-path response shape a future lookup should produce — see the table's own doc
+ * comment in src/db/schema.ts for what "copyright" vs "content" each mean.
  */
 export async function addToBlocklist(
   name: string,
   reason: string | null,
   source: "claude" | "admin",
+  category: "copyright" | "content",
 ): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   try {
@@ -69,10 +75,11 @@ export async function addToBlocklist(
         displayName: name,
         reason,
         source,
+        category,
       })
       .onConflictDoUpdate({
         target: characterBlocklist.characterName,
-        set: { reason, source },
+        set: { reason, source, category },
       });
   } catch (err) {
     logEvent(

@@ -17,17 +17,6 @@ describe("AppHeader", () => {
     expect(screen.getByLabelText("Do a thing")).toBeInTheDocument();
   });
 
-  it("renders extra content opposite the hamburger by default (menuSide left)", () => {
-    render(
-      <AppHeader
-        menuItems={<button>Item</button>}
-        center={<div>Center</div>}
-        extra={<div>Extra content</div>}
-      />,
-    );
-    expect(screen.getByText("Extra content")).toBeInTheDocument();
-  });
-
   it("folds the dark-mode toggle into the hamburger dropdown instead of a separate header control", () => {
     render(<AppHeader menuItems={<button>Item</button>} center={<div>Center</div>} />);
     expect(screen.queryByLabelText(/switch to (dark|light) mode/i)).not.toBeInTheDocument();
@@ -36,19 +25,12 @@ describe("AppHeader", () => {
     expect(screen.getByLabelText(/switch to (dark|light) mode/i)).toBeInTheDocument();
   });
 
-  it("swaps the hamburger to the right side when menuSide is right", () => {
+  it("always renders the hamburger in the header's right-hand slot", () => {
     const { container } = render(
-      <AppHeader
-        menuItems={<button>Item</button>}
-        center={<div>Center</div>}
-        extra={<div>Extra content</div>}
-        menuSide="right"
-      />,
+      <AppHeader menuItems={<button>Item</button>} center={<div>Center</div>} />,
     );
     const menuButton = screen.getByLabelText("Open menu");
     const headerRight = container.querySelector('[class*="headerRight"]');
-    const headerLeft = container.querySelector('[class*="headerLeft"]');
     expect(headerRight?.contains(menuButton)).toBe(true);
-    expect(headerLeft?.textContent).toContain("Extra content");
   });
 });

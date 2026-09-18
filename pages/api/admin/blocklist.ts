@@ -7,6 +7,18 @@
  * "unblock" action, e.g. to correct a false positive like a name that's actually
  * public domain).
  *
+ * A manual add defaults to `category: "content"` (not "copyright") — Claude's own
+ * classification already auto-adds copyright "warning"s to this table (see
+ * validate-character.ts), so a manual admin add is far more likely covering that
+ * automatic check's gap: an abusive name, or a living person with serious real-world
+ * legal risk (see characterBlocklist.ts's doc comment for what "content" means).
+ * A manual add also scrubs the name from the shared avatar cache and any user's own
+ * saved copy immediately — added 2026-09-17 after this endpoint's original version
+ * only prevented *future* generations, leaving an already-cached/saved name (e.g. a
+ * live report of "Bill Cosby" being publicly visible on the Character Wall) fully
+ * visible until someone happened to re-trigger validate-character for that exact
+ * name again.
+ *
  * A name is never on both the blocklist and the admin-managed allowlist at once —
  * POST here also removes the name from the allowlist (see
  * src/utils/characterAllowlist.ts's removeFromAllowlist), which is what lets the
@@ -24,6 +36,7 @@ import {
   removeFromBlocklist,
 } from "../../../src/utils/characterBlocklist";
 import { removeFromAllowlist } from "../../../src/utils/characterAllowlist";
+import { scrubCachedAvatar, scrubUserBotsByName } from "../../../src/utils/avatarGeneration";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
 const adminBlocklistRateLimit = createRateLimiter({
@@ -64,6 +77,13 @@ const adminBlocklistRateLimit = createRateLimiter({
  *                 type: string
  *               reason:
  *                 type: string
+ *               category:
+ *                 type: string
+ *                 enum: [copyright, content]
+ *                 description: >
+ *                   Defaults to "content" (abusive name, or a living person with
+ *                   serious real-world legal risk) if omitted — see
+ *                   src/db/schema.ts's character_blocklist doc comment.
  *     responses:
  *       200:
  *         description: Added
@@ -126,21 +146,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === "POST") {
-    const { name, reason } = req.body ?? {};
+    const { name, reason, category } = req.body ?? {};
     if (!name || typeof name !== "string" || !name.trim()) {
       res.status(400).json({ error: "Valid name required" });
       return;
     }
     const trimmedName = name.trim();
-    await addToBlocklist(trimmedName, typeof reason === "string" ? reason.trim() : null, "admin");
+    const resolvedCategory = category === "copyright" ? "copyright" : "content";
+    await addToBlocklist(
+      trimmedName,
+      typeof reason === "string" ? reason.trim() : null,
+      "admin",
+      resolvedCategory,
+    );
     // A name is never on both lists at once — blocking it also un-allows it, which is
     // also what makes this endpoint double as "move to blocked" from the allowlist.
     await removeFromAllowlist(trimmedName);
+    // Scrub immediately, not just for future requests — see module doc above.
+    await scrubCachedAvatar(trimmedName);
+    void scrubUserBotsByName(trimmedName);
     logEvent(
       "info",
       "admin_blocklist_added",
       "Admin manually added a character to the blocklist",
-      sanitizeLogMeta({ userId, characterName: trimmedName }),
+      sanitizeLogMeta({ userId, characterName: trimmedName, category: resolvedCategory }),
     );
     res.status(200).json({ ok: true });
     return;

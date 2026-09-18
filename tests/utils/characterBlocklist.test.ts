@@ -83,19 +83,22 @@ describe("characterBlocklist utils", () => {
     it("no-ops without DATABASE_URL", async () => {
       process.env.DATABASE_URL = "";
       const { addToBlocklist } = await import("../../src/utils/characterBlocklist");
-      await expect(addToBlocklist("Elsa", "reason", "claude")).resolves.toBeUndefined();
+      await expect(
+        addToBlocklist("Elsa", "reason", "claude", "copyright"),
+      ).resolves.toBeUndefined();
     });
 
     it("upserts with the lowercased key and original casing as displayName", async () => {
       await jest.isolateModulesAsync(async () => {
         const { mockValues } = mockDbWith([]);
         const { addToBlocklist } = await import("../../src/utils/characterBlocklist");
-        await addToBlocklist("Elsa", "Disney trademark", "claude");
+        await addToBlocklist("Elsa", "Disney trademark", "claude", "copyright");
         expect(mockValues).toHaveBeenCalledWith({
           characterName: "elsa",
           displayName: "Elsa",
           reason: "Disney trademark",
           source: "claude",
+          category: "copyright",
         });
       });
     });
@@ -110,7 +113,7 @@ describe("characterBlocklist utils", () => {
           }),
         }));
         const { addToBlocklist } = await import("../../src/utils/characterBlocklist");
-        await expect(addToBlocklist("Elsa", null, "admin")).resolves.toBeUndefined();
+        await expect(addToBlocklist("Elsa", null, "admin", "content")).resolves.toBeUndefined();
       });
     });
   });

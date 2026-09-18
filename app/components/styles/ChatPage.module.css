@@ -13,11 +13,19 @@
   Sets up the main grid layout for the chat page.
   Divided into three rows: header, messages, and input.
 */
+/* `width: 100vw` here used to be the same scrollbar-gutter bug fixed in
+   AppHeader.module.css's `.chatHeader`/`.chatHeaderContent` — `100vw` includes any
+   reserved vertical-scrollbar gutter, while this element's actual containing block
+   (body) is narrower by that gutter, so everything inside (including the sticky
+   AppHeader) rendered in a wider-than-visible box. Measured live: the chat page's
+   hamburger sat exactly one scrollbar-width right of every other page's, the one
+   inconsistency left after fixing AppHeader.module.css itself. No explicit width is
+   needed — a block-level grid container already fills its containing block's width
+   by default. */
 .chatLayout {
   display: grid;
   grid-template-rows: auto 1fr auto;
   height: 100vh;
-  width: 100vw;
   min-height: 0;
   background: var(--color-background);
   color: var(--color-text);
@@ -311,27 +319,6 @@
   word-break: break-word;
 }
 
-.brandLink {
-  display: flex;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1px solid var(--color-outline);
-  transition: border-color 0.15s ease;
-  flex-shrink: 0;
-}
-
-.brandLink:hover,
-.brandLink:focus {
-  border-color: var(--color-accent);
-  outline: none;
-}
-
-.brandImage {
-  display: block;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
 /* Hamburger dropdown items: "Back to Character Creator", "Download Transcript",
    "Change your name" — ghost text rows instead of a filled pill, matching the
    landing page's .footerLink/.textLink treatment. */
@@ -386,23 +373,6 @@
     height: 72px !important;
     margin: 0 auto 0.2rem auto !important;
     display: block !important;
-  }
-
-  .brandLink {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    max-width: 40px;
-    min-width: 0;
-    margin: 0 0.2rem;
-  }
-
-  .brandImage {
-    width: 32px !important;
-    height: auto !important;
-    aspect-ratio: 1/1;
-    display: block !important;
-    object-fit: contain;
   }
 
   .menuItemLink {

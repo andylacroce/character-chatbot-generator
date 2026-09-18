@@ -185,29 +185,47 @@ export const avatarCache = pgTable("avatar_cache", {
 });
 
 /**
- * A persistent list of character names known to fail copyright/trademark review —
- * checked by pages/api/validate-character.ts *before* ever calling Claude, so a name
+ * A persistent list of character names known to fail either of validate-character.ts's
+ * two independent hard-block checks — checked *before* ever calling Claude, so a name
  * already known to be a problem gets a fast, consistent block instead of a fresh,
  * non-deterministic re-classification every single time (see CLAUDE.md's "Character
  * validation" section for the incident this fixes — a name already public on the
  * Character Wall popping a fresh warning on a later launch). `characterName` stays
  * lowercased, same case-insensitive-lookup convention as `avatarCache.characterName`.
  * Intentionally global, not `environment`-scoped, same rationale as `avatarCache`: a
- * copyright concern about a name is the same fact in every environment.
+ * blocking concern about a name is the same fact in every environment.
  *
- * Rows are added two ways: automatically, the moment `validate-character.ts` gets a
- * "warning" classification from Claude for any name (`source: "claude"`), and manually
- * by an admin via the `/admin` blocklist panel (`source: "admin"`, `pages/api/admin/
- * blocklist.ts`) for a name Claude hasn't flagged (yet) or a false positive an admin
- * wants removed. Deleting a row (un-blocking a name) is always a manual admin action —
- * nothing here re-adds a row automatically once removed, short of Claude flagging it
- * again on a fresh attempt.
+ * `category` distinguishes which of the two checks a row belongs to, since they need
+ * different fast-path response shapes (see pages/api/validate-character.ts):
+ * - `"copyright"`: an overridable-if-caught-fresh copyright/trademark "warning" that's
+ *   been made permanent — the fast path responds with `warningLevel: "warning"` and
+ *   `scrubbed: true`.
+ * - `"content"`: the *never*-overridable checks — either the name itself is abusive
+ *   (profane/slur/sexual), or it identifies a real, currently-living person with a
+ *   serious, well-documented real-world criminal conviction/allegation (added
+ *   2026-09-17 after a live report that a name like this had no guardrail at all —
+ *   the character wall at /chars is public, and impersonating a living person with
+ *   this kind of history is a legal/reputational risk independent of copyright).
+ *   Deliberately excludes historical/deceased figures, however controversial, and
+ *   ordinary celebrity/political controversy — only serious real-world criminal
+ *   conduct by someone still alive today. The fast path responds with
+ *   `blocked: true`. Defaults to `"copyright"` for rows written before this column
+ *   existed, preserving their original (only) behavior.
+ *
+ * Rows are added two ways: automatically, the moment validate-character.ts gets a
+ * "warning" or `blocked: true` classification from Claude for any name
+ * (`source: "claude"`), and manually by an admin via the `/admin/moderation` panel
+ * (`source: "admin"`, `pages/api/admin/blocklist.ts`) for a name Claude hasn't flagged
+ * (yet) or a false positive an admin wants removed. Deleting a row (un-blocking a
+ * name) is always a manual admin action — nothing here re-adds a row automatically
+ * once removed, short of Claude flagging it again on a fresh attempt.
  */
 export const characterBlocklist = pgTable("character_blocklist", {
   characterName: text("character_name").primaryKey(),
   displayName: text("display_name"),
   reason: text("reason"),
   source: text("source").notNull().default("claude"),
+  category: text("category").notNull().default("copyright"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 

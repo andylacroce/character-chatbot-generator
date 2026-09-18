@@ -298,7 +298,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus, launchCancelled]);
   return (
     <>
-      <AppHeader menuSide="right" menuItems={menuItems} center={<LandingCharacterCarousel />} />
+      <AppHeader menuItems={menuItems} center={<LandingCharacterCarousel />} />
       <form onSubmit={handleCreate} className={styles.formContainer} autoComplete="off">
         <div className={styles.formInner}>
           {!isLaunchingFromUrl && !interstitial && (

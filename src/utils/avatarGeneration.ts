@@ -11,7 +11,7 @@
  */
 
 import { put } from "@vercel/blob";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import crypto from "crypto";
 import { logEvent, sanitizeLogMeta } from "./logger";
 import { getClaudeModel } from "./claudeModelSelector";
@@ -20,7 +20,7 @@ import { generateImageWithPollinations } from "./pollinationsImageGen";
 import { extractJson } from "./parseClaudeJson";
 import anthropic from "./anthropicClient";
 import { getDb } from "../db/client";
-import { avatarCache } from "../db/schema";
+import { avatarCache, bots } from "../db/schema";
 import { recordEvent } from "./analytics";
 
 /** Options controlling avatar cache/persistence behavior — see pages/api/generate-avatar.ts's @swagger block for the full rationale on each. */
@@ -179,6 +179,44 @@ export async function scrubCachedAvatar(name: string): Promise<boolean> {
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
     return false;
+  }
+}
+
+/**
+ * Deletes every signed-in user's own saved `bots` row matching this name
+ * case-insensitively — across every user and every environment, not just the one the
+ * request happened to come from, since a blocklist concern is global (see
+ * characterBlocklist.ts's doc comment). Added 2026-09-17 alongside the living-person
+ * legal-risk guardrail: scrubbing only the shared avatar_cache (scrubCachedAvatar
+ * above) would leave a user's own already-saved copy of a now-blocked name — and its
+ * full chat history — untouched, even though it's the same underlying concern. A
+ * user's own saved bot is never public on its own (only the shared, `recognized`
+ * avatar_cache rows populate /chars), but this app doesn't want to keep hosting it
+ * privately either once a name is blocked outright.
+ *
+ * `messages` rows cascade-delete automatically via their FK to `bots.id`
+ * (`onDelete: "cascade"`, see src/db/schema.ts) — no separate messages cleanup needed.
+ * A plain `lower()` SQL comparison, not `ilike`, since `bots.name` isn't pre-lowercased
+ * at write time (unlike avatarCache/blocklist's own keys) and a name containing a
+ * literal `%`/`_` shouldn't be treated as an ILIKE wildcard. Returns the number of
+ * bots rows removed (0 on no match, no DATABASE_URL, or any DB error).
+ */
+export async function scrubUserBotsByName(name: string): Promise<number> {
+  if (!process.env.DATABASE_URL) return 0;
+  try {
+    const deleted = await getDb()
+      .delete(bots)
+      .where(sql`lower(${bots.name}) = lower(${name})`)
+      .returning({ id: bots.id });
+    return deleted.length;
+  } catch (err) {
+    logEvent(
+      "error",
+      "user_bots_scrub_failed",
+      "Failed to scrub user-saved bots for a blocked character name",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+    return 0;
   }
 }
 
