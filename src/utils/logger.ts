@@ -134,7 +134,19 @@ const initializeServerLogger = () => {
         const path = nodeRequire("path") as typeof import("path");
         const logDir = path.join(process.cwd(), "logs");
         fs.mkdirSync(logDir, { recursive: true });
-        transports.push(new winston.transports!.File({ filename: path.join(logDir, "dev.log") }));
+        transports.push(
+          new winston.transports!.File({
+            filename: path.join(logDir, "dev.log"),
+            // Bounds unattended growth over a long dev session: once dev.log
+            // hits 5MB it rotates to dev1.log (tailable keeps the newest
+            // entries under the original filename rather than the oldest),
+            // and only the 2 most recent rotated files are kept — so this
+            // directory never holds more than ~15MB total.
+            maxsize: 5 * 1024 * 1024,
+            maxFiles: 3,
+            tailable: true,
+          }),
+        );
       } catch (error) {
         console.error("Failed to set up dev log file transport:", error);
       }
