@@ -14,6 +14,22 @@ export type GameEvent =
   | { type: "wrong"; wrongGuessesRemaining: number }
   | { type: "gameover"; revealedName: string; finalStreak: number };
 
+/**
+ * Data for a round switch already returned by the server on a correct guess, held back
+ * from `currentCharacterName`/`avatarUrl`/etc. until the player explicitly continues —
+ * see `continueRound` below.
+ */
+interface PendingRoundAdvance {
+  gameToken: string;
+  currentCharacterName: string;
+  avatarUrl: string;
+  gender: string | null;
+  streak: number;
+  nextReply: string;
+  nextAudioFileUrl?: string;
+  roundStartIndex: number;
+}
+
 interface PersistedGameState {
   gameToken: string;
   currentCharacterName: string;
@@ -78,6 +94,10 @@ export function useGameController() {
   // promoted chat partner isn't handed a previous character's unrelated Q&A. Earlier
   // rounds stay visible in the transcript for scrollback; they just aren't sent server-side.
   const [roundStartIndex, setRoundStartIndex] = useState(0);
+  // Set on a correct guess whenever the server also returned the next round's greeting,
+  // holding it back until the player clicks "Continue" rather than switching partners
+  // instantly — see continueRound below.
+  const [pendingAdvance, setPendingAdvance] = useState<PendingRoundAdvance | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -209,6 +229,7 @@ export function useGameController() {
         { sender: data.currentCharacterName, text: data.reply, audioFileUrl: data.audioFileUrl },
       ]);
       setRoundStartIndex(0);
+      setPendingAdvance(null);
     } catch (e) {
       const msg = "Failed to start a new game. Please try again.";
       setError(msg);
@@ -237,6 +258,7 @@ export function useGameController() {
     setStreak(0);
     setMessages([]);
     setRoundStartIndex(0);
+    setPendingAdvance(null);
     setLastEvent(null);
     setError("");
   }, [stopAudio]);
@@ -290,7 +312,7 @@ export function useGameController() {
    * this handles every possible outcome the response can carry.
    */
   const sendMessage = useCallback(async () => {
-    if (!input.trim() || !gameToken || loading) return;
+    if (!input.trim() || !gameToken || loading || pendingAdvance) return;
     const userMessage: Message = { sender: "User", text: input };
     const previousCharacterName = currentCharacterName;
     // Captured before roundStartIndex is used to slice the current round's history below —
@@ -322,35 +344,34 @@ export function useGameController() {
 
       if (data.correct) {
         setLastEvent({ type: "correct", revealedName: data.revealedName, streak: data.streak });
-        setMessages((prev) => {
-          const withReaction: Message[] = [
-            ...prev,
-            { sender: previousCharacterName, text: data.reply, audioFileUrl: data.audioFileUrl },
-          ];
-          return typeof data.nextReply === "string"
-            ? [
-                ...withReaction,
-                {
-                  sender: data.currentCharacterName,
-                  text: data.nextReply,
-                  audioFileUrl: data.nextAudioFileUrl,
-                },
-              ]
-            : withReaction;
-        });
-        // Bug fix: this must be an absolute index into the full `messages` array
-        // (oldMessagesLength + 2), not historyForServer.length + 2 — that length is
-        // relative to the CURRENT round's own slice, and only happened to equal the
-        // absolute index on the very first round switch (round 1 -> 2, where
-        // roundStartIndex started at 0). From round 2 onward the relative version
-        // pointed too far back, leaking the prior round's own trailing Q&A/guess/
-        // reaction into the next round's conversationHistory sent to the server.
-        setRoundStartIndex(oldMessagesLength + 2);
-        setGameToken(data.gameToken);
-        setCurrentCharacterName(data.currentCharacterName);
-        setAvatarUrl(data.avatarUrl || "/silhouette.svg");
-        setGender(data.gender ?? null);
-        setStreak(data.streak ?? 0);
+        setMessages((prev) => [
+          ...prev,
+          { sender: previousCharacterName, text: data.reply, audioFileUrl: data.audioFileUrl },
+        ]);
+        // The new partner's greeting and round data are already in hand, but held back
+        // until the player clicks "Continue" (see continueRound) instead of switching
+        // partners instantly — a beat to register the win before moving on. When the
+        // server didn't return a next greeting at all (shouldn't normally happen), fall
+        // through and apply the round switch immediately since there's nothing to hold.
+        if (typeof data.nextReply === "string") {
+          setPendingAdvance({
+            gameToken: data.gameToken,
+            currentCharacterName: data.currentCharacterName,
+            avatarUrl: data.avatarUrl || "/silhouette.svg",
+            gender: data.gender ?? null,
+            streak: data.streak ?? 0,
+            nextReply: data.nextReply,
+            nextAudioFileUrl: data.nextAudioFileUrl,
+            roundStartIndex: oldMessagesLength + 2,
+          });
+        } else {
+          setRoundStartIndex(oldMessagesLength + 2);
+          setGameToken(data.gameToken);
+          setCurrentCharacterName(data.currentCharacterName);
+          setAvatarUrl(data.avatarUrl || "/silhouette.svg");
+          setGender(data.gender ?? null);
+          setStreak(data.streak ?? 0);
+        }
         return;
       }
 
@@ -390,7 +411,32 @@ export function useGameController() {
     } finally {
       setLoading(false);
     }
-  }, [input, gameToken, loading, messages, roundStartIndex, currentCharacterName]);
+  }, [input, gameToken, loading, pendingAdvance, messages, roundStartIndex, currentCharacterName]);
+
+  /**
+   * Applies a held-back round switch (see the `correct` branch of sendMessage above):
+   * appends the new partner's greeting, switches identity/token/streak, and clears the
+   * "correct" event banner so play resumes normally.
+   */
+  const continueRound = useCallback(() => {
+    if (!pendingAdvance) return;
+    setMessages((prev) => [
+      ...prev,
+      {
+        sender: pendingAdvance.currentCharacterName,
+        text: pendingAdvance.nextReply,
+        audioFileUrl: pendingAdvance.nextAudioFileUrl,
+      },
+    ]);
+    setRoundStartIndex(pendingAdvance.roundStartIndex);
+    setGameToken(pendingAdvance.gameToken);
+    setCurrentCharacterName(pendingAdvance.currentCharacterName);
+    setAvatarUrl(pendingAdvance.avatarUrl);
+    setGender(pendingAdvance.gender);
+    setStreak(pendingAdvance.streak);
+    setPendingAdvance(null);
+    setLastEvent(null);
+  }, [pendingAdvance]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -415,6 +461,8 @@ export function useGameController() {
     loading,
     error,
     lastEvent,
+    awaitingContinue: pendingAdvance !== null,
+    continueRound,
     chatBoxRef,
     inputRef,
     audioEnabled,

@@ -14,6 +14,7 @@ const mockStartGame = jest.fn();
 const mockQuitGame = jest.fn();
 const mockGiveUp = jest.fn();
 const mockSendMessage = jest.fn();
+const mockContinueRound = jest.fn();
 const mockHandleKeyDown = jest.fn();
 const mockHandleAudioToggle = jest.fn();
 const mockStopAudio = jest.fn();
@@ -39,6 +40,8 @@ function baseController(overrides: Record<string, unknown> = {}) {
     loading: false,
     error: "",
     lastEvent: null,
+    awaitingContinue: false,
+    continueRound: mockContinueRound,
     chatBoxRef: { current: null },
     inputRef: { current: null },
     audioEnabled: true,
@@ -169,6 +172,35 @@ describe("GamePage", () => {
     });
     render(<GamePage />);
     expect(screen.getByTestId("game-event-correct")).toBeInTheDocument();
+  });
+
+  it("shows a Continue button while awaiting the round switch, and applies it on click", () => {
+    controllerState = baseController({
+      started: true,
+      currentCharacterName: "Sherlock Holmes",
+      lastEvent: { type: "correct", revealedName: "Irene Adler", streak: 1 },
+      awaitingContinue: true,
+    });
+    render(<GamePage />);
+    const continueButton = screen.getByTestId("game-continue-button");
+    expect(continueButton).toBeInTheDocument();
+    // The passive "Say hello..." banner variant is not shown while a Continue action
+    // is pending — the button itself is the only way to advance.
+    expect(screen.queryByText(/Say hello to your/)).not.toBeInTheDocument();
+
+    fireEvent.click(continueButton);
+    expect(mockContinueRound).toHaveBeenCalled();
+  });
+
+  it("disables the chat input while awaiting the round switch", () => {
+    controllerState = baseController({
+      started: true,
+      currentCharacterName: "Sherlock Holmes",
+      lastEvent: { type: "correct", revealedName: "Irene Adler", streak: 1 },
+      awaitingContinue: true,
+    });
+    render(<GamePage />);
+    expect(screen.getByTestId("chat-input")).toBeDisabled();
   });
 
   it("shows the wrong-guess banner", () => {

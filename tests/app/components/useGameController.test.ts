@@ -249,15 +249,26 @@ describe("useGameController", () => {
       await result.current.sendMessage();
     });
 
+    // The round switch itself is held back until the player clicks Continue: only the
+    // reaction message and the "correct" event are applied immediately.
     expect(result.current.lastEvent).toEqual({
       type: "correct",
       revealedName: "Irene Adler",
       streak: 1,
     });
+    expect(result.current.awaitingContinue).toBe(true);
+    expect(result.current.currentCharacterName).toBe("Sherlock Holmes");
+    expect(result.current.gameToken).toBe("token-1");
+    expect(result.current.streak).toBe(0);
+    expect(result.current.messages.some((m) => m.text === "Brilliant, you got it!")).toBe(true);
+    expect(result.current.messages.some((m) => m.text === "Hello, dear player.")).toBe(false);
+
+    act(() => result.current.continueRound());
+
+    expect(result.current.awaitingContinue).toBe(false);
     expect(result.current.currentCharacterName).toBe("Irene Adler");
     expect(result.current.gameToken).toBe("token-2");
     expect(result.current.streak).toBe(1);
-    expect(result.current.messages.some((m) => m.text === "Brilliant, you got it!")).toBe(true);
     expect(result.current.messages.some((m) => m.text === "Hello, dear player.")).toBe(true);
   });
 
@@ -296,6 +307,7 @@ describe("useGameController", () => {
     await act(async () => {
       await result.current.sendMessage();
     });
+    act(() => result.current.continueRound());
 
     // Round 2: one ordinary exchange.
     mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ reply: "Ask away, darling." }));
@@ -321,6 +333,7 @@ describe("useGameController", () => {
     await act(async () => {
       await result.current.sendMessage();
     });
+    act(() => result.current.continueRound());
 
     // Round 3: one ordinary exchange — its conversationHistory must contain ONLY
     // round 3's own greeting, never round 1/2's leftover Q&A/guess/reaction.

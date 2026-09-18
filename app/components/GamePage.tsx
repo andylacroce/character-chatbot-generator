@@ -41,6 +41,8 @@ function GamePage() {
     loading,
     error,
     lastEvent,
+    awaitingContinue,
+    continueRound,
     chatBoxRef,
     inputRef,
     audioEnabled,
@@ -197,7 +199,22 @@ function GamePage() {
 
   const bannerContent = (
     <>
-      {lastEvent?.type === "correct" && (
+      {lastEvent?.type === "correct" && awaitingContinue && (
+        <div className={styles.eventBanner} data-testid="game-event-correct">
+          <span>
+            🎉 Correct, it was {lastEvent.revealedName}! Streak: {lastEvent.streak}.
+          </span>
+          <button
+            type="button"
+            className={styles.continueButton}
+            onClick={continueRound}
+            data-testid="game-continue-button"
+          >
+            Continue
+          </button>
+        </div>
+      )}
+      {lastEvent?.type === "correct" && !awaitingContinue && (
         <div className={styles.eventBanner} data-testid="game-event-correct">
           🎉 Correct, it was {lastEvent.revealedName}! Streak: {lastEvent.streak}. Say hello to your
           next conversation partner.
@@ -230,7 +247,7 @@ function GamePage() {
       onSend={sendMessage}
       onKeyDown={handleKeyDown}
       loading={loading}
-      apiAvailable={true}
+      apiAvailable={!awaitingContinue}
       chatBoxRef={chatBoxRef}
       inputRef={inputRef}
       audioEnabled={audioEnabled}
