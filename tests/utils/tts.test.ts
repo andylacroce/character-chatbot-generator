@@ -316,8 +316,8 @@ describe("tts", () => {
       });
     });
 
-    describe("gender mismatch self-heal", () => {
-      it("retries once with the corrected ssmlGender parsed from a gender-mismatch error, without consuming the transient-failure budget", async () => {
+    describe("voiceGender mismatch self-heal", () => {
+      it("retries once with the corrected ssmlGender parsed from a voiceGender-mismatch error, without consuming the transient-failure budget", async () => {
         mockSynthesizeSpeech.mockRejectedValueOnce(
           new Error("Requested male voice, but voice en-US-Neural2-C is a female voice."),
         );
@@ -352,7 +352,7 @@ describe("tts", () => {
         expect(mockWriteFileSync).toHaveBeenCalled();
       });
 
-      it("does not treat an unrelated error as a gender mismatch", async () => {
+      it("does not treat an unrelated error as a voiceGender mismatch", async () => {
         mockSynthesizeSpeech.mockRejectedValue(new Error("network error"));
 
         await expect(

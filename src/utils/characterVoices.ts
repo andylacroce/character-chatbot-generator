@@ -21,11 +21,11 @@ export interface CharacterVoiceConfig {
 }
 
 /**
- * Google TTS gender enum. Values must match
+ * Google TTS voiceGender enum. Values must match
  * @google-cloud/text-to-speech's actual SsmlVoiceGender proto enum
  * (SSML_VOICE_GENDER_UNSPECIFIED=0, MALE=1, FEMALE=2, NEUTRAL=3) — this object
  * previously had NEUTRAL and UNSPECIFIED transposed (0 and 3 swapped), so any
- * "neutral"-gender character silently sent UNSPECIFIED to Google instead.
+ * "neutral"-voiceGender character silently sent UNSPECIFIED to Google instead.
  */
 export const SSML_GENDER = {
   UNSPECIFIED: 0,
@@ -66,7 +66,7 @@ const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
  * Voice configuration from Claude (maps directly to Google TTS parameters).
  */
 export interface VoiceConfig {
-  gender: "male" | "female" | "neutral";
+  voiceGender: "male" | "female" | "neutral";
   languageCode: string; // Language code (e.g., 'en-GB', 'en-US', 'de-DE')
   voiceName: string; // Google TTS voice name (e.g., 'en-GB-Wavenet-D')
   pitch: number; // Pitch adjustment in semitones (-20 to +20)
@@ -127,7 +127,7 @@ export async function fetchVoiceConfigFromClaude(
 
 Return ONLY valid JSON with this exact schema:
 {
-  "gender": "male" | "female" | "neutral",
+  "voiceGender": "male" | "female" | "neutral",
   "languageCode": "<locale>",  // BCP-47 locale code (e.g., 'en-GB', 'en-US', 'de-DE', 'fr-FR', 'ja-JP')
   "voiceName": "<voice>",      // Full Google TTS voice name (e.g., 'en-GB-Wavenet-D')
   "pitch": <number>,            // Pitch adjustment (-20 to +20 semitones; 0 = normal)
@@ -139,10 +139,10 @@ Types: Wavenet, Neural2, Studio (US only), Standard
 Examples: en-US-Wavenet-D, en-GB-Wavenet-A, de-DE-Wavenet-B, ja-JP-Wavenet-C
 
 CRITICAL: You MUST provide a valid Google TTS voice name. If you receive error feedback about an invalid voice, try a different variant.
-CRITICAL: The "gender" field you return MUST match the actual gender of the specific "voiceName" you pick — Google TTS rejects a request when they disagree, so never return a voice name and a gender label that describe different voices.`;
+CRITICAL: The "voiceGender" field you return MUST match the actual voiceGender of the specific "voiceName" you pick — Google TTS rejects a request when they disagree, so never return a voice name and a voiceGender label that describe different voices.`;
 
   const genderHintText = genderHint
-    ? ` This character's gender is understood to be "${genderHint}" — pick a voiceName whose actual Google TTS gender matches, and set the "gender" field to match that same voice (not necessarily "${genderHint}" verbatim, if no well-known voice fits).`
+    ? ` This character's voiceGender is understood to be "${genderHint}" — pick a voiceName whose actual Google TTS voiceGender matches, and set the "voiceGender" field to match that same voice (not necessarily "${genderHint}" verbatim, if no well-known voice fits).`
     : "";
 
   const messages: Array<{ role: "user" | "assistant"; content: string }> = [
@@ -246,7 +246,7 @@ CRITICAL: The "gender" field you return MUST match the actual gender of the spec
 /** Clamps and defaults a Claude-provided voice config into a valid VoiceConfig shape. */
 export function normalizeClaudeConfig(config: Partial<VoiceConfig>) {
   return {
-    gender: config.gender || "male",
+    voiceGender: config.voiceGender || "male",
     languageCode: config.languageCode || "en-US",
     voiceName: config.voiceName || "",
     pitch: typeof config.pitch === "number" ? Math.max(-20, Math.min(20, config.pitch)) : 0,
@@ -276,12 +276,12 @@ export async function getVoiceConfigForCharacter(
     // Fetch voice configuration from Claude API. genderOverride is passed through as a
     // hint to the SAME call that picks voiceName, rather than applied afterward — a
     // voice name and its ssmlGender must describe the same voice or Google TTS rejects
-    // the request outright, so ssmlGender always has to come from whatever gender
+    // the request outright, so ssmlGender always has to come from whatever voiceGender
     // Claude reports for the voice it actually picked, never from an independently
     // guessed override applied after the fact (that's how a mismatch like "male"
     // ssmlGender paired with an actually-female-only voice name used to happen).
     const voiceConfig = await fetchVoiceConfigFromClaude(normalized, undefined, genderOverride);
-    const ssmlGender = mapGenderToSsml(voiceConfig.gender);
+    const ssmlGender = mapGenderToSsml(voiceConfig.voiceGender);
 
     // Create voice configuration directly from Claude response
     config = {
@@ -323,7 +323,7 @@ export async function getVoiceConfigForCharacter(
   return config;
 }
 
-/** Maps a character's effective gender to the Google TTS SSML gender enum. */
+/** Maps a character's effective voiceGender to the Google TTS SSML voiceGender enum. */
 export function mapGenderToSsml(effectiveGender?: string | null) {
   if (effectiveGender === "female") return SSML_GENDER.FEMALE;
   if (effectiveGender === "neutral") return SSML_GENDER.NEUTRAL;

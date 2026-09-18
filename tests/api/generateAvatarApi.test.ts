@@ -6,7 +6,7 @@ const mockAnthropicCreate = jest.fn().mockResolvedValue({
   content: [
     {
       type: "text",
-      text: '{"subject":"tall detective","artStyle":"photorealistic","composition":"headshot","iconicElements":"deerstalker hat","negativePrompts":"no duplicates","gender":"male"}',
+      text: '{"subject":"tall detective","artStyle":"photorealistic","composition":"headshot","iconicElements":"deerstalker hat","negativePrompts":"no duplicates","voiceGender":"male"}',
     },
   ],
 });
@@ -48,7 +48,7 @@ describe("generate-avatar API", () => {
       content: [
         {
           type: "text",
-          text: '{"subject":"tall detective","artStyle":"photorealistic","composition":"headshot","iconicElements":"deerstalker hat","negativePrompts":"no duplicates","gender":"male"}',
+          text: '{"subject":"tall detective","artStyle":"photorealistic","composition":"headshot","iconicElements":"deerstalker hat","negativePrompts":"no duplicates","voiceGender":"male"}',
         },
       ],
     });
@@ -105,13 +105,13 @@ describe("generate-avatar API", () => {
     });
   });
 
-  it("includes gender in response when Claude provides it", async () => {
+  it("includes voiceGender in response when Claude provides it", async () => {
     const handler = (await import("../../pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.gender).toBe("male");
+    expect(data.voiceGender).toBe("male");
   });
 
   it("calls Cloudflare Workers AI with the account id and bearer token", async () => {
@@ -227,7 +227,7 @@ describe("generate-avatar API", () => {
             composition: "headshot",
             iconicElements: "",
             negativePrompts: "none",
-            gender: "male",
+            voiceGender: "male",
           }),
         },
       ],

@@ -33,7 +33,7 @@ export interface AvatarGenerationOptions {
 
 export interface AvatarGenerationResult {
   avatarUrl: string;
-  gender: string | null;
+  voiceGender: string | null;
   source: "cache" | "cloudflare" | "pollinations" | "silhouette";
 }
 
@@ -86,7 +86,7 @@ function avatarCacheKey(sanitizedName: string): string {
  */
 async function getCachedAvatar(
   sanitizedName: string,
-): Promise<{ avatarUrl: string; gender: string | null } | null> {
+): Promise<{ avatarUrl: string; voiceGender: string | null } | null> {
   if (!process.env.DATABASE_URL) return null;
   try {
     const rows = await getDb()
@@ -94,7 +94,7 @@ async function getCachedAvatar(
       .from(avatarCache)
       .where(eq(avatarCache.characterName, avatarCacheKey(sanitizedName)));
     const row = rows[0];
-    return row ? { avatarUrl: row.avatarUrl, gender: row.gender } : null;
+    return row ? { avatarUrl: row.avatarUrl, voiceGender: row.voiceGender } : null;
   } catch (err) {
     logEvent(
       "error",
@@ -118,7 +118,7 @@ async function getCachedAvatar(
 async function cacheAvatar(
   sanitizedName: string,
   avatarUrl: string,
-  gender: string | null,
+  voiceGender: string | null,
   recognized: boolean,
 ): Promise<void> {
   if (!process.env.DATABASE_URL) return;
@@ -132,13 +132,13 @@ async function cacheAvatar(
       .values({
         characterName: avatarCacheKey(sanitizedName),
         avatarUrl,
-        gender,
+        voiceGender,
         recognized,
         displayName: sanitizedName,
       })
       .onConflictDoUpdate({
         target: avatarCache.characterName,
-        set: { avatarUrl, gender, recognized, displayName: sanitizedName },
+        set: { avatarUrl, voiceGender, recognized, displayName: sanitizedName },
       });
   } catch (err) {
     logEvent(
@@ -248,10 +248,10 @@ export async function getOrGenerateAvatar(
       recognized: isRecognized,
       bypassSharedCache,
     });
-    return { avatarUrl: cached.avatarUrl, gender: cached.gender, source: "cache" };
+    return { avatarUrl: cached.avatarUrl, voiceGender: cached.voiceGender, source: "cache" };
   }
 
-  let genderOut: string | null = null;
+  let voiceGenderOut: string | null = null;
 
   try {
     logEvent(
@@ -283,7 +283,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
 - composition: framing and pose guidance (e.g., close-up headshot, 3/4 view) (100 chars max)
 - iconicElements: generic props, clothing, or background elements evoking the theme without copying a specific copyrighted design (100 chars max)
 - negativePrompts: explicit exclusions to ensure a single, original portrait (150 chars max). Must include: "no collage, no side-by-side photos, no multiple people, single face only, no reflections, no double exposures, no duplicates, no text, no watermark, no logo, no extra limbs, no extra hands, no extra faces, not a real person, no celebrity likeness, no exact copyrighted design".
-- gender: character's gender (for voice matching)`,
+- voiceGender: character's voiceGender (for voice matching)`,
           },
         ],
         temperature: 0.3,
@@ -295,7 +295,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       );
       const promptData = JSON.parse(rawContent);
 
-      genderOut = promptData.gender || null;
+      voiceGenderOut = promptData.voiceGender || null;
 
       prompt =
         `Original, stylized character illustration loosely inspired by the name "${characterName}", not a depiction of any real person and not an exact reproduction of any copyrighted character design. ${promptData.subject || ""}. ${promptData.iconicElements || ""}. ${promptData.composition || ""}. Style: ${promptData.artStyle || "stylized illustration"}. single, solo, alone, centered, close-up portrait, no other people. Exclude: ${promptData.negativePrompts || "multiple people, extra faces, duplicates, real person likeness, exact copyrighted design"}`.trim();
@@ -308,7 +308,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
         "info",
         "avatar_prompt_generated",
         "Generated image prompt",
-        sanitizeLogMeta({ prompt, gender: genderOut }),
+        sanitizeLogMeta({ prompt, voiceGender: voiceGenderOut }),
       );
     } catch (promptErr) {
       prompt = `Original, stylized character illustration loosely inspired by the name "${characterName}", depicting a generic archetype rather than any real person's actual likeness or any specific copyrighted character design. Single subject, one person, one face; head-and-shoulders portrait (frontal or 3/4) with neutral background and even soft lighting. Do NOT create collages, side-by-side photos, split/composite images, reflections, or duplicates. Exclude text, watermarks, logos, extra limbs, extra faces, real-person likeness, exact copyrighted designs, or any compositing.`;
@@ -384,7 +384,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
         recognized: isRecognized,
         bypassSharedCache,
       });
-      return { avatarUrl: "/silhouette.svg", gender: genderOut, source: "silhouette" };
+      return { avatarUrl: "/silhouette.svg", voiceGender: voiceGenderOut, source: "silhouette" };
     }
 
     if (!bypassPersistence) {
@@ -392,14 +392,14 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
     }
 
     if (!bypassSharedCache) {
-      await cacheAvatar(characterName, avatarUrl, genderOut, isRecognized);
+      await cacheAvatar(characterName, avatarUrl, voiceGenderOut, isRecognized);
     }
     void recordEvent("avatar_generated", {
       provider: usedProvider,
       recognized: isRecognized,
       bypassSharedCache,
     });
-    return { avatarUrl, gender: genderOut, source: usedProvider ?? "silhouette" };
+    return { avatarUrl, voiceGender: voiceGenderOut, source: usedProvider ?? "silhouette" };
   } catch (e) {
     logEvent(
       "error",
@@ -407,6 +407,6 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       "Unhandled error in avatar generation",
       sanitizeLogMeta({ error: e instanceof Error ? e.message : String(e) }),
     );
-    return { avatarUrl: "/silhouette.svg", gender: null, source: "silhouette" };
+    return { avatarUrl: "/silhouette.svg", voiceGender: null, source: "silhouette" };
   }
 }

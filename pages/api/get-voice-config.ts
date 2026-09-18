@@ -32,7 +32,7 @@ import { withRequestLog } from "../../src/utils/withRequestLog";
  *               name:
  *                 type: string
  *                 example: Sherlock Holmes
- *               gender:
+ *               voiceGender:
  *                 type: string
  *                 nullable: true
  *                 example: male
@@ -55,13 +55,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(405).end();
     return;
   }
-  const { name, gender } = req.body;
+  const { name, voiceGender } = req.body;
   if (!name) {
     res.status(400).json({ error: "Name required" });
     return;
   }
   try {
-    const config = await getVoiceConfigForCharacter(name, gender);
+    const config = await getVoiceConfigForCharacter(name, voiceGender);
     res.status(200).json(config);
     return;
   } catch {

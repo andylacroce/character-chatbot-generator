@@ -264,9 +264,12 @@ describe("audio API", () => {
       expect(mockGetVoiceConfigForCharacter).toHaveBeenCalledWith("Character", null);
     });
 
-    it("passes the bot name and gender through to the voice lookup", async () => {
+    it("passes the bot name and voiceGender through to the voice lookup", async () => {
       mockFs.existsSync.mockImplementation((p: string) => p === AUDIO);
-      await handler(makeReq({ text: "Greetings.", botName: "Ada", gender: "female" }), makeRes());
+      await handler(
+        makeReq({ text: "Greetings.", botName: "Ada", voiceGender: "female" }),
+        makeRes(),
+      );
 
       expect(mockGetVoiceConfigForCharacter).toHaveBeenCalledWith("Ada", "female");
     });

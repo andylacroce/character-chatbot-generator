@@ -138,7 +138,7 @@ export function useChatController(
         return setAndPersistVoiceConfig(bot.voiceConfig as CharacterVoiceConfig);
       }
       try {
-        const fetched = await api_getVoiceConfigForCharacter(bot.name, bot.gender);
+        const fetched = await api_getVoiceConfigForCharacter(bot.name, bot.voiceGender);
         return setAndPersistVoiceConfig(fetched);
       } catch (err) {
         if (typeof window !== "undefined") {
@@ -159,7 +159,7 @@ export function useChatController(
     const result = await promise;
     voiceConfigPromiseRef.current = null;
     return result;
-  }, [bot.name, bot.gender, bot.voiceConfig, setAndPersistVoiceConfig]);
+  }, [bot.name, bot.voiceGender, bot.voiceConfig, setAndPersistVoiceConfig]);
 
   const [input, setInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -448,7 +448,7 @@ export function useChatController(
                 personality: bot.personality,
                 botName: bot.name,
                 voiceConfig,
-                gender: bot.gender,
+                voiceGender: bot.voiceGender,
                 conversationHistory: [],
                 userName: getStoredUserName(),
                 // This prompt is an internal mechanism to elicit an introduction, not
@@ -607,7 +607,7 @@ export function useChatController(
               personality: bot.personality,
               botName: bot.name,
               voiceConfig,
-              gender: bot.gender,
+              voiceGender: bot.voiceGender,
               conversationHistory,
               userName: getStoredUserName(),
             }),

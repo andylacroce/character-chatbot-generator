@@ -118,12 +118,12 @@ export function getTTSClient() {
  * Google's synthesizeSpeech API rejects a request when a voice's `name` and
  * `ssmlGender` describe different voices, with a message like "Requested male
  * voice, but voice en-US-Neural2-C is a female voice." — the message itself
- * names the voice's real gender. This lets an already-persisted, pre-fix
+ * names the voice's real voiceGender. This lets an already-persisted, pre-fix
  * voiceConfig (mismatched ssmlGender saved before the characterVoices.ts fix)
- * self-heal at synthesis time by retrying once with the corrected gender,
+ * self-heal at synthesis time by retrying once with the corrected voiceGender,
  * rather than failing every time it's used.
  * @returns {number | null} The corrected SsmlVoiceGender enum value, or null if
- *   the error doesn't match Google's gender-mismatch message format.
+ *   the error doesn't match Google's voiceGender-mismatch message format.
  */
 function extractCorrectedSsmlGender(
   err: unknown,
@@ -131,11 +131,11 @@ function extractCorrectedSsmlGender(
   const message = err instanceof Error ? err.message : String(err);
   const match = message.match(/requested \w+ voice, but voice \S+ is a (\w+) voice/i);
   if (!match) return null;
-  const gender = match[1].toLowerCase();
+  const voiceGender = match[1].toLowerCase();
   const { SsmlVoiceGender } = protos.google.cloud.texttospeech.v1;
-  if (gender === "male") return SsmlVoiceGender.MALE;
-  if (gender === "female") return SsmlVoiceGender.FEMALE;
-  if (gender === "neutral") return SsmlVoiceGender.NEUTRAL;
+  if (voiceGender === "male") return SsmlVoiceGender.MALE;
+  if (voiceGender === "female") return SsmlVoiceGender.FEMALE;
+  if (voiceGender === "neutral") return SsmlVoiceGender.NEUTRAL;
   return null;
 }
 
@@ -218,7 +218,7 @@ export async function synthesizeSpeechToFile({
   };
   const client = getTTSClient();
 
-  // Retry synthesis with exponential backoff on transient failures. A gender
+  // Retry synthesis with exponential backoff on transient failures. A voiceGender
   // mismatch (voice `name` vs `ssmlGender` disagree) is not transient — it fails
   // identically every time — so it's corrected and retried separately, once,
   // without consuming the transient-failure attempt budget below.
@@ -251,7 +251,7 @@ export async function synthesizeSpeechToFile({
           request.voice.ssmlGender !== correctedGender
         ) {
           logger.warn(
-            "TTS gender mismatch detected; retrying with corrected ssmlGender",
+            "TTS voiceGender mismatch detected; retrying with corrected ssmlGender",
             sanitizeLogMeta({
               event: "tts_gender_self_heal",
               voiceName: apiVoice.name,

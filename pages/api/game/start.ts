@@ -60,7 +60,7 @@ const gameStartRateLimit = createRateLimiter({
  *                   type: string
  *                 avatarUrl:
  *                   type: string
- *                 gender:
+ *                 voiceGender:
  *                   type: string
  *                   nullable: true
  *                 reply:
@@ -92,7 +92,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nextCharacterName,
       personaPrompt,
       avatarUrl,
-      gender,
+      voiceGender,
       voiceConfig,
       reply,
       audioFileUrl,
@@ -103,7 +103,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nextCharacterName,
       personaPrompt,
       avatarUrl,
-      gender,
+      voiceGender,
       voiceConfig,
       usedNames: [currentCharacterName],
       streak: 0,
@@ -123,7 +123,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       gameToken,
       currentCharacterName,
       avatarUrl,
-      gender,
+      voiceGender,
       reply,
       audioFileUrl,
       streak: 0,

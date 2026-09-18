@@ -32,7 +32,7 @@ describe("get-voice-config API", () => {
 
   it("returns 400 when the name is missing", async () => {
     const res = makeRes();
-    await handler(makeReq({ gender: "female" }), res);
+    await handler(makeReq({ voiceGender: "female" }), res);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({ error: "Name required" });
@@ -42,7 +42,7 @@ describe("get-voice-config API", () => {
     const config = { languageCode: "en-US", name: "en-US-Studio-O", ssmlGender: "FEMALE" };
     mockGetVoiceConfig.mockResolvedValueOnce(config);
     const res = makeRes();
-    await handler(makeReq({ name: "Ada Lovelace", gender: "female" }), res);
+    await handler(makeReq({ name: "Ada Lovelace", voiceGender: "female" }), res);
 
     expect(mockGetVoiceConfig).toHaveBeenCalledWith("Ada Lovelace", "female");
     expect(res.status).toHaveBeenCalledWith(200);

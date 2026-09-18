@@ -36,7 +36,7 @@ function makeGameState(overrides: Partial<GameStatePayload> = {}): GameStatePayl
     nextCharacterName: "Irene Adler",
     personaPrompt: "persona prompt here",
     avatarUrl: "https://example.com/sherlock.png",
-    gender: "male",
+    voiceGender: "male",
     voiceConfig: { languageCodes: ["en-GB"], name: "en-GB-Wavenad-D", ssmlGender: 1 },
     usedNames: ["Sherlock Holmes"],
     streak: 3,

@@ -23,7 +23,7 @@ interface PendingRoundAdvance {
   gameToken: string;
   currentCharacterName: string;
   avatarUrl: string;
-  gender: string | null;
+  voiceGender: string | null;
   streak: number;
   nextReply: string;
   nextAudioFileUrl?: string;
@@ -34,7 +34,7 @@ interface PersistedGameState {
   gameToken: string;
   currentCharacterName: string;
   avatarUrl: string;
-  gender: string | null;
+  voiceGender: string | null;
   streak: number;
   messages: Message[];
   /** Index into `messages` where the CURRENT round's conversation begins, see sendMessage below. */
@@ -66,7 +66,7 @@ function persistState(state: PersistedGameState | null) {
   storage.setJSON(STORAGE_KEYS.gameTranscript, {
     currentCharacterName: state.currentCharacterName,
     avatarUrl: state.avatarUrl,
-    gender: state.gender,
+    voiceGender: state.voiceGender,
     streak: state.streak,
     messages: state.messages,
     roundStartIndex: state.roundStartIndex,
@@ -86,7 +86,7 @@ export function useGameController() {
   const [gameToken, setGameToken] = useState<string | null>(null);
   const [currentCharacterName, setCurrentCharacterName] = useState<string>("");
   const [avatarUrl, setAvatarUrl] = useState<string>("/silhouette.svg");
-  const [gender, setGender] = useState<string | null>(null);
+  const [voiceGender, setVoiceGender] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
   const [messages, setMessages] = useState<Message[]>([]);
   // Where the CURRENT round's conversation starts within `messages` — only messages from
@@ -133,7 +133,7 @@ export function useGameController() {
       setGameToken(persisted.gameToken);
       setCurrentCharacterName(persisted.currentCharacterName);
       setAvatarUrl(persisted.avatarUrl);
-      setGender(persisted.gender);
+      setVoiceGender(persisted.voiceGender);
       setStreak(persisted.streak);
       setMessages(persisted.messages);
       setRoundStartIndex(persisted.roundStartIndex ?? 0);
@@ -144,10 +144,18 @@ export function useGameController() {
   useEffect(() => {
     persistState(
       gameToken
-        ? { gameToken, currentCharacterName, avatarUrl, gender, streak, messages, roundStartIndex }
+        ? {
+            gameToken,
+            currentCharacterName,
+            avatarUrl,
+            voiceGender,
+            streak,
+            messages,
+            roundStartIndex,
+          }
         : null,
     );
-  }, [gameToken, currentCharacterName, avatarUrl, gender, streak, messages, roundStartIndex]);
+  }, [gameToken, currentCharacterName, avatarUrl, voiceGender, streak, messages, roundStartIndex]);
 
   const started = gameToken !== null;
 
@@ -228,7 +236,7 @@ export function useGameController() {
       setGameToken(data.gameToken);
       setCurrentCharacterName(data.currentCharacterName);
       setAvatarUrl(data.avatarUrl || "/silhouette.svg");
-      setGender(data.gender ?? null);
+      setVoiceGender(data.voiceGender ?? null);
       setStreak(data.streak ?? 0);
       setMessages([
         { sender: data.currentCharacterName, text: data.reply, audioFileUrl: data.audioFileUrl },
@@ -260,7 +268,7 @@ export function useGameController() {
     setGameToken(null);
     setCurrentCharacterName("");
     setAvatarUrl("/silhouette.svg");
-    setGender(null);
+    setVoiceGender(null);
     setStreak(0);
     setMessages([]);
     setRoundStartIndex(0);
@@ -371,7 +379,7 @@ export function useGameController() {
             gameToken: data.gameToken,
             currentCharacterName: data.currentCharacterName,
             avatarUrl: data.avatarUrl || "/silhouette.svg",
-            gender: data.gender ?? null,
+            voiceGender: data.voiceGender ?? null,
             streak: data.streak ?? 0,
             nextReply: data.nextReply,
             nextAudioFileUrl: data.nextAudioFileUrl,
@@ -382,7 +390,7 @@ export function useGameController() {
           setGameToken(data.gameToken);
           setCurrentCharacterName(data.currentCharacterName);
           setAvatarUrl(data.avatarUrl || "/silhouette.svg");
-          setGender(data.gender ?? null);
+          setVoiceGender(data.voiceGender ?? null);
           setStreak(data.streak ?? 0);
         }
         return;
@@ -445,7 +453,7 @@ export function useGameController() {
     setGameToken(pendingAdvance.gameToken);
     setCurrentCharacterName(pendingAdvance.currentCharacterName);
     setAvatarUrl(pendingAdvance.avatarUrl);
-    setGender(pendingAdvance.gender);
+    setVoiceGender(pendingAdvance.voiceGender);
     setStreak(pendingAdvance.streak);
     setPendingAdvance(null);
     setLastEvent(null);
@@ -469,7 +477,7 @@ export function useGameController() {
     gameToken,
     currentCharacterName,
     avatarUrl,
-    gender,
+    voiceGender,
     streak,
     messages,
     input,

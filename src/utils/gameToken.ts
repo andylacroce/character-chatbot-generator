@@ -44,7 +44,7 @@ export interface GameStatePayload {
   personaPrompt: string;
   /** currentCharacterName's avatar — safe to show, since it's never the hidden target. */
   avatarUrl: string;
-  gender: string | null;
+  voiceGender: string | null;
   /** currentCharacterName's TTS voice, resolved server-side each round so the client never needs to fetch it itself. */
   voiceConfig: CharacterVoiceConfig;
   /** Every character already met as currentCharacterName this streak, so a new target never repeats one. */
@@ -82,7 +82,7 @@ function isValidPayload(value: unknown): value is GameStatePayload {
     typeof v.nextCharacterName === "string" &&
     typeof v.personaPrompt === "string" &&
     typeof v.avatarUrl === "string" &&
-    (v.gender === null || typeof v.gender === "string") &&
+    (v.voiceGender === null || typeof v.voiceGender === "string") &&
     typeof v.voiceConfig === "object" &&
     v.voiceConfig !== null &&
     Array.isArray(v.usedNames) &&

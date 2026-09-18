@@ -254,7 +254,7 @@ describe("Home component URL parameter functionality", () => {
       name: "SignedInBot",
       personality: "cheerful",
       avatarUrl: "/new-avatar.jpg",
-      gender: "female",
+      voiceGender: "female",
       voiceConfig: {
         name: "en-US-Wavenet-D",
         languageCodes: ["en-US"],
@@ -279,7 +279,7 @@ describe("Home component URL parameter functionality", () => {
             name: newBot.name,
             personality: newBot.personality,
             avatarUrl: newBot.avatarUrl,
-            gender: newBot.gender,
+            voiceGender: newBot.voiceGender,
             voiceConfig: newBot.voiceConfig,
           }),
         }),

@@ -190,7 +190,7 @@ async function advanceToNextRound(revealedName: string, usedNames: string[]) {
  *                   type: string
  *                 avatarUrl:
  *                   type: string
- *                 gender:
+ *                 voiceGender:
  *                   type: string
  *                   nullable: true
  *       400:
@@ -250,7 +250,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const audioFileUrl = await synthesizeReplyAudio(
         reply,
         state.currentCharacterName,
-        state.gender,
+        state.voiceGender,
         state.voiceConfig,
       );
       res.status(200).json({ reply, audioFileUrl });
@@ -272,7 +272,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const reactionAudioFileUrl = await synthesizeReplyAudio(
         reactionReply,
         state.currentCharacterName,
-        state.gender,
+        state.voiceGender,
         state.voiceConfig,
       );
       const next = await advanceToNextRound(revealedName, state.usedNames);
@@ -282,7 +282,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         nextCharacterName: next.nextCharacterName,
         personaPrompt: next.personaPrompt,
         avatarUrl: next.avatarUrl,
-        gender: next.gender,
+        voiceGender: next.voiceGender,
         voiceConfig: next.voiceConfig,
         usedNames: next.usedNames,
         streak: newStreak,
@@ -310,7 +310,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         streak: newStreak,
         gameToken: newToken,
         avatarUrl: next.avatarUrl,
-        gender: next.gender,
+        voiceGender: next.voiceGender,
       });
       return;
     }
@@ -327,7 +327,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const audioFileUrl = await synthesizeReplyAudio(
         reactionReply,
         state.currentCharacterName,
-        state.gender,
+        state.voiceGender,
         state.voiceConfig,
       );
       logEvent(
@@ -357,7 +357,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const audioFileUrl = await synthesizeReplyAudio(
       reactionReply,
       state.currentCharacterName,
-      state.gender,
+      state.voiceGender,
       state.voiceConfig,
     );
     const newToken = signGameState({ ...state, wrongGuessCount: 1 });

@@ -30,7 +30,7 @@ const mockBot: Bot = {
   personality: "Wizard",
   avatarUrl: "/silhouette.svg",
   voiceConfig: null,
-  gender: "male",
+  voiceGender: "male",
 };
 
 describe("ChatPage stop button", () => {

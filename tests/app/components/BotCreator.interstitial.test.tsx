@@ -53,7 +53,7 @@ describe("BotCreator resume/new-chat interstitial", () => {
       name: "Sherlock Holmes",
       personality: "p",
       avatarUrl: null,
-      gender: null,
+      voiceGender: null,
       voiceConfig: null,
       updatedAt: new Date().toISOString(),
     };
@@ -124,7 +124,7 @@ describe("BotCreator resume/new-chat interstitial", () => {
       name: "Dracula",
       personality: "A vampire.",
       avatarUrl: null,
-      gender: "male",
+      voiceGender: "male",
       voiceConfig: null,
       updatedAt: new Date().toISOString(),
     };
@@ -161,7 +161,7 @@ describe("BotCreator resume/new-chat interstitial", () => {
       name: "Sherlock Holmes",
       personality: "p",
       avatarUrl: null,
-      gender: null,
+      voiceGender: null,
       voiceConfig: null,
       updatedAt: new Date().toISOString(),
     };
@@ -193,7 +193,7 @@ describe("BotCreator resume/new-chat interstitial", () => {
       name: "Dracula",
       personality: "A vampire.",
       avatarUrl: null,
-      gender: "male",
+      voiceGender: "male",
       voiceConfig: null,
       updatedAt: new Date().toISOString(),
     };

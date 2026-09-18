@@ -27,7 +27,7 @@ describe("generateBotDataWithProgressCancelable (unit tests)", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
+          json: async () => ({ avatarUrl: "/img.png", voiceGender: "female" }),
         } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
@@ -133,7 +133,7 @@ describe("generateBotDataWithProgressCancelable (unit tests)", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "data:image/png;base64,abc", gender: "female" }),
+          json: async () => ({ avatarUrl: "data:image/png;base64,abc", voiceGender: "female" }),
         } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
