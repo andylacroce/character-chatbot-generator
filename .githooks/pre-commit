@@ -3,3 +3,37 @@ set -euo pipefail
 
 repo_root=$(git rev-parse --show-toplevel)
 "$repo_root/scripts/scan-secrets.sh" --staged
+
+# Auto-format staged files with Prettier so formatting drift is fixed here,
+# before a commit exists, instead of surfacing later as npm run ci's
+# format:check step failing after lint/type-check/tests already passed
+# (added 2026-09-17 after exactly that happened and forced a second full CI
+# run). CI's own format:check stays a --check, not --write: a GitHub Actions
+# run can't cleanly rewrite the commit it's checking, so this is the one
+# correct place to auto-fix instead of just report.
+#
+# Only formats a staged file that is FULLY staged (no unstaged hunks left on
+# top of it) — a first version of this used `git stash --keep-index` to
+# handle partially-staged files too, but that stashes (and can conflict on
+# popping) the *entire* working tree, not just the files being committed; on
+# a repo with a lot of unrelated unstaged work in progress it briefly staged
+# everything and hit git's known "both added" stash-pop conflict on a brand
+# new file. Skipping partially-staged files instead is a narrower guarantee
+# but never touches anything outside the files actually being formatted.
+staged_files=()
+while IFS= read -r -d '' f; do
+  staged_files+=("$f")
+done < <(git diff --cached --name-only --diff-filter=ACM -z)
+
+if [ "${#staged_files[@]}" -gt 0 ]; then
+  clean_files=()
+  for f in "${staged_files[@]}"; do
+    if git diff --quiet -- "$f"; then
+      clean_files+=("$f")
+    fi
+  done
+  if [ "${#clean_files[@]}" -gt 0 ]; then
+    npx prettier --write --ignore-unknown -- "${clean_files[@]}"
+    git add -- "${clean_files[@]}"
+  fi
+fi

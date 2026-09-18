@@ -29,7 +29,7 @@ describe("SignInModal", () => {
   it('calls signIn("google") when the Google button is clicked', () => {
     render(<SignInModal show={true} onClose={jest.fn()} providerIds={["google"]} />);
     fireEvent.click(screen.getByRole("button", { name: /continue with google/i }));
-    expect(mockSignIn).toHaveBeenCalledWith("google");
+    expect(mockSignIn).toHaveBeenCalledWith("google", { callbackUrl: "/" });
   });
 
   it("calls onClose when the backdrop is clicked", () => {
@@ -95,6 +95,7 @@ describe("SignInModal", () => {
     expect(mockSignIn).toHaveBeenCalledWith("email", {
       email: "user@example.com",
       redirect: false,
+      callbackUrl: "/",
     });
     await waitFor(() => expect(screen.getByTestId("magic-link-sent")).toBeInTheDocument());
     expect(screen.getByTestId("magic-link-sent")).toHaveTextContent("user@example.com");

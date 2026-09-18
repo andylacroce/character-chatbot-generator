@@ -282,7 +282,7 @@ describe("BotCreator URL parameter functionality", () => {
   it("renders the Sign in control inside the account menu", async () => {
     render(<BotCreator onBotCreated={() => {}} />);
     await screen.findByLabelText("Character name");
-    fireEvent.click(screen.getByLabelText("Account: Guest. Open menu"));
+    fireEvent.click(screen.getByLabelText("Open menu"));
     expect(screen.getByLabelText("Sign in")).toBeInTheDocument();
   });
 
@@ -293,7 +293,7 @@ describe("BotCreator URL parameter functionality", () => {
 
     // Should render without crashing despite config fetch failure
     expect(screen.getByLabelText("Character name")).toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText("Account: Guest. Open menu"));
+    fireEvent.click(screen.getByLabelText("Open menu"));
     await waitFor(() => expect(screen.getByLabelText("Sign in")).not.toBeDisabled());
   });
 

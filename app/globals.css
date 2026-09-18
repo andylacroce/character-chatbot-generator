@@ -138,8 +138,23 @@ body {
 html,
 body,
 #__next {
-  max-width: 100vw;
+  max-width: 100%;
   overflow-x: hidden;
+}
+
+/* Reserves the vertical-scrollbar gutter on every page load, whether or not that
+   page's own content is tall enough to actually need it. Without this, a page whose
+   body scrolls (the admin pages, the Character Wall's infinite-scroll gallery) has a
+   narrower usable width than one that doesn't (chat/game, which only ever scroll a
+   nested message list, never the page itself) on any browser that reserves scrollbar
+   space (desktop Chrome/Firefox/Edge; most mobile browsers already use an overlay
+   scrollbar with zero reserved width, so this is a no-op there) — shifting
+   AppHeader.tsx's hamburger (and everything else anchored to an edge) by the
+   scrollbar's width depending purely on how tall that specific page happens to be.
+   `stable` reserves the gutter unconditionally, so every page's usable width — and
+   hence the hamburger's position — is identical regardless of its own content height. */
+html {
+  scrollbar-gutter: stable;
 }
 
 /* --- Utility and Shared Styles --- */
@@ -280,6 +295,25 @@ body,
 
 .max-w-800 {
   max-width: 800px;
+}
+
+/* Horizontal rule separating groups of items inside a hamburger dropdown (e.g. a page's
+   own menu items from the shared account-menu items appended after them) — a single,
+   atomic, single-class rule with no descendant selector, so sharing it carries none of
+   the cross-component leakage risk that motivates keeping page-specific CSS modules
+   separate (see AppHeader.tsx/CLAUDE.md's "Unified header" section). Used by AppHeader,
+   ChatPage, and GamePage instead of each repeating the same five lines. */
+.menuDivider {
+  border: none;
+  border-top: 1px solid var(--color-outline);
+  margin: 0.3rem 0.2rem;
+}
+
+/* A hamburger dropdown item's icon — one color for every item regardless of which
+   component renders it (a page's own menu items, useAccountMenu's items, or
+   AuthControl's sign in/out), so a single dropdown never mixes icon colors. */
+.menuIcon {
+  color: var(--color-primary);
 }
 
 /*

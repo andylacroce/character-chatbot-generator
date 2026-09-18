@@ -832,6 +832,45 @@ describe("useBotCreation tests", () => {
     );
   });
 
+  it("handleCreate hard-stops with a generic error (no modal, no override) when validation returns scrubbed: true", async () => {
+    mockAuthFetch.mockImplementation((url: string) => {
+      if (url === "/api/validate-character") {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            characterName: "Spider-Man",
+            isPublicDomain: false,
+            isSafe: false,
+            warningLevel: "warning",
+            scrubbed: true,
+            reason: "This character is no longer available. Please try a different name.",
+            suggestions: [],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    const onBotCreated = jest.fn();
+    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
+
+    act(() => result.current.setInput("Spider-Man"));
+    await act(async () => {
+      await result.current.handleCreate();
+    });
+
+    expect(result.current.showValidationModal).toBe(false);
+    expect(result.current.error).toMatch(/no longer available/i);
+    expect(result.current.validating).toBe(false);
+    expect(onBotCreated).not.toHaveBeenCalled();
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      "warn",
+      "bot_validation_scrubbed",
+      "Character removed from cache after failing re-validation",
+      expect.any(Object),
+    );
+  });
+
   it("handleCreate shows modal when character validation returns caution level", async () => {
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === "/api/validate-character") {

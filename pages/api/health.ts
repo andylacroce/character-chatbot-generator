@@ -13,6 +13,7 @@ import fs from "fs";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import anthropic from "../../src/utils/anthropicClient";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 /**
  * Rate limiter: 10 requests per minute per IP. This endpoint makes real calls to both
@@ -81,10 +82,7 @@ const healthRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-export default async function handler(
-  req: import("next").NextApiRequest,
-  res: import("next").NextApiResponse,
-) {
+async function handler(req: import("next").NextApiRequest, res: import("next").NextApiResponse) {
   if (!(await applyRateLimit(healthRateLimit, req, res))) return;
 
   const requestId = req.headers["x-request-id"] || generateRequestId();
@@ -221,3 +219,5 @@ export default async function handler(
     requestId,
   });
 }
+
+export default withRequestLog(handler);

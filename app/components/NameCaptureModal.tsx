@@ -4,9 +4,10 @@
  * Lightbox for capturing or changing the visitor's own preferred name — what a
  * character should call them. Used three ways: as a one-time gate right after
  * submitting character creation when no name is known yet (`mode="gate"`), and as an
- * anytime "change your name" action from the landing page and chat-page hamburger menus
- * (`mode="edit"`). A text link hands off to sign-in when `onRequestSignIn` is provided
- * and the visitor isn't signed in — mirrors the approved "Option B" mockup exactly.
+ * anytime "change your name" action from every page's hamburger menu (`mode="edit"`,
+ * via useAccountMenu.tsx). A text link hands off to sign-in when `onRequestSignIn` is
+ * provided and the visitor isn't signed in — mirrors the approved "Option B" mockup
+ * exactly.
  *
  * Deliberately does not render its own SignInModal: the caller owns one shared
  * SignInModal instance (see BotCreator.tsx) so every "sign in" entry point — this
@@ -27,10 +28,7 @@ interface NameCaptureModalProps {
   currentName: string;
   onSave: (name: string) => void;
   onSkip?: () => void;
-  /**
-   * Offers a "sign in instead" link when set and the visitor isn't signed in — omitted
-   * entirely in the chat header (no sign-in control there, by design).
-   */
+  /** Offers a "sign in instead" link when set and the visitor isn't signed in. */
   onRequestSignIn?: () => void;
 }
 

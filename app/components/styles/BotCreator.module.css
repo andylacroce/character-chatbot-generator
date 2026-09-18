@@ -535,7 +535,6 @@
 
 .disclaimerModal {
   position: relative;
-  background: var(--card-body-bg);
   color: var(--color-text);
   font-family: var(--font-primary);
   border-radius: 16px;
@@ -547,6 +546,26 @@
   overflow-y: auto;
   text-align: left;
   box-sizing: border-box;
+  /* CSS-only "scroll shadow": a subtle edge shadow that only shows while there's more
+     content to scroll to, and disappears on its own at the true top/bottom — the two
+     `local`-attached fade layers move with the scrolled content and mask the
+     `scroll`-attached shadow layers exactly at the real edges. Needed because this modal
+     caps itself at 80vh and content long enough to exceed that (e.g. GameInstructionsModal
+     on a phone-height viewport) used to just cut off with zero visual hint that scrolling
+     inside the modal — not the page — reveals the rest, including the primary action button. */
+  background:
+    linear-gradient(var(--card-body-bg) 33%, rgba(255, 255, 255, 0)) center top,
+    linear-gradient(rgba(255, 255, 255, 0), var(--card-body-bg) 66%) center bottom,
+    radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0)) center top,
+    radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0)) center bottom;
+  background-repeat: no-repeat;
+  background-color: var(--card-body-bg);
+  background-size:
+    100% 24px,
+    100% 24px,
+    100% 16px,
+    100% 16px;
+  background-attachment: local, local, scroll, scroll;
 }
 
 .disclaimerTitle {

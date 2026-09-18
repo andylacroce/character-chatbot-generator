@@ -38,6 +38,109 @@ const createBrowserLogger = (): LoggerInstance => {
 let loggerInstance: LoggerInstance = createBrowserLogger();
 
 /**
+ * Structural shape of the real `winston` module (or the `__TEST_WINSTON__`
+ * test hook standing in for it) that this file relies on — kept minimal and
+ * local rather than depending on winston's own types, since it's loaded via
+ * a runtime `require` that bundlers can't statically analyze.
+ */
+type WinstonLike = {
+  createLogger: (opts: { level?: string; format?: unknown; transports?: unknown[] }) => unknown;
+  transports?:
+    | {
+        Console: new (...args: unknown[]) => unknown;
+        File: new (...args: unknown[]) => unknown;
+      }
+    | undefined;
+  format?:
+    | {
+        combine: (...args: unknown[]) => unknown;
+        timestamp: () => unknown;
+        printf: (fn: (...args: unknown[]) => string) => unknown;
+        json: () => unknown;
+      }
+    | undefined;
+};
+
+/**
+ * Builds the human-readable `[timestamp] [LEVEL]: message {meta}` format
+ * shared by the terminal's Console transport and the `__TEST_WINSTON__` test
+ * hook — previously duplicated verbatim in both places. Takes a winston-shaped
+ * `format` module rather than a whole `WinstonLike`, since that's all either
+ * caller actually has (the test hook doesn't provide `transports.File`).
+ */
+function buildConsoleFormat(format: NonNullable<WinstonLike["format"]>) {
+  return format.combine(
+    format.timestamp(),
+    format.printf((info: unknown) => {
+      const { timestamp, level, message, ...meta } = info as {
+        timestamp: string;
+        level: string;
+        message: string;
+        [key: string]: unknown;
+      };
+      const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
+      return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
+    }),
+  );
+}
+
+/**
+ * Builds the dev-only file transport that persists every structured log line
+ * — including the per-request `http_request_completed` event from
+ * withRequestLog.ts, so this file has real method/status/duration info, not
+ * just business events — to a gitignored `logs/dev.log` (`*.log` is already
+ * ignored, see .gitignore), so it survives after the terminal/process is
+ * gone. Skipped (returns null) outside development: Vercel's filesystem is
+ * ephemeral/read-only outside /tmp in production, and function logs are
+ * already captured by the platform there.
+ *
+ * This is a second winston transport, not a raw stdout/stderr tee — an
+ * earlier attempt at teeing raw streams also dragged in Next's own
+ * differently-formatted terminal output (ANSI codes, no structure) and
+ * triple-wrote lines when this module was loaded by more than one of Next's
+ * internal runtime bundles; a transport avoids both problems since it only
+ * ever receives this app's own already-structured winston log events, once.
+ *
+ * The file gets its own format — one JSON object per line (NDJSON), e.g.
+ * `{"timestamp":"...","level":"info","message":"...","event":"...",
+ * ...meta}` — deliberately different from the Console transport's
+ * human-readable text. `logEvent`/`logger.*` already pass `event` and every
+ * meta field as flat top-level properties on winston's own log call, so
+ * `format.json()` needs no other change to produce this shape. This is
+ * forward-compatible with feeding a real log pipeline (Filebeat/Logstash
+ * into Kibana, Datadog, CloudWatch, etc.) later — those all ingest
+ * newline-delimited JSON natively — without having to touch this file
+ * again; nothing is wired up to actually ship anywhere yet, this only
+ * shapes what's already being written locally.
+ *
+ * Rotation (maxsize/maxFiles/tailable) bounds unattended growth over a long
+ * dev session: once dev.log hits 5MB it rotates to dev1.log (tailable keeps
+ * the newest entries under the original filename rather than the oldest),
+ * and only the 2 most recent rotated files are kept — so this directory
+ * never holds more than ~15MB total.
+ */
+function createDevFileTransport(winston: WinstonLike): unknown | null {
+  if (process.env.NODE_ENV !== "development") return null;
+  try {
+    const nodeRequire = require as NodeRequire;
+    const fs = nodeRequire("fs") as typeof import("fs");
+    const path = nodeRequire("path") as typeof import("path");
+    const logDir = path.join(process.cwd(), "logs");
+    fs.mkdirSync(logDir, { recursive: true });
+    return new winston.transports!.File({
+      filename: path.join(logDir, "dev.log"),
+      format: winston.format!.combine(winston.format!.timestamp(), winston.format!.json()),
+      maxsize: 5 * 1024 * 1024,
+      maxFiles: 3,
+      tailable: true,
+    });
+  } catch (error) {
+    console.error("Failed to set up dev log file transport:", error);
+    return null;
+  }
+}
+
+/**
  * Loads Winston on actual server runtime only, never during build/SSR — uses a
  * function-based check that can't be statically analyzed by bundlers.
  */
@@ -60,36 +163,12 @@ const initializeServerLogger = () => {
     }
 
     // Test hook: if a test provides a global winston mock, use that
-    type WinstonLike = {
-      createLogger: (opts: { level?: string; format?: unknown; transports?: unknown[] }) => unknown;
-      transports?: { Console: new (...args: unknown[]) => unknown } | undefined;
-      format?:
-        | {
-            combine: (...args: unknown[]) => unknown;
-            timestamp: () => unknown;
-            printf: (fn: (...args: unknown[]) => string) => unknown;
-          }
-        | undefined;
-    };
-
     const testWinston = (globalThis as unknown as Record<string, unknown>)?.__TEST_WINSTON__ as
       WinstonLike | undefined;
     if (testWinston) {
       const logger = testWinston.createLogger({
         level: "info",
-        format: testWinston.format!.combine(
-          testWinston.format!.timestamp(),
-          testWinston.format!.printf((info: unknown) => {
-            const { timestamp, level, message, ...meta } = info as {
-              timestamp: string;
-              level: string;
-              message: string;
-              [key: string]: unknown;
-            };
-            const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
-            return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
-          }),
-        ),
+        format: buildConsoleFormat(testWinston.format!),
         transports: [new testWinston.transports!.Console()],
       });
       loggerInstance = logger as unknown as LoggerInstance;
@@ -107,22 +186,16 @@ const initializeServerLogger = () => {
       ) => setTimeout(fn, 0, ...args);
     }
 
+    const transports: unknown[] = [
+      new winston.transports!.Console({ format: buildConsoleFormat(winston.format!) }),
+    ];
+
+    const devFileTransport = createDevFileTransport(winston);
+    if (devFileTransport) transports.push(devFileTransport);
+
     const logger = winston.createLogger({
       level: "info",
-      format: winston.format!.combine(
-        winston.format!.timestamp(),
-        winston.format!.printf((info: unknown) => {
-          const { timestamp, level, message, ...meta } = info as {
-            timestamp: string;
-            level: string;
-            message: string;
-            [key: string]: unknown;
-          };
-          const metaString = Object.keys(meta).length ? JSON.stringify(meta) : "";
-          return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
-        }),
-      ),
-      transports: [new winston.transports!.Console()],
+      transports,
     });
 
     loggerInstance = logger as unknown as LoggerInstance;

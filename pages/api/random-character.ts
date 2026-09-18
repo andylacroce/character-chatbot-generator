@@ -5,7 +5,9 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
+import { pickRandomCharacterName } from "../../src/utils/pickRandomCharacterName";
 import characterNames from "../../src/data/characterNames";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 // Track names shown this server session to avoid repetition
 const recentNames: string[] = [];
@@ -37,7 +39,7 @@ const MAX_RECENT_NAMES = 100;
  *       405:
  *         description: Method not allowed
  */
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     logEvent(
       "warn",
@@ -50,14 +52,12 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const available = characterNames.filter((name) => !recentNames.includes(name));
-
   if (available.length === 0) {
-    // All names have been shown — reset and use the full list
+    // All names have been shown — reset and start a fresh no-repeat cycle
     recentNames.length = 0;
-    available.push(...characterNames);
   }
 
-  const chosen = available[Math.floor(Math.random() * available.length)];
+  const chosen = pickRandomCharacterName(recentNames);
   recentNames.push(chosen);
   while (recentNames.length > MAX_RECENT_NAMES) recentNames.shift();
 
@@ -67,10 +67,11 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     "Random character generated",
     sanitizeLogMeta({
       chosen,
-      availableCount: available.length,
       recentNamesCount: recentNames.length,
     }),
   );
 
   res.status(200).json({ name: chosen });
 }
+
+export default withRequestLog(handler);

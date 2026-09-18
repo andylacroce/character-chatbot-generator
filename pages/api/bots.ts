@@ -13,6 +13,7 @@ import { sanitizeCharacterName } from "../../src/utils/security";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { getCurrentEnvironment } from "../../src/utils/environment";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP. */
 const botsRateLimit = createRateLimiter({
@@ -98,7 +99,7 @@ const botsRateLimit = createRateLimiter({
  *       500:
  *         description: Failed to list characters
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(botsRateLimit, req, res))) return;
 
   if (req.method !== "POST" && req.method !== "GET") {
@@ -177,3 +178,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: "Failed to save character" });
   }
 }
+
+export default withRequestLog(handler);

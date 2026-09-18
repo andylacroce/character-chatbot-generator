@@ -8,6 +8,7 @@ import type { Bot } from "../../../../app/components/BotCreator";
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
 jest.mock("next-auth/react", () => ({
   useSession: () => ({ data: null, status: "unauthenticated" }),
+  getProviders: () => Promise.resolve({}),
 }));
 
 jest.mock("../../../../app/components/useAudioPlayer", () => {
