@@ -126,11 +126,11 @@ function GamePage() {
             </p>
           ) : (
             <p className={styles.startSubhead}>
-              You&apos;ll be chatting with a real character. As you talk, they&apos;ll start
-              steering the conversation toward someone else entirely, and your job is to figure out
-              who. Type your guess right in the chat. Guess right and that person joins the chat
-              next, continuing the chain. One wrong guess is forgiven per person, but a second ends
-              the run.
+              You&apos;ll start out chatting with a named character, no mystery there. As you talk,
+              they&apos;ll start steering the conversation toward someone else entirely, and your
+              job is to figure out who. Type your guess right in the chat. Guess right and that
+              person joins the chat next, continuing the chain. One wrong guess is forgiven per
+              person, but a second ends the run.
             </p>
           )}
           <button
