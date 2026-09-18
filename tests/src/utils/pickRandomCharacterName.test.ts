@@ -1,11 +1,12 @@
+import crypto from "crypto";
 import { pickRandomCharacterName } from "../../../src/utils/pickRandomCharacterName";
 import characterNames from "../../../src/data/characterNames";
 
 describe("pickRandomCharacterName", () => {
-  const originalRandom = Math.random;
+  const originalRandomInt = crypto.randomInt;
 
   afterEach(() => {
-    Math.random = originalRandom;
+    crypto.randomInt = originalRandomInt;
   });
 
   it("with no exclusions, returns a name that's actually in the list", () => {
@@ -26,17 +27,17 @@ describe("pickRandomCharacterName", () => {
     }
   });
 
-  it("lands on a specific index outside the excluded set when Math.random is fixed", () => {
+  it("lands on a specific index outside the excluded set when randomInt is fixed", () => {
     const excluded = [characterNames[0]];
     const available = characterNames.filter((n) => n !== characterNames[0]);
 
-    // Force Math.random to select index 0 of the *available* (post-filter) pool.
-    Math.random = jest.fn(() => 0);
+    // Force randomInt to select index 0 of the *available* (post-filter) pool.
+    crypto.randomInt = jest.fn(() => 0) as unknown as typeof crypto.randomInt;
     const first = pickRandomCharacterName(excluded);
     expect(first).toBe(available[0]);
 
-    // Force Math.random to select the last index of the available pool.
-    Math.random = jest.fn(() => 1 - Number.EPSILON);
+    // Force randomInt to select the last index of the available pool.
+    crypto.randomInt = jest.fn(() => available.length - 1) as unknown as typeof crypto.randomInt;
     const last = pickRandomCharacterName(excluded);
     expect(last).toBe(available[available.length - 1]);
   });
@@ -47,8 +48,8 @@ describe("pickRandomCharacterName", () => {
     expect(characterNames).toContain(name);
   });
 
-  it("falls back to the full list with a fixed Math.random when everything is excluded", () => {
-    Math.random = jest.fn(() => 0);
+  it("falls back to the full list with a fixed randomInt when everything is excluded", () => {
+    crypto.randomInt = jest.fn(() => 0) as unknown as typeof crypto.randomInt;
     const name = pickRandomCharacterName(characterNames);
     expect(name).toBe(characterNames[0]);
   });

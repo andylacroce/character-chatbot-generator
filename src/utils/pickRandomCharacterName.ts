@@ -5,6 +5,7 @@
  * concerns and must not share state.
  */
 
+import { randomInt } from "crypto";
 import characterNames from "../data/characterNames";
 
 /**
@@ -16,5 +17,5 @@ export function pickRandomCharacterName(excludeNames: string[] = []): string {
   const excludeSet = new Set(excludeNames.map((name) => name.toLowerCase()));
   const available = characterNames.filter((name) => !excludeSet.has(name.toLowerCase()));
   const pool = available.length > 0 ? available : characterNames;
-  return pool[Math.floor(Math.random() * pool.length)];
+  return pool[randomInt(pool.length)];
 }
