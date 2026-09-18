@@ -14,6 +14,8 @@ pages/api/           # API routes (chat, audio, health, transcript)
    bots.ts            # List/persist a signed-in user's characters (optional)
    messages.ts        # List a signed-in user's chat history for one character (optional)
    admin/stats.ts     # Admin-only aggregate usage stats (optional, see Internal Analytics)
+   admin/allowlist.ts, admin/blocklist.ts, admin/warnings.ts # Admin-only copyright moderation (see Copyright Protection)
+   game/start.ts, game/message.ts, game/give-up.ts # Guessing game (see Guessing Game)
 src/
    utils/             # Utilities (TTS, logger, cache, security)
    types/             # TypeScript type definitions
@@ -31,7 +33,8 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 ## Key Features
 
 - **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with streaming responses and conversation summarization
-- **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions
+- **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions, backed by a permanent allow/block list and an admin-only `/admin/moderation` panel
+- **Guessing Game**: A second mode at `/game` — chat with a named character who steers the conversation toward a different, hidden figure; guesses go in the same chat box (no separate control), a correct one promotes that figure to your new chat partner, and the streak keeps building — see [Guessing Game](#guessing-game-game)
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
 - **Avatar Generation**: Claude generates a detailed image prompt; a free image provider renders the portrait — Cloudflare Workers AI (Flux Schnell) first, falling back to Pollinations.ai if it's unconfigured or fails — returned as a base64 data URL (or a durable Vercel Blob URL, if configured)
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 20 messages, with a rolling summary checkpoint for signed-in users so long conversations stay cheap
@@ -272,6 +275,28 @@ generated once for it to show up here for everyone.
   portrait and casing instead of generating a near-duplicate — Claude checks new names
   against a sample of existing ones as part of the personality-generation call it's
   already making, so this costs no extra API round trip.
+
+## Guessing Game (`/game`)
+
+A second mode alongside ordinary chat: a "guess who" chain game, no sign-in required.
+
+- **How it works**: you start a run in a normal-feeling chat with a real, named character
+  (revealed — name and avatar shown just like any other chat). That character steers the
+  conversation toward a *different, hidden* figure it has in mind, and your job is to
+  figure out who. There's no separate guess control — type both ordinary questions and
+  guesses into the same box; the server classifies which is which on every turn, and asks
+  you to confirm when it's genuinely unclear rather than guessing on your behalf.
+- **Scoring**: one wrong guess per hidden figure is forgiven; a second ends the run. A
+  correct guess reveals the answer and holds on a "Continue" button before that figure
+  becomes your new chat partner — continuing the chain and building a streak. Give up
+  anytime, via the menu or by typing it directly into the chat ("I give up"), and you're
+  always told the answer.
+- **No database required**: the round's state (including the still-hidden figure's name)
+  lives entirely in an encrypted token your browser holds and echoes back on every
+  request — guest play needs zero server-side session storage.
+- **Audio parity with ordinary chat**: every reply gets the same Google TTS voice
+  response as a normal conversation.
+- **Not yet built**: a public, opt-in cross-user leaderboard of best streaks.
 
 ## Personalized Greeting
 
