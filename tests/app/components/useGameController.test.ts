@@ -224,6 +224,25 @@ describe("useGameController", () => {
     expect(result.current.lastEvent).toBeNull();
   });
 
+  it("sendMessage sets giveUpRequested when the server detects a give-up request, without appending a reply", async () => {
+    const { result } = await startedHook();
+
+    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ giveUpRequested: true }));
+
+    act(() => result.current.setInput("I give up"));
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+
+    expect(result.current.giveUpRequested).toBe(true);
+    // The player's own message is still shown, but no bot reply is appended for this turn.
+    expect(result.current.messages.some((m) => m.text === "I give up")).toBe(true);
+    expect(result.current.messages).toHaveLength(2);
+
+    act(() => result.current.clearGiveUpRequest());
+    expect(result.current.giveUpRequested).toBe(false);
+  });
+
   it("sendMessage advances the round and updates state on a correct guess", async () => {
     const { result } = await startedHook();
 

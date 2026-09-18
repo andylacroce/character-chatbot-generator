@@ -11,6 +11,9 @@
  *   they become the new chat partner (a fresh hidden target is picked for them).
  * - A clear, incorrect guess: a first miss is tolerated; a second ends the run and
  *   reveals the hidden figure.
+ * - An explicit request to give up (typed into the same box, not just the menu's Give
+ *   Up button): no reply is generated for this turn; the client shows its own give-up
+ *   confirmation and, once confirmed, calls /game/give-up as usual.
  *
  * Audio is synthesized for every reply the same way ordinary chat does, so the game has
  * audio parity with the main app. No streaming, and no server-side message persistence
@@ -45,17 +48,17 @@ const gameMessageRateLimit = createRateLimiter({
 /**
  * Classifies the player's latest message against the hidden `nextCharacterName`:
  * whether it's a clear guess attempt (and if so, whether it's correct), an ambiguous
- * one, or not a guess at all. Recent conversation is included so a short follow-up like
- * "yes" can be interpreted against an earlier exchange (e.g. the character asking the
- * player to confirm what they mean). Fails closed to "none" on any error, so a
- * classifier hiccup degrades to "treat it as an ordinary question" rather than ever
- * falsely ending or advancing the game.
+ * one, an explicit request to give up, or not a guess at all. Recent conversation is
+ * included so a short follow-up like "yes" can be interpreted against an earlier
+ * exchange (e.g. the character asking the player to confirm what they mean). Fails
+ * closed to "none" on any error, so a classifier hiccup degrades to "treat it as an
+ * ordinary question" rather than ever falsely ending or advancing the game.
  */
 async function classifyGuess(
   nextCharacterName: string,
   message: string,
   conversationHistory: string[],
-): Promise<{ status: "clear" | "ambiguous" | "none"; correct: boolean }> {
+): Promise<{ status: "clear" | "ambiguous" | "none" | "giveUp"; correct: boolean }> {
   try {
     const recentHistory = conversationHistory.slice(-6).join("\n");
     const response = await anthropic.messages.create({
@@ -65,11 +68,12 @@ async function classifyGuess(
 Decide a "status":
 - "clear": the player names a specific person as their guess for who the hidden figure is — a full name, first name, nickname, alias, or an unambiguous descriptive identification (e.g. "the English king from the 11th century"). Even a single first name (like "Edward") counts as "clear" if it's offered as an identification rather than a question. Also include a direct confirmation like "yes" or "correct" directly following an earlier exchange where a specific candidate was already on the table. When in doubt between "clear" and "ambiguous", lean toward "clear" — a wrong guess that gets scored is part of the game, whereas bouncing specific candidate names back to "ambiguous" makes the game feel broken and unresponsive.
 - "ambiguous": the message hedges ("I think it might be", "could it be", "I'm guessing") or asks a question about whether it's a specific person ("is it X?", "would it be X?") rather than stating a definitive identification. The player hasn't committed to a guess. This rule takes precedence over the "lean toward clear" tie-break above — a literal "is it X?" is always ambiguous, no exceptions, even when X is a specific, confident-sounding name. The tie-break only applies to a hedged-but-specific statement (e.g. "I think it might be Edward"), never to a yes/no question.
-- "none": an ordinary question or comment, not a guess attempt at all (e.g. "Tell me about your work" or "What era are you from?").
+- "giveUp": the player explicitly wants to end the run and be told the answer, without naming any candidate — "I give up", "I quit", "I have no idea, just tell me", "reveal it", "let's end this one". This is distinct from asking for a hint or a clue ("give me a hint", "can I get a clue") — those are ordinary requests the character can respond to in character, not a give-up.
+- "none": an ordinary question or comment, not a guess attempt or a give-up (e.g. "Tell me about your work", "What era are you from?", or "Give me a hint").
 
 If status is "clear", also decide "correct": whether the identification actually matches the hidden character. Accept nicknames, aliases, translations, epithets/titles, and unambiguous descriptions of that same individual, not just an exact name match. But be strict about identity: a guess is only "correct" if it names the literal same individual as the hidden character. Two different people or characters are never a match just because they're closely related — family members, rivals, foils, or other characters from the same story, play, myth, or historical event are each a distinct wrong answer. For example, if the hidden character is "Laertes", a guess of "Hamlet" is incorrect even though they appear in the same play — Hamlet is a different character. If status is not "clear", set "correct" to false.
 
-Return ONLY valid JSON: {"status": "clear" | "ambiguous" | "none", "correct": boolean}`,
+Return ONLY valid JSON: {"status": "clear" | "ambiguous" | "none" | "giveUp", "correct": boolean}`,
       messages: [
         {
           role: "user",
@@ -84,7 +88,9 @@ Return ONLY valid JSON: {"status": "clear" | "ambiguous" | "none", "correct": bo
     );
     const parsed = JSON.parse(content);
     const status =
-      parsed.status === "clear" || parsed.status === "ambiguous" ? parsed.status : "none";
+      parsed.status === "clear" || parsed.status === "ambiguous" || parsed.status === "giveUp"
+        ? parsed.status
+        : "none";
     return { status, correct: status === "clear" && parsed.correct === true };
   } catch (err) {
     logEvent(
@@ -150,6 +156,13 @@ async function advanceToNextRound(revealedName: string, usedNames: string[]) {
  *             schema:
  *               type: object
  *               properties:
+ *                 giveUpRequested:
+ *                   type: boolean
+ *                   description: >
+ *                     Set when the player asked to give up via chat rather than via the
+ *                     menu's Give Up button. No reply/audio is generated for this turn;
+ *                     the client shows its own give-up confirmation instead, then calls
+ *                     /game/give-up to actually end the run.
  *                 reply:
  *                   type: string
  *                 audioFileUrl:
@@ -219,6 +232,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     const classification = await classifyGuess(state.nextCharacterName, message, history);
+
+    if (classification.status === "giveUp") {
+      logEvent("info", "game_give_up_requested_via_chat", "Player asked to give up via chat");
+      res.status(200).json({ giveUpRequested: true });
+      return;
+    }
 
     if (classification.status !== "clear") {
       const reply = await getGameReply(

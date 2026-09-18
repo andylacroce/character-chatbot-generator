@@ -15,6 +15,7 @@ const mockQuitGame = jest.fn();
 const mockGiveUp = jest.fn();
 const mockSendMessage = jest.fn();
 const mockContinueRound = jest.fn();
+const mockClearGiveUpRequest = jest.fn();
 const mockHandleKeyDown = jest.fn();
 const mockHandleAudioToggle = jest.fn();
 const mockStopAudio = jest.fn();
@@ -42,6 +43,8 @@ function baseController(overrides: Record<string, unknown> = {}) {
     lastEvent: null,
     awaitingContinue: false,
     continueRound: mockContinueRound,
+    giveUpRequested: false,
+    clearGiveUpRequest: mockClearGiveUpRequest,
     chatBoxRef: { current: null },
     inputRef: { current: null },
     audioEnabled: true,
@@ -140,6 +143,17 @@ describe("GamePage", () => {
     fireEvent.click(screen.getByText("Cancel"));
     expect(screen.queryByText("Give up this run?")).not.toBeInTheDocument();
     expect(mockGiveUp).not.toHaveBeenCalled();
+  });
+
+  it("opens the give-up confirmation when the server detects a give-up request typed in chat", () => {
+    controllerState = baseController({
+      started: true,
+      currentCharacterName: "Sherlock Holmes",
+      giveUpRequested: true,
+    });
+    render(<GamePage />);
+    expect(screen.getByText("Give up this run?")).toBeInTheDocument();
+    expect(mockClearGiveUpRequest).toHaveBeenCalled();
   });
 
   it("reopens the instructions modal from the menu", () => {

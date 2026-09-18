@@ -43,6 +43,8 @@ function GamePage() {
     lastEvent,
     awaitingContinue,
     continueRound,
+    giveUpRequested,
+    clearGiveUpRequest,
     chatBoxRef,
     inputRef,
     audioEnabled,
@@ -78,6 +80,18 @@ function GamePage() {
     setShowInstructions(false);
     storage.setItem(STORAGE_KEYS.gameInstructionsSeen, "true");
   }, []);
+
+  // The server also detects a give-up intent typed directly into the chat (e.g. "I give
+  // up"), not just the menu's Give Up button — either path opens this same confirmation
+  // dialog rather than ending the run unconfirmed.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  React.useEffect(() => {
+    if (giveUpRequested) {
+      setShowGiveUpConfirmation(true);
+      clearGiveUpRequest();
+    }
+  }, [giveUpRequested, clearGiveUpRequest]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // "Back to Home" ends the run rather than leaving a stale in-progress token behind —
   // there's no separate "Quit" control elsewhere on this page.

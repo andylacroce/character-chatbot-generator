@@ -108,7 +108,7 @@ function makeGameState(overrides: Partial<GameStatePayload> = {}): GameStatePayl
   };
 }
 
-function mockClassification(status: "clear" | "ambiguous" | "none", correct = false) {
+function mockClassification(status: "clear" | "ambiguous" | "none" | "giveUp", correct = false) {
   mockCreate.mockResolvedValueOnce({
     content: [{ type: "text", text: JSON.stringify({ status, correct }) }],
   });
@@ -193,6 +193,25 @@ describe("game/message API", () => {
       "is it someone from London?",
       1,
       "maybe guessing",
+    );
+  });
+
+  it("signals giveUpRequested without generating a reply when the message is a give-up request", async () => {
+    mockClassification("giveUp");
+
+    const handler = require("../../../../pages/api/game/message").default;
+    const req = makeReq({ gameToken: token, message: "I give up, just tell me" });
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ giveUpRequested: true });
+    expect(mockGetGameReply).not.toHaveBeenCalled();
+    expect(mockGetGuessReactionReply).not.toHaveBeenCalled();
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      "info",
+      "game_give_up_requested_via_chat",
+      expect.any(String),
     );
   });
 

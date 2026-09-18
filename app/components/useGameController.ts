@@ -98,6 +98,11 @@ export function useGameController() {
   // holding it back until the player clicks "Continue" rather than switching partners
   // instantly — see continueRound below.
   const [pendingAdvance, setPendingAdvance] = useState<PendingRoundAdvance | null>(null);
+  // Set when the server classifies a chat message as an explicit give-up request (see
+  // pages/api/game/message.ts) rather than an ordinary question or guess — GamePage.tsx
+  // watches this to open its existing give-up confirmation dialog, the same one the
+  // hamburger menu's "Give Up" button opens.
+  const [giveUpRequested, setGiveUpRequested] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -230,6 +235,7 @@ export function useGameController() {
       ]);
       setRoundStartIndex(0);
       setPendingAdvance(null);
+      setGiveUpRequested(false);
     } catch (e) {
       const msg = "Failed to start a new game. Please try again.";
       setError(msg);
@@ -259,6 +265,7 @@ export function useGameController() {
     setMessages([]);
     setRoundStartIndex(0);
     setPendingAdvance(null);
+    setGiveUpRequested(false);
     setLastEvent(null);
     setError("");
   }, [stopAudio]);
@@ -338,6 +345,12 @@ export function useGameController() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+
+      if (data.giveUpRequested) {
+        setGiveUpRequested(true);
+        return;
+      }
+
       if (typeof data.reply !== "string" || !data.reply) {
         throw new Error("Invalid response from /api/game/message");
       }
@@ -438,6 +451,9 @@ export function useGameController() {
     setLastEvent(null);
   }, [pendingAdvance]);
 
+  /** Dismisses a pending chat-detected give-up request once GamePage has acted on it. */
+  const clearGiveUpRequest = useCallback(() => setGiveUpRequested(false), []);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && !loading && input.trim()) {
@@ -463,6 +479,8 @@ export function useGameController() {
     lastEvent,
     awaitingContinue: pendingAdvance !== null,
     continueRound,
+    giveUpRequested,
+    clearGiveUpRequest,
     chatBoxRef,
     inputRef,
     audioEnabled,
