@@ -293,6 +293,11 @@ export function useGameController() {
     if (!input.trim() || !gameToken || loading) return;
     const userMessage: Message = { sender: "User", text: input };
     const previousCharacterName = currentCharacterName;
+    // Captured before roundStartIndex is used to slice the current round's history below —
+    // the NEXT round's roundStartIndex must be an absolute index into the full `messages`
+    // array, not a length relative to the current round's own slice (see the `correct`
+    // branch below for why this distinction matters).
+    const oldMessagesLength = messages.length;
     const historyForServer = messages.slice(roundStartIndex);
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
@@ -333,7 +338,14 @@ export function useGameController() {
               ]
             : withReaction;
         });
-        setRoundStartIndex(historyForServer.length + 2);
+        // Bug fix: this must be an absolute index into the full `messages` array
+        // (oldMessagesLength + 2), not historyForServer.length + 2 — that length is
+        // relative to the CURRENT round's own slice, and only happened to equal the
+        // absolute index on the very first round switch (round 1 -> 2, where
+        // roundStartIndex started at 0). From round 2 onward the relative version
+        // pointed too far back, leaking the prior round's own trailing Q&A/guess/
+        // reaction into the next round's conversationHistory sent to the server.
+        setRoundStartIndex(oldMessagesLength + 2);
         setGameToken(data.gameToken);
         setCurrentCharacterName(data.currentCharacterName);
         setAvatarUrl(data.avatarUrl || "/silhouette.svg");

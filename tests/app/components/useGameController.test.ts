@@ -261,6 +261,81 @@ describe("useGameController", () => {
     expect(result.current.messages.some((m) => m.text === "Hello, dear player.")).toBe(true);
   });
 
+  it("sendMessage excludes prior rounds' trailing messages from the next round's server-side history", async () => {
+    // Regression test: roundStartIndex must be computed from the FULL messages array
+    // length, not from the current round's slice length — otherwise a round switch
+    // from round 2 onward leaks the prior round's tail (its own Q&A, guess, and
+    // reaction) into the next round's conversationHistory. This only coincided with
+    // correct behavior on the very first round switch (round 1 -> 2), since
+    // roundStartIndex started at 0 there.
+    const { result } = await startedHook();
+
+    // Round 1: one ordinary exchange.
+    mockAuthenticatedFetch.mockResolvedValueOnce(
+      mockResponse({ reply: "I've solved many cases." }),
+    );
+    act(() => result.current.setInput("What's your favorite case?"));
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+
+    // Round 1 -> 2: correct guess.
+    mockAuthenticatedFetch.mockResolvedValueOnce(
+      mockResponse({
+        reply: "Brilliant, you got it!",
+        nextReply: "Hello, dear player.",
+        correct: true,
+        gameOver: false,
+        revealedName: "Irene Adler",
+        currentCharacterName: "Irene Adler",
+        streak: 1,
+        gameToken: "token-2",
+      }),
+    );
+    act(() => result.current.setInput("It's Irene Adler!"));
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+
+    // Round 2: one ordinary exchange.
+    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ reply: "Ask away, darling." }));
+    act(() => result.current.setInput("Tell me about yourself"));
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+
+    // Round 2 -> 3: correct guess again.
+    mockAuthenticatedFetch.mockResolvedValueOnce(
+      mockResponse({
+        reply: "Yes, exactly!",
+        nextReply: "Greetings once more.",
+        correct: true,
+        gameOver: false,
+        revealedName: "Watson",
+        currentCharacterName: "Watson",
+        streak: 2,
+        gameToken: "token-3",
+      }),
+    );
+    act(() => result.current.setInput("It's Watson!"));
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+
+    // Round 3: one ordinary exchange — its conversationHistory must contain ONLY
+    // round 3's own greeting, never round 1/2's leftover Q&A/guess/reaction.
+    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ reply: "Elementary, my dear." }));
+    act(() => result.current.setInput("Anything to add, Watson?"));
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+
+    const lastCall =
+      mockAuthenticatedFetch.mock.calls[mockAuthenticatedFetch.mock.calls.length - 1];
+    const lastBody = JSON.parse(lastCall[1].body);
+    expect(lastBody.conversationHistory).toEqual(["Bot: Greetings once more."]);
+  });
+
   it("sendMessage tolerates a first wrong guess and keeps the run going", async () => {
     const { result } = await startedHook();
 
