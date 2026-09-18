@@ -14,6 +14,7 @@ import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
 import anthropic from "../../src/utils/anthropicClient";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 // Note: deterministic serialization is implemented in pages/api/chat.ts where it's used for audio URL encoding.
 
@@ -474,4 +475,4 @@ async function handler(
   res.send(audioContent);
 }
 
-export default handler;
+export default withRequestLog(handler);

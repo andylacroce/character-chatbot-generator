@@ -78,6 +78,16 @@ export function createRateLimiter({
     store: createRateLimitStore(name),
     passOnStoreError: true,
     logger: rateLimitLogger,
+    // express-rate-limit's default handler sends the response but never calls
+    // `next`, so applyRateLimit's `await new Promise(...)` below never resolves
+    // on a real denial — the response still reaches the client fine (it's sent
+    // here directly), but the code after that await, including the
+    // rate_limit_exceeded log call, would otherwise never run. Replicate the
+    // default response and call `next` so that code executes.
+    handler: (req, res, next, options) => {
+      res.status(options.statusCode).send(options.message);
+      next();
+    },
   });
   // Stashed so applyRateLimit can log a rate_limit_exceeded event with the route
   // name, without every call site having to pass it through separately.

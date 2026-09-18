@@ -9,12 +9,29 @@
 // see authOptions.ts's prod/preview swap), that step is skipped entirely and
 // it signs in immediately as a fixed test identity with no prompt, since it's
 // a smoke-test aid, not a real login.
+//
+// Signing in AND signing out both always redirect to "/" (callbackUrl),
+// regardless of which page triggered them — this control (and SignInModal,
+// which this component opens) is now reachable from the chat and game
+// headers too (see useAccountMenu.tsx), and NextAuth's own default (redirect
+// back to the current URL) would otherwise drop a visitor back into the
+// middle of a chat/game session after signing in or out, rather than
+// somewhere that makes sense either way.
+//
+// callbackUrl: "/" alone isn't enough, though: app/index.tsx's Home component
+// renders ChatPage instead of the landing page whenever a bot session is still
+// in localStorage, regardless of navigation intent — so landing on "/" after
+// signing in/out would still show whatever chat was already open. clearStoredBot()
+// (called here, and by SignInModal's Google button, before the redirect actually
+// fires) clears that session pointer first, the same cleanup "Back to Character
+// Creator" already does, so "/" reliably renders the actual landing page.
 // =============================
 
 import React, { useEffect, useState } from "react";
 import { useSession, signIn, signOut, getProviders } from "next-auth/react";
 import { FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
 import SignInModal from "./SignInModal";
+import { clearStoredBot } from "../../src/utils/getValidBotFromStorage";
 import styles from "./styles/AuthControl.module.css";
 
 interface AuthControlProps {
@@ -52,7 +69,8 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "", onRequestSign
   const handleSignIn = () => {
     if (!providerIds || providerIds.length === 0) return;
     if (providerIds.includes(PREVIEW_STUB_PROVIDER_ID)) {
-      signIn(PREVIEW_STUB_PROVIDER_ID, { email: PREVIEW_STUB_TEST_EMAIL });
+      clearStoredBot();
+      signIn(PREVIEW_STUB_PROVIDER_ID, { email: PREVIEW_STUB_TEST_EMAIL, callbackUrl: "/" });
       return;
     }
     if (onRequestSignIn) {
@@ -70,9 +88,12 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "", onRequestSign
         type="button"
         className={`${className} ${styles.signOutButton}`.trim()}
         aria-label="Sign out"
-        onClick={() => signOut()}
+        onClick={() => {
+          clearStoredBot();
+          signOut({ callbackUrl: "/" });
+        }}
       >
-        <FaSignOutAlt size={16} className={styles.icon} />
+        <FaSignOutAlt size={18} className={`menuIcon ${styles.icon}`} />
         <span className={styles.nameLabel}>
           {/* Magic-link users have no `name` (Email provider only ever knows the
               address) — fall back to email so a signed-in state always shows who
@@ -94,7 +115,7 @@ const AuthControl: React.FC<AuthControlProps> = ({ className = "", onRequestSign
         onClick={handleSignIn}
         disabled={!providerIds || providerIds.length === 0}
       >
-        <FaSignInAlt size={16} className={styles.icon} />
+        <FaSignInAlt size={18} className={`menuIcon ${styles.icon}`} />
         <span className={styles.signInLabel}>Sign in</span>
       </button>
       {!onRequestSignIn && (

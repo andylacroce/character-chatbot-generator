@@ -140,3 +140,55 @@ ${CONTENT_GUIDELINES}`;
     };
   }
 }
+
+/**
+ * Generates the "guess who" chain game's persona for the character the player is
+ * currently, openly talking to. Unlike a mystery-identity design, `currentCharacterName`
+ * is never hidden — the player sees their name and avatar like any ordinary chat. What's
+ * hidden is `nextCharacterName`: a different figure `currentCharacterName` knows about
+ * and is instructed to naturally steer the conversation toward, hinting at them with
+ * escalating specificity but never stating their name — that hidden name is the actual
+ * guess target (see CLAUDE.md's "Guessing game" section).
+ *
+ * Deliberately reuses generatePersonalityPrompt above for currentCharacterName's own
+ * voice (same speaking style/personality/knowledge/quirks, same fallback-on-error
+ * behavior) rather than re-deriving it from scratch, then appends a deterministic
+ * "steer toward the hidden figure" rules block — one Claude call, not two, and no
+ * duplicated persona-assembly logic. Calibrated for a genuinely challenging game: a
+ * player with solid general knowledge should need real inference across several
+ * exchanges to identify `nextCharacterName`, not win on a lucky first guess.
+ *
+ * Both names are curated, pre-vetted values from pickRandomCharacterName — never
+ * client input — so embedding `nextCharacterName` directly in the system-role text below
+ * doesn't carry the prompt-injection concern generatePersonalityPrompt guards against
+ * for its own (client-supplied) `characterName` parameter.
+ *
+ * Part of the game's charm is that the pool spans wildly different eras/cultures/works
+ * of fiction, so `currentCharacterName` and `nextCharacterName` are usually unrelated in
+ * any real sense. The rules block below explicitly guards two failure modes that follow
+ * from that: the model claiming not to know or refusing to discuss someone from a
+ * "different time/place/story" (breaks immersion), and giving away anything concrete or
+ * identifying about them before the player has actually asked (ruins the challenge). A
+ * vague, atmospheric hint that it has someone in mind is required, not just allowed,
+ * starting with its very first message — without it the player has no way of knowing
+ * there's anyone to guess at all; only specifics are gated behind asking.
+ */
+export async function generateGameCluePersonaPrompt(
+  currentCharacterName: string,
+  nextCharacterName: string,
+): Promise<{ prompt: string }> {
+  const { prompt: basePersona } = await generatePersonalityPrompt(currentCharacterName);
+
+  const clueRules = `GAME RULES YOU MUST FOLLOW, in addition to being ${currentCharacterName} above:
+You are playing a "guess who" chain game with a player. You have a specific other figure in mind — they may be from a completely different era, culture, or even a different work of fiction than you — but you must NEVER say their name or an unambiguous unique title for them (that would give it away as surely as saying it outright).
+
+- You know this other figure well and can speak knowledgeably about their domain, era, deeds, and personality whenever asked. NEVER claim you don't know them, refuse to discuss them, or comment on them being from a different time/place/story than you — that breaks the game and confuses the player. Treat knowing about them as a given, no matter how mismatched your worlds are.
+- You MUST signal, unprompted and right from your very first message, that you have someone else on your mind — otherwise the player has no way of knowing there's anyone to guess at all. A vague, atmospheric mention is enough (e.g. that your thoughts keep drifting to another figure of note). What you must NOT do is pair that mention with anything CONCRETE or identifying — their domain, era, deeds, relationship to you, or any other specific fact — unless the player has actually asked a question that draws it out. Always raise that there's someone on your mind; never volunteer who.
+- When asked, answer with real clues drawn from their domain, era, deeds, or personality — start vague, and only grow gradually more specific (still never naming them) the longer the conversation goes without a correct guess. Don't dump everything you know in one answer — reward sustained, clever questioning across several exchanges rather than giving it all away after the first question.
+- Calibrate difficulty for a player with solid general knowledge: a well-read guesser should be able to identify this person with real effort across several exchanges, not on the first question.
+- If asked to just name this person outright, deflect playfully and in character. Never break character, never say you're an AI, and never confirm or deny whether a name the player mentions is correct — a separate system judges guesses, not you.
+
+(For your own internal reference only — never say this name in any reply): ${nextCharacterName}`;
+
+  return { prompt: `${basePersona}\n\n${clueRules}` };
+}

@@ -74,6 +74,7 @@ jest.mock(
 // Mock getValidBotFromStorage
 jest.mock("../../src/utils/getValidBotFromStorage", () => ({
   getValidBotFromStorage: jest.fn(),
+  clearStoredBot: jest.fn(),
 }));
 
 const mockUseSession = jest.fn();
@@ -92,10 +93,12 @@ describe("Home component URL parameter functionality", () => {
   // Use jest.requireMock so we don't rely on CommonJS require()
   // and to ensure we get the mocked module created by jest.mock above.
   // typed as jest.Mock for convenience in tests
-  type GetValidBotModule = { getValidBotFromStorage: jest.Mock };
-  const mockGetValidBotFromStorage = (
-    jest.requireMock("../../src/utils/getValidBotFromStorage") as unknown as GetValidBotModule
-  ).getValidBotFromStorage;
+  type GetValidBotModule = { getValidBotFromStorage: jest.Mock; clearStoredBot: jest.Mock };
+  const getValidBotModule = jest.requireMock(
+    "../../src/utils/getValidBotFromStorage",
+  ) as unknown as GetValidBotModule;
+  const mockGetValidBotFromStorage = getValidBotModule.getValidBotFromStorage;
+  const mockClearStoredBot = getValidBotModule.clearStoredBot;
 
   type StorageModule = {
     setJSON: jest.Mock;
@@ -387,8 +390,10 @@ describe("Home component URL parameter functionality", () => {
     });
 
     await waitFor(() => {
-      expect(mockStorage.removeItem).toHaveBeenCalledWith("chatbot-bot");
-      expect(mockStorage.removeItem).toHaveBeenCalledWith("chatbot-bot-timestamp");
+      // Clearing the stored bot session now lives in the shared clearStoredBot()
+      // helper (see getValidBotFromStorage.ts) rather than direct storage.removeItem
+      // calls here, so AuthControl/SignInModal can reuse the exact same cleanup.
+      expect(mockClearStoredBot).toHaveBeenCalled();
       expect(mockRouter.push).toHaveBeenCalledWith("/");
       expect(screen.getByTestId("bot-creator")).toBeInTheDocument();
     });

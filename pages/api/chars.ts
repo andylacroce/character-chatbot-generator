@@ -12,6 +12,7 @@ import { getDb } from "../../src/db/client";
 import { avatarCache } from "../../src/db/schema";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 /** Rate limiter: 60 requests per minute per IP — higher than most since infinite scroll on the gallery fires one request per batch. */
 const charsRateLimit = createRateLimiter({
@@ -168,7 +169,7 @@ async function getAllCharacters(): Promise<CharacterEntry[]> {
  *       500:
  *         description: Failed to list characters
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(charsRateLimit, req, res))) return;
 
   if (req.method !== "GET") {
@@ -203,3 +204,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: "Failed to list characters" });
   }
 }
+
+export default withRequestLog(handler);

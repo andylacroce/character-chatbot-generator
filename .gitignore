@@ -22,12 +22,6 @@ coverage/
 .jest-cache/
 .jest-test-results.json
 
-# Test keys and local test artifacts
-/tests/api/fake-gcp-key.json
-
-# Voice cache (persistent storage for dynamic voice configs)
-.voice-cache/
-
 # TypeScript build info
 *.tsbuildinfo
 
@@ -51,7 +45,6 @@ tmp/
 *.bak
 
 # Public generated assets
-public/avatars/*
 public/openapi.json
 
 # Generated code-reference docs (TypeDoc) — see `npm run docs:code`

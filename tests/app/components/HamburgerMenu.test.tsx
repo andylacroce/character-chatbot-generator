@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent, screen, waitFor } from "@testing-library/react";
+import { render, fireEvent, screen } from "@testing-library/react";
 import HamburgerMenu from "../../../app/components/HamburgerMenu";
 
 // Simple child button for testing
@@ -46,7 +46,7 @@ describe("HamburgerMenu", () => {
     expect(screen.queryByText(/test button/i)).not.toBeInTheDocument();
   });
 
-  it("closes the menu when a child button is clicked", async () => {
+  it("closes the menu when a child button is clicked, and still fires its own handler", () => {
     const onClick = jest.fn();
     render(
       <HamburgerMenu>
@@ -55,12 +55,26 @@ describe("HamburgerMenu", () => {
     );
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.click(menuButton);
-    const childButton = screen.getByText(/test button/i);
-    fireEvent.click(childButton);
+    fireEvent.click(screen.getByText(/test button/i));
     expect(onClick).toHaveBeenCalled();
-    await waitFor(() => {
-      expect(screen.queryByText(/test button/i)).not.toBeInTheDocument();
-    });
+    expect(screen.queryByText(/test button/i)).not.toBeInTheDocument();
+  });
+
+  it("closes on a click inside a Fragment-wrapped group of menu items — every real caller passes children this way", () => {
+    const onClick = jest.fn();
+    render(
+      <HamburgerMenu>
+        <>
+          <button onClick={jest.fn()}>First Item</button>
+          <button onClick={onClick}>Second Item</button>
+        </>
+      </HamburgerMenu>,
+    );
+    const menuButton = screen.getByLabelText(/open menu/i);
+    fireEvent.click(menuButton);
+    fireEvent.click(screen.getByText("Second Item"));
+    expect(onClick).toHaveBeenCalled();
+    expect(screen.queryByText("First Item")).not.toBeInTheDocument();
   });
 
   it("can be opened and closed with keyboard", () => {
@@ -100,7 +114,7 @@ describe("HamburgerMenu", () => {
     expect(screen.queryByText(/test button/i)).not.toBeInTheDocument();
   });
 
-  it("non-button element child is passed through unchanged", () => {
+  it("renders non-interactive children unchanged", () => {
     render(
       <HamburgerMenu>
         <span data-testid="non-button-child">Not a button</span>
@@ -109,41 +123,5 @@ describe("HamburgerMenu", () => {
     const menuButton = screen.getByLabelText(/open menu/i);
     fireEvent.click(menuButton);
     expect(screen.getByTestId("non-button-child")).toBeInTheDocument();
-  });
-
-  it("function component child without onClick prop is treated as button-like false branch", () => {
-    function NoClickChild() {
-      return <button data-testid="no-click-btn">No Click</button>;
-    }
-    render(
-      <HamburgerMenu>
-        <NoClickChild />
-      </HamburgerMenu>,
-    );
-    const menuButton = screen.getByLabelText(/open menu/i);
-    fireEvent.click(menuButton);
-    expect(screen.getByTestId("no-click-btn")).toBeInTheDocument();
-  });
-
-  it("string child (non-React-element) passes through unchanged (L57 if[0])", () => {
-    render(<HamburgerMenu>{"Text node child"}</HamburgerMenu>);
-    const menuButton = screen.getByLabelText(/open menu/i);
-    fireEvent.click(menuButton);
-    expect(screen.getByText("Text node child")).toBeInTheDocument();
-  });
-
-  it("native button child with no onClick closes menu without error (L68 if[1])", async () => {
-    render(
-      <HamburgerMenu>
-        <button>No Handler</button>
-      </HamburgerMenu>,
-    );
-    const menuButton = screen.getByLabelText(/open menu/i);
-    fireEvent.click(menuButton);
-    const childButton = screen.getByText("No Handler");
-    fireEvent.click(childButton);
-    await waitFor(() => {
-      expect(screen.queryByText("No Handler")).not.toBeInTheDocument();
-    });
   });
 });

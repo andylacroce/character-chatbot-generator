@@ -168,6 +168,27 @@ export function useBotCreation(onBotCreated: (bot: Bot) => void, userNameCtx: Us
           return;
         }
 
+        // A previously-cached, previously-public character that just got flagged as a
+        // copyright "warning" is scrubbed server-side and hard-stopped here — no
+        // "Continue Anyway" modal, since continuing would just regenerate the exact
+        // name that was just removed. Deliberately more conservative than the ordinary
+        // warningLevel flow below, same non-overridable shape as `blocked` above.
+        if (validation.scrubbed) {
+          setError("This character is no longer available. Please choose a different name.");
+          setValidating(false);
+          if (typeof window !== "undefined") {
+            logEvent(
+              "warn",
+              "bot_validation_scrubbed",
+              "Character removed from cache after failing re-validation",
+              sanitizeLogMeta({
+                characterName: input.trim(),
+              }),
+            );
+          }
+          return;
+        }
+
         // If character has warning or caution level, show modal
         if (validation.warningLevel === "warning" || validation.warningLevel === "caution") {
           setValidationResult(validation);

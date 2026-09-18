@@ -1,0 +1,292 @@
+/* =============================
+   AdminModeration.module.css
+   - Layout for the internal /admin/moderation view (allowlist + blocklist, managed
+     together on one page). The page shell/section/table rules below (.page, .header,
+     .title, .state, .section, .sectionTitle, .table) are reproduced from
+     AdminStats.module.css rather than imported cross-module, so this page's look
+     stays consistent with the other admin screen without coupling the two
+     stylesheets — same precedent as CharsPage.module.css's own .ghostIcon/.ghostAuth
+     comment.
+   ============================= */
+
+.page {
+  padding: 2.5rem clamp(1.5rem, 2.5vw, 4rem) 4rem;
+  font-family: var(--font-primary), sans-serif;
+  color: var(--color-text);
+}
+
+.header {
+  margin: 1.5rem 0;
+}
+
+.title {
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin: 0 0 0.3rem;
+  color: var(--color-text);
+}
+
+.subtitle {
+  font-size: 0.88rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 70ch;
+}
+
+.state {
+  color: var(--color-text-secondary);
+  padding: 3rem 0;
+  text-align: center;
+}
+
+/* Side by side once there's room for both to breathe, stacked otherwise. */
+.grid {
+  display: grid;
+  /* Auto-fits 2-up on wide screens, drops to 1 column once a section would otherwise
+     get narrower than ~380px, rather than a single hard breakpoint that can leave an
+     awkwardly cramped 2-column layout at in-between widths (e.g. a small tablet). */
+  grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-outline);
+  border-radius: 14px;
+  padding: 1.4rem 1.5rem 1.6rem;
+  min-width: 0;
+}
+
+.warningLogSection {
+  margin-bottom: 1.5rem;
+}
+
+.warningActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.sectionTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.3rem;
+  color: var(--color-primary);
+}
+
+.sectionHint {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 0.9rem;
+}
+
+.tableWrap {
+  width: 100%;
+}
+
+/* table-layout: fixed gives every column a predictable share of the container width
+   regardless of content length, which is what makes the ellipsis truncation below
+   actually keep every row to a single line — at any viewport width, and regardless of
+   how long the list grows — instead of the table stretching wider than its section
+   (the old auto layout + a scrollable wrapper) or a name/reason wrapping onto a
+   second line and inflating row height as the list grows. */
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--color-outline);
+}
+
+.table td {
+  padding: 0.5rem 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-outline) 40%, transparent);
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table td:last-child,
+.table th:last-child {
+  text-align: right;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.reasonCell {
+  color: var(--color-text-secondary);
+}
+
+/* Fixed-percentage column widths (paired with .table's table-layout: fixed) so every
+   row's cells truncate to a single line predictably, rather than the browser
+   reflowing column widths per-row based on that row's own content. */
+.colName {
+  width: 26%;
+}
+
+.colReason {
+  width: 34%;
+}
+
+.colMeta {
+  width: 15%;
+}
+
+/* The actions cell is the one exception to "truncate to a single line": buttons wrap
+   inside it, not the data itself, so it needs the inherited ellipsis/nowrap undone. */
+.colActions {
+  width: 30%;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.sourceBadge {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-text-secondary);
+}
+
+.listForm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.1rem;
+}
+
+.listInput {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline);
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+
+.listAddButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.listAddButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.timeFilter {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-outline);
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 0.82rem;
+  margin-bottom: 0.9rem;
+}
+
+.removeButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-outline);
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.removeButton:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.removeButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.errorText {
+  color: var(--color-error, #b3261e);
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding-top: 1.5rem;
+  }
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .listForm {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .listInput {
+    min-width: 0;
+  }
+
+  /* Only Name and Actions survive at phone width — Reason/Source/Added/Flagged are
+     all secondary detail that can't fit alongside a readable name and tappable
+     actions on a narrow screen without wrapping every row onto multiple lines. */
+  .colReason,
+  .colMeta {
+    display: none;
+  }
+
+  .colName {
+    width: 55%;
+  }
+
+  .colActions {
+    width: 45%;
+  }
+
+  /* Icon-only actions at this width — the visible label text is dropped (aria-label
+     on the button itself keeps it accessible), so two actions plus their icons fit
+     one row without wrapping. */
+  .buttonLabel {
+    display: none;
+  }
+
+  .removeButton,
+  .listAddButton {
+    padding: 0.35rem 0.5rem;
+  }
+}

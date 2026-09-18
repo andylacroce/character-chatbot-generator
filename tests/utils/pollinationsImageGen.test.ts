@@ -23,6 +23,7 @@ describe("generateImageWithPollinations", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("image.pollinations.ai/prompt/a%20cool%20prompt"),
+      expect.objectContaining({ signal: expect.anything() }),
     );
     expect(result).toBe(`data:image/png;base64,${bytes.toString("base64")}`);
   });

@@ -14,6 +14,13 @@ export const STORAGE_KEYS = {
   // Set once a guest explicitly dismisses the post-creation name gate, so it
   // doesn't reappear on every subsequent character in this browser.
   userNameGateSkipped: "chatbot-user-name-gate-skipped",
+  // The guessing game's current round state (see src/utils/gameToken.ts) and its
+  // transcript, plus a one-time "how to play" gate — flat keys, not name-suffixed like
+  // chatHistoryKey, since the mystery character's identity is secret and the round is
+  // overwritten every time a new game starts.
+  gameToken: "chatbot-game-token",
+  gameTranscript: "chatbot-game-transcript",
+  gameInstructionsSeen: "chatbot-game-instructions-seen",
 } as const;
 
 /** Prefixes for keys that are suffixed per-character by bot name. */

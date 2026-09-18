@@ -21,6 +21,7 @@ import { getSessionUserId } from "../../../src/utils/getSessionUserId";
 import { isAdmin } from "../../../src/utils/isAdmin";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
+import { withRequestLog } from "../../../src/utils/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as other authenticated routes. */
 const adminStatsRateLimit = createRateLimiter({
@@ -90,7 +91,7 @@ interface DailyActivityRow {
  *       500:
  *         description: Failed to load stats
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(adminStatsRateLimit, req, res))) return;
 
   if (req.method !== "GET") {
@@ -278,3 +279,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: "Failed to load stats" });
   }
 }
+
+export default withRequestLog(handler);

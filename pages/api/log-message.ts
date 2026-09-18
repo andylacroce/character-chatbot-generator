@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { escapeHtml } from "../../src/utils/security";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 /**
  * Next.js API route handler for logging chat messages and events to storage (Vercel Blob or local).
@@ -64,10 +65,7 @@ import { escapeHtml } from "../../src/utils/security";
  *       500:
  *         description: Internal server error
  */
-export default async function handler(
-  req: import("next").NextApiRequest,
-  res: import("next").NextApiResponse,
-) {
+async function handler(req: import("next").NextApiRequest, res: import("next").NextApiResponse) {
   const requestId = req.headers["x-request-id"] || generateRequestId();
 
   if (req.method !== "POST") {
@@ -295,3 +293,5 @@ export default async function handler(
     res.status(500).json({ error: "Internal Server Error", requestId });
   }
 }
+
+export default withRequestLog(handler);

@@ -11,7 +11,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import { Bot } from "./components/BotCreator";
-import { getValidBotFromStorage } from "../src/utils/getValidBotFromStorage";
+import { getValidBotFromStorage, clearStoredBot } from "../src/utils/getValidBotFromStorage";
 import storage from "../src/utils/storage";
 import { authenticatedFetch } from "../src/utils/api";
 import { STORAGE_KEYS, STORAGE_KEY_PREFIXES, voiceConfigKey } from "../src/utils/storageKeys";
@@ -154,8 +154,7 @@ const Home = () => {
 
   const handleBackToCharacterCreation = React.useCallback(() => {
     // Clear the bot from localStorage to kill the session
-    storage.removeItem(STORAGE_KEYS.bot);
-    storage.removeItem(STORAGE_KEYS.botTimestamp);
+    clearStoredBot();
     setBot(null);
     setReturningToCreator(true);
     router.push("/");

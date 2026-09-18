@@ -9,6 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { isAdmin } from "../../../src/utils/isAdmin";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
+import { withRequestLog } from "../../../src/utils/withRequestLog";
 
 /** Rate limiter: 30 requests per minute per IP — cheap enough to allow a generous budget. */
 const isAdminRateLimit = createRateLimiter({
@@ -45,7 +46,7 @@ const isAdminRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(isAdminRateLimit, req, res))) return;
 
   if (req.method !== "GET") {
@@ -68,3 +69,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
   res.status(200).json({ isAdmin: admin });
 }
+
+export default withRequestLog(handler);

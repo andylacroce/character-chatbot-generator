@@ -11,6 +11,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { authenticatedFetch } from "../../src/utils/api";
 import AppHeader from "./AppHeader";
+import BackHomeLink from "./BackHomeLink";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/CharsPage.module.css";
 
@@ -120,7 +121,7 @@ const CharTile: React.FC<{ entry: CharEntry; onOpen: (entry: CharEntry) => void 
 
 /** Public /chars gallery: paginated, infinite-scroll corkboard of every recognized character portrait. */
 const CharsGallery: React.FC = () => {
-  const { identityLabel, menuItems, modals } = useAccountMenu();
+  const { menuItems, modals } = useAccountMenu();
   const [characters, setCharacters] = useState<CharEntry[]>([]);
   const [initialLoad, setInitialLoad] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -221,17 +222,7 @@ const CharsGallery: React.FC = () => {
 
   return (
     <>
-      <AppHeader
-        menuSide="right"
-        menuTrigger={identityLabel}
-        menuTriggerAriaLabel={`Account: ${identityLabel}. Open menu`}
-        menuItems={menuItems}
-        center={
-          <Link href="/" className={styles.backLink}>
-            &larr; Back<span className={styles.backLinkFull}> to Portrayal</span>
-          </Link>
-        }
-      />
+      <AppHeader menuItems={menuItems} center={<BackHomeLink />} />
       {modals}
       <div className={styles.page}>
         <div className={styles.header}>

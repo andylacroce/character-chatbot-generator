@@ -54,13 +54,14 @@ describe("BotCreator - visitor name (identity chip, edit modal, post-creation ga
     delete global.fetch;
   });
 
-  it('shows "Guest" on the identity chip when no name is known', async () => {
+  it('shows "Guest" on the identity label when no name is known', async () => {
     mockUseSession.mockReturnValue({ data: null, status: "unauthenticated" });
     mockFetchRouter({ "/api/config": configHandler });
 
     render(<BotCreator onBotCreated={() => {}} />);
+    fireEvent.click(await screen.findByLabelText("Open menu"));
 
-    expect(await screen.findByLabelText("Account: Guest. Open menu")).toBeInTheDocument();
+    expect(screen.getByText("Guest")).toBeInTheDocument();
   });
 
   it('offers "Add your name" and "Sign in" once the account menu is opened', async () => {
@@ -68,7 +69,7 @@ describe("BotCreator - visitor name (identity chip, edit modal, post-creation ga
     mockFetchRouter({ "/api/config": configHandler });
 
     render(<BotCreator onBotCreated={() => {}} />);
-    fireEvent.click(await screen.findByLabelText("Account: Guest. Open menu"));
+    fireEvent.click(await screen.findByLabelText("Open menu"));
 
     expect(screen.getByText("Add your name")).toBeInTheDocument();
     expect(screen.getByLabelText("Sign in")).toBeInTheDocument();
@@ -79,7 +80,7 @@ describe("BotCreator - visitor name (identity chip, edit modal, post-creation ga
     mockFetchRouter({ "/api/config": configHandler });
 
     render(<BotCreator onBotCreated={() => {}} />);
-    fireEvent.click(await screen.findByLabelText("Account: Guest. Open menu"));
+    fireEvent.click(await screen.findByLabelText("Open menu"));
     fireEvent.click(screen.getByText("Add your name"));
 
     const field = await screen.findByLabelText("Your name");
@@ -87,10 +88,11 @@ describe("BotCreator - visitor name (identity chip, edit modal, post-creation ga
     fireEvent.click(screen.getByText("Save"));
 
     expect(localStorage.getItem("chatbot-user-name")).toBe("Andy");
-    expect(await screen.findByLabelText("Account: Andy. Open menu")).toBeInTheDocument();
+    fireEvent.click(await screen.findByLabelText("Open menu"));
+    expect(screen.getByText("Andy")).toBeInTheDocument();
   });
 
-  it("shows a signed-in user's stored preferred name on the identity chip", async () => {
+  it("shows a signed-in user's stored preferred name on the identity label", async () => {
     mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, status: "authenticated" });
     mockFetchRouter({
       "/api/config": configHandler,
@@ -100,8 +102,9 @@ describe("BotCreator - visitor name (identity chip, edit modal, post-creation ga
     });
 
     render(<BotCreator onBotCreated={() => {}} />);
+    fireEvent.click(await screen.findByLabelText("Open menu"));
 
-    expect(await screen.findByLabelText("Account: Ada Lovelace. Open menu")).toBeInTheDocument();
+    expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
   });
 
   it("gates character creation on the visitor's name when none is known yet, then proceeds after Skip", async () => {

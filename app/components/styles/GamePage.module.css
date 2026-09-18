@@ -1,0 +1,294 @@
+/* =============================
+   GamePage.module.css
+   - Only the guessing game's own pieces: the standalone start/game-over screen, the
+     streak badge and round-result banner layered into ChatShell's slots, and the
+     hamburger menu items. The shared chat chrome itself (header, avatar lightbox,
+     transcript, input, spinner) lives once in ChatShell.tsx/ChatPage.module.css — see
+     ChatShell.tsx's doc comment for why. Kept as its own file per this repo's
+     no-shared-CSS-modules rule.
+   ============================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap");
+
+/* --- Standalone start / game-over screen (shown before ChatShell renders) --- */
+
+/* No explicit width here — same scrollbar-gutter reasoning as ChatPage.module.css's
+   .chatLayout (this is that screen's equivalent, shown before ChatShell renders): a
+   normal-flow block already fills its containing block's actual width, which
+   `width: 100vw` would override with the full viewport width including any reserved
+   scrollbar gutter. */
+.standaloneScreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-primary);
+}
+
+.startScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem;
+  max-width: 480px;
+}
+
+.startHeadline {
+  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-size: 2rem;
+  margin: 0;
+}
+
+.startSubhead {
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.startButton {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-primary), sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.8rem 2rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.startButton:hover:not(:disabled),
+.startButton:focus-visible:not(:disabled) {
+  opacity: 0.85;
+}
+
+.startButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.startBackHome {
+  margin-top: 0.4rem;
+}
+
+/* --- Header slots (belowName / menuItems) fed into ChatShell --- */
+
+.streakBadge {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  letter-spacing: 0.02em;
+}
+
+.menuItemLink {
+  font-size: 0.86rem;
+  font-family: var(--font-primary);
+  font-weight: 600;
+  padding: 0.55em 0.7em;
+  border-radius: 6px;
+  background: none;
+  color: var(--color-text);
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7em;
+  width: 100%;
+  text-decoration: none;
+}
+
+.menuItemLink:hover,
+.menuItemLink:focus {
+  background: var(--color-primary-container);
+  color: var(--color-primary);
+  outline: none;
+}
+
+/* --- Round-result banner fed into ChatShell's bannerContent slot --- */
+
+.eventBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-container);
+}
+
+.continueButton {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-family: var(--font-primary), sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.4rem 1.1rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.continueButton:hover,
+.continueButton:focus-visible {
+  opacity: 0.85;
+}
+
+@media (max-width: 600px) {
+  .startHeadline {
+    font-size: 1.5rem;
+  }
+
+  .menuItemLink {
+    font-size: 0.78rem;
+    padding: 0.5em 0.6em;
+    border-radius: 6px;
+    margin-left: 0;
+    min-width: 0;
+  }
+}
+
+/* --- Give-up confirmation modal --- */
+
+.modalBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modalBox {
+  background: var(--color-background);
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 400px;
+  margin: 1rem;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.modalTitle {
+  font-family: var(--font-secondary), var(--font-primary), serif;
+  font-size: 1.25rem;
+  margin: 0 0 0.5rem 0;
+  color: var(--color-text);
+}
+
+.modalText {
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
+}
+
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.modalCancelButton {
+  flex: 1;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-outline);
+  border-radius: 999px;
+  padding: 0.5rem 1.25rem;
+  font-family: var(--font-primary), sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.modalCancelButton:hover {
+  opacity: 0.85;
+}
+
+.modalConfirmButton {
+  flex: 1;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.25rem;
+  font-family: var(--font-primary), sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.modalConfirmButton:hover {
+  opacity: 0.85;
+}
+
+/* --- Start-screen staged progress spinner --- */
+
+.startProgressContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  min-height: 60px;
+}
+
+.startSpinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-surface);
+  border-top: 3px solid var(--color-primary);
+  background: var(--color-background);
+  border-radius: 50%;
+  animation: gameStartSpin 1s linear infinite;
+  margin-bottom: 0.5rem;
+  display: inline-block;
+}
+
+@keyframes gameStartSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.startProgressText {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  font-family: var(--font-primary), sans-serif;
+  line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+  .modalBox {
+    padding: 1rem;
+  }
+
+  .modalTitle {
+    font-size: 1.1rem;
+  }
+}

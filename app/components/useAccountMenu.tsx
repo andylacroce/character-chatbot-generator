@@ -1,32 +1,40 @@
 "use client";
 
 /**
- * Shared "account" bundle for a page's AppHeader hamburger: the identity chip label
- * ("Guest" or the visitor's name), the menu items (change name, an "Admin Stats" link
- * when the signed-in caller is an admin, sign in/out), and the modals those items open
- * (NameCaptureModal, SignInModal). Used identically by BotCreator.tsx and
- * CharsGallery.tsx — the two pages with an identity-chip trigger — so this logic lives
- * in exactly one place instead of being copy-pasted per page. Deliberately not used by
- * ChatPage.tsx, which keeps its own plain hamburger-icon menu (no identity chip, no
- * sign-in/admin items) — see its own doc comment for why sign-in stays out of chat.
+ * Shared "account" bundle for a page's AppHeader hamburger: menu items leading with a
+ * non-interactive identity label ("Guest" or the visitor's name), then change-name and
+ * sign in/out — plus the modals those items open (NameCaptureModal, SignInModal). Used
+ * by every page's header (BotCreator.tsx, CharsGallery.tsx, ChatPage.tsx, GamePage.tsx)
+ * — each appends its own page-specific items first, then this hook's `menuItems`, so
+ * this logic lives in exactly one place instead of being copy-pasted per page.
+ *
+ * When the signed-in caller is an admin, an "Admin" sub-section (its own divider +
+ * label, same treatment as the top-level identity label) follows with links to each
+ * separate admin page — /admin (stats) and /admin/moderation (the allowlist/blocklist/
+ * warning-log panel, see AdminModerationView.tsx) — rather than cramming admin
+ * functionality onto one page as it grows.
  */
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession, getProviders } from "next-auth/react";
-import { FaUser, FaUserShield } from "react-icons/fa";
+import { FaUser, FaUserShield, FaBan } from "react-icons/fa";
 import { authenticatedFetch } from "../../src/utils/api";
 import AuthControl from "./AuthControl";
 import { NameCaptureModal } from "./NameCaptureModal";
 import SignInModal from "./SignInModal";
 import { useUserName, type UserNameContext } from "./useUserName";
+import styles from "./styles/useAccountMenu.module.css";
 
 export interface AccountMenu {
   /** The visitor's own name/sign-in context — e.g. for useBotCreation's post-creation name gate. */
   userNameCtx: UserNameContext;
-  /** Label for the hamburger's trigger chip: the visitor's name, their account name/email, or "Guest". */
-  identityLabel: string;
-  /** Menu items to render inside the page's AppHeader `menuItems` slot. */
+  /**
+   * Menu items to render inside the page's AppHeader `menuItems` slot — leads with a
+   * non-interactive identity label (the visitor's name, account name/email, or "Guest")
+   * so account status is visible on opening the menu, since there's no separate identity
+   * chip trigger anymore (see AppHeader.tsx).
+   */
   menuItems: React.ReactNode;
   /** Modals to render alongside the page's AppHeader (name-capture edit mode, shared sign-in). */
   modals: React.ReactNode;
@@ -91,19 +99,33 @@ export function useAccountMenu(): AccountMenu {
     ? userNameCtx.name || session.user.name || session.user.email || "Signed in"
     : userNameCtx.name || "Guest";
 
+  // Ordered as: who-you-are (label), the one personal setting a guest can already
+  // touch (name), then the account action that upgrades that identity (sign in/out).
+  // Admin Stats is a different category entirely — site administration, not personal
+  // account management — so it gets its own divider afterward rather than being
+  // sandwiched between name-editing and sign-in.
   const menuItems = (
     <>
+      <div className={styles.identityLabel}>{identityLabel}</div>
       <button type="button" onClick={() => setShowEditNameModal(true)}>
-        <FaUser size={16} />
+        <FaUser size={18} className="menuIcon" />
         <span>{userNameCtx.name ? "Change your name" : "Add your name"}</span>
       </button>
-      {isAdmin && (
-        <Link href="/admin">
-          <FaUserShield size={16} />
-          <span>Admin Stats</span>
-        </Link>
-      )}
       <AuthControl onRequestSignIn={requestSignIn} />
+      {isAdmin && (
+        <>
+          <div className="menuDivider" role="separator" />
+          <div className={styles.identityLabel}>Admin</div>
+          <Link href="/admin">
+            <FaUserShield size={18} className="menuIcon" />
+            <span>Stats</span>
+          </Link>
+          <Link href="/admin/moderation">
+            <FaBan size={18} className="menuIcon" />
+            <span>Moderation</span>
+          </Link>
+        </>
+      )}
     </>
   );
 
@@ -128,5 +150,5 @@ export function useAccountMenu(): AccountMenu {
     </>
   );
 
-  return { userNameCtx, identityLabel, menuItems, modals, requestSignIn };
+  return { userNameCtx, menuItems, modals, requestSignIn };
 }
