@@ -13,6 +13,7 @@ import { recordEvent } from "../../src/utils/analytics";
 import { desc } from "drizzle-orm";
 import { getDb } from "../../src/db/client";
 import { avatarCache } from "../../src/db/schema";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 // Capped so this stays a cheap, bounded addition to a call already being made — not a
 // full table dump on every character creation. Ordering by recency is an arbitrary but
@@ -115,7 +116,7 @@ const personalityRateLimit = createRateLimiter({
  *       500:
  *         description: Failed to generate personality prompt
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.status(405).end();
     return;
@@ -192,3 +193,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   return;
 }
+
+export default withRequestLog(handler);

@@ -38,6 +38,7 @@ import {
   stripActionEmotes,
   gracefullyWrapResponse,
 } from "../../src/utils/chatReplyFormatting";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 /** Rate limiter for chat endpoint: 10 requests per minute per IP. */
 const chatRateLimit = createRateLimiter({
@@ -1012,4 +1013,4 @@ CRITICAL CONTEXT INSTRUCTIONS:
   }
 }
 
-export default handler;
+export default withRequestLog(handler);

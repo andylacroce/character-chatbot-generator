@@ -17,6 +17,7 @@ import { signGameState } from "../../../src/utils/gameToken";
 import { getSessionUserId } from "../../../src/utils/getSessionUserId";
 import { getCurrentEnvironment } from "../../../src/utils/environment";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
+import { withRequestLog } from "../../../src/utils/withRequestLog";
 
 /**
  * Rate limiter: 10 requests per minute per IP. A run start costs a personality
@@ -75,7 +76,7 @@ const gameStartRateLimit = createRateLimiter({
  *       500:
  *         description: Failed to start a new run
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(gameStartRateLimit, req, res))) return;
 
   if (req.method !== "POST") {
@@ -137,3 +138,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: "Failed to start a new run" });
   }
 }
+
+export default withRequestLog(handler);

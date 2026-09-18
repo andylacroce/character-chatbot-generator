@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { pickRandomCharacterName } from "../../src/utils/pickRandomCharacterName";
 import characterNames from "../../src/data/characterNames";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 // Track names shown this server session to avoid repetition
 const recentNames: string[] = [];
@@ -38,7 +39,7 @@ const MAX_RECENT_NAMES = 100;
  *       405:
  *         description: Method not allowed
  */
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     logEvent(
       "warn",
@@ -72,3 +73,5 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
   res.status(200).json({ name: chosen });
 }
+
+export default withRequestLog(handler);

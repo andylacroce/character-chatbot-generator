@@ -14,6 +14,7 @@ import { isAdmin } from "../../../src/utils/isAdmin";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { listWarnings } from "../../../src/utils/characterWarningLog";
+import { withRequestLog } from "../../../src/utils/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
 const adminWarningsRateLimit = createRateLimiter({
@@ -42,7 +43,7 @@ const adminWarningsRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(adminWarningsRateLimit, req, res))) return;
 
   if (req.method !== "GET") {
@@ -70,3 +71,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const entries = await listWarnings();
   res.status(200).json({ entries });
 }
+
+export default withRequestLog(handler);

@@ -6,6 +6,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 /**
  * Next.js API route handler for retrieving a character's TTS voice configuration.
@@ -49,7 +50,7 @@ import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
  *       500:
  *         description: Failed to get voice config
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.status(405).end();
     return;
@@ -68,3 +69,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 }
+
+export default withRequestLog(handler);

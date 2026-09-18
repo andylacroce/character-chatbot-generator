@@ -13,6 +13,7 @@ import { getSessionUserId } from "../../src/utils/getSessionUserId";
 import { sanitizeUserName } from "../../src/utils/security";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP. */
 const userProfileRateLimit = createRateLimiter({
@@ -85,7 +86,7 @@ const userProfileRateLimit = createRateLimiter({
  *       500:
  *         description: Failed to save preferred name
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(userProfileRateLimit, req, res))) return;
 
   if (req.method !== "GET" && req.method !== "POST") {
@@ -144,3 +145,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: "Failed to save preferred name" });
   }
 }
+
+export default withRequestLog(handler);

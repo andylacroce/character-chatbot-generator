@@ -33,6 +33,7 @@ import {
 import { synthesizeReplyAudio } from "../../../src/utils/ttsReply";
 import { getSessionUserId } from "../../../src/utils/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
+import { withRequestLog } from "../../../src/utils/withRequestLog";
 
 /** Rate limiter: 10 requests per minute per IP, same tier as /api/chat. */
 const gameMessageRateLimit = createRateLimiter({
@@ -63,7 +64,7 @@ async function classifyGuess(
 
 Decide a "status":
 - "clear": the player names a specific person as their guess for who the hidden figure is — a full name, first name, nickname, alias, or an unambiguous descriptive identification (e.g. "the English king from the 11th century"). Even a single first name (like "Edward") counts as "clear" if it's offered as an identification rather than a question. Also include a direct confirmation like "yes" or "correct" directly following an earlier exchange where a specific candidate was already on the table. When in doubt between "clear" and "ambiguous", lean toward "clear" — a wrong guess that gets scored is part of the game, whereas bouncing specific candidate names back to "ambiguous" makes the game feel broken and unresponsive.
-- "ambiguous": the message hedges ("I think it might be", "could it be", "I'm guessing") or asks a question about whether it's a specific person ("is it X?", "would it be X?") rather than stating a definitive identification. The player hasn't committed to a guess.
+- "ambiguous": the message hedges ("I think it might be", "could it be", "I'm guessing") or asks a question about whether it's a specific person ("is it X?", "would it be X?") rather than stating a definitive identification. The player hasn't committed to a guess. This rule takes precedence over the "lean toward clear" tie-break above — a literal "is it X?" is always ambiguous, no exceptions, even when X is a specific, confident-sounding name. The tie-break only applies to a hedged-but-specific statement (e.g. "I think it might be Edward"), never to a yes/no question.
 - "none": an ordinary question or comment, not a guess attempt at all (e.g. "Tell me about your work" or "What era are you from?").
 
 If status is "clear", also decide "correct": whether the identification actually matches the hidden character. Accept nicknames, aliases, translations, epithets/titles, and unambiguous descriptions of that same individual, not just an exact name match. But be strict about identity: a guess is only "correct" if it names the literal same individual as the hidden character. Two different people or characters are never a match just because they're closely related — family members, rivals, foils, or other characters from the same story, play, myth, or historical event are each a distinct wrong answer. For example, if the hidden character is "Laertes", a guess of "Hamlet" is incorrect even though they appear in the same play — Hamlet is a different character. If status is not "clear", set "correct" to false.
@@ -188,7 +189,7 @@ async function advanceToNextRound(revealedName: string, usedNames: string[]) {
  *       500:
  *         description: Failed to generate a reply
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(gameMessageRateLimit, req, res))) return;
 
   if (req.method !== "POST") {
@@ -359,3 +360,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(500).json({ error: "Failed to generate a reply" });
   }
 }
+
+export default withRequestLog(handler);

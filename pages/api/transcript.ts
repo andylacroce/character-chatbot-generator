@@ -7,6 +7,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { sanitizeForDisplay, escapeHtml } from "../../src/utils/security";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 export const config = {
   api: {
@@ -88,7 +89,7 @@ const transcriptRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     logEvent(
       "info",
@@ -421,3 +422,5 @@ export function isValidAvatarUrl(url: string): boolean {
     return false;
   }
 }
+
+export default withRequestLog(handler);

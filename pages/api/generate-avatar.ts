@@ -14,6 +14,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { sanitizeCharacterName, sanitizeDescription } from "../../src/utils/security";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { getOrGenerateAvatar } from "../../src/utils/avatarGeneration";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 /** Rate limiter: 5 requests per minute per IP (avatar generation is expensive). */
 const avatarRateLimit = createRateLimiter({
@@ -107,7 +108,7 @@ const avatarRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.status(405).end();
     return;
@@ -141,3 +142,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   res.status(200).json({ avatarUrl: result.avatarUrl, gender: result.gender });
 }
+
+export default withRequestLog(handler);

@@ -37,6 +37,7 @@ import {
 } from "../../../src/utils/characterBlocklist";
 import { removeFromAllowlist } from "../../../src/utils/characterAllowlist";
 import { scrubCachedAvatar, scrubUserBotsByName } from "../../../src/utils/avatarGeneration";
+import { withRequestLog } from "../../../src/utils/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
 const adminBlocklistRateLimit = createRateLimiter({
@@ -120,7 +121,7 @@ const adminBlocklistRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(adminBlocklistRateLimit, req, res))) return;
 
   const userId = await getSessionUserId(req, res);
@@ -196,3 +197,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader("Allow", ["GET", "POST", "DELETE"]);
   res.status(405).end(`Method ${req.method} Not Allowed`);
 }
+
+export default withRequestLog(handler);

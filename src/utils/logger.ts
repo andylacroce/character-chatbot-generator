@@ -62,7 +62,12 @@ const initializeServerLogger = () => {
     // Test hook: if a test provides a global winston mock, use that
     type WinstonLike = {
       createLogger: (opts: { level?: string; format?: unknown; transports?: unknown[] }) => unknown;
-      transports?: { Console: new (...args: unknown[]) => unknown } | undefined;
+      transports?:
+        | {
+            Console: new (...args: unknown[]) => unknown;
+            File: new (...args: unknown[]) => unknown;
+          }
+        | undefined;
       format?:
         | {
             combine: (...args: unknown[]) => unknown;
@@ -107,6 +112,34 @@ const initializeServerLogger = () => {
       ) => setTimeout(fn, 0, ...args);
     }
 
+    const transports: unknown[] = [new winston.transports!.Console()];
+
+    // Dev-only: also persist every structured log line (now including the
+    // per-request http_request_completed event from withRequestLog.ts, so
+    // this file has real method/status/duration info, not just business
+    // events) to a gitignored file (*.log is already ignored, see
+    // .gitignore) so it survives after the terminal/process is gone. This is
+    // a second winston transport, not a raw stdout/stderr tee — an earlier
+    // attempt at teeing raw streams also dragged in Next's own differently
+    // formatted terminal output (ANSI codes, no structure) and triple-wrote
+    // lines when this module was loaded by more than one of Next's internal
+    // runtime bundles; a transport avoids both problems since it only ever
+    // receives this app's own already-structured winston log events, once.
+    // Skipped in production — Vercel's filesystem is ephemeral/read-only
+    // outside /tmp and function logs are already captured by the platform.
+    if (process.env.NODE_ENV === "development") {
+      try {
+        const nodeRequire = require as NodeRequire;
+        const fs = nodeRequire("fs") as typeof import("fs");
+        const path = nodeRequire("path") as typeof import("path");
+        const logDir = path.join(process.cwd(), "logs");
+        fs.mkdirSync(logDir, { recursive: true });
+        transports.push(new winston.transports!.File({ filename: path.join(logDir, "dev.log") }));
+      } catch (error) {
+        console.error("Failed to set up dev log file transport:", error);
+      }
+    }
+
     const logger = winston.createLogger({
       level: "info",
       format: winston.format!.combine(
@@ -122,7 +155,7 @@ const initializeServerLogger = () => {
           return `[${timestamp}] [${level.toUpperCase()}]: ${message} ${metaString}`;
         }),
       ),
-      transports: [new winston.transports!.Console()],
+      transports,
     });
 
     loggerInstance = logger as unknown as LoggerInstance;

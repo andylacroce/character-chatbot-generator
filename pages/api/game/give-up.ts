@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { verifyGameState } from "../../../src/utils/gameToken";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
+import { withRequestLog } from "../../../src/utils/withRequestLog";
 
 /** Rate limiter: 10 requests per minute per IP, shared tier with the other game endpoints. */
 const giveUpRateLimit = createRateLimiter({
@@ -66,7 +67,7 @@ const giveUpRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(giveUpRateLimit, req, res))) return;
 
   if (req.method !== "POST") {
@@ -96,3 +97,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     gameOver: true,
   });
 }
+
+export default withRequestLog(handler);

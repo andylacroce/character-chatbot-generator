@@ -18,6 +18,7 @@ import {
 } from "../../src/utils/characterBlocklist";
 import { isAllowlisted } from "../../src/utils/characterAllowlist";
 import { logWarning } from "../../src/utils/characterWarningLog";
+import { withRequestLog } from "../../src/utils/withRequestLog";
 
 const SCRUBBED_REASON = "This character is no longer available. Please try a different name.";
 // Matches useBotCreation.ts's own hardcoded message for a `blocked: true` result —
@@ -167,7 +168,7 @@ export interface CharacterValidationResult {
  *       429:
  *         description: Rate limit exceeded
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     logEvent(
       "warn",
@@ -458,3 +459,5 @@ warningLevel guide (only about copyright/trademark, ignore concerns 1/1b entirel
     } as CharacterValidationResult);
   }
 }
+
+export default withRequestLog(handler);
