@@ -162,7 +162,7 @@ describe("bots API", () => {
           name: "Sherlock Holmes",
           personality: "A detective.",
           avatarUrl: "https://blob.example.com/a.png",
-          voiceGender: "male",
+          gender: "male",
           voiceConfig: { languageCodes: ["en-US"], name: "v", ssmlGender: 1 },
         },
       });
@@ -201,7 +201,7 @@ describe("bots API", () => {
       expect(mockValues).toHaveBeenCalledWith(
         expect.objectContaining({
           avatarUrl: null,
-          voiceGender: null,
+          gender: null,
           voiceConfig: null,
         }),
       );

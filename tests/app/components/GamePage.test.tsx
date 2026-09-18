@@ -33,7 +33,7 @@ function baseController(overrides: Record<string, unknown> = {}) {
     starting: false,
     currentCharacterName: "",
     avatarUrl: "/silhouette.svg",
-    voiceGender: null,
+    gender: null,
     streak: 0,
     messages: [],
     input: "",

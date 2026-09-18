@@ -8,7 +8,7 @@ function makePayload(overrides: Partial<GameStatePayload> = {}): GameStatePayloa
     nextCharacterName: "Irene Adler",
     personaPrompt: "You are Sherlock Holmes, a brilliant detective.",
     avatarUrl: "https://example.com/avatar.png",
-    voiceGender: "male",
+    gender: "male",
     voiceConfig: { languageCodes: ["en-US"], name: "en-US-Studio-O", ssmlGender: 1 },
     usedNames: ["Sherlock Holmes"],
     streak: 2,

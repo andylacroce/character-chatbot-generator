@@ -25,7 +25,7 @@ describe("api_getVoiceConfigForCharacter", () => {
     );
   });
 
-  it("includes voiceGender in request body when voiceGender is provided", async () => {
+  it("includes gender in request body when gender is provided", async () => {
     (authenticatedFetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ name: "en-US-Wavenet-F" }),
@@ -35,11 +35,11 @@ describe("api_getVoiceConfigForCharacter", () => {
     expect(authenticatedFetch).toHaveBeenCalledWith("/api/get-voice-config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Alice", voiceGender: "female" }),
+      body: JSON.stringify({ name: "Alice", gender: "female" }),
     });
   });
 
-  it("excludes voiceGender from request body when voiceGender is null", async () => {
+  it("excludes gender from request body when gender is null", async () => {
     (authenticatedFetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ name: "en-US" }),

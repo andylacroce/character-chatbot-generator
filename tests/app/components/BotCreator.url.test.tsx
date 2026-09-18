@@ -90,7 +90,7 @@ describe("BotCreator URL parameter functionality", () => {
       name: "Sherlock Holmes",
       personality: "A brilliant, saved-from-before detective.",
       avatarUrl: "https://blob.example.com/holmes.png",
-      voiceGender: "male",
+      gender: "male",
       voiceConfig: { languageCodes: ["en-GB"], name: "en-GB-Wavenet-B", ssmlGender: 1 },
       updatedAt: new Date().toISOString(),
     };
@@ -112,7 +112,7 @@ describe("BotCreator URL parameter functionality", () => {
           personality: savedBot.personality,
           avatarUrl: savedBot.avatarUrl,
           voiceConfig: savedBot.voiceConfig,
-          voiceGender: savedBot.voiceGender,
+          gender: savedBot.gender,
         }),
       { timeout: 3000 },
     );
@@ -128,7 +128,7 @@ describe("BotCreator URL parameter functionality", () => {
       name: "Sherlock Holmes",
       personality: "p",
       avatarUrl: null,
-      voiceGender: null,
+      gender: null,
       voiceConfig: null,
       updatedAt: new Date().toISOString(),
     };
@@ -217,7 +217,7 @@ describe("BotCreator URL parameter functionality", () => {
       name: "Sherlock Holmes",
       personality: "p",
       avatarUrl: null,
-      voiceGender: null,
+      gender: null,
       voiceConfig: null,
       updatedAt: new Date().toISOString(),
     };
@@ -311,7 +311,7 @@ describe("BotCreator URL parameter functionality", () => {
           json: () =>
             Promise.resolve({
               personality: "wizard",
-              voiceGender: "male",
+              gender: "male",
             }),
         });
       }

@@ -53,7 +53,7 @@ function makeBotRow(
     name: "Ada",
     personality: "From the DB: brilliant and precise.",
     avatarUrl: null,
-    voiceGender: null,
+    gender: null,
     voiceConfig: null,
     environment: "development",
     summary: null,

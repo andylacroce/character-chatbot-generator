@@ -101,7 +101,7 @@ function getOriginalTextForAudio(sanitizedFile: string): string | null {
  *           type: string
  *           default: Character
  *       - in: query
- *         name: voiceGender
+ *         name: gender
  *         schema:
  *           type: string
  *       - in: query
@@ -139,16 +139,16 @@ async function handler(
 
   const { file, text: expectedText, voiceConfig: voiceConfigParam } = req.query;
   const botName = typeof req.query.botName === "string" ? req.query.botName : "Character";
-  const voiceGender = typeof req.query.voiceGender === "string" ? req.query.voiceGender : null;
+  const gender = typeof req.query.gender === "string" ? req.query.gender : null;
   let voiceConfig: CharacterVoiceConfig;
   if (typeof voiceConfigParam === "string") {
     try {
       voiceConfig = JSON.parse(decodeURIComponent(voiceConfigParam));
     } catch {
-      voiceConfig = await getVoiceConfigForCharacter(botName, voiceGender);
+      voiceConfig = await getVoiceConfigForCharacter(botName, gender);
     }
   } else {
-    voiceConfig = await getVoiceConfigForCharacter(botName, voiceGender);
+    voiceConfig = await getVoiceConfigForCharacter(botName, gender);
   }
   if (!file || typeof file !== "string") {
     logEvent(
@@ -311,7 +311,7 @@ async function handler(
         }
         if (originalText) {
           try {
-            const fetchedVoiceConfig = await getVoiceConfigForCharacter(botName, voiceGender);
+            const fetchedVoiceConfig = await getVoiceConfigForCharacter(botName, gender);
             const selectedVoice = normalizeStudioVoice(fetchedVoiceConfig);
             const ssmlText = buildSsml(originalText, selectedVoice);
             await synthesizeSpeechToFile({

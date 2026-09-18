@@ -60,7 +60,7 @@ describe("ensureVoiceConfig branches (mocked storage)", () => {
       personality: "p",
       avatarUrl: "",
       voiceConfig: null,
-      voiceGender: null,
+      gender: null,
     } as any;
     const { result } = renderHook(() => useChatController(bot));
 
@@ -86,7 +86,7 @@ describe("ensureVoiceConfig branches (mocked storage)", () => {
       personality: "p",
       avatarUrl: "",
       voiceConfig: null,
-      voiceGender: null,
+      gender: null,
     } as any;
     const { result } = renderHook(() => useChatController(bot));
 

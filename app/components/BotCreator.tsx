@@ -31,7 +31,7 @@ interface Bot {
   personality: string;
   avatarUrl: string;
   voiceConfig: import("../../src/utils/characterVoices").CharacterVoiceConfig | null;
-  voiceGender?: string | null;
+  gender?: string | null;
   // True when created past a copyright warning/caution the user chose to override.
   // Never persisted server-side (shared avatar cache, Blob, or this user's own bots
   // row) — see useBotCreation.ts and app/index.tsx's handleBotCreated.

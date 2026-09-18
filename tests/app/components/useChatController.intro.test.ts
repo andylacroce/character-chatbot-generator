@@ -28,7 +28,7 @@ describe("useChatController - intro generation", () => {
       personality: "p",
       avatarUrl: "",
       voiceConfig: null,
-      voiceGender: null,
+      gender: null,
     } as any;
 
     // ensure ensureVoiceConfig will fetch via api_getVoiceConfigForCharacter
@@ -70,7 +70,7 @@ describe("useChatController - intro generation", () => {
       personality: "p",
       avatarUrl: "",
       voiceConfig: null,
-      voiceGender: null,
+      gender: null,
     } as any;
 
     // ensure fetching voice config fails
@@ -94,7 +94,7 @@ describe("useChatController - intro generation", () => {
       personality: "p",
       avatarUrl: "",
       voiceConfig: null,
-      voiceGender: null,
+      gender: null,
     } as any;
 
     // saved bot in storage with matching name but missing voiceConfig

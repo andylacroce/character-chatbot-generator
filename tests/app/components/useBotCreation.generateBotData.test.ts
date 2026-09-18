@@ -64,7 +64,7 @@ describe("useBotCreation generateBotDataWithProgressCancelable branches", () => 
       if (url === "/api/generate-personality")
         return Promise.resolve(mockResponse({ personality: "gen-personality" }));
       if (url === "/api/generate-avatar")
-        return Promise.resolve(mockResponse({ avatarUrl: "/avatar.png", voiceGender: "female" }));
+        return Promise.resolve(mockResponse({ avatarUrl: "/avatar.png", gender: "female" }));
       return Promise.resolve(mockResponse({}));
     });
     mockApiGetVoiceConfigForCharacter.mockResolvedValue(baseBot.voiceConfig);

@@ -50,7 +50,7 @@ const botsRateLimit = createRateLimiter({
  *               avatarUrl:
  *                 type: string
  *                 nullable: true
- *               voiceGender:
+ *               gender:
  *                 type: string
  *                 nullable: true
  *               voiceConfig:
@@ -138,7 +138,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const { name, personality, avatarUrl, voiceGender, voiceConfig } = req.body;
+  const { name, personality, avatarUrl, gender, voiceConfig } = req.body;
   const sanitizedName = sanitizeCharacterName(name);
   if (!sanitizedName || typeof personality !== "string" || !personality.trim()) {
     res.status(400).json({ error: "Invalid name or personality" });
@@ -153,7 +153,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         name: sanitizedName,
         personality,
         avatarUrl: avatarUrl ?? null,
-        voiceGender: voiceGender ?? null,
+        gender: gender ?? null,
         voiceConfig: voiceConfig ?? null,
         environment,
       })
@@ -162,7 +162,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         set: {
           personality,
           avatarUrl: avatarUrl ?? null,
-          voiceGender: voiceGender ?? null,
+          gender: gender ?? null,
           voiceConfig: voiceConfig ?? null,
           updatedAt: new Date(),
         },

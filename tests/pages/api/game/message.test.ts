@@ -97,7 +97,7 @@ function makeGameState(overrides: Partial<GameStatePayload> = {}): GameStatePayl
     nextCharacterName: "Irene Adler",
     personaPrompt: "persona prompt here",
     avatarUrl: "https://example.com/sherlock.png",
-    voiceGender: "male",
+    gender: "male",
     voiceConfig: { languageCodes: ["en-GB"], name: "en-GB-Wavenad-D", ssmlGender: 1 },
     usedNames: ["Sherlock Holmes"],
     streak: 2,
@@ -229,7 +229,7 @@ describe("game/message API", () => {
     generateGameCluePersonaPrompt.mockResolvedValueOnce({ prompt: "new persona" });
     avatarGeneration.getOrGenerateAvatar.mockResolvedValueOnce({
       avatarUrl: "https://example.com/adler.png",
-      voiceGender: "female",
+      gender: "female",
     });
     mockGetOpeningReply.mockResolvedValueOnce("Hello, dear player.");
     const { getVoiceConfigForCharacter } = require("../../../../src/utils/characterVoices");
@@ -254,7 +254,7 @@ describe("game/message API", () => {
     expect(json.reply).toBe("Brilliant, you got it!");
     expect(json.nextReply).toBe("Hello, dear player.");
     expect(json.avatarUrl).toBe("https://example.com/adler.png");
-    expect(json.voiceGender).toBe("female");
+    expect(json.gender).toBe("female");
     expect(pickRandomCharacterName).toHaveBeenCalledWith(["Sherlock Holmes", "Irene Adler"]);
 
     const state = verifyGameState(json.gameToken);

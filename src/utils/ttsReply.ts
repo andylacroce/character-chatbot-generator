@@ -25,7 +25,7 @@ import type { CharacterVoiceConfig } from "./characterVoices";
 export async function synthesizeReplyAudio(
   text: string,
   botName: string,
-  voiceGender: string | null | undefined,
+  gender: string | null | undefined,
   voiceConfig: CharacterVoiceConfig,
 ): Promise<string | undefined> {
   try {
@@ -53,7 +53,7 @@ export async function synthesizeReplyAudio(
       fs.writeFileSync(txtFilePath, text, "utf8");
       setReplyCache(audioFileName, text);
     }
-    return `/api/audio?file=${audioFileName}&text=${encodeURIComponent(text)}&botName=${encodeURIComponent(botName)}&voiceGender=${encodeURIComponent(voiceGender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
+    return `/api/audio?file=${audioFileName}&text=${encodeURIComponent(text)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
   } catch (err) {
     logEvent(
       "error",

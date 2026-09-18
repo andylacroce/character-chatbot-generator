@@ -65,7 +65,7 @@ describe("useGameController", () => {
     mockStorage.getJSON.mockReturnValue({
       currentCharacterName: "Sherlock Holmes",
       avatarUrl: "https://example.com/sherlock.png",
-      voiceGender: "male",
+      gender: "male",
       streak: 2,
       messages: [{ sender: "Sherlock Holmes", text: "Hello" }],
       roundStartIndex: 0,
@@ -84,7 +84,7 @@ describe("useGameController", () => {
         gameToken: "new-token",
         currentCharacterName: "Sherlock Holmes",
         avatarUrl: "https://example.com/sherlock.png",
-        voiceGender: "male",
+        gender: "male",
         reply: "Greetings, detective.",
         audioFileUrl: "/api/audio?file=intro.mp3",
         streak: 0,
@@ -165,7 +165,7 @@ describe("useGameController", () => {
         gameToken: "token-1",
         currentCharacterName: "Sherlock Holmes",
         avatarUrl: "https://example.com/sherlock.png",
-        voiceGender: "male",
+        gender: "male",
         reply: "Greetings, detective.",
         audioFileUrl: "/api/audio?file=intro.mp3",
         streak: 0,
@@ -259,7 +259,7 @@ describe("useGameController", () => {
         streak: 1,
         gameToken: "token-2",
         avatarUrl: "https://example.com/adler.png",
-        voiceGender: "female",
+        gender: "female",
       }),
     );
 

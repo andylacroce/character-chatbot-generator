@@ -98,7 +98,7 @@ const avatarRateLimit = createRateLimiter({
  *                 avatarUrl:
  *                   type: string
  *                   example: /silhouette.svg
- *                 voiceGender:
+ *                 gender:
  *                   type: string
  *                   nullable: true
  *       400:
@@ -140,7 +140,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     appearanceDescription: sanitizedAppearance,
   });
 
-  res.status(200).json({ avatarUrl: result.avatarUrl, voiceGender: result.voiceGender });
+  res.status(200).json({ avatarUrl: result.avatarUrl, gender: result.gender });
 }
 
 export default withRequestLog(handler);

@@ -93,7 +93,7 @@ describe("game/start API", () => {
     generateGameCluePersonaPrompt.mockResolvedValueOnce({ prompt: "persona prompt here" });
     avatarGeneration.getOrGenerateAvatar.mockResolvedValueOnce({
       avatarUrl: "https://example.com/avatar.png",
-      voiceGender: "male",
+      gender: "male",
     });
     getOpeningReply.mockResolvedValueOnce("Hello, detective.");
     getVoiceConfigForCharacter.mockResolvedValueOnce({
@@ -122,7 +122,7 @@ describe("game/start API", () => {
     expect(json.gameToken).toEqual(expect.any(String));
     expect(json.currentCharacterName).toBe("Sherlock Holmes");
     expect(json.avatarUrl).toBe("https://example.com/avatar.png");
-    expect(json.voiceGender).toBe("male");
+    expect(json.gender).toBe("male");
     expect(json.reply).toBe("Hello, detective.");
     expect(json.audioFileUrl).toBe("/api/audio?file=test.mp3");
     expect(json.streak).toBe(0);

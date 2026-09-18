@@ -33,7 +33,7 @@ function GamePage() {
     starting,
     currentCharacterName,
     avatarUrl,
-    voiceGender,
+    gender,
     streak,
     messages,
     input,
@@ -159,7 +159,7 @@ function GamePage() {
     personality: "",
     avatarUrl,
     voiceConfig: null,
-    voiceGender,
+    gender,
   };
 
   const menuItems = (

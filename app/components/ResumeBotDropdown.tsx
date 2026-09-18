@@ -29,7 +29,7 @@ export interface PersistedBot {
   name: string;
   personality: string;
   avatarUrl: string | null;
-  voiceGender: string | null;
+  gender: string | null;
   voiceConfig: CharacterVoiceConfig | null;
   updatedAt: string;
 }
@@ -41,7 +41,7 @@ export function persistedBotToBot(bot: PersistedBot): Bot {
     personality: bot.personality,
     avatarUrl: bot.avatarUrl || "/silhouette.svg",
     voiceConfig: bot.voiceConfig,
-    voiceGender: bot.voiceGender,
+    gender: bot.gender,
   };
 }
 

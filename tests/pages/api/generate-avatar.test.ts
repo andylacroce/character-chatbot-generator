@@ -41,9 +41,7 @@ function makeRes() {
   return res as NextApiResponse;
 }
 
-function mockAnthropic(
-  promptJson: Record<string, unknown> = { subject: "s", voiceGender: "female" },
-) {
+function mockAnthropic(promptJson: Record<string, unknown> = { subject: "s", gender: "female" }) {
   const mockCreate = jest.fn().mockResolvedValueOnce({
     content: [{ type: "text", text: JSON.stringify(promptJson) }],
   });
@@ -131,7 +129,7 @@ describe("generate-avatar API", () => {
   });
 
   describe("Cloudflare Workers AI (primary, free)", () => {
-    it("returns avatarUrl and voiceGender when Cloudflare is configured and succeeds", async () => {
+    it("returns avatarUrl and gender when Cloudflare is configured and succeeds", async () => {
       await jest.isolateModulesAsync(async () => {
         jest.resetModules();
         process.env.CLOUDFLARE_ACCOUNT_ID = "test-account";
@@ -162,10 +160,7 @@ describe("generate-avatar API", () => {
             headers: expect.objectContaining({ Authorization: "Bearer test-token" }),
           }),
         );
-        expect(res.json).toHaveBeenCalledWith({
-          avatarUrl: cloudflareDataUrl,
-          voiceGender: "female",
-        });
+        expect(res.json).toHaveBeenCalledWith({ avatarUrl: cloudflareDataUrl, gender: "female" });
       });
     });
 
@@ -194,10 +189,7 @@ describe("generate-avatar API", () => {
           expect.stringContaining("image.pollinations.ai"),
           expect.anything(),
         );
-        expect(res.json).toHaveBeenCalledWith({
-          avatarUrl: pollinationsDataUrl,
-          voiceGender: "female",
-        });
+        expect(res.json).toHaveBeenCalledWith({ avatarUrl: pollinationsDataUrl, gender: "female" });
       });
     });
   });
@@ -229,10 +221,7 @@ describe("generate-avatar API", () => {
         await handler(req, res);
 
         expect(mockFetch).toHaveBeenCalledTimes(2);
-        expect(res.json).toHaveBeenCalledWith({
-          avatarUrl: pollinationsDataUrl,
-          voiceGender: "female",
-        });
+        expect(res.json).toHaveBeenCalledWith({ avatarUrl: pollinationsDataUrl, gender: "female" });
       });
     });
 
@@ -242,7 +231,7 @@ describe("generate-avatar API", () => {
         process.env.CLOUDFLARE_ACCOUNT_ID = "test-account";
         process.env.CLOUDFLARE_API_TOKEN = "test-token";
 
-        mockAnthropic({ subject: "s", voiceGender: "male" });
+        mockAnthropic({ subject: "s", gender: "male" });
         const mockFetch = jest
           .fn()
           .mockResolvedValueOnce({ ok: false, status: 500, text: async () => "server error" })
@@ -257,17 +246,14 @@ describe("generate-avatar API", () => {
         } as Partial<NextApiRequest> as NextApiRequest;
         const res = makeRes();
         await handler(req, res);
-        expect(res.json).toHaveBeenCalledWith({
-          avatarUrl: "/silhouette.svg",
-          voiceGender: "male",
-        });
+        expect(res.json).toHaveBeenCalledWith({ avatarUrl: "/silhouette.svg", gender: "male" });
       });
     });
 
     it("returns silhouette when both providers throw", async () => {
       await jest.isolateModulesAsync(async () => {
         jest.resetModules();
-        mockAnthropic({ subject: "s", voiceGender: null });
+        mockAnthropic({ subject: "s", gender: null });
         const mockFetch = jest.fn().mockRejectedValue(new Error("network down"));
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
@@ -404,7 +390,7 @@ describe("generate-avatar API", () => {
       );
       expect(res.json).toHaveBeenCalledWith({
         avatarUrl: "https://example-blob.public.blob.vercel-storage.com/avatars/fake-id.png",
-        voiceGender: "female",
+        gender: "female",
       });
 
       delete process.env.BLOB_READ_WRITE_TOKEN;
@@ -418,7 +404,7 @@ describe("generate-avatar API", () => {
       const mockPut = jest.fn().mockRejectedValue(new Error("blob upload failed"));
       jest.doMock("@vercel/blob", () => ({ put: (...args: unknown[]) => mockPut(...args) }));
 
-      mockAnthropic({ subject: "s", voiceGender: null });
+      mockAnthropic({ subject: "s", gender: null });
       const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
         arrayBuffer: async () => Buffer.from("pollinationsdata"),
@@ -436,7 +422,7 @@ describe("generate-avatar API", () => {
       const res = makeRes();
       await handler(req, res);
 
-      expect(res.json).toHaveBeenCalledWith({ avatarUrl: pollinationsDataUrl, voiceGender: null });
+      expect(res.json).toHaveBeenCalledWith({ avatarUrl: pollinationsDataUrl, gender: null });
       expect(mockLogEvent).toHaveBeenCalledWith(
         "error",
         "avatar_blob_upload_failed",
@@ -453,7 +439,7 @@ describe("generate-avatar API", () => {
       jest.resetModules();
 
       const longSubject = "A".repeat(2000);
-      mockAnthropic({ subject: longSubject, voiceGender: null });
+      mockAnthropic({ subject: longSubject, gender: null });
       const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
         arrayBuffer: async () => Buffer.from("pollinationsdata"),
@@ -499,7 +485,7 @@ describe("generate-avatar API", () => {
         process.env.DATABASE_URL = "postgres://user:pass@host/db";
 
         const { mockSelect } = mockDbWith([
-          { avatarUrl: "https://blob.example.com/cached.png", voiceGender: "male" },
+          { avatarUrl: "https://blob.example.com/cached.png", gender: "male" },
         ]);
 
         const mockCreate = jest.fn();
@@ -523,7 +509,7 @@ describe("generate-avatar API", () => {
 
         expect(res.json).toHaveBeenCalledWith({
           avatarUrl: "https://blob.example.com/cached.png",
-          voiceGender: "male",
+          gender: "male",
         });
         expect(mockSelect).toHaveBeenCalled();
         expect(mockCreate).not.toHaveBeenCalled();
@@ -558,7 +544,7 @@ describe("generate-avatar API", () => {
         expect(mockValues).toHaveBeenCalledWith(
           expect.objectContaining({
             characterName: "new character",
-            voiceGender: "female",
+            gender: "female",
           }),
         );
       });
@@ -571,7 +557,7 @@ describe("generate-avatar API", () => {
 
         const { mockInsert } = mockDbWith([]);
 
-        mockAnthropic({ subject: "s", voiceGender: null });
+        mockAnthropic({ subject: "s", gender: null });
         const mockFetch = jest
           .fn()
           .mockResolvedValue({ ok: false, status: 500, text: async () => "error" });
@@ -608,7 +594,7 @@ describe("generate-avatar API", () => {
           getDb: () => ({ select: mockSelect, insert: mockInsert }),
         }));
 
-        mockAnthropic({ subject: "s", voiceGender: null });
+        mockAnthropic({ subject: "s", gender: null });
         const mockFetch = jest.fn().mockResolvedValue({
           ok: true,
           arrayBuffer: async () => Buffer.from("pollinationsdata"),
@@ -644,7 +630,7 @@ describe("generate-avatar API", () => {
           getDb: () => ({ select: mockSelect, insert: mockInsert }),
         }));
 
-        mockAnthropic({ subject: "s", voiceGender: null });
+        mockAnthropic({ subject: "s", gender: null });
         const mockFetch = jest.fn().mockResolvedValue({
           ok: true,
           arrayBuffer: async () => Buffer.from("pollinationsdata"),
@@ -676,7 +662,7 @@ describe("generate-avatar API", () => {
         const mockWhere = jest
           .fn()
           .mockResolvedValue([
-            { avatarUrl: "https://blob.example.com/cached.png", voiceGender: "male" },
+            { avatarUrl: "https://blob.example.com/cached.png", gender: "male" },
           ]);
         const mockFrom = jest.fn(() => ({ where: mockWhere }));
         const mockSelect = jest.fn(() => ({ from: mockFrom }));
@@ -713,10 +699,7 @@ describe("generate-avatar API", () => {
         expect(mockInsert).not.toHaveBeenCalled();
         // Never uploads to Blob — returns the raw data URL instead of a durable link.
         expect(mockPut).not.toHaveBeenCalled();
-        expect(res.json).toHaveBeenCalledWith({
-          avatarUrl: pollinationsDataUrl,
-          voiceGender: "female",
-        });
+        expect(res.json).toHaveBeenCalledWith({ avatarUrl: pollinationsDataUrl, gender: "female" });
 
         delete process.env.BLOB_READ_WRITE_TOKEN;
       });

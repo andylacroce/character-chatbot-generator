@@ -134,7 +134,7 @@ const Home = () => {
             name: bot.name,
             personality: bot.personality,
             avatarUrl: bot.avatarUrl,
-            voiceGender: bot.voiceGender,
+            gender: bot.gender,
             voiceConfig: bot.voiceConfig,
           }),
         }).catch(() => {

@@ -29,13 +29,13 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
     const cfg = normalizeClaudeConfig({
       pitch: 100,
       rate: 0.1,
-      voiceGender: "female",
+      gender: "female",
       languageCode: "en-US",
       voiceName: "foo",
     });
     expect(cfg.pitch).toBe(20); // clamped to 20
     expect(cfg.rate).toBe(0.25); // clamped to 0.25
-    expect(cfg.voiceGender).toBe("female");
+    expect(cfg.gender).toBe("female");
   });
 
   it("fetchVoiceConfigFromClaude retries when voice name malformed and succeeds", async () => {
@@ -45,7 +45,7 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
         content: [
           {
             type: "text",
-            text: '{"voiceName":"badname","languageCode":"en-US","voiceGender":"male","pitch":0,"rate":1}',
+            text: '{"voiceName":"badname","languageCode":"en-US","gender":"male","pitch":0,"rate":1}',
           },
         ],
       })
@@ -54,7 +54,7 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
         content: [
           {
             type: "text",
-            text: '{"voiceName":"en-US-Wavenet-D","languageCode":"en-US","voiceGender":"male","pitch":2,"rate":1.2}',
+            text: '{"voiceName":"en-US-Wavenet-D","languageCode":"en-US","gender":"male","pitch":2,"rate":1.2}',
           },
         ],
       });
@@ -76,7 +76,7 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
       content: [
         {
           type: "text",
-          text: '{"voiceName":"en-US-Wavenet-D","languageCode":"en-US","voiceGender":"male","pitch":0,"rate":1}',
+          text: '{"voiceName":"en-US-Wavenet-D","languageCode":"en-US","gender":"male","pitch":0,"rate":1}',
         },
       ],
     });
@@ -110,10 +110,10 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
     expect(detectVoiceType("something-else")).toBe("Standard");
   });
 
-  it("normalizeClaudeConfig falls back to defaults for missing voiceGender, languageCode, voiceName", () => {
-    // Exercises the || fallback branches: voiceGender || "male", languageCode || "en-US", voiceName || ""
+  it("normalizeClaudeConfig falls back to defaults for missing gender, languageCode, voiceName", () => {
+    // Exercises the || fallback branches: gender || "male", languageCode || "en-US", voiceName || ""
     const cfg = normalizeClaudeConfig({});
-    expect(cfg.voiceGender).toBe("male");
+    expect(cfg.gender).toBe("male");
     expect(cfg.languageCode).toBe("en-US");
     expect(cfg.voiceName).toBe("");
     expect(cfg.pitch).toBe(0);
@@ -123,7 +123,7 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
   it("normalizeClaudeConfig falls back to 0 and 1.0 for non-numeric pitch and rate", () => {
     // Exercises the typeof !== 'number' branches for pitch and rate
     const cfg = normalizeClaudeConfig({
-      voiceGender: "female",
+      gender: "female",
       languageCode: "en-GB",
       voiceName: "en-GB-Wavenet-A",
       pitch: "high" as unknown as number,
@@ -157,7 +157,7 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
       content: [
         {
           type: "text",
-          text: '{"voiceName":"en-US-Wavenet-D","languageCode":"en-US","voiceGender":"male","pitch":0,"rate":1}',
+          text: '{"voiceName":"en-US-Wavenet-D","languageCode":"en-US","gender":"male","pitch":0,"rate":1}',
         },
       ],
     });

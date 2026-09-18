@@ -324,7 +324,7 @@ async function finalizeChatPersistence(
  *               botName:
  *                 type: string
  *                 default: Character
- *               voiceGender:
+ *               gender:
  *                 type: string
  *               conversationHistory:
  *                 type: array
@@ -410,7 +410,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const requestPersonality =
       req.body.personality || (await generatePersonalityPrompt("a character chatbot")).prompt;
     const botName = req.body.botName || "Character";
-    const voiceGender = req.body.voiceGender;
+    const gender = req.body.gender;
     const conversationHistory = req.body.conversationHistory || [];
     const stream = req.body.stream === true; // Support streaming mode
     const voiceConfig = req.body.voiceConfig;
@@ -665,7 +665,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
           }),
         );
       }
-      const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&voiceGender=${encodeURIComponent(voiceGender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
+      const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(cachedReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
       res.status(200).json({
         reply: cachedReply,
         audioFileUrl,
@@ -764,7 +764,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
             ssml: false,
             voice: selectedVoice,
           });
-          audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&voiceGender=${encodeURIComponent(voiceGender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
+          audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
         } catch (ttsError) {
           logEvent(
             "error",
@@ -965,7 +965,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
       );
     }
     setReplyCache(cacheKey, botReply);
-    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&voiceGender=${encodeURIComponent(voiceGender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
+    const audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
     res.status(200).json({
       reply: botReply,
       audioFileUrl,

@@ -591,7 +591,7 @@ export async function generateBotDataWithProgressCancelable(
   onProgress("avatar");
   setLoadingMessage("Generating portrait");
   let avatarUrl = "/silhouette.svg";
-  let voiceGender: string | null = null;
+  let gender: string | null = null;
   if (cancelToken?.cancelled) throw new Error("cancelled");
   try {
     setLoadingMessage("Generating portrait");
@@ -614,7 +614,7 @@ export async function generateBotDataWithProgressCancelable(
           setLoadingMessage("Using default image");
         }
       }
-      voiceGender = data.voiceGender || null;
+      gender = data.gender || null;
     } else {
       setLoadingMessage("Using default image");
     }
@@ -626,7 +626,7 @@ export async function generateBotDataWithProgressCancelable(
   let voiceConfig = null;
   if (cancelToken?.cancelled) throw new Error("cancelled");
   try {
-    voiceConfig = await api_getVoiceConfigForCharacter(correctedName, voiceGender);
+    voiceConfig = await api_getVoiceConfigForCharacter(correctedName, gender);
     if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
       logEvent(
         "info",
@@ -660,5 +660,5 @@ export async function generateBotDataWithProgressCancelable(
   try {
     persistVoiceConfig(correctedName, voiceConfig);
   } catch {}
-  return { name: correctedName, personality, avatarUrl, voiceConfig, voiceGender, skipPersistence };
+  return { name: correctedName, personality, avatarUrl, voiceConfig, gender, skipPersistence };
 }

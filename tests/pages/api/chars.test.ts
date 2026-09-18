@@ -8,7 +8,7 @@ const mockDb = { select: mockSelect };
 jest.mock("../../../src/db/client", () => ({ getDb: () => mockDb }));
 
 function makeRow(name: string, avatarUrl = `https://example.test/${name}.png`) {
-  return { characterName: name, avatarUrl, voiceGender: null, createdAt: new Date() };
+  return { characterName: name, avatarUrl, gender: null, createdAt: new Date() };
 }
 
 describe("chars API", () => {

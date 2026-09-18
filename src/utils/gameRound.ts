@@ -19,7 +19,7 @@ export interface GameRound {
   nextCharacterName: string;
   personaPrompt: string;
   avatarUrl: string;
-  voiceGender: string | null;
+  gender: string | null;
   voiceConfig: CharacterVoiceConfig;
   reply: string;
   audioFileUrl?: string;
@@ -38,24 +38,11 @@ export async function generateGameRound(
     currentCharacterName,
     nextCharacterName,
   );
-  const { avatarUrl, voiceGender } = await getOrGenerateAvatar(currentCharacterName, {
+  const { avatarUrl, gender } = await getOrGenerateAvatar(currentCharacterName, {
     recognized: true,
   });
   const reply = await getOpeningReply(personaPrompt);
-  const voiceConfig = await getVoiceConfigForCharacter(currentCharacterName, voiceGender);
-  const audioFileUrl = await synthesizeReplyAudio(
-    reply,
-    currentCharacterName,
-    voiceGender,
-    voiceConfig,
-  );
-  return {
-    nextCharacterName,
-    personaPrompt,
-    avatarUrl,
-    voiceGender,
-    voiceConfig,
-    reply,
-    audioFileUrl,
-  };
+  const voiceConfig = await getVoiceConfigForCharacter(currentCharacterName, gender);
+  const audioFileUrl = await synthesizeReplyAudio(reply, currentCharacterName, gender, voiceConfig);
+  return { nextCharacterName, personaPrompt, avatarUrl, gender, voiceConfig, reply, audioFileUrl };
 }

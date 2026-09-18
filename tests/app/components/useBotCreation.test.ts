@@ -183,7 +183,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -221,7 +221,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "female" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -264,7 +264,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -300,7 +300,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -335,7 +335,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "female" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -406,7 +406,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/silhouette.svg", voiceGender: "female" }),
+          json: async () => ({ avatarUrl: "/silhouette.svg", gender: "female" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -438,7 +438,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "other" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "other" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -474,7 +474,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "female" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -508,7 +508,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "female" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -546,7 +546,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "female" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -584,7 +584,7 @@ describe("useBotCreation tests", () => {
             () =>
               res({
                 ok: true,
-                json: async () => ({ avatarUrl: "/silhouette.svg", voiceGender: "female" }),
+                json: async () => ({ avatarUrl: "/silhouette.svg", gender: "female" }),
               }),
             10,
           ),
@@ -932,7 +932,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar") {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -966,7 +966,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar") {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -1043,7 +1043,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar") {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -1208,7 +1208,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar") {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -1280,7 +1280,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar") {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -1309,7 +1309,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -1330,7 +1330,7 @@ describe("useBotCreation tests", () => {
     expect(bot.personality).toBe("You are NoPersonality. Stay in character.");
   });
 
-  it("passes voiceGender to voice config when avatar returns voiceGender but no avatarUrl", async () => {
+  it("passes gender to voice config when avatar returns gender but no avatarUrl", async () => {
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
         return Promise.resolve({
@@ -1338,7 +1338,7 @@ describe("useBotCreation tests", () => {
           json: async () => ({ personality: "p", correctedName: "Gen" }),
         });
       if (url === "/api/generate-avatar")
-        return Promise.resolve({ ok: true, json: async () => ({ voiceGender: "female" }) });
+        return Promise.resolve({ ok: true, json: async () => ({ gender: "female" }) });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
     const voiceCfg: VoiceCfg = { name: "en-US-Voice", languageCodes: ["en-US"] };
@@ -1353,7 +1353,7 @@ describe("useBotCreation tests", () => {
     });
 
     expect(onBotCreated).toHaveBeenCalled();
-    // voice config was called with correctedName and voiceGender 'female'
+    // voice config was called with correctedName and gender 'female'
     expect(mockGetVoiceConfig).toHaveBeenCalledWith("Gen", "female");
     const bot = onBotCreated.mock.calls[0][0];
     expect(bot.avatarUrl).toBe("/silhouette.svg");
@@ -1366,7 +1366,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -1412,7 +1412,7 @@ describe("useBotCreation tests", () => {
             () =>
               resolve({
                 ok: true,
-                json: async () => ({ avatarUrl: "/silhouette.svg", voiceGender: "female" }),
+                json: async () => ({ avatarUrl: "/silhouette.svg", gender: "female" }),
               }),
             40,
           );
@@ -1461,10 +1461,7 @@ describe("useBotCreation tests", () => {
         return new Promise((resolve) =>
           setTimeout(
             () =>
-              resolve({
-                ok: true,
-                json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
-              }),
+              resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png", gender: "male" }) }),
             80,
           ),
         );
@@ -1505,10 +1502,7 @@ describe("useBotCreation tests", () => {
         return new Promise((resolve) =>
           setTimeout(
             () =>
-              resolve({
-                ok: true,
-                json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
-              }),
+              resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png", gender: "male" }) }),
             120,
           ),
         );
@@ -1554,7 +1548,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "female" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -1610,7 +1604,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "female" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -1650,7 +1644,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -1758,7 +1752,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -1790,7 +1784,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "female" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "female" }),
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
@@ -1872,7 +1866,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar") {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -1909,7 +1903,7 @@ describe("useBotCreation tests", () => {
       if (url === "/api/generate-avatar") {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ avatarUrl: "/img.png", voiceGender: "male" }),
+          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
         });
       }
       return Promise.resolve({ ok: true, json: async () => ({}) });
@@ -1988,7 +1982,7 @@ describe("useBotCreation tests", () => {
     );
   });
 
-  it("passes null voiceGender to voice config when avatar response omits voiceGender", async () => {
+  it("passes null gender to voice config when avatar response omits gender", async () => {
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
         return Promise.resolve({
@@ -2011,7 +2005,7 @@ describe("useBotCreation tests", () => {
     });
 
     expect(onBotCreated).toHaveBeenCalled();
-    // Ensure the voice config call was passed null for voiceGender when avatar omitted it
+    // Ensure the voice config call was passed null for gender when avatar omitted it
     expect(mockGetVoiceConfig.mock.calls[0][1]).toBeNull();
   });
 });

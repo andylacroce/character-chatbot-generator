@@ -107,12 +107,7 @@ export const bots = pgTable(
     name: text("name").notNull(),
     personality: text("personality").notNull(),
     avatarUrl: text("avatar_url"),
-    // TS property renamed to voiceGender (the DB column itself stays "gender" — no
-    // migration needed) after CodeQL flagged the old name as clear-text storage of
-    // sensitive PII when it reached client-side localStorage; it's actually just a
-    // character's voice-selection attribute (Google TTS voice gender), never a real
-    // person's data.
-    voiceGender: text("gender"),
+    gender: text("gender"),
     voiceConfig: jsonb("voice_config").$type<CharacterVoiceConfig | null>(),
     environment: text("environment").notNull(),
     // Rolling summarization checkpoint (phase 3c): `summary` folds in every message up to
@@ -156,7 +151,7 @@ export const messages = pgTable("messages", {
  * intentionally trades per-user visual variety for cost. Only successful Gemini
  * generations are cached (see pages/api/generate-avatar.ts) — never the
  * `/silhouette.svg` fallback, so a transient generation failure doesn't
- * permanently deny a name a real portrait. `voiceGender` is cached alongside the image
+ * permanently deny a name a real portrait. `gender` is cached alongside the image
  * because it's produced by the same Claude prompt-generation step that a cache hit
  * skips entirely, and callers need it for voice selection.
  *
@@ -183,9 +178,7 @@ export const messages = pgTable("messages", {
 export const avatarCache = pgTable("avatar_cache", {
   characterName: text("character_name").primaryKey(),
   avatarUrl: text("avatar_url").notNull(),
-  // TS property renamed to voiceGender (DB column stays "gender") — see the same note
-  // on `bots.voiceGender` above.
-  voiceGender: text("gender"),
+  gender: text("gender"),
   recognized: boolean("recognized").default(true).notNull(),
   displayName: text("display_name"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),

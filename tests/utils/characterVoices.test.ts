@@ -57,7 +57,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
         {
           type: "text",
           text: JSON.stringify({
-            voiceGender: "male",
+            gender: "male",
             languageCode: "en-US",
             voiceName: "en-US-Wavenet-D",
             pitch: 0,
@@ -119,7 +119,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-D",
               pitch: 0,
@@ -147,7 +147,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "female",
+              gender: "female",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-C",
               pitch: 0,
@@ -169,7 +169,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-D",
               pitch: 0,
@@ -194,7 +194,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "female",
+              gender: "female",
               languageCode: "en-US",
               voiceName: "en-US-Studio-M",
               pitch: 2,
@@ -216,7 +216,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-GB",
               voiceName: "en-GB-Wavenet-B",
               pitch: -3,
@@ -238,7 +238,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "female",
+              gender: "female",
               languageCode: "en-US",
               voiceName: "en-US-Neural2-F",
               pitch: 5,
@@ -262,7 +262,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "de-DE",
               voiceName: "de-DE-Wavenet-B",
               pitch: -2,
@@ -284,7 +284,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "female",
+              gender: "female",
               languageCode: "fr-FR",
               voiceName: "fr-FR-Wavenet-A",
               pitch: 3,
@@ -306,7 +306,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "female",
+              gender: "female",
               languageCode: "ja-JP",
               voiceName: "ja-JP-Wavenet-A",
               pitch: 4,
@@ -330,7 +330,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-D",
               pitch: -10, // Deep voice
@@ -351,7 +351,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "female",
+              gender: "female",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-F",
               pitch: 2,
@@ -372,7 +372,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-D",
               pitch: 50, // Invalid: too high
@@ -395,7 +395,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "female",
+              gender: "female",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-F",
               pitch: 0,
@@ -432,7 +432,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
             type: "text",
             text: JSON.stringify({
               // Missing required fields
-              voiceGender: "male",
+              gender: "male",
             }),
           },
         ],
@@ -462,7 +462,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "zh-CN",
               voiceName: "zh-CN-Wavenet-B",
               pitch: 0,
@@ -481,7 +481,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "zh-CN",
               voiceName: "zh-CN-Wavenet-C",
               pitch: 0,
@@ -509,7 +509,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "female",
+              gender: "female",
               languageCode: "en-US",
               voiceName: "InvalidVoiceName123",
               pitch: 5,
@@ -525,7 +525,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "female",
+              gender: "female",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-A",
               pitch: 5,
@@ -551,7 +551,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-Z", // Invalid letter
               pitch: 0,
@@ -578,7 +578,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Standard-E",
               pitch: 0,
@@ -600,7 +600,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-Q",
               pitch: 0,
@@ -618,7 +618,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-A",
               pitch: 0,
@@ -647,7 +647,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-B",
               pitch: 0,
@@ -673,7 +673,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
       );
     });
 
-    it("maps neutral voiceGender to SSML_GENDER.NEUTRAL", () => {
+    it("maps neutral gender to SSML_GENDER.NEUTRAL", () => {
       const mod = require("../../src/utils/characterVoices");
       expect(mod.mapGenderToSsml("neutral")).toBe(SSML_GENDER.NEUTRAL);
     });
@@ -689,7 +689,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-G",
               pitch: 0,
@@ -723,32 +723,32 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
     it("normalizeClaudeConfig applies defaults for missing fields", async () => {
       const mod = require("../../src/utils/characterVoices");
       const normalized = mod.normalizeClaudeConfig({} as Partial<VoiceConfig>);
-      expect(normalized.voiceGender).toBe("male");
+      expect(normalized.gender).toBe("male");
       expect(normalized.languageCode).toBe("en-US");
       expect(normalized.pitch).toBe(0);
       expect(normalized.rate).toBe(1.0);
     });
 
-    it("normalizeClaudeConfig respects neutral voiceGender and clamps values", () => {
+    it("normalizeClaudeConfig respects neutral gender and clamps values", () => {
       const mod = require("../../src/utils/characterVoices");
       const normalized = mod.normalizeClaudeConfig({
-        voiceGender: "neutral",
+        gender: "neutral",
         pitch: 50,
         rate: 10,
       } as Partial<VoiceConfig>);
-      expect(normalized.voiceGender).toBe("neutral");
+      expect(normalized.gender).toBe("neutral");
       expect(normalized.pitch).toBeLessThanOrEqual(20);
       expect(normalized.rate).toBeLessThanOrEqual(4.0);
     });
 
-    it("applies default voiceGender/pitch/rate when fields are missing (unit)", () => {
+    it("applies default gender/pitch/rate when fields are missing (unit)", () => {
       // Unit test using normalization helper to avoid external validation dependency
       const mod = require("../../src/utils/characterVoices");
       const normalized = mod.normalizeClaudeConfig({
         languageCode: "en-US",
         voiceName: "en-US-Wavenet-D",
       } as Partial<VoiceConfig>);
-      expect(normalized.voiceGender).toBe("male");
+      expect(normalized.gender).toBe("male");
       expect(normalized.pitch).toBe(0);
       expect(normalized.rate).toBe(1.0);
     });
@@ -762,7 +762,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
           {
             type: "text",
             text: JSON.stringify({
-              voiceGender: "male",
+              gender: "male",
               languageCode: "en-US",
               voiceName: "en-US-Wavenet-H",
               pitch: 0,
@@ -799,13 +799,13 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
       expect(JSON.stringify(meta)).toContain("claude-boom");
     });
 
-    it("maps neutral voiceGender to NEUTRAL (unit)", () => {
+    it("maps neutral gender to NEUTRAL (unit)", () => {
       const mod = require("../../src/utils/characterVoices");
       expect(mod.mapGenderToSsml("neutral")).toBe(mod.SSML_GENDER.NEUTRAL);
     });
 
     describe("mapping helpers (mock fetch)", () => {
-      it("getVoiceConfigForCharacter maps neutral voiceGender when fetch returns neutral", async () => {
+      it("getVoiceConfigForCharacter maps neutral gender when fetch returns neutral", async () => {
         const mod = require("../../src/utils/characterVoices");
         // call helper directly
         expect(mod.mapGenderToSsml("neutral")).toBe(SSML_GENDER.NEUTRAL);
