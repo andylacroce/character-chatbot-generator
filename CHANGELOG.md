@@ -2,6 +2,14 @@
 
 This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
 
+## 2026-09-18 — Fixed a nonsensical published character; hardened the recognition guardrail
+
+- **Live incident:** a bare `"Hero"` character reached the public Character Wall with a nonsensical personality. Root cause: the guessing game and `/api/random-character` pick names blindly from the curated list (`src/data/characterNames.ts`) with zero Claude/copyright/recognition check, and that list contained a bare `"Hero"` entry ambiguous with the plain English word; separately, `/api/validate-character.ts`'s own curated-allowlist short-circuit checked the same list, so even a manually-typed "Hero" skipped Claude's recognition classification entirely.
+- Disambiguated both real `"Hero"` entries in the curated list (`"Hero (Much Ado About Nothing)"`, `"Hero (Greek mythology)"`), matching the list's existing collision-disambiguation convention — this removes the bare word from both the game/Random pool and the allowlist short-circuit.
+- Hardened `validate-character.ts`'s recognition prompt so a bare common noun/generic archetype with no other identifying detail (e.g. "Hero", "Wizard") is classified `recognized: false` even if some specific obscure character happens to share that word, as defense-in-depth for names not on the curated list.
+- Added a regression test (`tests/src/data/characterNames.test.ts`) denylisting known bare archetypes so an equally-ambiguous entry can't silently slip back into the curated list.
+- Deleted the stale `"hero"` row directly from the shared production `avatar_cache` table.
+
 ## 2026-09-17 to 2026-09-18 — Guessing game (chain mode), copyright/trademark moderation, and observability
 
 - Added a "guess who" chain game (`/game`) as a second mode alongside ordinary chat: chat with a real, named character who naturally steers the conversation toward a different, hidden figure; guesses are typed into the same chat box (no separate guess control) and classified server-side on every turn. A correct guess promotes the hidden figure to be the new chat partner, continuing the chain and building a streak; a second wrong guess (or a voluntary give-up, with an in-app confirmation) ends the run and always reveals the answer.

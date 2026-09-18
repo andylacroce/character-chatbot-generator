@@ -1050,7 +1050,7 @@ const characterNames: string[] = [
   "Demetrius",
   "Beatrice",
   "Benedick",
-  "Hero",
+  "Hero (Much Ado About Nothing)",
   "Claudio",
   "Don Pedro",
   "Dogberry",
@@ -1813,7 +1813,7 @@ const characterNames: string[] = [
   "Pollux",
   "Clytia",
   "Leander",
-  "Hero",
+  "Hero (Greek mythology)",
 
   // More Norse (extended)
   "Skrymir",

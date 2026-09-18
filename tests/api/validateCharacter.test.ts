@@ -138,6 +138,50 @@ describe("validate-character API", () => {
     });
   });
 
+  it("passes through recognized: false for a generic common-noun/archetype name with no specific identity", async () => {
+    // Regression test for a live prod incident: "Hero" (a bare generic word/archetype,
+    // not a specific identifiable character) was classified recognized: true, so it
+    // skipped the description-required flow and produced a nonsensical personality.
+    // The prompt guardrail lives in validate-character.ts's system prompt (Claude's
+    // classification isn't exercised here, since Claude itself is mocked) — this test
+    // instead pins that the route faithfully passes a `recognized: false` result
+    // through to the client, which is what makes that guardrail actually take effect.
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            isPublicDomain: true,
+            isSafe: true,
+            warningLevel: "none",
+            recognized: false,
+            reason: "Hero is a generic role/archetype, not a specific identifiable character.",
+            suggestions: [],
+          }),
+        },
+      ],
+    });
+
+    const handler = (await import("../../pages/api/validate-character")).default;
+    const { req, res } = createMocks({
+      method: "POST",
+      body: { name: "Hero" },
+    });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.characterName).toBe("Hero");
+    expect(data.recognized).toBe(false);
+    expect(data.blocked).toBe(false);
+    expect(data.warningLevel).toBe("none");
+    expect(mockRecordEvent).toHaveBeenCalledWith("character_validated", {
+      warningLevel: "none",
+      blocked: false,
+      recognized: false,
+      scrubbed: false,
+    });
+  });
+
   it("short-circuits to warningLevel none for a name on the curated public-domain allowlist, without calling Claude", async () => {
     const handler = (await import("../../pages/api/validate-character")).default;
     const { req, res } = createMocks({

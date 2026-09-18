@@ -316,6 +316,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
    - "Spider-Man"/"Pikachu"/"Elsa" (Frozen) → warning. These names have no meaning or
      prior existence outside their specific corporate origin.
 3. Recognition (independent of all concerns above): is this an actual character or person you have real, specific knowledge of — a well-known (or even obscure but real) fictional character, historical figure, or mythological figure? Or does the name just look plausible without corresponding to anything you actually know (an invented name, a random combination of words, an original character)? Be honest here — do not guess or invent facts about a name just because it sounds like it could be a character.
+   Critically: a plain common noun, generic role, or archetype (e.g. "Hero", "Wizard",
+   "Warrior", "Detective", "Princess", "Ninja") is NOT recognized, even if some specific,
+   obscure fictional character somewhere technically shares that exact word as a name.
+   Without any other identifying detail, you cannot know which (if any) specific
+   character the person actually has in mind, and generating a personality for just the
+   bare concept of "a hero" produces empty, incoherent filler rather than an actual
+   character. Treat these the same as an invented name: recognized: false, so the app
+   asks the person for a real description instead of guessing.
+   Worked example: "Hero" → recognized: false. It's an ordinary English word for a
+   role/archetype; nothing about the bare name identifies a specific individual, even
+   though it happens to also be a minor character's name in one Shakespeare play.
 
 Return ONLY valid JSON with this exact schema:
 {
@@ -341,8 +352,11 @@ warningLevel guide (only about copyright/trademark, ignore concerns 1/1b entirel
   independent of that specific corporate work (Disney, Marvel, modern franchises, etc.)
 
 "recognized" guide:
-- true: a real character or person you have specific knowledge about.
-- false: an original/made-up name with no actual match — warningLevel should be "none" in this case, since there's nothing copyrighted about a name nobody has used.`,
+- true: a real, specific, identifiable character or person you have specific knowledge about.
+- false: an original/made-up name with no actual match, OR a bare common noun/generic
+  role/archetype with no specific identity (see the worked example above) — warningLevel
+  should be "none" in this case, since there's nothing copyrighted about a name nobody
+  has used.`,
       messages: [
         {
           role: "user",
