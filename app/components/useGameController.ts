@@ -194,7 +194,7 @@ export function useGameController() {
     setLastEvent(null);
     setStartProgressMessage("Creating personality…");
 
-    // Simulated staged progress to mirror bot creation's spinner UX (CLAUDE.md TODO #3).
+    // Simulated staged progress to mirror bot creation's spinner UX.
     // The real /api/game/start call does persona+avatar+voice+reply in one pass, so we
     // cycle through representative messages client-side for visual consistency while the
     // request is in flight. Advances through the stages once and then holds on the last
