@@ -295,3 +295,28 @@ export const analyticsEvents = pgTable(
   },
   (table) => [index("analytics_events_name_created_idx").on(table.name, table.createdAt)],
 );
+
+/**
+ * A signed-in user's personal best guessing-game streak — a precursor to the public,
+ * cross-user leaderboard tracked as Phase 2 of issue #876 (not started; would add its
+ * own `game_results` table plus `users.showOnLeaderboard`). `environment`-scoped like
+ * `bots`/`analyticsEvents`, via getCurrentEnvironment(), so a local/preview play
+ * session can never inflate a real user's production best. `(user_id, environment)` is
+ * the primary key rather than a surrogate id: there is exactly one current best per
+ * user per environment, upserted in place (see src/utils/gameHighScore.ts) rather than
+ * appended to as a history. Guests have no row here at all — the game is fully
+ * client-authoritative for them, same as everywhere else in this app (see gameToken.ts's
+ * module doc) — so "no row" is exactly how the UI knows not to show a personal best.
+ */
+export const gameHighScores = pgTable(
+  "game_high_scores",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    environment: text("environment").notNull(),
+    highScore: integer("high_score").notNull().default(0),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.environment] })],
+);

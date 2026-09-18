@@ -28,6 +28,7 @@ import { extractJson } from "../../../src/utils/parseClaudeJson";
 import anthropic from "../../../src/utils/anthropicClient";
 import { verifyGameState, signGameState } from "../../../src/utils/gameToken";
 import { generateGameRound } from "../../../src/utils/gameRound";
+import { updateHighScoreIfBeaten } from "../../../src/utils/gameHighScore";
 import {
   getGameReply,
   getGuessReactionReply,
@@ -262,6 +263,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (classification.correct) {
       const revealedName = state.nextCharacterName;
       const newStreak = state.streak + 1;
+      // Fire-and-forget: a streak only ever increases within a run, so the moment it's
+      // incremented is also the moment it might be a new personal best — never throws
+      // (see gameHighScore.ts), and a guest (userId null) is simply skipped.
+      if (userId) void updateHighScoreIfBeaten(userId, newStreak);
       const reactionReply = await getGuessReactionReply(
         state.personaPrompt,
         history,

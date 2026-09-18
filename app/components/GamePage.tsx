@@ -35,6 +35,7 @@ function GamePage() {
     avatarUrl,
     gender,
     streak,
+    highScore,
     messages,
     input,
     setInput,
@@ -205,9 +206,18 @@ function GamePage() {
     </div>
   );
 
+  // "Best" only appears once the player actually has a personal best on record — a
+  // guest (never fetched, always null) or a freshly signed-in player with no streak
+  // beaten yet both show just the plain streak badge, no empty/zero "Best" clutter.
   const belowName = (
     <div className={styles.streakBadge} data-testid="game-streak-badge">
       Streak: {streak}
+      {typeof highScore === "number" && highScore > 0 && (
+        <span className={styles.highScoreBadge} data-testid="game-high-score-badge">
+          {" "}
+          · Best: {highScore}
+        </span>
+      )}
     </div>
   );
 

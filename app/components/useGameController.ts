@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import { authenticatedFetch } from "../../src/utils/api";
 import storage from "../../src/utils/storage";
 import { STORAGE_KEYS } from "../../src/utils/storageKeys";
@@ -83,11 +84,19 @@ function persistState(state: PersistedGameState | null) {
  * CLAUDE.md's "Guessing game" section.
  */
 export function useGameController() {
+  const { status: sessionStatus } = useSession();
   const [gameToken, setGameToken] = useState<string | null>(null);
   const [currentCharacterName, setCurrentCharacterName] = useState<string>("");
   const [avatarUrl, setAvatarUrl] = useState<string>("/silhouette.svg");
   const [gender, setGender] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
+  // The signed-in user's personal best, fetched once per sign-in — null means either a
+  // guest (who has no server-side record at all) or a signed-in user who hasn't beaten a
+  // streak yet, and GamePage.tsx only shows the "Best" badge when this isn't null. Bumped
+  // optimistically on a correct guess (see sendMessage below) rather than re-fetched, since
+  // a streak only ever increases within a run, so a new streak beating the stored best is
+  // always itself the new best.
+  const [highScore, setHighScore] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   // Where the CURRENT round's conversation starts within `messages` — only messages from
   // this index onward are sent as context to the next /api/game/message call, so a newly
@@ -140,6 +149,32 @@ export function useGameController() {
     }
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Fetches the signed-in user's personal best once per sign-in — same
+  // gate-on-"authenticated" shape as useUserName.ts's own server fetch. A guest never
+  // calls this at all, matching "only shown if logged in": highScore simply stays null.
+  useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
+    let cancelled = false;
+    authenticatedFetch("/api/game/high-score")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && typeof data?.highScore === "number") setHighScore(data.highScore);
+      })
+      .catch((err: unknown) => {
+        if (typeof window !== "undefined") {
+          logEvent(
+            "warn",
+            "game_high_score_fetch_failed",
+            "Failed to load personal best",
+            sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionStatus]);
 
   useEffect(() => {
     persistState(
@@ -357,6 +392,13 @@ export function useGameController() {
 
       if (data.correct) {
         setLastEvent({ type: "correct", revealedName: data.revealedName, streak: data.streak });
+        // A streak only ever increases within a run, so the moment it beats the stored
+        // best IS the new best — no need to round-trip to /api/game/high-score to learn
+        // that. Guarded on sessionStatus so a guest's highScore (always null) never
+        // shows a "Best" badge it has no server-side record to back up.
+        if (sessionStatus === "authenticated" && typeof data.streak === "number") {
+          setHighScore((prev) => (prev === null ? data.streak : Math.max(prev, data.streak)));
+        }
         setMessages((prev) => [
           ...prev,
           { sender: previousCharacterName, text: data.reply, audioFileUrl: data.audioFileUrl },
@@ -424,7 +466,16 @@ export function useGameController() {
     } finally {
       setLoading(false);
     }
-  }, [input, gameToken, loading, pendingAdvance, messages, roundStartIndex, currentCharacterName]);
+  }, [
+    input,
+    gameToken,
+    loading,
+    pendingAdvance,
+    messages,
+    roundStartIndex,
+    currentCharacterName,
+    sessionStatus,
+  ]);
 
   /**
    * Applies a held-back round switch (see the `correct` branch of sendMessage above):
@@ -471,6 +522,7 @@ export function useGameController() {
     avatarUrl,
     gender,
     streak,
+    highScore,
     messages,
     input,
     setInput,

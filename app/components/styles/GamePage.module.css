@@ -87,6 +87,11 @@
   letter-spacing: 0.02em;
 }
 
+.highScoreBadge {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
 .menuItemLink {
   font-size: 0.86rem;
   font-family: var(--font-primary);

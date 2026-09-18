@@ -115,6 +115,30 @@ describe("GamePage", () => {
     expect(screen.getByTestId("game-streak-badge")).toHaveTextContent("Streak: 2");
   });
 
+  it("shows the personal best next to the streak when the player has one", () => {
+    controllerState = baseController({
+      started: true,
+      currentCharacterName: "Sherlock Holmes",
+      streak: 2,
+      highScore: 5,
+      messages: [{ sender: "Sherlock Holmes", text: "Greetings." }],
+    });
+    render(<GamePage />);
+    expect(screen.getByTestId("game-high-score-badge")).toHaveTextContent("Best: 5");
+  });
+
+  it("hides the personal best badge for a guest (no high score on record)", () => {
+    controllerState = baseController({
+      started: true,
+      currentCharacterName: "Sherlock Holmes",
+      streak: 2,
+      highScore: null,
+      messages: [{ sender: "Sherlock Holmes", text: "Greetings." }],
+    });
+    render(<GamePage />);
+    expect(screen.queryByTestId("game-high-score-badge")).not.toBeInTheDocument();
+  });
+
   it("ends the run when Back to Home is clicked from the menu", () => {
     controllerState = baseController({ started: true, currentCharacterName: "Sherlock Holmes" });
     render(<GamePage />);

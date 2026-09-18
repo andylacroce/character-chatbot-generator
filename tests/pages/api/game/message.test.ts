@@ -35,8 +35,16 @@ jest.mock("../../../../src/utils/rateLimit", () => ({
 }));
 
 // Mock session user
+const mockGetSessionUserId = jest.fn();
 jest.mock("../../../../src/utils/getSessionUserId", () => ({
-  getSessionUserId: () => Promise.resolve(null),
+  getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...(args as unknown[])),
+}));
+
+// Mock the personal-best persistence util
+const mockUpdateHighScoreIfBeaten = jest.fn();
+jest.mock("../../../../src/utils/gameHighScore", () => ({
+  updateHighScoreIfBeaten: (...args: unknown[]) =>
+    mockUpdateHighScoreIfBeaten(...(args as unknown[])),
 }));
 
 // Mock avatar generation
@@ -121,6 +129,8 @@ describe("game/message API", () => {
     jest.clearAllMocks();
     token = signGameState(makeGameState());
     mockSynthesizeReplyAudio.mockResolvedValue("/api/audio?file=test.mp3");
+    mockGetSessionUserId.mockResolvedValue(null);
+    mockUpdateHighScoreIfBeaten.mockResolvedValue(undefined);
   });
 
   it("returns 405 for non-POST methods", async () => {
@@ -261,6 +271,65 @@ describe("game/message API", () => {
     expect(state?.currentCharacterName).toBe("Irene Adler");
     expect(state?.nextCharacterName).toBe("Watson");
     expect(state?.wrongGuessCount).toBe(0);
+  });
+
+  it("never persists a personal best for a guest (no session) on a correct guess", async () => {
+    mockClassification("clear", true);
+    mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
+    const { pickRandomCharacterName } = require("../../../../src/utils/pickRandomCharacterName");
+    const { generateGameCluePersonaPrompt } = require("../../../../src/config/serverConfig");
+    const avatarGeneration = require("../../../../src/utils/avatarGeneration");
+    pickRandomCharacterName.mockReturnValueOnce("Watson");
+    generateGameCluePersonaPrompt.mockResolvedValueOnce({ prompt: "new persona" });
+    avatarGeneration.getOrGenerateAvatar.mockResolvedValueOnce({
+      avatarUrl: "https://example.com/adler.png",
+      gender: "female",
+    });
+    mockGetOpeningReply.mockResolvedValueOnce("Hello, dear player.");
+    const { getVoiceConfigForCharacter } = require("../../../../src/utils/characterVoices");
+    getVoiceConfigForCharacter.mockResolvedValueOnce({
+      languageCodes: ["en-GB"],
+      name: "en-GB-Wavenad-C",
+      ssmlGender: "FEMALE",
+    });
+
+    const handler = require("../../../../pages/api/game/message").default;
+    const req = makeReq({ gameToken: token, message: "It's Irene Adler!" });
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockUpdateHighScoreIfBeaten).not.toHaveBeenCalled();
+  });
+
+  it("persists a personal best for a signed-in user on a correct guess", async () => {
+    mockGetSessionUserId.mockResolvedValue("user-1");
+    mockClassification("clear", true);
+    mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
+    const { pickRandomCharacterName } = require("../../../../src/utils/pickRandomCharacterName");
+    const { generateGameCluePersonaPrompt } = require("../../../../src/config/serverConfig");
+    const avatarGeneration = require("../../../../src/utils/avatarGeneration");
+    pickRandomCharacterName.mockReturnValueOnce("Watson");
+    generateGameCluePersonaPrompt.mockResolvedValueOnce({ prompt: "new persona" });
+    avatarGeneration.getOrGenerateAvatar.mockResolvedValueOnce({
+      avatarUrl: "https://example.com/adler.png",
+      gender: "female",
+    });
+    mockGetOpeningReply.mockResolvedValueOnce("Hello, dear player.");
+    const { getVoiceConfigForCharacter } = require("../../../../src/utils/characterVoices");
+    getVoiceConfigForCharacter.mockResolvedValueOnce({
+      languageCodes: ["en-GB"],
+      name: "en-GB-Wavenad-C",
+      ssmlGender: "FEMALE",
+    });
+
+    const handler = require("../../../../pages/api/game/message").default;
+    const req = makeReq({ gameToken: token, message: "It's Irene Adler!" });
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockUpdateHighScoreIfBeaten).toHaveBeenCalledWith("user-1", 3);
   });
 
   it("tolerates a first wrong guess and reduces remaining tries", async () => {

@@ -1,6 +1,11 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { mockResponse } from "../../helpers/mockResponse";
 
+const mockUseSession = jest.fn();
+jest.mock("next-auth/react", () => ({
+  useSession: () => mockUseSession(),
+}));
+
 const mockAuthenticatedFetch = jest.fn();
 jest.mock("../../../src/utils/api", () => ({
   authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
@@ -47,6 +52,7 @@ const mockStorage = storage as unknown as jest.Mocked<{
 describe("useGameController", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseSession.mockReturnValue({ status: "unauthenticated" });
     mockStorage.getItem.mockReturnValue(null);
     mockStorage.getJSON.mockReturnValue(null);
     mockPlayAudio.mockResolvedValue(undefined);
@@ -76,6 +82,49 @@ describe("useGameController", () => {
     expect(result.current.currentCharacterName).toBe("Sherlock Holmes");
     expect(result.current.streak).toBe(2);
     expect(result.current.messages).toHaveLength(1);
+  });
+
+  it("never fetches a personal best for a guest", async () => {
+    const { result } = renderHook(() => useGameController());
+    await waitFor(() => expect(result.current.highScore).toBeNull());
+    expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
+  });
+
+  it("fetches the signed-in user's personal best on mount", async () => {
+    mockUseSession.mockReturnValue({ status: "authenticated" });
+    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ highScore: 5 }));
+
+    const { result } = renderHook(() => useGameController());
+
+    await waitFor(() => expect(result.current.highScore).toBe(5));
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith("/api/game/high-score");
+  });
+
+  it("keeps the personal best null for a signed-in user who has never beaten a streak", async () => {
+    mockUseSession.mockReturnValue({ status: "authenticated" });
+    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ highScore: null }));
+
+    const { result } = renderHook(() => useGameController());
+
+    await waitFor(() => expect(mockAuthenticatedFetch).toHaveBeenCalled());
+    expect(result.current.highScore).toBeNull();
+  });
+
+  it("logs (without crashing) when the personal-best fetch fails", async () => {
+    mockUseSession.mockReturnValue({ status: "authenticated" });
+    mockAuthenticatedFetch.mockRejectedValueOnce(new Error("network down"));
+
+    const { result } = renderHook(() => useGameController());
+
+    await waitFor(() =>
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "warn",
+        "game_high_score_fetch_failed",
+        expect.any(String),
+        expect.anything(),
+      ),
+    );
+    expect(result.current.highScore).toBeNull();
   });
 
   it("startGame begins a new run on success", async () => {
@@ -289,6 +338,71 @@ describe("useGameController", () => {
     expect(result.current.gameToken).toBe("token-2");
     expect(result.current.streak).toBe(1);
     expect(result.current.messages.some((m) => m.text === "Hello, dear player.")).toBe(true);
+  });
+
+  it("sendMessage bumps the personal best optimistically for a signed-in player on a correct guess", async () => {
+    mockUseSession.mockReturnValue({ status: "authenticated" });
+    // Mount fetches the personal best first, then startGame is invoked explicitly —
+    // the mocked responses must be queued in that same order.
+    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ highScore: 2 }));
+    mockAuthenticatedFetch.mockResolvedValueOnce(
+      mockResponse({
+        gameToken: "token-1",
+        currentCharacterName: "Sherlock Holmes",
+        reply: "Greetings, detective.",
+        streak: 0,
+      }),
+    );
+
+    const { result } = renderHook(() => useGameController());
+    await waitFor(() => expect(result.current.highScore).toBe(2));
+    await act(async () => {
+      await result.current.startGame();
+    });
+
+    mockAuthenticatedFetch.mockResolvedValueOnce(
+      mockResponse({
+        reply: "Brilliant, you got it!",
+        nextReply: "Hello, dear player.",
+        correct: true,
+        gameOver: false,
+        revealedName: "Irene Adler",
+        currentCharacterName: "Irene Adler",
+        streak: 3,
+        gameToken: "token-2",
+      }),
+    );
+
+    act(() => result.current.setInput("It's Irene Adler!"));
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+
+    expect(result.current.highScore).toBe(3);
+  });
+
+  it("never touches the personal best for a guest on a correct guess", async () => {
+    const { result } = await startedHook();
+
+    mockAuthenticatedFetch.mockResolvedValueOnce(
+      mockResponse({
+        reply: "Brilliant, you got it!",
+        nextReply: "Hello, dear player.",
+        correct: true,
+        gameOver: false,
+        revealedName: "Irene Adler",
+        currentCharacterName: "Irene Adler",
+        streak: 1,
+        gameToken: "token-2",
+      }),
+    );
+
+    act(() => result.current.setInput("It's Irene Adler!"));
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+
+    expect(result.current.highScore).toBeNull();
   });
 
   it("sendMessage excludes prior rounds' trailing messages from the next round's server-side history", async () => {
