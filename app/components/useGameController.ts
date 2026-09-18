@@ -6,6 +6,7 @@ import { STORAGE_KEYS } from "../../src/utils/storageKeys";
 import type { Message } from "../../src/types/message";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { useAudioPlayer } from "./useAudioPlayer";
+import { getReplayAudioUrl } from "../../src/utils/replayAudio";
 import { useAudioEnabled } from "./useAudioEnabled";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 
@@ -125,6 +126,32 @@ export function useGameController() {
 
   const { audioEnabled, audioEnabledRef, toggleAudio: handleAudioToggle } = useAudioEnabled();
   const { playAudio, stopAudio, isAudioPlaying, audioRef } = useAudioPlayer(audioEnabledRef);
+
+  const replayMessageAudio = useCallback(
+    async (message: Message) => {
+      if (message.sender === "User") return;
+      try {
+        await playAudio(
+          getReplayAudioUrl({
+            audioFileUrl: message.audioFileUrl,
+            text: message.text,
+            botName: message.sender,
+            gender: message.sender === currentCharacterName ? gender : null,
+          }),
+        );
+      } catch (err) {
+        if (typeof window !== "undefined") {
+          logEvent(
+            "error",
+            "game_audio_replay_error",
+            "Failed to replay message audio",
+            sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+          );
+        }
+      }
+    },
+    [currentCharacterName, gender, playAudio],
+  );
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.muted = !audioEnabled;
@@ -537,6 +564,7 @@ export function useGameController() {
     inputRef,
     audioEnabled,
     handleAudioToggle,
+    replayMessageAudio,
     stopAudio,
     isAudioPlaying,
     startGame,

@@ -50,6 +50,7 @@ function GamePage() {
     inputRef,
     audioEnabled,
     handleAudioToggle,
+    replayMessageAudio,
     stopAudio,
     isAudioPlaying,
     startGame,
@@ -276,6 +277,7 @@ function GamePage() {
       inputRef={inputRef}
       audioEnabled={audioEnabled}
       onAudioToggle={handleAudioToggle}
+      onReplayAudio={replayMessageAudio}
       onStopAudio={stopAudio}
       isAudioPlaying={isAudioPlaying}
       error={error}

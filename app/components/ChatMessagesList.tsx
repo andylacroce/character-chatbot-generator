@@ -22,6 +22,8 @@ interface ChatMessagesListProps {
   }>;
   bot: Bot;
   onAvatarClick?: () => void;
+  onReplayAudio?: (message: ChatMessagesListProps["messages"][number]) => void;
+  replayDisabled?: boolean;
   /** The visitor's own preferred name — see ChatMessage.tsx. */
   userName?: string;
 }
@@ -29,7 +31,7 @@ interface ChatMessagesListProps {
 const VIRTUALIZE_THRESHOLD = 30;
 
 const ChatMessagesList: React.FC<ChatMessagesListProps> = React.memo(
-  ({ messages, bot, onAvatarClick, userName }) => {
+  ({ messages, bot, onAvatarClick, onReplayAudio, replayDisabled, userName }) => {
     if (messages.length < VIRTUALIZE_THRESHOLD) {
       return (
         <>
@@ -40,6 +42,8 @@ const ChatMessagesList: React.FC<ChatMessagesListProps> = React.memo(
               message={msg}
               bot={bot}
               onAvatarClick={onAvatarClick}
+              onReplayAudio={onReplayAudio}
+              replayDisabled={replayDisabled}
               userName={userName}
             />
           ))}
@@ -51,6 +55,8 @@ const ChatMessagesList: React.FC<ChatMessagesListProps> = React.memo(
         messages={messages}
         bot={bot}
         onAvatarClick={onAvatarClick}
+        onReplayAudio={onReplayAudio}
+        replayDisabled={replayDisabled}
         userName={userName}
       />
     );

@@ -89,6 +89,47 @@
   color: var(--color-accent);
 }
 
+.replayButton {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-left: auto;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-outline);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.replayButton:hover,
+.replayButton:focus-visible {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  outline: none;
+}
+
+.replayButton:disabled {
+  color: var(--disabled-text);
+  border-color: var(--color-outline);
+  background: transparent;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.replayButton svg {
+  width: 0.72rem;
+  height: 0.72rem;
+}
+
 .messageText {
   font-family: var(--font-primary), sans-serif;
   color: var(--color-text);

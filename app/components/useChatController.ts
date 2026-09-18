@@ -14,6 +14,7 @@ import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter
 import { loadVoiceConfig, persistVoiceConfig } from "../../src/utils/voiceConfigPersistence";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { STORAGE_KEYS, chatHistoryKey, lastPlayedAudioHashKey } from "../../src/utils/storageKeys";
+import { getReplayAudioUrl } from "../../src/utils/replayAudio";
 
 /**
  * The visitor's own preferred name (see useUserName.ts), read directly from localStorage
@@ -333,6 +334,37 @@ export function useChatController(
   }, [bot.name, bot.voiceConfig, setAndPersistVoiceConfig, ensureVoiceConfig]);
 
   const { playAudio, stopAudio, isAudioPlaying, audioRef } = useAudioPlayer(audioEnabledRef);
+
+  const replayMessageAudio = useCallback(
+    async (message: Message) => {
+      if (message.sender === "User") return;
+      try {
+        const voiceConfig = message.audioFileUrl ? null : await ensureVoiceConfig();
+        await playAudio(
+          getReplayAudioUrl({
+            audioFileUrl: message.audioFileUrl,
+            text: message.text,
+            botName: message.sender,
+            gender: bot.gender,
+            voiceConfig,
+          }),
+        );
+      } catch (err) {
+        if (typeof window !== "undefined") {
+          logEvent(
+            "error",
+            "chat_audio_replay_error",
+            "Failed to replay message audio",
+            sanitizeLogMeta({
+              botName: bot.name,
+              error: err instanceof Error ? err.message : String(err),
+            }),
+          );
+        }
+      }
+    },
+    [bot.gender, bot.name, ensureVoiceConfig, playAudio],
+  );
 
   // Sync audioEnabledRef with audioEnabled state and update muted property on active audio
   useEffect(() => {
@@ -1039,6 +1071,7 @@ export function useChatController(
     sendMessage,
     handleKeyDown,
     handleAudioToggle,
+    replayMessageAudio,
     stopAudio,
     isAudioPlaying,
   };

@@ -64,6 +64,22 @@ describe("useGameController", () => {
     expect(result.current.messages).toEqual([]);
   });
 
+  it("replays a past character message through the shared audio player", async () => {
+    const { result } = renderHook(() => useGameController());
+    const message = {
+      sender: "Sherlock Holmes",
+      text: "The game is afoot.",
+      audioFileUrl: "/api/audio?file=sherlock.mp3",
+    };
+
+    mockPlayAudio.mockClear();
+    await act(async () => {
+      await result.current.replayMessageAudio(message);
+    });
+
+    expect(mockPlayAudio).toHaveBeenCalledWith(message.audioFileUrl);
+  });
+
   it("hydrates an in-progress run from localStorage on mount", () => {
     mockStorage.getItem.mockImplementation((key: string) =>
       key === "chatbot-game-token" ? "persisted-token" : null,

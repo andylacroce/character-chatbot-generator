@@ -1315,6 +1315,41 @@ describe("useChatController additional branches (merged)", () => {
     );
   });
 
+  it("replays a past character message through the shared audio player", async () => {
+    const { result } = renderHook(() => useChatController(mockBot));
+    const message = {
+      sender: mockBot.name,
+      text: "A remembered reply",
+      audioFileUrl: "/api/audio?file=remembered.mp3",
+    };
+
+    mockPlayAudio.mockClear();
+    await act(async () => {
+      await result.current.replayMessageAudio(message);
+    });
+
+    expect(mockPlayAudio).toHaveBeenCalledWith(message.audioFileUrl);
+  });
+
+  it("creates replay audio on demand for server-restored messages", async () => {
+    const { result } = renderHook(() => useChatController(mockBot));
+
+    mockPlayAudio.mockClear();
+    await act(async () => {
+      await result.current.replayMessageAudio({
+        sender: mockBot.name,
+        text: "A restored reply without audio metadata",
+      });
+    });
+
+    const replayUrl = mockPlayAudio.mock.calls[0][0] as string;
+    const parsed = new URL(replayUrl, "https://example.test");
+    expect(parsed.pathname).toBe("/api/audio");
+    expect(parsed.searchParams.get("text")).toBe("A restored reply without audio metadata");
+    expect(parsed.searchParams.get("botName")).toBe(mockBot.name);
+    expect(parsed.searchParams.get("voiceConfig")).not.toBeNull();
+  });
+
   it("logs info when audio playback is aborted (AbortError)", async () => {
     mockAuthenticatedFetch.mockImplementation((url: string, _opts?: unknown) => {
       if (url === "/api/health") return Promise.resolve(mockResponse({}));

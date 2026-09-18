@@ -53,6 +53,7 @@ export interface ChatShellProps {
   onAudioToggle: () => void;
   onStopAudio: () => void;
   isAudioPlaying: boolean;
+  onReplayAudio?: (message: Message) => void;
   error: string;
   retrying?: boolean;
 }
@@ -79,6 +80,7 @@ function ChatShell({
   onAudioToggle,
   onStopAudio,
   isAudioPlaying,
+  onReplayAudio,
   error,
   retrying,
 }: ChatShellProps) {
@@ -127,6 +129,8 @@ function ChatShell({
             messages={messages}
             bot={bot}
             onAvatarClick={handleAvatarClick}
+            onReplayAudio={onReplayAudio}
+            replayDisabled={!audioEnabled}
             userName={userName}
           />
         </div>

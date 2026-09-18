@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ChatMessage, { Message } from "../../../app/components/ChatMessage";
 import { logEvent } from "../../../src/utils/logger";
 
@@ -31,6 +31,47 @@ describe("ChatMessage", () => {
     expect(screen.getByText("Gandalf")).toBeInTheDocument();
     expect(screen.getByText("You shall not pass!")).toBeInTheDocument();
     expect(screen.getByAltText("Gandalf")).toBeInTheDocument();
+  });
+
+  it("replays a bot message from its byline control", () => {
+    const onReplayAudio = jest.fn();
+    const message: Message = {
+      text: "You shall not pass!",
+      sender: "Gandalf",
+      audioFileUrl: "/api/audio?file=gandalf.mp3",
+    };
+    render(<ChatMessage message={message} bot={mockBot} onReplayAudio={onReplayAudio} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Replay audio for Gandalf's message" }));
+
+    expect(onReplayAudio).toHaveBeenCalledWith(message);
+  });
+
+  it("does not show replay on user messages", () => {
+    render(
+      <ChatMessage
+        message={{ text: "Hello!", sender: "User" }}
+        bot={mockBot}
+        onReplayAudio={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /Replay audio/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps replay visible but disabled while audio is muted", () => {
+    render(
+      <ChatMessage
+        message={{ text: "A quiet reply", sender: "Gandalf" }}
+        bot={mockBot}
+        onReplayAudio={jest.fn()}
+        replayDisabled
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Replay audio for Gandalf's message" }),
+    ).toBeDisabled();
   });
 
   it("returns null and logs error for invalid message", () => {

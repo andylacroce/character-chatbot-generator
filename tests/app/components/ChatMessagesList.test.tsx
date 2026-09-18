@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ChatMessagesList from "../../../app/components/ChatMessagesList";
 import { Bot } from "../../../app/components/BotCreator";
 
@@ -46,5 +46,15 @@ describe("ChatMessagesList", () => {
     const messages = [{ text: "Audio message", sender: "AI", audioFileUrl: "/audio.mp3" }];
     render(<ChatMessagesList messages={messages} bot={mockBot} />);
     expect(screen.getByText("Audio message")).toBeInTheDocument();
+  });
+
+  it("passes replay actions to character messages", () => {
+    const onReplayAudio = jest.fn();
+    const message = { text: "Audio message", sender: "Gandalf", audioFileUrl: "/audio.mp3" };
+    render(<ChatMessagesList messages={[message]} bot={mockBot} onReplayAudio={onReplayAudio} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Replay audio for Gandalf's message" }));
+
+    expect(onReplayAudio).toHaveBeenCalledWith(message);
   });
 });

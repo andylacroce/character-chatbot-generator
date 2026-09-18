@@ -61,6 +61,7 @@ function ChatPage({
     sendMessage,
     handleKeyDown,
     handleAudioToggle,
+    replayMessageAudio,
     stopAudio,
     isAudioPlaying,
   } = useChatController(bot, onBackToCharacterCreation, userNameCtx.name);
@@ -126,6 +127,7 @@ function ChatPage({
       inputRef={inputRef}
       audioEnabled={audioEnabled}
       onAudioToggle={handleAudioToggle}
+      onReplayAudio={replayMessageAudio}
       onStopAudio={stopAudio}
       isAudioPlaying={isAudioPlaying}
       error={introError ?? error ?? ""}
