@@ -185,6 +185,74 @@ export const avatarCache = pgTable("avatar_cache", {
 });
 
 /**
+ * A persistent list of character names known to fail copyright/trademark review —
+ * checked by pages/api/validate-character.ts *before* ever calling Claude, so a name
+ * already known to be a problem gets a fast, consistent block instead of a fresh,
+ * non-deterministic re-classification every single time (see CLAUDE.md's "Character
+ * validation" section for the incident this fixes — a name already public on the
+ * Character Wall popping a fresh warning on a later launch). `characterName` stays
+ * lowercased, same case-insensitive-lookup convention as `avatarCache.characterName`.
+ * Intentionally global, not `environment`-scoped, same rationale as `avatarCache`: a
+ * copyright concern about a name is the same fact in every environment.
+ *
+ * Rows are added two ways: automatically, the moment `validate-character.ts` gets a
+ * "warning" classification from Claude for any name (`source: "claude"`), and manually
+ * by an admin via the `/admin` blocklist panel (`source: "admin"`, `pages/api/admin/
+ * blocklist.ts`) for a name Claude hasn't flagged (yet) or a false positive an admin
+ * wants removed. Deleting a row (un-blocking a name) is always a manual admin action —
+ * nothing here re-adds a row automatically once removed, short of Claude flagging it
+ * again on a fresh attempt.
+ */
+export const characterBlocklist = pgTable("character_blocklist", {
+  characterName: text("character_name").primaryKey(),
+  displayName: text("display_name"),
+  reason: text("reason"),
+  source: text("source").notNull().default("claude"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+/**
+ * The admin-managed counterpart to `characterBlocklist` above — a name here is
+ * treated as copyright-safe (`warningLevel: "none"`) without ever calling Claude,
+ * same fast-path shape as the blocklist but the opposite polarity. Distinct from (and
+ * checked before) `src/utils/characterAllowlist.ts`'s static, hand-curated list
+ * (reused from `src/data/characterNames.ts`) — this table exists specifically for a
+ * name an admin wants to permanently allow that isn't on that static list (e.g. the
+ * live report that motivated this table: "Alice Munro," a real person not in the
+ * curated public-domain-characters list at all). Rows are always `source: "admin"` —
+ * unlike the blocklist, nothing here is ever written automatically by Claude.
+ * Managed alongside the blocklist on the same `/admin/moderation` page.
+ */
+export const characterAllowlist = pgTable("character_allowlist", {
+  characterName: text("character_name").primaryKey(),
+  displayName: text("display_name"),
+  reason: text("reason"),
+  source: text("source").notNull().default("admin"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+/**
+ * Append-only record of every "warning"-level copyright/trademark classification
+ * Claude has ever returned from pages/api/validate-character.ts — deliberately NOT
+ * deduplicated by name (unlike `characterBlocklist`/`characterAllowlist`, both
+ * upsert-on-conflict tables that only ever hold a name's *current* state). Backs the
+ * /admin/moderation page's "Recently warned, filterable by duration" panel: since a
+ * name disappears from the blocklist the moment it's un-blocked or allowlisted, that
+ * table alone can't answer "what has Claude warned about in the last day/week/month" —
+ * this table's rows are never deleted or updated, so that history survives regardless
+ * of whatever action was later taken. `id` (not `characterName`) is the primary key
+ * for exactly this reason: the same name can legitimately appear more than once, e.g.
+ * flagged, unblocked as a false positive, then genuinely re-flagged later.
+ */
+export const characterWarningLog = pgTable("character_warning_log", {
+  id: serial("id").primaryKey(),
+  characterName: text("character_name").notNull(),
+  displayName: text("display_name"),
+  reason: text("reason"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+/**
  * Append-only product-usage event log, backing the admin-only `/admin` stats view
  * (see pages/api/admin/stats.ts). Exists because most usage — guest sessions, which never
  * write to `bots`/`messages` at all since there's no account to attach a row to — is

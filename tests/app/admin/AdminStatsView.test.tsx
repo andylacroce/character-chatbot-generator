@@ -5,12 +5,20 @@ import AdminStatsView from "@/app/admin/AdminStatsView";
 const mockUseSession = jest.fn();
 jest.mock("next-auth/react", () => ({
   useSession: () => mockUseSession(),
+  getProviders: () => Promise.resolve({}),
 }));
 
 const mockAuthenticatedFetch = jest.fn();
 jest.mock("@/src/utils/api", () => ({
   authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...args),
 }));
+
+// useAccountMenu (identity/admin-check) and useUserName also call authenticatedFetch
+// now that AdminStatsView uses the shared header, so call-count assertions need to
+// count only the /api/admin/stats calls they actually care about, not every call.
+function statsCallCount() {
+  return mockAuthenticatedFetch.mock.calls.filter((c) => c[0] === "/api/admin/stats").length;
+}
 
 const FULL_STATS = {
   environment: "production",
@@ -113,10 +121,10 @@ describe("AdminStatsView", () => {
     // the in-flight request still disabling the button.
     const refreshButton = await screen.findByRole("button", { name: "Refresh stats" });
     await waitFor(() => expect(refreshButton).not.toBeDisabled());
-    expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(1);
+    expect(statsCallCount()).toBe(1);
 
     fireEvent.click(refreshButton);
-    await waitFor(() => expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(statsCallCount()).toBe(2));
   });
 
   it("auto-refreshes on the selected interval, and stops when set to off", async () => {
@@ -128,13 +136,13 @@ describe("AdminStatsView", () => {
       await act(async () => {
         await Promise.resolve();
       });
-      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(1);
+      expect(statsCallCount()).toBe(1);
 
       // Default interval is 1m.
       await act(async () => {
         jest.advanceTimersByTime(60_000);
       });
-      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(2);
+      expect(statsCallCount()).toBe(2);
 
       fireEvent.change(screen.getByLabelText("Auto-refresh interval"), {
         target: { value: "0" },
@@ -144,12 +152,12 @@ describe("AdminStatsView", () => {
       await act(async () => {
         await Promise.resolve();
       });
-      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(3);
+      expect(statsCallCount()).toBe(3);
 
       await act(async () => {
         jest.advanceTimersByTime(5 * 60_000);
       });
-      expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(3);
+      expect(statsCallCount()).toBe(3);
     } finally {
       jest.useRealTimers();
     }

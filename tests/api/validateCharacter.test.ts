@@ -38,11 +38,35 @@ jest.mock("../../src/utils/analytics", () => ({
   recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
 }));
 
+const mockScrubCachedAvatar = jest.fn().mockResolvedValue(false);
+jest.mock("../../src/utils/avatarGeneration", () => ({
+  scrubCachedAvatar: (...args: unknown[]) => mockScrubCachedAvatar(...args),
+}));
+
+const mockGetBlocklistEntry = jest.fn().mockResolvedValue(null);
+const mockAddToBlocklist = jest.fn().mockResolvedValue(undefined);
+const mockRemoveFromBlocklist = jest.fn().mockResolvedValue(false);
+jest.mock("../../src/utils/characterBlocklist", () => ({
+  getBlocklistEntry: (...args: unknown[]) => mockGetBlocklistEntry(...args),
+  addToBlocklist: (...args: unknown[]) => mockAddToBlocklist(...args),
+  removeFromBlocklist: (...args: unknown[]) => mockRemoveFromBlocklist(...args),
+}));
+
+const mockLogWarning = jest.fn().mockResolvedValue(undefined);
+jest.mock("../../src/utils/characterWarningLog", () => ({
+  logWarning: (...args: unknown[]) => mockLogWarning(...args),
+}));
+
 describe("validate-character API", () => {
   beforeEach(() => {
     jest.resetModules();
     jest.restoreAllMocks();
     jest.clearAllMocks();
+    mockLogWarning.mockResolvedValue(undefined);
+    mockScrubCachedAvatar.mockResolvedValue(false);
+    mockGetBlocklistEntry.mockResolvedValue(null);
+    mockAddToBlocklist.mockResolvedValue(undefined);
+    mockRemoveFromBlocklist.mockResolvedValue(false);
     mockCreate.mockResolvedValue({
       content: [
         {
@@ -91,12 +115,15 @@ describe("validate-character API", () => {
     const handler = (await import("../../pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
-      body: { name: "Sherlock Holmes" },
+      // Not on the curated allowlist (src/utils/characterAllowlist.ts) — this test
+      // exercises the ordinary Claude classification path, not the allowlist
+      // short-circuit (see the dedicated allowlist tests below).
+      body: { name: "Ada Lovelace" },
     });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.characterName).toBe("Sherlock Holmes");
+    expect(data.characterName).toBe("Ada Lovelace");
     expect(data.isPublicDomain).toBe(true);
     expect(data.isSafe).toBe(true);
     expect(data.warningLevel).toBe("none");
@@ -104,7 +131,39 @@ describe("validate-character API", () => {
       warningLevel: "none",
       blocked: false,
       recognized: true,
+      scrubbed: false,
     });
+  });
+
+  it("short-circuits to warningLevel none for a name on the curated public-domain allowlist, without calling Claude", async () => {
+    const handler = (await import("../../pages/api/validate-character")).default;
+    const { req, res } = createMocks({
+      method: "POST",
+      body: { name: "Sherlock Holmes" },
+    });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.characterName).toBe("Sherlock Holmes");
+    expect(data.warningLevel).toBe("none");
+    expect(data.blocked).toBe(false);
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockScrubCachedAvatar).not.toHaveBeenCalled();
+  });
+
+  it("self-heals a stale blocklist entry when the name is on the allowlist", async () => {
+    // Deliberately NOT queuing a mockGetBlocklistEntry.mockResolvedValueOnce here —
+    // the allowlist check happens first and short-circuits before the blocklist is
+    // ever consulted (asserted below), so a queued-but-never-consumed once-value
+    // would otherwise leak into a later test's call.
+    const handler = (await import("../../pages/api/validate-character")).default;
+    const { req, res } = createMocks({ method: "POST", body: { name: "Thor" } });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().warningLevel).toBe("none");
+    expect(mockRemoveFromBlocklist).toHaveBeenCalledWith("Thor");
+    // Allowlist wins outright — the blocklist is never even consulted.
+    expect(mockGetBlocklistEntry).not.toHaveBeenCalled();
   });
 
   it("returns warning for copyrighted character", async () => {
@@ -137,6 +196,118 @@ describe("validate-character API", () => {
     expect(data.warningLevel).toBe("warning");
     expect(data.suggestions).toContain("Hercules");
     expect(data.blocked).toBe(false);
+    // Not previously cached (mockScrubCachedAvatar defaults to false) — ordinary
+    // overridable warning flow, not scrubbed.
+    expect(data.scrubbed).toBeUndefined();
+    expect(mockScrubCachedAvatar).toHaveBeenCalledWith("Spider-Man");
+  });
+
+  it("scrubs an already-cached character and returns a generic, non-overridable result when it fails re-validation", async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            isPublicDomain: false,
+            isSafe: false,
+            warningLevel: "warning",
+            reason: "Spider-Man is a trademarked character owned by Marvel/Disney.",
+            suggestions: ["Hercules", "Beowulf", "Robin Hood"],
+          }),
+        },
+      ],
+    });
+    mockScrubCachedAvatar.mockResolvedValueOnce(true);
+
+    const handler = (await import("../../pages/api/validate-character")).default;
+    const { req, res } = createMocks({
+      method: "POST",
+      body: { name: "Spider-Man" },
+    });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.scrubbed).toBe(true);
+    expect(data.warningLevel).toBe("warning");
+    // Generic message — no copyright-specific reasoning or "continue anyway" bait
+    // (suggestions), unlike the ordinary overridable warning flow above.
+    expect(data.reason).toBe("This character is no longer available. Please try a different name.");
+    expect(data.suggestions).toEqual([]);
+    expect(mockRecordEvent).toHaveBeenCalledWith(
+      "character_validated",
+      expect.objectContaining({ scrubbed: true }),
+    );
+  });
+
+  it("adds a fresh warning-level name to the blocklist without hard-blocking this first attempt", async () => {
+    mockCreate.mockResolvedValueOnce({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            isPublicDomain: false,
+            isSafe: false,
+            warningLevel: "warning",
+            reason: "Elsa is a trademarked Disney character.",
+            suggestions: ["Snow White (folklore)", "Persephone", "Freya"],
+          }),
+        },
+      ],
+    });
+
+    const handler = (await import("../../pages/api/validate-character")).default;
+    const { req, res } = createMocks({ method: "POST", body: { name: "Elsa" } });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    // Not cached yet — ordinary overridable warning flow for this one attempt.
+    expect(data.scrubbed).toBeUndefined();
+    expect(data.warningLevel).toBe("warning");
+    expect(mockAddToBlocklist).toHaveBeenCalledWith(
+      "Elsa",
+      "Elsa is a trademarked Disney character.",
+      "claude",
+    );
+    // Independent, append-only record of the event, regardless of any later block/allow action.
+    expect(mockLogWarning).toHaveBeenCalledWith("Elsa", "Elsa is a trademarked Disney character.");
+  });
+
+  it("short-circuits to a hard block, without calling Claude, for a name already on the blocklist", async () => {
+    mockGetBlocklistEntry.mockResolvedValueOnce({
+      characterName: "elsa",
+      displayName: "Elsa",
+      reason: "Elsa is a trademarked Disney character.",
+      source: "claude",
+      createdAt: new Date(),
+    });
+
+    const handler = (await import("../../pages/api/validate-character")).default;
+    const { req, res } = createMocks({ method: "POST", body: { name: "Elsa" } });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.scrubbed).toBe(true);
+    expect(data.warningLevel).toBe("warning");
+    expect(data.reason).toBe("This character is no longer available. Please try a different name.");
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockScrubCachedAvatar).toHaveBeenCalledWith("Elsa");
+    expect(mockRecordEvent).toHaveBeenCalledWith(
+      "character_validated",
+      expect.objectContaining({ scrubbed: true }),
+    );
+    // No fresh classification happened, so there's nothing new to log.
+    expect(mockLogWarning).not.toHaveBeenCalled();
+  });
+
+  it("does not call scrubCachedAvatar for a caution-level or safe name", async () => {
+    const handler = (await import("../../pages/api/validate-character")).default;
+    const { req, res } = createMocks({
+      method: "POST",
+      body: { name: "Ada Lovelace" },
+    });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    expect(mockScrubCachedAvatar).not.toHaveBeenCalled();
   });
 
   it("returns blocked: true for an abusive name, independent of warningLevel", async () => {

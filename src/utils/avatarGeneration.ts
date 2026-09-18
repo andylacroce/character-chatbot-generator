@@ -151,6 +151,38 @@ async function cacheAvatar(
 }
 
 /**
+ * Deletes a character's row from the shared avatar cache entirely — a moderation
+ * action, not a cost-optimization path like the functions above. Used when a live
+ * re-check (pages/api/validate-character.ts) flags a name that was previously
+ * cached/publicly displayed on the Character Wall/carousel as a copyright/trademark
+ * "warning": rather than just leaving a bad name cached, this removes it so it stops
+ * being served/shown going forward. Returns whether a row actually existed to delete,
+ * so the caller can tell "an already-public character just got flagged" apart from "this
+ * name was never cached to begin with" (the latter gets the ordinary, overridable
+ * warning flow instead — see validate-character.ts). No-op (returns false) without
+ * DATABASE_URL or on any DB error, same degrade-gracefully shape as every other
+ * avatar_cache access here — a scrub failure should never itself become a 500.
+ */
+export async function scrubCachedAvatar(name: string): Promise<boolean> {
+  if (!process.env.DATABASE_URL) return false;
+  try {
+    const deleted = await getDb()
+      .delete(avatarCache)
+      .where(eq(avatarCache.characterName, avatarCacheKey(name)))
+      .returning({ characterName: avatarCache.characterName });
+    return deleted.length > 0;
+  } catch (err) {
+    logEvent(
+      "error",
+      "avatar_cache_scrub_failed",
+      "Failed to scrub cached avatar after a copyright re-check",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+    return false;
+  }
+}
+
+/**
  * Resolves an avatar for a character name: a shared cache hit, or a fresh two-stage
  * generation (Claude image prompt, then a free image provider). Never throws — any
  * failure degrades to the `/silhouette.svg` placeholder, same as the route this was

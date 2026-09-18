@@ -11,6 +11,13 @@
  * src/utils/isAdmin.ts) remains the actual data-access boundary either way, so nothing
  * sensitive is ever fetched or rendered without both checks agreeing.
  *
+ * Uses the same shared AppHeader/useAccountMenu every other page uses (identity,
+ * change name, sign in/out, and — since useAccountMenu already knows this caller is an
+ * admin — the Stats/Moderation admin links too), rather than a bespoke standalone
+ * masthead, so an admin page's chrome doesn't drift from the rest of the app. "Back to
+ * Home" lives in the hamburger menu here (not the header's center slot, unlike a page
+ * with real focal content there) since this page has nothing else to put there.
+ *
  * Every number here is a *derived* metric (a rate, a share, a funnel stage) rather
  * than a raw `analytics_events` dump — see pages/api/admin/stats.ts, which computes
  * these server-side specifically because the raw rows (boolean strings in jsonb
@@ -21,11 +28,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { FaSyncAlt } from "react-icons/fa";
+import { FaSyncAlt, FaHome } from "react-icons/fa";
 import { authenticatedFetch } from "../../src/utils/api";
 import { formatRelativeTime } from "../../src/utils/formatRelativeTime";
 import AdminActivityChart, { type DailyActivityRow } from "../components/AdminActivityChart";
-import DarkModeToggle from "../components/DarkModeToggle";
+import AppHeader from "../components/AppHeader";
+import { useAccountMenu } from "../components/useAccountMenu";
 import styles from "../components/styles/AdminStats.module.css";
 
 // The admin-stats rate limiter allows 20 req/min/IP (see pages/api/admin/stats.ts) — even
@@ -86,6 +94,7 @@ function pct(count: number, total: number): number | null {
 /** Admin stats view — see module doc above for the access-control story. */
 export default function AdminStatsView() {
   const { status } = useSession();
+  const { menuItems, modals } = useAccountMenu();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -141,17 +150,27 @@ export default function AdminStatsView() {
   }, [status, fetchStats, refreshIntervalMs]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  const fullMenuItems = (
+    <>
+      <Link href="/">
+        <FaHome size={18} className="menuIcon" />
+        <span>Back to Home</span>
+      </Link>
+      <div className="menuDivider" role="separator" />
+      {menuItems}
+    </>
+  );
+
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link href="/" className={styles.back}>
-          &larr; Back to Portrayal
-        </Link>
-        <DarkModeToggle className={styles.ghostIcon} hideLabel />
-      </div>
+      <AppHeader
+        menuSide="right"
+        menuItems={fullMenuItems}
+        center={<h1 className={styles.title}>Internal stats</h1>}
+      />
+      {modals}
 
       <div className={styles.header}>
-        <h1 className={styles.title}>Internal stats</h1>
         {status === "authenticated" && (
           <div className={styles.meta}>
             {stats && (

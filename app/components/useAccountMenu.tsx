@@ -2,18 +2,23 @@
 
 /**
  * Shared "account" bundle for a page's AppHeader hamburger: menu items leading with a
- * non-interactive identity label ("Guest" or the visitor's name), then change-name, an
- * "Admin Stats" link when the signed-in caller is an admin, and sign in/out — plus the
- * modals those items open (NameCaptureModal, SignInModal). Used by every page's header
- * (BotCreator.tsx, CharsGallery.tsx, ChatPage.tsx, GamePage.tsx) — each appends its own
- * page-specific items first, then this hook's `menuItems`, so this logic lives in
- * exactly one place instead of being copy-pasted per page.
+ * non-interactive identity label ("Guest" or the visitor's name), then change-name and
+ * sign in/out — plus the modals those items open (NameCaptureModal, SignInModal). Used
+ * by every page's header (BotCreator.tsx, CharsGallery.tsx, ChatPage.tsx, GamePage.tsx)
+ * — each appends its own page-specific items first, then this hook's `menuItems`, so
+ * this logic lives in exactly one place instead of being copy-pasted per page.
+ *
+ * When the signed-in caller is an admin, an "Admin" sub-section (its own divider +
+ * label, same treatment as the top-level identity label) follows with links to each
+ * separate admin page — /admin (stats) and /admin/moderation (the allowlist/blocklist/
+ * warning-log panel, see AdminModerationView.tsx) — rather than cramming admin
+ * functionality onto one page as it grows.
  */
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession, getProviders } from "next-auth/react";
-import { FaUser, FaUserShield } from "react-icons/fa";
+import { FaUser, FaUserShield, FaBan } from "react-icons/fa";
 import { authenticatedFetch } from "../../src/utils/api";
 import AuthControl from "./AuthControl";
 import { NameCaptureModal } from "./NameCaptureModal";
@@ -110,9 +115,14 @@ export function useAccountMenu(): AccountMenu {
       {isAdmin && (
         <>
           <div className="menuDivider" role="separator" />
+          <div className={styles.identityLabel}>Admin</div>
           <Link href="/admin">
             <FaUserShield size={18} className="menuIcon" />
-            <span>Admin Stats</span>
+            <span>Stats</span>
+          </Link>
+          <Link href="/admin/moderation">
+            <FaBan size={18} className="menuIcon" />
+            <span>Moderation</span>
           </Link>
         </>
       )}

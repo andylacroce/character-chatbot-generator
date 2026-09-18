@@ -21,28 +21,13 @@
   color: var(--color-text);
 }
 
-.topBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.back {
-  display: inline-block;
-  color: var(--color-accent);
-  text-decoration: underline;
-  font-size: 0.92rem;
-  white-space: nowrap;
-}
-
 .header {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem 1rem;
+  margin-top: 1.25rem;
   margin-bottom: 2rem;
 }
 
@@ -74,28 +59,6 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
-}
-
-/* Minimal masthead icon-button treatment for this standalone page's own DarkModeToggle —
-   /admin doesn't use the shared AppHeader/hamburger (see CLAUDE.md's "Internal dashboards
-   should be full-width" convention), so its toggle isn't folded into a dropdown like every
-   other page's. */
-.ghostIcon {
-  margin: 0 !important;
-  background: none !important;
-  border: none !important;
-  padding: 0.2rem !important;
-  min-height: 0 !important;
-  box-shadow: none !important;
-  color: var(--color-text-secondary);
-}
-
-.ghostIcon:hover,
-.ghostIcon:focus {
-  background: none !important;
-  color: var(--color-accent);
-  box-shadow: none !important;
-  outline: none;
 }
 
 .refreshButton {
