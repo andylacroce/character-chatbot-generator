@@ -228,9 +228,11 @@ const CharsGallery: React.FC = () => {
   // callback ref fires exactly when the DOM node itself is created or removed,
   // regardless of what else did or didn't change on that render.
   const sentinelObserverRef = useRef<IntersectionObserver | null>(null);
+  const sentinelNodeRef = useRef<HTMLDivElement | null>(null);
   const sentinelCallbackRef = useCallback((node: HTMLDivElement | null) => {
     sentinelObserverRef.current?.disconnect();
     sentinelObserverRef.current = null;
+    sentinelNodeRef.current = node;
     if (!node) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -241,6 +243,21 @@ const CharsGallery: React.FC = () => {
     observer.observe(node);
     sentinelObserverRef.current = observer;
   }, []);
+
+  // A page that doesn't grow the sentinel past the viewport (e.g. every group
+  // collapsed, so a "grouped" page is just a few short headings; or simply a tall
+  // viewport) never delivers a fresh intersection callback after the first one —
+  // IntersectionObserver only fires on a threshold *crossing*, and a sentinel that
+  // stays continuously visible across a content update never crosses back out.
+  // Re-observing forces a fresh check of the current state, so pagination keeps
+  // going instead of silently stalling after a page or two.
+  useEffect(() => {
+    const observer = sentinelObserverRef.current;
+    const node = sentinelNodeRef.current;
+    if (!observer || !node) return;
+    observer.unobserve(node);
+    observer.observe(node);
+  }, [characters]);
 
   // Opens the native <dialog> lightbox. Wrapped in the View Transitions API when
   // the browser supports it, for a smooth cross-fade/morph into the enlarged
@@ -401,11 +418,8 @@ const CharsGallery: React.FC = () => {
                         <span className={styles.groupTitle}>
                           {getCharacterCategoryLabel(group.key)}
                         </span>
-                        <span className={styles.groupMeta}>
-                          <small>{group.entries.length} loaded</small>
-                          <span className={styles.groupChevron} aria-hidden="true">
-                            ›
-                          </span>
+                        <span className={styles.groupChevron} aria-hidden="true">
+                          ›
                         </span>
                       </button>
                       {expandedGroups.has(group.key as CharacterCategory) && (

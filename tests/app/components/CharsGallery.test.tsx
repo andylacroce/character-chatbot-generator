@@ -44,8 +44,15 @@ beforeAll(() => {
 // manually fire visibility changes for the top marker and infinite-scroll sentinel,
 // since jsdom never actually scrolls anything.
 let observers: Array<{ callback: IntersectionObserverCallback; target: Element | null }> = [];
+// When true, observe() itself immediately delivers an "intersecting" entry — real
+// IntersectionObserver behavior for a target that starts out already in view, used
+// to simulate a sentinel that never actually leaves the viewport (e.g. a collapsed
+// grouped view, or simply a tall one) and so never gets a fresh threshold-crossing
+// callback on its own.
+let sentinelStaysVisible = false;
 beforeEach(() => {
   observers = [];
+  sentinelStaysVisible = false;
   mockAuthenticatedFetch.mockReset();
   mockRouterBack.mockReset();
   mockRouterPush.mockReset();
@@ -58,6 +65,12 @@ beforeEach(() => {
     }
     observe(target: Element) {
       observers[observers.length - 1].target = target;
+      if (sentinelStaysVisible) {
+        this.callback(
+          [{ isIntersecting: true, target } as IntersectionObserverEntry],
+          this as unknown as IntersectionObserver,
+        );
+      }
     }
     disconnect() {}
     unobserve() {}
@@ -172,6 +185,25 @@ describe("CharsGallery", () => {
     // sentinel intersects again.
     fireAllIntersections();
     await waitFor(() => expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(2));
+  });
+
+  it("keeps paginating when the sentinel never leaves view instead of stalling after one page", async () => {
+    // A collapsed grouped view (or just a short page on a tall viewport) can leave
+    // the sentinel continuously visible, which a plain IntersectionObserver never
+    // reports again on its own — the component must re-observe on every data
+    // update to keep pulling pages rather than silently stopping partway through.
+    sentinelStaysVisible = true;
+    mockAuthenticatedFetch
+      .mockResolvedValueOnce(mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], true))
+      .mockResolvedValueOnce(mockPage([{ name: "Sherlock Holmes", avatarUrl: "/s.png" }], true))
+      .mockResolvedValueOnce(mockPage([{ name: "Marie Curie", avatarUrl: "/m.png" }], false));
+
+    render(<CharsGallery />);
+
+    await waitFor(() => expect(screen.getByTitle("Marie Curie")).toBeInTheDocument());
+    expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument();
+    expect(screen.getByTitle("Sherlock Holmes")).toBeInTheDocument();
+    expect(mockAuthenticatedFetch).toHaveBeenCalledTimes(3);
   });
 
   it("opens the lightbox on tile click and closes it via the close button", async () => {

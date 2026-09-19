@@ -293,8 +293,8 @@
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  justify-content: flex-start;
+  gap: 0.5rem;
   margin: 0 0 1rem;
   padding: 0 0.25rem 0.55rem;
   border: 0;
@@ -320,21 +320,6 @@
   font-size: clamp(1.5rem, 3vw, 2.15rem);
   font-weight: 600;
   transition: color 150ms ease;
-}
-
-.groupMeta {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-}
-
-.groupMeta small {
-  color: var(--color-text-secondary);
-  font-family: var(--font-primary), sans-serif;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .groupChevron {
