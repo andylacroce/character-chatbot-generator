@@ -8,6 +8,9 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getHighScore } from "../../../src/utils/gameHighScore";
+import { getGuestHighScore } from "../../../src/utils/gameLeaderboard";
+import { getGuestId } from "../../../src/utils/gameGuestIdentity";
+import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { getSessionUserId } from "../../../src/utils/getSessionUserId";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
@@ -27,9 +30,8 @@ const gameHighScoreRateLimit = createRateLimiter({
  *   get:
  *     summary: Get the signed-in user's personal best guessing-game streak
  *     description: >
- *       Guests (no session) and deployments with no DATABASE_URL configured get
- *       `{ highScore: null }`, not an error. Also null for a signed-in user who has
- *       never beaten a streak of 0 in this environment yet.
+ *       Reads either an account score or a cookie-bound guest score. Returns null
+ *       when no database is configured or this browser has no score.
  *     tags: [Game]
  *     responses:
  *       200:
@@ -57,13 +59,24 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const userId = await getSessionUserId(req, res);
-  if (!userId || !process.env.DATABASE_URL) {
+  const guestId = userId ? null : getGuestId(req);
+  if ((!userId && !guestId) || !process.env.DATABASE_URL) {
     res.status(200).json({ highScore: null });
     return;
   }
 
-  const highScore = await getHighScore(userId);
-  res.status(200).json({ highScore });
+  try {
+    const highScore = userId ? await getHighScore(userId) : await getGuestHighScore(guestId!);
+    res.status(200).json({ highScore });
+  } catch (err) {
+    logEvent(
+      "error",
+      "game_guest_high_score_get_failed",
+      "Failed to load guest personal best",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+    res.status(200).json({ highScore: null });
+  }
 }
 
 export default withRequestLog(handler);

@@ -52,6 +52,16 @@ jest.mock("../../../../src/utils/gameHighScore", () => ({
     mockUpdateHighScoreIfBeaten(...(args as unknown[])),
 }));
 
+const mockRecordGameResult = jest.fn();
+jest.mock("../../../../src/utils/gameLeaderboard", () => ({
+  recordGameResult: (...args: unknown[]) => mockRecordGameResult(...args),
+}));
+
+const mockGetGuestId = jest.fn();
+jest.mock("../../../../src/utils/gameGuestIdentity", () => ({
+  getGuestId: (...args: unknown[]) => mockGetGuestId(...args),
+}));
+
 // Mock game reply functions
 const mockGetGameReply = jest.fn();
 const mockGetOpeningReply = jest.fn();
@@ -116,6 +126,8 @@ describe("game/message API", () => {
     mockSynthesizeReplyAudio.mockResolvedValue("/api/audio?file=test.mp3");
     mockGetSessionUserId.mockResolvedValue(null);
     mockUpdateHighScoreIfBeaten.mockResolvedValue(undefined);
+    mockRecordGameResult.mockResolvedValue(undefined);
+    mockGetGuestId.mockReturnValue(null);
   });
 
   it("returns 405 for non-POST methods", async () => {
@@ -214,7 +226,7 @@ describe("game/message API", () => {
     // The next character is deliberately NOT generated here anymore (see this
     // handler's own doc comment) — that's deferred to POST /game/continue, called only
     // once the player clicks "Continue". This response should carry just the reaction
-    // and outcome, and the existing token should remain untouched and still valid.
+    // and outcome, plus a continuation token proving the guess was judged correct.
     mockClassification("clear", true);
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
     mockSynthesizeReplyAudio.mockResolvedValueOnce("/api/audio?file=reaction.mp3");
@@ -235,7 +247,8 @@ describe("game/message API", () => {
     expect(json.audioFileUrl).toBe("/api/audio?file=reaction.mp3");
     expect(json.nextReply).toBeUndefined();
     expect(json.currentCharacterName).toBeUndefined();
-    expect(json.gameToken).toBeUndefined();
+    expect(typeof json.gameToken).toBe("string");
+    expect(verifyGameState(json.gameToken)?.canContinue).toBe(true);
 
     // The original token is untouched, still decodes the same hidden target, and stays
     // usable for /game/continue.
@@ -257,8 +270,46 @@ describe("game/message API", () => {
     expect(mockUpdateHighScoreIfBeaten).not.toHaveBeenCalled();
   });
 
+  it("records a guest's score only when its browser cookie matches the issued token", async () => {
+    token = signGameState(
+      makeGameState({
+        runId: "run-1",
+        issuedForGuestId: "guest-hash",
+        environment: "development",
+      }),
+    );
+    mockGetGuestId.mockReturnValue("guest-hash");
+    mockClassification("clear", true);
+    mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant!");
+    const handler = require("../../../../pages/api/game/message").default;
+    const res = makeRes();
+    await handler(makeReq({ gameToken: token, message: "Irene Adler" }), res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockRecordGameResult).toHaveBeenCalledWith(null, "guest-hash", "run-1", 3);
+    expect(mockUpdateHighScoreIfBeaten).not.toHaveBeenCalled();
+  });
+
+  it("does not credit a guest score to a different browser", async () => {
+    token = signGameState(
+      makeGameState({
+        runId: "run-1",
+        issuedForGuestId: "guest-hash",
+        environment: "development",
+      }),
+    );
+    mockGetGuestId.mockReturnValue("different-browser");
+    mockClassification("clear", true);
+    mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant!");
+    const handler = require("../../../../pages/api/game/message").default;
+    await handler(makeReq({ gameToken: token, message: "Irene Adler" }), makeRes());
+    expect(mockRecordGameResult).not.toHaveBeenCalled();
+  });
+
   it("persists a personal best for a signed-in user on a correct guess", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
+    token = signGameState(
+      makeGameState({ runId: "run-1", issuedForUserId: "user-1", environment: "development" }),
+    );
     mockClassification("clear", true);
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
 
@@ -269,6 +320,7 @@ describe("game/message API", () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(mockUpdateHighScoreIfBeaten).toHaveBeenCalledWith("user-1", 3);
+    expect(mockRecordGameResult).toHaveBeenCalledWith("user-1", null, "run-1", 3);
     expect(mockRecordEvent).toHaveBeenCalledWith("game_guess_correct", { streak: 3 }, "user-1");
   });
 

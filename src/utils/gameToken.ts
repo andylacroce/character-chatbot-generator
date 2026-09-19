@@ -36,6 +36,8 @@ const VERSION = 1;
 
 /** The guessing game's full per-round state, encrypted end-to-end inside the token. */
 export interface GameStatePayload {
+  /** Stable identifier for a run. Optional so tokens issued before the leaderboard deploy still work. */
+  runId?: string;
   /** The character the player is currently chatting with — revealed, shown to the client. */
   currentCharacterName: string;
   /** The hidden figure `currentCharacterName` is steering the conversation toward — the actual guess target. Never sent to the client. */
@@ -55,6 +57,10 @@ export interface GameStatePayload {
   environment: string;
   /** Convenience only — the signed-in user id at issuance, never trusted for auth. */
   issuedForUserId: string | null;
+  /** Hashed, cookie-bound guest identity at issuance; absent in pre-leaderboard tokens. */
+  issuedForGuestId?: string | null;
+  /** True only after the server judged a correct guess for this round. */
+  canContinue?: boolean;
 }
 
 let cachedKey: Buffer | null = null;
@@ -78,6 +84,7 @@ function isValidPayload(value: unknown): value is GameStatePayload {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return (
+    (v.runId === undefined || (typeof v.runId === "string" && v.runId.length > 0)) &&
     typeof v.currentCharacterName === "string" &&
     typeof v.nextCharacterName === "string" &&
     typeof v.personaPrompt === "string" &&
@@ -90,7 +97,11 @@ function isValidPayload(value: unknown): value is GameStatePayload {
     typeof v.streak === "number" &&
     (v.wrongGuessCount === 0 || v.wrongGuessCount === 1) &&
     typeof v.environment === "string" &&
-    (v.issuedForUserId === null || typeof v.issuedForUserId === "string")
+    (v.issuedForUserId === null || typeof v.issuedForUserId === "string") &&
+    (v.issuedForGuestId === undefined ||
+      v.issuedForGuestId === null ||
+      typeof v.issuedForGuestId === "string") &&
+    (v.canContinue === undefined || typeof v.canContinue === "boolean")
   );
 }
 

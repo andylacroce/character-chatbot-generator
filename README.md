@@ -312,7 +312,13 @@ A second mode alongside ordinary chat: a "guess who" chain game, no sign-in requ
   request — guest play needs zero server-side session storage.
 - **Audio parity with ordinary chat**: every reply gets the same Google TTS voice
   response as a normal conversation.
-- **Not yet built**: a public, opt-in cross-user leaderboard of best streaks.
+- **Leaderboard (`/leaderboard`, opt-in)**: any player — signed in or guest — whose
+  best streak reaches the overall top 10 can claim a moderated public display name.
+  Guest scores are bound to a persistent, HTTP-only browser cookie (no sign-in needed);
+  names are screened by Claude before publishing, and each name locks to the run that
+  claimed it so later score increases can't rename it. Claim from the game-over panel,
+  the leaderboard page, or the account menu; leaving removes the public name while
+  keeping the private best.
 
 ## Personalized Greeting
 

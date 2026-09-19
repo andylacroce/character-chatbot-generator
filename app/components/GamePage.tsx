@@ -15,10 +15,12 @@
 
 import React from "react";
 import Link from "next/link";
-import { FaFlag, FaHome, FaQuestionCircle } from "react-icons/fa";
+import { useRouter } from "next/navigation";
+import { FaFlag, FaHome, FaQuestionCircle, FaTrophy } from "react-icons/fa";
 import ChatShell from "./ChatShell";
 import BackHomeLink from "./BackHomeLink";
 import GameInstructionsModal from "./GameInstructionsModal";
+import LeaderboardClaim from "./LeaderboardClaim";
 import storage from "../../src/utils/storage";
 import { STORAGE_KEYS } from "../../src/utils/storageKeys";
 import { useGameController } from "./useGameController";
@@ -28,6 +30,7 @@ import styles from "./styles/GamePage.module.css";
 
 /** The guessing game's main screen — see module doc above. */
 function GamePage() {
+  const router = useRouter();
   const {
     started,
     starting,
@@ -151,6 +154,19 @@ function GamePage() {
               <span className={styles.startSpinner} aria-label="Loading" />
               <div className={styles.startProgressText}>{startProgressMessage}</div>
             </div>
+          )}
+          {gameOver && (
+            <>
+              <LeaderboardClaim />
+              <button
+                type="button"
+                className={styles.leaderboardButton}
+                onClick={() => router.push("/leaderboard")}
+              >
+                <FaTrophy aria-hidden="true" />
+                View leaderboard
+              </button>
+            </>
           )}
           <BackHomeLink className={styles.startBackHome} />
         </div>

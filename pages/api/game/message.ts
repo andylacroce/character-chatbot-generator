@@ -28,6 +28,9 @@ import { extractJson } from "../../../src/utils/parseClaudeJson";
 import anthropic from "../../../src/utils/anthropicClient";
 import { verifyGameState, signGameState } from "../../../src/utils/gameToken";
 import { updateHighScoreIfBeaten } from "../../../src/utils/gameHighScore";
+import { recordGameResult } from "../../../src/utils/gameLeaderboard";
+import { getCurrentEnvironment } from "../../../src/utils/environment";
+import { getGuestId } from "../../../src/utils/gameGuestIdentity";
 import { recordEvent } from "../../../src/utils/analytics";
 import {
   getGameReply,
@@ -274,7 +277,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const { gameToken, message, conversationHistory } = req.body;
+  const { gameToken, message, conversationHistory } = req.body ?? {};
 
   if (!message || typeof message !== "string") {
     res.status(400).json({ error: "Message is required" });
@@ -328,7 +331,24 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Fire-and-forget: a streak only ever increases within a run, so the moment it's
       // incremented is also the moment it might be a new personal best — never throws
       // (see gameHighScore.ts), and a guest (userId null) is simply skipped.
-      if (userId) void updateHighScoreIfBeaten(userId, newStreak);
+      // A token issued to a guest or another account cannot credit this account.
+      const eligibleUserId =
+        userId && state.issuedForUserId === userId && state.environment === getCurrentEnvironment()
+          ? userId
+          : null;
+      const eligibleGuestId =
+        !userId &&
+        state.issuedForGuestId &&
+        state.issuedForGuestId === getGuestId(req) &&
+        state.environment === getCurrentEnvironment()
+          ? state.issuedForGuestId
+          : null;
+      const scoreWrite = Promise.all([
+        eligibleUserId ? updateHighScoreIfBeaten(eligibleUserId, newStreak) : Promise.resolve(),
+        state.runId && (eligibleUserId || eligibleGuestId)
+          ? recordGameResult(eligibleUserId, eligibleGuestId, state.runId, newStreak)
+          : Promise.resolve(),
+      ]);
       const reactionReply = await getGuessReactionReply(
         state.personaPrompt,
         history,
@@ -342,6 +362,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         state.gender,
         state.voiceConfig,
       );
+      await scoreWrite;
 
       logEvent(
         "info",
@@ -358,6 +379,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res.status(200).json({
         reply: reactionReply,
         audioFileUrl: reactionAudioFileUrl,
+        gameToken: signGameState({ ...state, canContinue: true }),
         correct: true,
         gameOver: false,
         revealedName,

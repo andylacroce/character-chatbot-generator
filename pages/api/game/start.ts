@@ -16,6 +16,7 @@ import gameCharacterNames from "../../../src/data/gameCharacterNames";
 import { generateGameRound } from "../../../src/utils/gameRound";
 import { signGameState } from "../../../src/utils/gameToken";
 import { getSessionUserId } from "../../../src/utils/getSessionUserId";
+import { ensureGuestId } from "../../../src/utils/gameGuestIdentity";
 import { getCurrentEnvironment } from "../../../src/utils/environment";
 import { recordEvent } from "../../../src/utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
@@ -109,6 +110,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     const userId = await getSessionUserId(req, res);
+    const guestId = userId ? null : ensureGuestId(req, res);
     const currentCharacterName = pickRandomCharacterName([], gameCharacterNames);
 
     if (stream) {
@@ -133,7 +135,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         : undefined,
     );
 
+    const runId = crypto.randomUUID();
     const gameToken = signGameState({
+      runId,
       currentCharacterName,
       nextCharacterName,
       personaPrompt,
@@ -145,6 +149,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       wrongGuessCount: 0,
       environment: getCurrentEnvironment(),
       issuedForUserId: userId,
+      issuedForGuestId: guestId,
+      canContinue: false,
     });
 
     logEvent(

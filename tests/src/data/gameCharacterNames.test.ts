@@ -40,4 +40,9 @@ describe("gameCharacterNames", () => {
       ]),
     );
   });
+
+  it("identifies Shakespeare's Rosalind rather than the DNA researcher", () => {
+    expect(gameCharacterNames).toContain("Rosalind (As You Like It)");
+    expect(gameCharacterNames).not.toContain("Rosalind");
+  });
 });

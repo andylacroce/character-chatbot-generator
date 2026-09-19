@@ -11,8 +11,12 @@ jest.mock("next-auth/react", () => ({
 }));
 
 const mockAuthenticatedFetch = jest.fn();
+const mockHighScoreFetch = jest.fn();
 jest.mock("../../../src/utils/api", () => ({
-  authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
+  authenticatedFetch: (...args: unknown[]) =>
+    args[0] === "/api/game/high-score"
+      ? mockHighScoreFetch(...(args as unknown[]))
+      : mockAuthenticatedFetch(...(args as unknown[])),
 }));
 
 const mockLogEvent = jest.fn();
@@ -75,6 +79,7 @@ describe("useGameController", () => {
     mockStorage.getItem.mockReturnValue(null);
     mockStorage.getJSON.mockReturnValue(null);
     mockPlayAudio.mockResolvedValue(undefined);
+    mockHighScoreFetch.mockResolvedValue(mockResponse({ highScore: null }));
   });
 
   it("starts with no active run when nothing is persisted", () => {
@@ -183,35 +188,36 @@ describe("useGameController", () => {
     );
   });
 
-  it("never fetches a personal best for a guest", async () => {
+  it("fetches a cookie-bound personal best for a guest", async () => {
     const { result } = renderHook(() => useGameController());
     await waitFor(() => expect(result.current.highScore).toBeNull());
+    expect(mockHighScoreFetch).toHaveBeenCalledWith("/api/game/high-score");
     expect(mockAuthenticatedFetch).not.toHaveBeenCalled();
   });
 
   it("fetches the signed-in user's personal best on mount", async () => {
     mockUseSession.mockReturnValue({ status: "authenticated" });
-    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ highScore: 5 }));
+    mockHighScoreFetch.mockResolvedValueOnce(mockResponse({ highScore: 5 }));
 
     const { result } = renderHook(() => useGameController());
 
     await waitFor(() => expect(result.current.highScore).toBe(5));
-    expect(mockAuthenticatedFetch).toHaveBeenCalledWith("/api/game/high-score");
+    expect(mockHighScoreFetch).toHaveBeenCalledWith("/api/game/high-score");
   });
 
   it("keeps the personal best null for a signed-in user who has never beaten a streak", async () => {
     mockUseSession.mockReturnValue({ status: "authenticated" });
-    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ highScore: null }));
+    mockHighScoreFetch.mockResolvedValueOnce(mockResponse({ highScore: null }));
 
     const { result } = renderHook(() => useGameController());
 
-    await waitFor(() => expect(mockAuthenticatedFetch).toHaveBeenCalled());
+    await waitFor(() => expect(mockHighScoreFetch).toHaveBeenCalled());
     expect(result.current.highScore).toBeNull();
   });
 
   it("logs (without crashing) when the personal-best fetch fails", async () => {
     mockUseSession.mockReturnValue({ status: "authenticated" });
-    mockAuthenticatedFetch.mockRejectedValueOnce(new Error("network down"));
+    mockHighScoreFetch.mockRejectedValueOnce(new Error("network down"));
 
     const { result } = renderHook(() => useGameController());
 
@@ -396,6 +402,7 @@ describe("useGameController", () => {
         audioFileUrl: "/api/audio?file=reaction.mp3",
         correct: true,
         gameOver: false,
+        gameToken: "judged-token",
         revealedName: "Irene Adler",
         streak: 1,
       }),
@@ -414,7 +421,7 @@ describe("useGameController", () => {
     expect(result.current.awaitingContinue).toBe(true);
     // Nothing about the next character has been generated or applied yet.
     expect(result.current.currentCharacterName).toBe("Sherlock Holmes");
-    expect(result.current.gameToken).toBe("token-1");
+    expect(result.current.gameToken).toBe("judged-token");
     expect(result.current.streak).toBe(0);
     expect(result.current.messages.some((m) => m.text === "Brilliant, you got it!")).toBe(true);
     expect(result.current.messages.some((m) => m.text === "Hello, dear player.")).toBe(false);
@@ -440,7 +447,7 @@ describe("useGameController", () => {
       "/api/game/continue",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ gameToken: "token-1", stream: true }),
+        body: JSON.stringify({ gameToken: "judged-token", stream: true }),
       }),
     );
     expect(result.current.awaitingContinue).toBe(false);
@@ -492,7 +499,7 @@ describe("useGameController", () => {
     mockUseSession.mockReturnValue({ status: "authenticated" });
     // Mount fetches the personal best first, then startGame is invoked explicitly —
     // the mocked responses must be queued in that same order.
-    mockAuthenticatedFetch.mockResolvedValueOnce(mockResponse({ highScore: 2 }));
+    mockHighScoreFetch.mockResolvedValueOnce(mockResponse({ highScore: 2 }));
     mockAuthenticatedFetch.mockResolvedValueOnce(mockSseResponse([roundFrame()]));
 
     const { result } = renderHook(() => useGameController());
@@ -537,7 +544,7 @@ describe("useGameController", () => {
       await result.current.sendMessage();
     });
 
-    expect(result.current.highScore).toBeNull();
+    expect(result.current.highScore).toBe(1);
   });
 
   it("sendMessage excludes prior rounds' trailing messages from the next round's server-side history", async () => {

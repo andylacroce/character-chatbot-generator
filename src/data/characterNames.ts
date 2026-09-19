@@ -1067,7 +1067,7 @@ const characterNames: string[] = [
   "Malvolio",
   "Sir Toby Belch",
   "Sir Andrew Aguecheek",
-  "Rosalind",
+  "Rosalind (As You Like It)",
   "Orlando",
   "Jaques",
   "Touchstone",

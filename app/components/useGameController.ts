@@ -293,7 +293,7 @@ export function useGameController() {
   // gate-on-"authenticated" shape as useUserName.ts's own server fetch. A guest never
   // calls this at all, matching "only shown if logged in": highScore simply stays null.
   useEffect(() => {
-    if (sessionStatus !== "authenticated") return;
+    if (sessionStatus === "loading") return;
     let cancelled = false;
     authenticatedFetch("/api/game/high-score")
       .then((res) => res.json())
@@ -525,11 +525,12 @@ export function useGameController() {
 
       if (data.correct) {
         setLastEvent({ type: "correct", revealedName: data.revealedName, streak: data.streak });
+        if (typeof data.gameToken === "string") setGameToken(data.gameToken);
         // A streak only ever increases within a run, so the moment it beats the stored
         // best IS the new best — no need to round-trip to /api/game/high-score to learn
         // that. Guarded on sessionStatus so a guest's highScore (always null) never
         // shows a "Best" badge it has no server-side record to back up.
-        if (sessionStatus === "authenticated" && typeof data.streak === "number") {
+        if (typeof data.streak === "number") {
           setHighScore((prev) => (prev === null ? data.streak : Math.max(prev, data.streak)));
         }
         setMessages((prev) => [
@@ -606,7 +607,6 @@ export function useGameController() {
     roundStartIndex,
     currentCharacterName,
     avatarUrl,
-    sessionStatus,
   ]);
 
   /**

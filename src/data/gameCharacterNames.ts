@@ -432,7 +432,7 @@ const gameCharacterNames: string[] = [
   "Benedick",
   "Portia",
   "Malvolio",
-  "Rosalind",
+  "Rosalind (As You Like It)",
 
   // Gothic literature (extended)
   "Van Helsing",

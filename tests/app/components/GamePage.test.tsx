@@ -2,6 +2,13 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import GamePage from "../../../app/components/GamePage";
 
+const mockPush = jest.fn();
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
+jest.mock("../../../app/components/LeaderboardClaim", () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
 // GamePage now folds useAccountMenu's items (identity label, change name, sign in/out,
 // admin) into its own menu — default to unauthenticated so those assertions are
 // unaffected by account-persistence behavior.
@@ -102,6 +109,9 @@ describe("GamePage", () => {
     expect(screen.getByText("Edmund Ironside")).toBeInTheDocument();
     expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByTestId("game-play-again-button")).toBeInTheDocument();
+    const leaderboardButton = screen.getByRole("button", { name: "View leaderboard" });
+    fireEvent.click(leaderboardButton);
+    expect(mockPush).toHaveBeenCalledWith("/leaderboard");
   });
 
   it("renders the chat shell with the streak badge once a run has started", () => {

@@ -38,7 +38,9 @@ import {
   unique,
   boolean,
   index,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import type { CharacterVoiceConfig } from "../utils/characterVoices";
 
 export const users = pgTable("users", {
@@ -56,6 +58,9 @@ export const users = pgTable("users", {
   // purely additive; a guest's equivalent lives client-side only (localStorage key
   // "chatbot-user-name", see src/utils/storage.ts's known-keys doc in CLAUDE.md).
   preferredName: text("preferred_name"),
+  // Public score visibility is opt-in; rows may exist while this is false.
+  showOnLeaderboard: boolean("show_on_leaderboard").default(false).notNull(),
+  leaderboardName: text("leaderboard_name"),
 });
 
 export const accounts = pgTable(
@@ -305,8 +310,7 @@ export const analyticsEvents = pgTable(
 
 /**
  * A signed-in user's personal best guessing-game streak — a precursor to the public,
- * cross-user leaderboard tracked as Phase 2 of issue #876 (not started; would add its
- * own `game_results` table plus `users.showOnLeaderboard`). `environment`-scoped like
+ * cross-user leaderboard. `environment`-scoped like
  * `bots`/`analyticsEvents`, via getCurrentEnvironment(), so a local/preview play
  * session can never inflate a real user's production best. `(user_id, environment)` is
  * the primary key rather than a surrogate id: there is exactly one current best per
@@ -327,3 +331,34 @@ export const gameHighScores = pgTable(
   },
   (table) => [primaryKey({ columns: [table.userId, table.environment] })],
 );
+
+/** One run's highest verified streak; retries can only increase its score. */
+export const gameResults = pgTable(
+  "game_results",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    guestId: text("guest_id"),
+    environment: text("environment").notNull(),
+    bestStreak: integer("best_streak").notNull(),
+    // Moderated public name locked to this run once claimed; null until claimed.
+    leaderboardName: text("leaderboard_name"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("game_results_environment_user_idx").on(table.environment, table.userId),
+    index("game_results_environment_guest_idx").on(table.environment, table.guestId),
+    check(
+      "game_results_one_owner",
+      sql`(${table.userId} is not null) <> (${table.guestId} is not null)`,
+    ),
+  ],
+);
+
+/** Public-name setting for a guest browser's anonymous, cookie-bound game identity. */
+export const gameGuestProfiles = pgTable("game_guest_profiles", {
+  guestId: text("guest_id").primaryKey(),
+  leaderboardName: text("leaderboard_name"),
+  showOnLeaderboard: boolean("show_on_leaderboard").default(false).notNull(),
+});

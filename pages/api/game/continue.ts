@@ -110,6 +110,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(400).json({ error: "Your game session has expired. Please start a new game." });
     return;
   }
+  if (state.canContinue !== true) {
+    res.status(400).json({ error: "A correct guess is required before continuing." });
+    return;
+  }
 
   try {
     const userId = await getSessionUserId(req, res);
@@ -143,6 +147,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     );
 
     const newToken = signGameState({
+      runId: state.runId,
       currentCharacterName: revealedName,
       nextCharacterName,
       personaPrompt,
@@ -153,7 +158,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       streak: newStreak,
       wrongGuessCount: 0,
       environment: state.environment,
-      issuedForUserId: userId,
+      issuedForUserId: state.issuedForUserId,
+      issuedForGuestId: state.issuedForGuestId,
+      canContinue: false,
     });
 
     logEvent(

@@ -83,6 +83,7 @@ function makeGameState(overrides: Partial<GameStatePayload> = {}): GameStatePayl
     wrongGuessCount: 0,
     environment: "test",
     issuedForUserId: null,
+    canContinue: true,
     ...overrides,
   };
 }
@@ -116,6 +117,17 @@ describe("game/continue API", () => {
       ssmlGender: 2,
     });
     synthesizeReplyAudio.mockResolvedValueOnce("/api/audio?file=opening.mp3");
+  });
+
+  it("rejects a valid round token until a correct guess was judged", async () => {
+    const handler = require("../../../../pages/api/game/continue").default;
+    const req = makeReq({ gameToken: signGameState(makeGameState({ canContinue: false })) });
+    const res = makeRes();
+    await handler(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "A correct guess is required before continuing.",
+    });
   });
 
   it("returns 405 for non-POST methods", async () => {

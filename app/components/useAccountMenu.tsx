@@ -18,7 +18,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession, getProviders } from "next-auth/react";
-import { FaUser, FaUserShield, FaBan } from "react-icons/fa";
+import { FaUser, FaUserShield, FaBan, FaTrophy } from "react-icons/fa";
 import { authenticatedFetch } from "../../src/utils/api";
 import AuthControl from "./AuthControl";
 import { NameCaptureModal } from "./NameCaptureModal";
@@ -112,6 +112,10 @@ export function useAccountMenu(): AccountMenu {
         <span>{userNameCtx.name ? "Change your name" : "Add your name"}</span>
       </button>
       <AuthControl onRequestSignIn={requestSignIn} />
+      <Link href="/leaderboard">
+        <FaTrophy size={18} className="menuIcon" />
+        <span>Leaderboard</span>
+      </Link>
       {isAdmin && (
         <>
           <div className="menuDivider" role="separator" />
