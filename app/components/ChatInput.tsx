@@ -15,7 +15,7 @@ interface ChatInputProps {
   isAudioPlaying: boolean;
 }
 
-/** Message composer: text field, send button, and the audio on/off/stop controls. */
+/** Message composer: text field, the audio on/off/stop controls, and the send button on the far right. */
 const ChatInput: React.FC<ChatInputProps> = ({
   input,
   setInput,
@@ -63,41 +63,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
           aria-label="Type your message"
           aria-disabled={loading || !apiAvailable}
         />
-        <button
-          onClick={onSend}
-          className={
-            loading || !apiAvailable
-              ? `${styles.chatSendButton} ${styles.disabled}`
-              : styles.chatSendButton
-          }
-          disabled={loading || !apiAvailable}
-          data-testid="chat-send-button"
-          aria-label={loading || !apiAvailable ? "Send disabled" : "Send message"}
-        >
-          {loading || !apiAvailable ? (
-            "HOLD"
-          ) : (
-            <>
-              Send
-              <svg
-                width="15"
-                height="15"
-                viewBox="0 0 20 20"
-                fill="none"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <path
-                  d="M6 10h8M11 7l3 3-3 3"
-                  stroke="currentColor"
-                  strokeWidth="1.7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </>
-          )}
-        </button>
         {isAudioPlaying && (
           <button
             type="button"
@@ -178,6 +143,41 @@ const ChatInput: React.FC<ChatInputProps> = ({
               />
               <line x1="21" y1="3" x2="3" y2="21" stroke="currentColor" strokeWidth="2" />
             </svg>
+          )}
+        </button>
+        <button
+          onClick={onSend}
+          className={
+            loading || !apiAvailable
+              ? `${styles.chatSendButton} ${styles.disabled}`
+              : styles.chatSendButton
+          }
+          disabled={loading || !apiAvailable}
+          data-testid="chat-send-button"
+          aria-label={loading || !apiAvailable ? "Send disabled" : "Send message"}
+        >
+          {loading || !apiAvailable ? (
+            "HOLD"
+          ) : (
+            <>
+              Send
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 20 20"
+                fill="none"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path
+                  d="M6 10h8M11 7l3 3-3 3"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </>
           )}
         </button>
       </div>
