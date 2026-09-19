@@ -2,6 +2,10 @@
 
 This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
 
+## 2026-09-19 — Chat composer control order
+
+- Moved the Send button to the far right of the chat composer, after the audio mute/stop controls, so tab order matches visual order (issue #879).
+
 ## 2026-09-18 — Character Wall archival redesign
 
 - Removed the landing hero's now-misplaced “Type any name” instruction after the two discovery actions moved above the name field; the field placeholder and existing character-guidance link already communicate it more directly.
