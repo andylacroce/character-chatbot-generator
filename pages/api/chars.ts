@@ -158,6 +158,16 @@ function orderCharacters(
   });
 }
 
+/** Randomizes a copy of a page so small clients can sample without downloading every avatar. */
+function shuffled<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 /**
  * Next.js API route handler for listing every cached character portrait.
  *
@@ -182,6 +192,12 @@ function orderCharacters(
  *         schema:
  *           type: integer
  *           default: 0
+ *       - in: query
+ *         name: sample
+ *         description: Randomly return up to this many entries from the selected page; used by the landing carousel.
+ *         schema:
+ *           type: integer
+ *           maximum: 100
  *       - in: query
  *         name: sort
  *         schema:
@@ -240,13 +256,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const limit = Math.min(parseIntParam(req.query.limit, DEFAULT_LIMIT), MAX_LIMIT) || DEFAULT_LIMIT;
   const offset = parseIntParam(req.query.offset, 0);
+  const sample = Math.min(parseIntParam(req.query.sample, 0), limit);
   const sort = parseOption(req.query.sort, GALLERY_SORTS, "newest");
   const group = parseOption(req.query.group, GALLERY_GROUPS, "none");
 
   try {
     const all = await getAllCharacters();
     const ordered = orderCharacters(all, sort, group);
-    const page = ordered.slice(offset, offset + limit).map(({ createdAtMs: _, ...entry }) => entry);
+    const candidates = ordered.slice(offset, offset + limit);
+    const page = (sample ? shuffled(candidates).slice(0, sample) : candidates).map(
+      ({ createdAtMs: _, ...entry }) => entry,
+    );
 
     res.status(200).json({
       characters: page,

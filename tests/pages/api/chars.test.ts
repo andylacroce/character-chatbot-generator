@@ -26,6 +26,10 @@ describe("chars API", () => {
     mockOrderBy.mockResolvedValue([]);
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   afterAll(() => {
     process.env = OLD_ENV;
   });
@@ -112,6 +116,34 @@ describe("chars API", () => {
           name: "Ada Lovelace",
           avatarUrl: "https://example.test/ada lovelace.png",
           category: "history",
+        },
+      ],
+      hasMore: true,
+    });
+  });
+
+  it("samples a small carousel response from the requested page", async () => {
+    mockOrderBy.mockResolvedValue(Array.from({ length: 5 }, (_, i) => makeRow(`character ${i}`)));
+    jest.spyOn(Math, "random").mockReturnValue(0.99);
+    const handler = (await import("../../../pages/api/chars")).default;
+    const { req, res } = createMocks({
+      method: "GET",
+      query: { limit: "4", sample: "2" },
+    });
+
+    await handler(req, res);
+
+    expect(res._getJSONData()).toEqual({
+      characters: [
+        {
+          name: "Character 0",
+          avatarUrl: "https://example.test/character 0.png",
+          category: "other",
+        },
+        {
+          name: "Character 1",
+          avatarUrl: "https://example.test/character 1.png",
+          category: "other",
         },
       ],
       hasMore: true,

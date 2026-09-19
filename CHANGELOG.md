@@ -2,6 +2,10 @@
 
 This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
 
+## 2026-09-19 — Landing carousel loading
+
+- The landing header now reserves space for its character carousel while portraits load, preventing the page from jumping. Its API response sends only the 20 portraits used by the rotation, and the next portrait is warmed before it appears.
+
 ## 2026-09-19 — Admin game analytics
 
 - Added privacy-conscious guessing-game events for successful starts, scored guesses, continued rounds, and run endings. The admin dashboard now has focused Game and Character creation tabs; both daily charts share the same controls and interaction. Game stats show 7/30/90-day activity, guess accuracy, guest share, ending reasons, and final streaks. Earlier plays cannot be backfilled.

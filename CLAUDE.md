@@ -337,14 +337,16 @@ tightened after an early draft duplicated it three times).
   reliably renders the actual landing page afterward.
 - **`LandingCharacterCarousel.tsx`** is the landing page's `center` slot: a small
   auto-advancing rotation through recognized characters, reusing the exact same data
-  `CharsGallery`/`pages/api/chars.ts` already serves (`GET /api/chars?limit=100`), shuffled
-  client-side (Fisher-Yates) so the same 20-character rotation doesn't show in the same
-  order on every load. Auto-advances every 4s, pauses on hover/focus; clicking a portrait
+  `CharsGallery`/`pages/api/chars.ts` already serves (`GET /api/chars?limit=100&sample=20`).
+  The API samples 20 of the newest 100 on each request so the client does not download
+  unused portraits, including potentially large base64 data URLs. Auto-advances every 4s,
+  preloads the next portrait, and pauses on hover/focus; clicking a portrait
   navigates via `/?name=<encoded name>` — the exact same launch point the Character Wall's
   own lightbox uses (see "Character Wall" above), so it resolves resume-vs-fresh-create
   identically. Portrait and name-label sizes are fixed (not content-sized) specifically to
   prevent header layout shift as the carousel advances through names of very different
-  lengths — an earlier version let a long name reflow the header's height on every tick.
+  lengths or waits for its API response. An earlier version let a long name reflow the
+  header's height on every tick; the empty/loading state now reserves the same footprint.
 - **A CSS specificity bug worth knowing about if the header ever shifts layout again:**
   `AppHeader.module.css` originally had a generic `.headerCenter > button { display: block;
   }` rule (specificity 0,1,1) meant for the chat page's avatar button. Because the
