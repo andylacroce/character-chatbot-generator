@@ -2,6 +2,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { signGameState } from "../../../../src/utils/gameToken";
 import type { GameStatePayload } from "../../../../src/utils/gameToken";
 
+const mockRecordEvent = jest.fn();
+jest.mock("../../../../src/utils/analytics", () => ({
+  recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
+}));
+
 const mockLogEvent = jest.fn();
 jest.mock("../../../../src/utils/logger", () => ({
   __esModule: true,
@@ -83,6 +88,11 @@ describe("game/give-up API", () => {
       finalStreak: 3,
       gameOver: true,
     });
+    expect(mockRecordEvent).toHaveBeenCalledWith(
+      "game_run_ended",
+      { reason: "give_up", finalStreak: 3 },
+      null,
+    );
     expect(mockLogEvent).toHaveBeenCalledWith(
       "info",
       "game_gave_up",

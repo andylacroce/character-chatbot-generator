@@ -6,7 +6,7 @@
 import { getDb } from "../db/client";
 import { analyticsEvents } from "../db/schema";
 import { getCurrentEnvironment } from "./environment";
-import logger from "./logger";
+import { logEvent, sanitizeLogMeta } from "./logger";
 
 /**
  * Records a product-usage event, degrading silently (no-op or logged failure) rather than
@@ -29,6 +29,11 @@ export async function recordEvent(
         metadata: metadata ?? null,
       });
   } catch (err) {
-    logger.error("Failed to record analytics event:", { error: err, name });
+    logEvent(
+      "error",
+      "analytics_record_failed",
+      "Failed to record analytics event",
+      sanitizeLogMeta({ name, error: err instanceof Error ? err.message : String(err) }),
+    );
   }
 }

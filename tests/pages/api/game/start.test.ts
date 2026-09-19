@@ -33,6 +33,11 @@ jest.mock("../../../../src/utils/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...(args as [unknown])),
 }));
 
+const mockRecordEvent = jest.fn();
+jest.mock("../../../../src/utils/analytics", () => ({
+  recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
+}));
+
 // Mock environment
 jest.mock("../../../../src/utils/environment", () => ({
   getCurrentEnvironment: () => "test",
@@ -127,6 +132,7 @@ describe("game/start API", () => {
     expect(json.reply).toBe("Hello, detective.");
     expect(json.audioFileUrl).toBe("/api/audio?file=test.mp3");
     expect(json.streak).toBe(0);
+    expect(mockRecordEvent).toHaveBeenCalledWith("game_started", { guest: true }, null);
   });
 
   it("calls pickRandomCharacterName twice with exclusion, drawing from the game's curated pool", async () => {

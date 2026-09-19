@@ -14,6 +14,7 @@ import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit"
 import { generateGameRound } from "../../../src/utils/gameRound";
 import { verifyGameState, signGameState } from "../../../src/utils/gameToken";
 import { getSessionUserId } from "../../../src/utils/getSessionUserId";
+import { recordEvent } from "../../../src/utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
 
@@ -161,6 +162,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       "Generated the next round after a correct guess",
       sanitizeLogMeta({ streak: newStreak }),
     );
+    void recordEvent("game_round_continued", { streak: newStreak }, userId);
 
     const result = {
       gameToken: newToken,

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act, within } from "@testing-library/react";
 import AdminStatsView from "@/app/admin/AdminStatsView";
 
 const mockUseSession = jest.fn();
@@ -46,6 +46,24 @@ const FULL_STATS = {
     ],
     fallbackRatePct: 16.7,
   },
+  game: {
+    starts: 8,
+    startedToday: 1,
+    startedLast7Days: 3,
+    guestStarts: 5,
+    guestPct: 62.5,
+    correctGuesses: 6,
+    wrongGuesses: 4,
+    guessAccuracyPct: 60,
+    continuedRounds: 4,
+    continuationPct: 66.7,
+    endedByWrongGuess: 2,
+    endedByGiveUp: 1,
+    avgFinalStreak: 1.7,
+    bestStreak: 4,
+    finalStreaks: { zero: 1, one: 1, twoToFour: 1, fiveOrMore: 0 },
+    daily: [{ day: new Date().toISOString().slice(0, 10), started: 1, correct: 2, ended: 1 }],
+  },
 };
 
 describe("AdminStatsView", () => {
@@ -80,13 +98,22 @@ describe("AdminStatsView", () => {
     render(<AdminStatsView />);
 
     await waitFor(() => expect(screen.getByText("production")).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Guessing game" })).toBeInTheDocument();
+    expect(screen.getByText("Guess accuracy")).toBeInTheDocument();
+    expect(screen.getByText("62.5%", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("2–4 wins")).toBeInTheDocument();
+    expect(screen.queryByText("Saved characters")).not.toBeInTheDocument();
+    expect(screen.queryByText("Hover or focus a point for exact counts")).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Chart and table date range" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Character creation" }));
     expect(screen.getByText("Saved characters")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Chart and table date range" })).toBeInTheDocument();
     expect(screen.getByText("5 avg per bot")).toBeInTheDocument();
     // Funnel stages ("Names validated"/"Characters created" also appear in the
     // activity chart's legend and table view, so scope to the funnel section).
     expect(screen.getAllByText("Names validated").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Characters created").length).toBeGreaterThan(0);
-    expect(screen.getByText("60%")).toBeInTheDocument();
+    expect(screen.getAllByText("60%").length).toBeGreaterThan(0);
     // Copyright/trademark breakdown labels
     expect(screen.getByText("No concern")).toBeInTheDocument();
     expect(screen.getByText("Caution (possible trademark)")).toBeInTheDocument();
@@ -96,6 +123,34 @@ describe("AdminStatsView", () => {
     // Avatar provider breakdown + fallback callout
     expect(screen.getByText("Reused from cache")).toBeInTheDocument();
     expect(screen.getByText(/fell back to the plain silhouette/)).toBeInTheDocument();
+  });
+
+  it("labels the game date range as applying only to the chart and its table", async () => {
+    mockUseSession.mockReturnValue({ status: "authenticated" });
+    mockAuthenticatedFetch.mockResolvedValue({ ok: true, json: async () => FULL_STATS });
+    render(<AdminStatsView />);
+    const range = await screen.findByRole("group", { name: "Chart and table date range" });
+    fireEvent.click(within(range).getByRole("button", { name: "7d" }));
+    expect(
+      screen.getByRole("img", { name: "Game activity over the last 7 days" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "How runs progress" })).toBeInTheDocument();
+  });
+
+  it("switches stats sections with the keyboard", async () => {
+    mockUseSession.mockReturnValue({ status: "authenticated" });
+    mockAuthenticatedFetch.mockResolvedValue({ ok: true, json: async () => FULL_STATS });
+    render(<AdminStatsView />);
+    const gameTab = await screen.findByRole("tab", { name: "Guessing game" });
+    await screen.findByText("Guess accuracy");
+    gameTab.focus();
+    fireEvent.keyDown(gameTab, { key: "ArrowRight" });
+    expect(screen.getByRole("tab", { name: "Character creation" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByText("Saved characters")).toBeInTheDocument();
+    expect(screen.queryByText("Guess accuracy")).not.toBeInTheDocument();
   });
 
   it("omits the fallback callout when no requests fell back to the silhouette", async () => {
@@ -108,6 +163,8 @@ describe("AdminStatsView", () => {
       }),
     });
     render(<AdminStatsView />);
+    await screen.findByRole("tab", { name: "Character creation" });
+    fireEvent.click(screen.getByRole("tab", { name: "Character creation" }));
     await waitFor(() => expect(screen.getByText("Reused from cache")).toBeInTheDocument());
     expect(screen.queryByText(/fell back to the plain silhouette/)).not.toBeInTheDocument();
   });

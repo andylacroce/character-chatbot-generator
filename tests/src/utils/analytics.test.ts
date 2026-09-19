@@ -7,10 +7,10 @@ jest.mock("../../../src/utils/environment", () => ({
   getCurrentEnvironment: () => "test-env",
 }));
 
-const mockLoggerError = jest.fn();
+const mockLogEvent = jest.fn();
 jest.mock("../../../src/utils/logger", () => ({
-  __esModule: true,
-  default: { error: (...args: unknown[]) => mockLoggerError(...args) },
+  logEvent: (...args: unknown[]) => mockLogEvent(...args),
+  sanitizeLogMeta: (meta: unknown) => meta,
 }));
 
 import { recordEvent } from "../../../src/utils/analytics";
@@ -57,8 +57,10 @@ describe("recordEvent", () => {
   it("swallows and logs a DB error without throwing", async () => {
     mockValues.mockRejectedValueOnce(new Error("db down"));
     await expect(recordEvent("bot_created")).resolves.toBeUndefined();
-    expect(mockLoggerError).toHaveBeenCalledWith(
-      "Failed to record analytics event:",
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      "error",
+      "analytics_record_failed",
+      "Failed to record analytics event",
       expect.objectContaining({ name: "bot_created" }),
     );
   });

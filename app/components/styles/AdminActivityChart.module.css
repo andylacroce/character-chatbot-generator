@@ -15,6 +15,7 @@
    ============================= */
 
 .root {
+  margin-top: 0.85rem;
   --series-validated: #2a78d6;
   --series-created: #eb6834;
   --series-avatar: #1baf7a;

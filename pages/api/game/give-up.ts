@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { verifyGameState } from "../../../src/utils/gameToken";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
+import { recordEvent } from "../../../src/utils/analytics";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
 
 /** Rate limiter: 10 requests per minute per IP, shared tier with the other game endpoints. */
@@ -89,6 +90,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     "game_gave_up",
     "Player gave up the guessing-game run",
     sanitizeLogMeta({ finalStreak: state.streak }),
+  );
+  void recordEvent(
+    "game_run_ended",
+    { reason: "give_up", finalStreak: state.streak },
+    state.issuedForUserId,
   );
 
   res.status(200).json({

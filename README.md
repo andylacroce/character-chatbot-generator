@@ -343,9 +343,11 @@ observability.
   is largely invisible. An `analytics_events` table (Neon Postgres, same database as
   [Account Persistence](#account-persistence-optional) above) records a handful of
   low-frequency, high-signal events: character validation outcomes, which avatar provider
-  actually served an image, and character-creation counts. None of these ever record a
-  character's name or other user-supplied text.
-- **`/admin`** is an admin-only page showing aggregate counts only — no per-user or
+  actually served an image, character-creation counts, and guessing-game starts, scored
+  guesses, continued rounds, and endings. Game events store only guest status, numeric
+  streaks, and fixed outcome labels. None record character names, guesses, or chat text.
+- **`/admin`** is an admin-only page with separate Guessing game and Character creation
+  tabs showing aggregate counts only — no per-user or
   per-guest detail. The access check runs server-side (`isAdminSession()`) and 404s
   anyone who isn't a confirmed admin before the stats view or its bundle ever renders,
   rather than loading the page and showing a "not authorized" message. Gated by the
@@ -353,6 +355,12 @@ observability.
   nobody can access it. It's never reachable on a Vercel Preview deployment regardless of
   email match, since Preview's sign-in stub issues sessions with zero identity
   verification (see [Account Persistence](#account-persistence-optional) above).
+  The guessing-game section shows starts, guess accuracy, guest share, continued rounds,
+  ending reasons, final streaks, and a 7/30/90-day activity chart with an exact-count
+  table. The date control applies only to that chart and table; the other game totals
+  cover all recorded activity. Game analytics begin with the deployment that adds these events; earlier plays
+  cannot be reconstructed from the stateless game token or personal high scores. Abandoned
+  runs have no ending event, and the event counts are best effort.
 - **Discoverable, if you're an admin**: a cheap `GET /api/admin/is-admin` check (no
   database query — just the same session/allowlist check the page itself enforces) lets
   the account menu show an "Admin Stats" link only to signed-in admins, instead of it

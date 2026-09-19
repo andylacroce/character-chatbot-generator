@@ -28,6 +28,7 @@ import { extractJson } from "../../../src/utils/parseClaudeJson";
 import anthropic from "../../../src/utils/anthropicClient";
 import { verifyGameState, signGameState } from "../../../src/utils/gameToken";
 import { updateHighScoreIfBeaten } from "../../../src/utils/gameHighScore";
+import { recordEvent } from "../../../src/utils/analytics";
 import {
   getGameReply,
   getGuessReactionReply,
@@ -348,6 +349,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         "Correct guess, advancing streak",
         sanitizeLogMeta({ streak: newStreak }),
       );
+      void recordEvent("game_guess_correct", { streak: newStreak }, userId);
 
       // Deliberately not generating the next character here — see this handler's own
       // doc comment above. The existing gameToken is untouched and still decodes
@@ -385,6 +387,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         "Guessing-game run ended on a second wrong guess",
         sanitizeLogMeta({ finalStreak: state.streak }),
       );
+      void recordEvent("game_guess_wrong", undefined, userId);
+      void recordEvent(
+        "game_run_ended",
+        { reason: "second_wrong", finalStreak: state.streak },
+        userId,
+      );
       res.status(200).json({
         reply: reactionReply,
         audioFileUrl,
@@ -410,6 +418,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       state.voiceConfig,
     );
     const newToken = signGameState({ ...state, wrongGuessCount: 1 });
+    void recordEvent("game_guess_wrong", undefined, userId);
     res.status(200).json({
       reply: reactionReply,
       audioFileUrl,

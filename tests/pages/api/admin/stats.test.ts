@@ -31,10 +31,10 @@ function makeQuery(rows: unknown[]) {
   return query;
 }
 
-// The handler issues these 7 `db.select(...)` calls in this exact order (see
+// The handler issues these 9 `db.select(...)` calls in this exact order (see
 // pages/api/admin/stats.ts): daily activity, character_validated aggregate,
 // character_validated-by-warningLevel, bot_created aggregate, avatar_generated
-// by provider, bots total, messages total.
+// by provider, bots total, messages total, game daily, game aggregate.
 const DAILY_ROWS = [{ day: "2026-09-10", validated: 4, created: 2, avatarGenerated: 2 }];
 const VALIDATION_AGG_ROW = [{ total: 10, blocked: 1, unrecognized: 3 }];
 const VALIDATION_BY_LEVEL_ROWS = [
@@ -49,6 +49,26 @@ const AVATAR_PROVIDER_ROWS = [
 ];
 const BOTS_TOTAL_ROW = [{ total: 2 }];
 const MESSAGES_TOTAL_ROW = [{ total: 10 }];
+const GAME_DAILY_ROWS = [
+  { day: new Date().toISOString().slice(0, 10), started: 3, correct: 2, ended: 1 },
+];
+const GAME_AGG_ROWS = [
+  {
+    starts: 8,
+    guestStarts: 5,
+    correct: 6,
+    wrong: 4,
+    continued: 4,
+    endedWrong: 2,
+    endedGiveUp: 1,
+    finalStreakSum: 5,
+    bestStreak: 4,
+    zero: 1,
+    one: 1,
+    twoToFour: 1,
+    fiveOrMore: 0,
+  },
+];
 
 function queueDefaultSelects(mockSelect: jest.Mock) {
   mockSelect
@@ -58,7 +78,9 @@ function queueDefaultSelects(mockSelect: jest.Mock) {
     .mockImplementationOnce(() => makeQuery(CREATOR_AGG_ROW))
     .mockImplementationOnce(() => makeQuery(AVATAR_PROVIDER_ROWS))
     .mockImplementationOnce(() => makeQuery(BOTS_TOTAL_ROW))
-    .mockImplementationOnce(() => makeQuery(MESSAGES_TOTAL_ROW));
+    .mockImplementationOnce(() => makeQuery(MESSAGES_TOTAL_ROW))
+    .mockImplementationOnce(() => makeQuery(GAME_DAILY_ROWS))
+    .mockImplementationOnce(() => makeQuery(GAME_AGG_ROWS));
 }
 
 const mockSelect = jest.fn();
@@ -121,6 +143,8 @@ describe("admin/stats API", () => {
     expect(data.activity).toEqual({ createdToday: 0, createdLast7Days: 0, daily: [] });
     expect(data.funnel).toEqual({ validated: 0, blocked: 0, created: 0, creationRatePct: null });
     expect(data.creators).toEqual({ guestCount: 0, signedInCount: 0, guestPct: null });
+    expect(data.game.starts).toBe(0);
+    expect(data.game.guessAccuracyPct).toBeNull();
     expect(mockSelect).not.toHaveBeenCalled();
   });
 
@@ -152,6 +176,24 @@ describe("admin/stats API", () => {
       { provider: "cloudflare", total: 2, pct: 33.3 },
       { provider: "none", total: 1, pct: 16.7 },
     ]);
+    expect(data.game).toEqual({
+      starts: 8,
+      startedToday: 3,
+      startedLast7Days: 3,
+      guestStarts: 5,
+      guestPct: 62.5,
+      correctGuesses: 6,
+      wrongGuesses: 4,
+      guessAccuracyPct: 60,
+      continuedRounds: 4,
+      continuationPct: 66.7,
+      endedByWrongGuess: 2,
+      endedByGiveUp: 1,
+      avgFinalStreak: 1.7,
+      bestStreak: 4,
+      finalStreaks: { zero: 1, one: 1, twoToFour: 1, fiveOrMore: 0 },
+      daily: GAME_DAILY_ROWS,
+    });
   });
 
   it("returns null rates (not NaN/Infinity) when a denominator is 0", async () => {
@@ -164,7 +206,9 @@ describe("admin/stats API", () => {
       .mockImplementationOnce(() => makeQuery([{ total: 0, guest: 0, signedIn: 0 }]))
       .mockImplementationOnce(() => makeQuery([]))
       .mockImplementationOnce(() => makeQuery([{ total: 0 }]))
-      .mockImplementationOnce(() => makeQuery([{ total: 0 }]));
+      .mockImplementationOnce(() => makeQuery([{ total: 0 }]))
+      .mockImplementationOnce(() => makeQuery([]))
+      .mockImplementationOnce(() => makeQuery([]));
     const handler = (await import("../../../../pages/api/admin/stats")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
@@ -174,6 +218,8 @@ describe("admin/stats API", () => {
     expect(data.creators.guestPct).toBeNull();
     expect(data.avatars.fallbackRatePct).toBeNull();
     expect(data.totals.avgMessagesPerBot).toBe(0);
+    expect(data.game.guessAccuracyPct).toBeNull();
+    expect(data.game.avgFinalStreak).toBeNull();
   });
 
   it("returns 500 when a stats query fails", async () => {

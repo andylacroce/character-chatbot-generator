@@ -70,14 +70,24 @@ function formatDay(day: string): string {
 }
 
 /**
- * Multi-line chart of daily product-usage activity (names validated, characters
- * created, avatars generated) with a 7/30/90-day range toggle, hover/focus
+ * Multi-line chart of daily product-usage activity with a 7/30/90-day range toggle, hover/focus
  * crosshair tooltip, and a collapsible table view carrying the same values for
  * keyboard users and anyone below the light-mode contrast floor on the aqua series.
  */
-export default function AdminActivityChart({ data }: { data: DailyActivityRow[] }) {
+export default function AdminActivityChart({
+  data,
+  labels = ["Names validated", "Characters created", "Avatars generated"],
+  dayLabels = ["validated", "created", "avatars generated"],
+  activityLabel = "Daily activity",
+}: {
+  data: DailyActivityRow[];
+  labels?: readonly [string, string, string];
+  dayLabels?: readonly [string, string, string];
+  activityLabel?: string;
+}) {
   const [range, setRange] = useState<RangeDays>(30);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const series = SERIES.map((item, index) => ({ ...item, label: labels[index] }));
 
   const rows = useMemo(() => buildDenseSeries(data, range), [data, range]);
   const n = rows.length;
@@ -104,7 +114,7 @@ export default function AdminActivityChart({ data }: { data: DailyActivityRow[] 
   return (
     <div className={styles.root}>
       <div className={styles.headerRow}>
-        <div className={styles.rangeToggle} role="group" aria-label="Date range">
+        <div className={styles.rangeToggle} role="group" aria-label="Chart and table date range">
           {RANGE_OPTIONS.map((opt) => (
             <button
               key={opt}
@@ -130,7 +140,7 @@ export default function AdminActivityChart({ data }: { data: DailyActivityRow[] 
             className={styles.svg}
             viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
             role="img"
-            aria-label={`Daily activity over the last ${range} days`}
+            aria-label={`${activityLabel} over the last ${range} days`}
           >
             {yTicks.map((tick) => (
               <g key={tick}>
@@ -169,7 +179,7 @@ export default function AdminActivityChart({ data }: { data: DailyActivityRow[] 
               {formatDay(rows[n - 1].day)}
             </text>
 
-            {SERIES.map((series) => (
+            {series.map((series) => (
               <path
                 key={series.key}
                 className={styles.seriesLine}
@@ -187,7 +197,7 @@ export default function AdminActivityChart({ data }: { data: DailyActivityRow[] 
                   y1={PAD.top}
                   y2={VIEW_H - PAD.bottom}
                 />
-                {SERIES.map((series) => (
+                {series.map((series) => (
                   <circle
                     key={series.key}
                     className={styles.dot}
@@ -212,7 +222,7 @@ export default function AdminActivityChart({ data }: { data: DailyActivityRow[] 
                   height={PLOT_H}
                   tabIndex={0}
                   role="img"
-                  aria-label={`${formatDay(row.day)}: ${row.validated} validated, ${row.created} created, ${row.avatarGenerated} avatars generated`}
+                  aria-label={`${formatDay(row.day)}: ${row.validated} ${dayLabels[0]}, ${row.created} ${dayLabels[1]}, ${row.avatarGenerated} ${dayLabels[2]}`}
                   onMouseEnter={() => setHoverIndex(i)}
                   onFocus={() => setHoverIndex(i)}
                   onBlur={() => setHoverIndex(null)}
@@ -224,7 +234,7 @@ export default function AdminActivityChart({ data }: { data: DailyActivityRow[] 
           {hovered && (
             <div className={styles.tooltip} style={{ left: `${tooltipLeftPct}%` }}>
               <div className={styles.tooltipDate}>{formatDay(hovered.day)}</div>
-              {SERIES.map((series) => (
+              {series.map((series) => (
                 <div className={styles.tooltipRow} key={series.key}>
                   <span className={styles.tooltipKey} style={{ background: series.colorVar }} />
                   <span className={styles.tooltipLabel}>{series.label}</span>
@@ -237,7 +247,7 @@ export default function AdminActivityChart({ data }: { data: DailyActivityRow[] 
       )}
 
       <div className={styles.legend}>
-        {SERIES.map((series) => (
+        {series.map((series) => (
           <span className={styles.legendItem} key={series.key}>
             <span className={styles.legendKey} style={{ background: series.colorVar }} />
             {series.label}
@@ -252,7 +262,7 @@ export default function AdminActivityChart({ data }: { data: DailyActivityRow[] 
             <thead>
               <tr>
                 <th>Date</th>
-                {SERIES.map((series) => (
+                {series.map((series) => (
                   <th key={series.key}>{series.label}</th>
                 ))}
               </tr>
@@ -261,9 +271,9 @@ export default function AdminActivityChart({ data }: { data: DailyActivityRow[] 
               {[...rows].reverse().map((row) => (
                 <tr key={row.day}>
                   <td>{row.day}</td>
-                  <td data-label={SERIES[0].label}>{row.validated}</td>
-                  <td data-label={SERIES[1].label}>{row.created}</td>
-                  <td data-label={SERIES[2].label}>{row.avatarGenerated}</td>
+                  <td data-label={labels[0]}>{row.validated}</td>
+                  <td data-label={labels[1]}>{row.created}</td>
+                  <td data-label={labels[2]}>{row.avatarGenerated}</td>
                 </tr>
               ))}
             </tbody>

@@ -2,6 +2,10 @@
 
 This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
 
+## 2026-09-19 — Admin game analytics
+
+- Added privacy-conscious guessing-game events for successful starts, scored guesses, continued rounds, and run endings. The admin dashboard now has focused Game and Character creation tabs; both daily charts share the same controls and interaction. Game stats show 7/30/90-day activity, guess accuracy, guest share, ending reasons, and final streaks. Earlier plays cannot be backfilled.
+
 ## 2026-09-19 — Guessing game: deferred round generation, real progress, and UX polish
 
 - The next character's persona/avatar/voice/greeting is no longer generated as part of judging a guess — a correct guess now returns immediately (just the reaction and new streak), and the actual generation only starts once the player clicks "Continue" (new `pages/api/game/continue.ts` endpoint). Previously the entire pipeline ran before the player ever saw "Correct!", which is what made that moment feel like a long, unlabeled hang.

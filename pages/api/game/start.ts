@@ -17,6 +17,7 @@ import { generateGameRound } from "../../../src/utils/gameRound";
 import { signGameState } from "../../../src/utils/gameToken";
 import { getSessionUserId } from "../../../src/utils/getSessionUserId";
 import { getCurrentEnvironment } from "../../../src/utils/environment";
+import { recordEvent } from "../../../src/utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
 
@@ -152,6 +153,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       "Started a new guessing-game run",
       sanitizeLogMeta({ streak: 0 }),
     );
+    void recordEvent("game_started", { guest: !userId }, userId);
 
     const result = {
       gameToken,

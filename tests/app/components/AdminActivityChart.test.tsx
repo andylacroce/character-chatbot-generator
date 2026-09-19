@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import AdminActivityChart from "@/app/components/AdminActivityChart";
+import GameActivityChart from "@/app/components/GameActivityChart";
 
 describe("AdminActivityChart", () => {
   beforeEach(() => {
@@ -34,7 +35,7 @@ describe("AdminActivityChart", () => {
         data={[{ day: "2026-09-10", validated: 4, created: 2, avatarGenerated: 2 }]}
       />,
     );
-    const group = screen.getByRole("group", { name: "Date range" });
+    const group = screen.getByRole("group", { name: "Chart and table date range" });
     expect(within(group).getByText("30d")).toHaveAttribute("aria-pressed", "true");
     expect(within(group).getByText("7d")).toHaveAttribute("aria-pressed", "false");
 
@@ -67,5 +68,18 @@ describe("AdminActivityChart", () => {
     );
     expect(screen.getByText("View as table")).toBeInTheDocument();
     expect(screen.getByText("2026-09-10")).toBeInTheDocument();
+  });
+
+  it("uses the same chart interaction for game activity with game-specific labels", () => {
+    render(<GameActivityChart data={[{ day: "2026-09-10", started: 4, correct: 2, ended: 1 }]} />);
+    const group = screen.getByRole("group", { name: "Chart and table date range" });
+    fireEvent.click(within(group).getByRole("button", { name: "7d" }));
+    expect(
+      screen.getByRole("img", { name: "Game activity over the last 7 days" }),
+    ).toBeInTheDocument();
+    const point = screen.getByLabelText("Sep 10: 4 started, 2 correct, 1 ended");
+    fireEvent.focus(point);
+    expect(screen.getAllByText("Correct guesses").length).toBeGreaterThan(1);
+    expect(screen.getByText("View as table")).toBeInTheDocument();
   });
 });

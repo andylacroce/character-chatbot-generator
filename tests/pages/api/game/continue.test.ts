@@ -23,6 +23,11 @@ jest.mock("../../../../src/utils/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...(args as [unknown])),
 }));
 
+const mockRecordEvent = jest.fn();
+jest.mock("../../../../src/utils/analytics", () => ({
+  recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
+}));
+
 // Mock game utilities generateGameRound uses internally
 jest.mock("../../../../src/utils/pickRandomCharacterName", () => ({
   pickRandomCharacterName: jest.fn(),
@@ -146,6 +151,7 @@ describe("game/continue API", () => {
     // correct guess that led here never wrote the increment back into any token —
     // see pages/api/game/message.ts's doc comment.
     expect(json.streak).toBe(3);
+    expect(mockRecordEvent).toHaveBeenCalledWith("game_round_continued", { streak: 3 }, null);
 
     const state = verifyGameState(json.gameToken);
     expect(state?.currentCharacterName).toBe("Irene Adler");

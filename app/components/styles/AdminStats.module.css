@@ -142,6 +142,104 @@
   text-align: center;
 }
 
+.viewTabs {
+  display: flex;
+  gap: 0.4rem;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.3rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--color-outline);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.viewTab {
+  border: 0;
+  border-radius: 7px;
+  padding: 0.6rem 1rem;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.viewTab:hover,
+.viewTab:focus-visible {
+  color: var(--color-text);
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.viewTabActive {
+  color: var(--color-on-primary-container);
+  background: var(--color-primary-container);
+}
+
+.dashboardSection {
+  min-width: 0;
+}
+
+.gameSectionHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.gameTitle,
+.groupHeading {
+  margin: 0 0 0.3rem;
+  font-size: 1.35rem;
+  color: var(--color-text);
+}
+
+.groupHeading {
+  margin-bottom: 1rem;
+}
+
+.gameFacts {
+  margin: 0.7rem 0 1.3rem;
+}
+.gameFacts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-outline);
+  font-size: 0.85rem;
+}
+.gameFacts dt {
+  color: var(--color-text-secondary);
+}
+.gameFacts dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.gameSubheading {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+}
+.gameStreakGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.gameStreakGrid span {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border-radius: 7px;
+  background: var(--color-surface-variant);
+  font-size: 0.78rem;
+}
+
 /* Chart + funnel sit side by side once there's room for both to breathe, rather than
    stacking two full-width cards and leaving a wide desktop mostly empty; below that
    they stack in source order like every other section. Shares --card-gap with
@@ -171,14 +269,6 @@
   border: 1px solid var(--color-outline);
   border-radius: 14px;
   padding: 1.4rem 1.5rem 1.6rem;
-}
-
-.sectionHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.9rem;
 }
 
 .sectionTitle {
@@ -413,6 +503,16 @@
 
   .title {
     font-size: 1.5rem;
+  }
+
+  .viewTabs {
+    width: 100%;
+  }
+
+  .viewTab {
+    flex: 1;
+    padding: 0.55rem 0.4rem;
+    font-size: 0.82rem;
   }
 
   /* The "Updated Ns ago" text's width changes every second (5s vs 42s vs "a few

@@ -40,6 +40,11 @@ jest.mock("../../../../src/utils/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...(args as unknown[])),
 }));
 
+const mockRecordEvent = jest.fn();
+jest.mock("../../../../src/utils/analytics", () => ({
+  recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
+}));
+
 // Mock the personal-best persistence util
 const mockUpdateHighScoreIfBeaten = jest.fn();
 jest.mock("../../../../src/utils/gameHighScore", () => ({
@@ -225,6 +230,7 @@ describe("game/message API", () => {
     expect(json.gameOver).toBe(false);
     expect(json.revealedName).toBe("Irene Adler");
     expect(json.streak).toBe(3);
+    expect(mockRecordEvent).toHaveBeenCalledWith("game_guess_correct", { streak: 3 }, null);
     expect(json.reply).toBe("Brilliant, you got it!");
     expect(json.audioFileUrl).toBe("/api/audio?file=reaction.mp3");
     expect(json.nextReply).toBeUndefined();
@@ -263,6 +269,7 @@ describe("game/message API", () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(mockUpdateHighScoreIfBeaten).toHaveBeenCalledWith("user-1", 3);
+    expect(mockRecordEvent).toHaveBeenCalledWith("game_guess_correct", { streak: 3 }, "user-1");
   });
 
   it("tolerates a first wrong guess and reduces remaining tries", async () => {
@@ -280,6 +287,8 @@ describe("game/message API", () => {
     expect(json.gameOver).toBe(false);
     expect(json.wrongGuessesRemaining).toBe(1);
     expect(json.reply).toBe("Not quite, try again?");
+    expect(mockRecordEvent).toHaveBeenCalledWith("game_guess_wrong", undefined, null);
+    expect(mockRecordEvent).toHaveBeenCalledTimes(1);
 
     const state = verifyGameState(json.gameToken);
     expect(state?.wrongGuessCount).toBe(1);
@@ -301,6 +310,12 @@ describe("game/message API", () => {
     expect(json.gameOver).toBe(true);
     expect(json.revealedName).toBe("Irene Adler");
     expect(json.finalStreak).toBe(2);
+    expect(mockRecordEvent).toHaveBeenCalledWith("game_guess_wrong", undefined, null);
+    expect(mockRecordEvent).toHaveBeenCalledWith(
+      "game_run_ended",
+      { reason: "second_wrong", finalStreak: 2 },
+      null,
+    );
     expect(mockLogEvent).toHaveBeenCalledWith(
       "info",
       "game_over",
