@@ -27,23 +27,53 @@ export interface GameRound {
 }
 
 /**
+ * Fired the instant each named step genuinely finishes — not on a fixed timer — so a
+ * caller (pages/api/game/start.ts's SSE mode) can report real progress to the client
+ * instead of a client-side simulation. `personality`/`avatar` fire in either order (they
+ * run concurrently); same for `reply`/`voice`. There's no event for the final TTS
+ * synthesis step: once the whole function resolves, the caller already has everything.
+ */
+export type GameRoundProgressStage = "personality" | "avatar" | "reply" | "voice";
+
+/**
  * Generates a full round for `currentCharacterName`, picking a fresh hidden target that
- * excludes every name in `excludeNames`.
+ * excludes every name in `excludeNames`. `onProgress`, when given, is called as each real
+ * step completes (see GameRoundProgressStage) — purely observational, never changes the
+ * result or timing of the work itself.
  */
 export async function generateGameRound(
   currentCharacterName: string,
   excludeNames: string[],
+  onProgress?: (stage: GameRoundProgressStage) => void,
 ): Promise<GameRound> {
   const nextCharacterName = pickRandomCharacterName(excludeNames, gameCharacterNames);
-  const { prompt: personaPrompt } = await generateGameCluePersonaPrompt(
-    currentCharacterName,
-    nextCharacterName,
-  );
-  const { avatarUrl, gender } = await getOrGenerateAvatar(currentCharacterName, {
-    recognized: true,
-  });
-  const reply = await getOpeningReply(personaPrompt);
-  const voiceConfig = await getVoiceConfigForCharacter(currentCharacterName, gender);
+
+  // The persona prompt and the avatar each depend only on currentCharacterName, not on
+  // each other, so they run concurrently rather than back-to-back.
+  const [{ prompt: personaPrompt }, { avatarUrl, gender }] = await Promise.all([
+    generateGameCluePersonaPrompt(currentCharacterName, nextCharacterName).then((result) => {
+      onProgress?.("personality");
+      return result;
+    }),
+    getOrGenerateAvatar(currentCharacterName, { recognized: true }).then((result) => {
+      onProgress?.("avatar");
+      return result;
+    }),
+  ]);
+
+  // Likewise, the opening reply only needs personaPrompt and the voice config only needs
+  // gender (from the avatar step above) — neither depends on the other's result.
+  const [reply, voiceConfig] = await Promise.all([
+    getOpeningReply(personaPrompt).then((result) => {
+      onProgress?.("reply");
+      return result;
+    }),
+    getVoiceConfigForCharacter(currentCharacterName, gender).then((result) => {
+      onProgress?.("voice");
+      return result;
+    }),
+  ]);
+
   const audioFileUrl = await synthesizeReplyAudio(reply, currentCharacterName, gender, voiceConfig);
   return { nextCharacterName, personaPrompt, avatarUrl, gender, voiceConfig, reply, audioFileUrl };
 }

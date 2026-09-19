@@ -74,22 +74,44 @@ export interface VoiceConfig {
 }
 
 /**
- * Validates a voice name by attempting to use it with Google TTS.
- * Returns true if valid, false if invalid.
+ * Validates a voice name AND its paired ssmlGender by attempting to use them together
+ * with Google TTS — mirrors the exact request shape real synthesis later sends
+ * (tts.ts's synthesizeSpeechToFile), since Google only rejects a name/gender mismatch
+ * when both are given together. An earlier version of this check omitted ssmlGender
+ * entirely, so it could never catch the one thing it exists to prevent: it always
+ * reported a voice "valid" purely because the name existed, even when Claude's gender
+ * field didn't match that voice's real gender. That meant the mismatch was only ever
+ * caught downstream, at real synthesis time, on every single reply for that character
+ * forever (the self-heal there fixes that one call but is never written back to this
+ * cached config) — a wasted, failing TTS round trip plus a retry delay on every turn,
+ * found live via repeated `tts_gender_self_heal` warnings for the same character across
+ * a whole play session. Passing ssmlGender here lets the retry-with-Claude loop below
+ * catch the mismatch upfront instead. Omits ssmlGender for a neutral gender, matching
+ * synthesizeSpeechToFile's own drop of it for NEUTRAL, since Google rejects that
+ * combination outright regardless of whether it matches the voice.
  */
-async function isValidGoogleTTSVoice(voiceName: string, languageCode: string): Promise<boolean> {
+async function isValidGoogleTTSVoice(
+  voiceName: string,
+  languageCode: string,
+  ssmlGender?: number,
+): Promise<boolean> {
   try {
     const { getTTSClient } = await import("./tts");
 
     const client = getTTSClient();
 
-    // Attempt test synthesis to validate voice is available and functional
+    const voice: { languageCode: string; name: string; ssmlGender?: number } = {
+      languageCode,
+      name: voiceName,
+    };
+    if (ssmlGender !== undefined && ssmlGender !== SSML_GENDER.NEUTRAL) {
+      voice.ssmlGender = ssmlGender;
+    }
+
+    // Attempt test synthesis to validate the voice/gender pairing is available and usable
     const [response] = await client.synthesizeSpeech({
       input: { text: "test" },
-      voice: {
-        languageCode,
-        name: voiceName,
-      },
+      voice,
       audioConfig: {
         audioEncoding: "MP3" as const,
       },
@@ -191,8 +213,14 @@ CRITICAL: The "gender" field you return MUST match the actual gender of the spec
         throw new Error(`Invalid voice name format after ${maxRetries} attempts`);
       }
 
-      // Validate using actual Google TTS API (true validation)
-      const isValid = await isValidGoogleTTSVoice(config.voiceName, config.languageCode || "en-US");
+      // Validate using actual Google TTS API (true validation) — with the same
+      // name+gender pairing real synthesis will use, so a mismatch is caught here
+      // rather than self-healed on every single reply later (see the doc comment above).
+      const isValid = await isValidGoogleTTSVoice(
+        config.voiceName,
+        config.languageCode || "en-US",
+        mapGenderToSsml(config.gender),
+      );
 
       if (!isValid) {
         if (attempt < maxRetries) {
@@ -202,13 +230,14 @@ CRITICAL: The "gender" field you return MUST match the actual gender of the spec
               attempt,
               voiceName: config.voiceName,
               languageCode: config.languageCode,
+              gender: config.gender,
             }),
           );
           messages.push(
             { role: "assistant", content },
             {
               role: "user",
-              content: `ERROR: Voice "${config.voiceName}" does not exist in Google TTS. Try a different voice variant (different letter: A, B, C, D, etc.) or type (Wavenet, Neural2, Standard).`,
+              content: `ERROR: Voice "${config.voiceName}" with gender "${config.gender}" was rejected by Google TTS — either the voice doesn't exist, or its real gender doesn't match "${config.gender}". Pick a different voice you're confident actually has gender "${config.gender}" (different letter: A, B, C, D, etc., or a different type: Wavenet, Neural2, Standard), and make sure the "gender" field you return matches it.`,
             },
           );
           continue;

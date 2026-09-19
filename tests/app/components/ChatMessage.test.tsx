@@ -26,11 +26,43 @@ describe("ChatMessage", () => {
   });
 
   it("renders bot message with avatar", () => {
-    const message: Message = { text: "You shall not pass!", sender: "AI" };
+    const message: Message = { text: "You shall not pass!", sender: "Gandalf" };
     render(<ChatMessage message={message} bot={mockBot} />);
     expect(screen.getByText("Gandalf")).toBeInTheDocument();
     expect(screen.getByText("You shall not pass!")).toBeInTheDocument();
     expect(screen.getByAltText("Gandalf")).toBeInTheDocument();
+  });
+
+  it("shows the message's own sender/avatar, not the current bot prop's, when they differ", () => {
+    // Regression test: the guessing game's chat partner changes mid-transcript (the
+    // `bot` prop always reflects whoever is CURRENT), while a message's own `sender`/
+    // `avatarUrl` reflect who actually said it. A prior bug displayed every message with
+    // the live `bot` prop's name/avatar, silently relabeling past rounds to whoever the
+    // partner became after a round switch (e.g. an old Jim Hawkins line rendering as
+    // "Electra"). Every message must show its own attribution instead.
+    const message: Message = {
+      text: "I've got a curious mind on my hands today.",
+      sender: "Jim Hawkins",
+      avatarUrl: "/jim-hawkins.png",
+    };
+    render(<ChatMessage message={message} bot={mockBot} />);
+    expect(screen.getByText("Jim Hawkins")).toBeInTheDocument();
+    expect(screen.queryByText("Gandalf")).not.toBeInTheDocument();
+    expect(screen.getByAltText("Jim Hawkins")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent("/jim-hawkins.png")),
+    );
+  });
+
+  it("falls back to the current bot's avatar when a message has none of its own", () => {
+    // Covers ordinary chat (never sets avatarUrl per message) and any pre-fix persisted
+    // game message from localStorage that predates this field.
+    const message: Message = { text: "You shall not pass!", sender: "Gandalf" };
+    render(<ChatMessage message={message} bot={mockBot} />);
+    expect(screen.getByAltText("Gandalf")).toHaveAttribute(
+      "src",
+      expect.stringContaining(encodeURIComponent("/gandalf.png")),
+    );
   });
 
   it("replays a bot message from its byline control", () => {

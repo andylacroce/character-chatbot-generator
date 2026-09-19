@@ -132,22 +132,62 @@
   background: var(--color-primary-container);
 }
 
-.continueButton {
+/* A correct guess awaiting "Continue" needs the player's explicit action — there's no
+   other way to advance, the chat input is disabled underneath it — so it gets a more
+   attention-grabbing treatment than the plain .eventBanner variants above. Still an
+   inline banner (not a modal): this slot sits above the scrollable transcript, so it
+   never obscures the character's own last message the way an overlay would. */
+.correctGuessBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  text-align: center;
+  padding: 0.85rem 1.2rem;
   background: var(--color-primary);
   color: var(--color-on-primary);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.22);
+  animation: gameCorrectBannerPulse 1.8s ease-in-out infinite;
+}
+
+.correctGuessText {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.correctGuessContinueButton {
+  background: var(--color-on-primary);
+  color: var(--color-primary);
   font-family: var(--font-primary), sans-serif;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   border: none;
   border-radius: 999px;
-  padding: 0.4rem 1.1rem;
+  padding: 0.5rem 1.4rem;
   cursor: pointer;
   transition: opacity 0.15s ease;
 }
 
-.continueButton:hover,
-.continueButton:focus-visible {
+.correctGuessContinueButton:hover,
+.correctGuessContinueButton:focus-visible {
   opacity: 0.85;
+}
+
+@keyframes gameCorrectBannerPulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.22);
+  }
+  50% {
+    box-shadow: 0 2px 22px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .correctGuessBanner {
+    animation: none;
+  }
 }
 
 @media (max-width: 600px) {

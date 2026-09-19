@@ -2,6 +2,29 @@
 
 This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
 
+## 2026-09-19 — Guessing game: deferred round generation, real progress, and UX polish
+
+- The next character's persona/avatar/voice/greeting is no longer generated as part of judging a guess — a correct guess now returns immediately (just the reaction and new streak), and the actual generation only starts once the player clicks "Continue" (new `pages/api/game/continue.ts` endpoint). Previously the entire pipeline ran before the player ever saw "Correct!", which is what made that moment feel like a long, unlabeled hang.
+- Both `/api/game/start` and `/api/game/continue` gained a real SSE streaming mode: the client's loading spinner now reflects genuine server-reported progress (persona/avatar/voice/reply each reporting in as they finish) instead of a fixed client-side timer that could land on the wrong label for most of the wait.
+- `src/utils/gameRound.ts`'s persona/avatar/voice/reply generation was parallelized (5 sequential calls down to 3 stages) ahead of the above, since it's shared by both endpoints.
+- The "Correct!" moment is now a bold, pulsing inline banner (not a modal — a modal was tried and reverted for obscuring the character's last message) that's replaced by the same staged spinner once "Continue" is clicked, matching the start screen's UX.
+- Fixed a real bug where reloading the page while the "Correct!" banner was showing silently discarded the win — the transient banner state is now persisted so it survives a refresh.
+- Fixed the header's streak badge showing the stale pre-round number while the "Correct!" banner already showed the new one.
+
+## 2026-09-19 — Guessing game: message attribution and personalization fixes
+
+- Fixed chat messages in the guessing game showing the *current* character's name/avatar for every line in the transcript, including lines from a previous round's character — a correct guess and round switch used to silently relabel the whole prior conversation.
+- Fixed the visitor's own preferred name (set via the account menu) never appearing in the guessing game's chat — it always showed the generic "Me," even though ordinary chat already showed the real name there.
+
+## 2026-09-19 — Guessing game: guess-classifier and curated-name-list accuracy fixes
+
+- Hardened the guess classifier so a guess matching the hidden character only on a shared trait/epithet (e.g. guessing "Cleopatra" for a character merely described as "a great beauty") is no longer scored as correct — it must name the literal same individual. Rewrote the classifier's prompt with clearer structure, worked examples, and a reasoning field to improve accuracy on the smaller/faster model tier it runs on.
+- Fixed five more bare/ambiguous entries in the curated character-name list that could be picked as a hidden target with zero identifying context, the same root cause as the earlier "Hero" incident: `"Beauty"`, `"David Copperfield"` (collided with the real-world illusionist), `"The Emperor"`, `"The Knight"`, and `"The Monster"` were each disambiguated with their source work. Closed a gap in the regression test that catches this class of bug — it previously only matched a bare noun exactly, never a `"The X"` form.
+
+## 2026-09-19 — Fixed a stale TTS voice-gender validation gap
+
+- `characterVoices.ts`'s voice validation checked only whether a voice name existed, never whether its gender actually matched — so a mismatched voice/gender pairing was never caught upfront, and silently self-healed (at a latency and cost) on every single reply for that character, forever. The validation now checks both together, matching what real synthesis actually sends.
+
 ## 2026-09-19 — Made the guessing game winnable (GitHub issue #878)
 
 - Added `src/data/gameCharacterNames.ts`, a ~400-name curated subset of the full character list restricted to broadly recognizable figures (Greek/Roman/Norse/Egyptian mythology, Shakespeare leads, fairy tales, Sherlock Holmes, world-history household names). The game's hidden target and revealed starting character are now drawn from this pool instead of the full ~1000-entry list, whose obscure entries (minor saga figures, one-off Victorian side characters) made some rounds effectively unguessable. `/api/random-character` is unaffected — it still draws from the full list, since that flow shows the name up front.

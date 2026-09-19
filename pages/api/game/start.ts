@@ -47,9 +47,24 @@ const gameStartRateLimit = createRateLimiter({
  *       `gameToken` the client must echo back on every subsequent /game/message or
  *       /game/guess call. Rate limited to 10 requests/minute/IP.
  *     tags: [Game]
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               stream:
+ *                 type: boolean
+ *                 default: false
  *     responses:
  *       200:
- *         description: A new run has started
+ *         description: >
+ *           JSON result (default), or a text/event-stream of real progress frames when
+ *           `stream: true` — `data: {"stage": "personality"|"avatar"|"reply"|"voice",
+ *           "done": false}` fired the instant each named step of round generation
+ *           actually finishes (see src/utils/gameRound.ts), followed by a final frame
+ *           carrying the same fields as the JSON response below plus `"done": true`.
  *         content:
  *           application/json:
  *             schema:
@@ -70,6 +85,9 @@ const gameStartRateLimit = createRateLimiter({
  *                   type: string
  *                 streak:
  *                   type: integer
+ *           text/event-stream:
+ *             schema:
+ *               type: string
  *       405:
  *         description: Method not allowed
  *       429:
@@ -86,9 +104,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
+  const stream = req.body?.stream === true;
+
   try {
     const userId = await getSessionUserId(req, res);
     const currentCharacterName = pickRandomCharacterName([], gameCharacterNames);
+
+    if (stream) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+    }
+
     const {
       nextCharacterName,
       personaPrompt,
@@ -97,7 +124,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       voiceConfig,
       reply,
       audioFileUrl,
-    } = await generateGameRound(currentCharacterName, [currentCharacterName]);
+    } = await generateGameRound(
+      currentCharacterName,
+      [currentCharacterName],
+      stream
+        ? (stage) => res.write(`data: ${JSON.stringify({ stage, done: false })}\n\n`)
+        : undefined,
+    );
 
     const gameToken = signGameState({
       currentCharacterName,
@@ -120,7 +153,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sanitizeLogMeta({ streak: 0 }),
     );
 
-    res.status(200).json({
+    const result = {
       gameToken,
       currentCharacterName,
       avatarUrl,
@@ -128,7 +161,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       reply,
       audioFileUrl,
       streak: 0,
-    });
+    };
+    if (stream) {
+      res.write(`data: ${JSON.stringify({ ...result, done: true })}\n\n`);
+      res.end();
+      return;
+    }
+    res.status(200).json(result);
   } catch (err) {
     logEvent(
       "error",
@@ -136,6 +175,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       "Failed to start a new guessing-game run",
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
+    if (stream) {
+      res.write(`data: ${JSON.stringify({ error: "Failed to start a new run", done: true })}\n\n`);
+      res.end();
+      return;
+    }
     res.status(500).json({ error: "Failed to start a new run" });
   }
 }

@@ -72,6 +72,7 @@ function makeRes() {
   res.json = jest.fn().mockReturnValue(res as NextApiResponse);
   res.end = jest.fn().mockReturnValue(res as NextApiResponse);
   res.setHeader = jest.fn();
+  res.write = jest.fn();
   return res as NextApiResponse;
 }
 
@@ -189,5 +190,52 @@ describe("game/start API", () => {
     const res = makeRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it("streams real progress frames as each round-generation step completes when stream: true", async () => {
+    const handler = require("../../../../pages/api/game/start").default;
+    const req = {
+      method: "POST",
+      body: { stream: true },
+    } as Partial<NextApiRequest> as NextApiRequest;
+    const res = makeRes();
+    await handler(req, res);
+
+    expect(res.setHeader).toHaveBeenCalledWith("Content-Type", "text/event-stream");
+    const writes = (res.write as jest.Mock).mock.calls.map((call) => JSON.parse(call[0].slice(6)));
+    const progressFrames = writes.filter((frame) => frame.done === false);
+    expect(progressFrames.map((frame) => frame.stage).sort()).toEqual([
+      "avatar",
+      "personality",
+      "reply",
+      "voice",
+    ]);
+
+    const finalFrame = writes.find((frame) => frame.done === true);
+    expect(finalFrame.currentCharacterName).toBe("Sherlock Holmes");
+    expect(finalFrame.reply).toBe("Hello, detective.");
+    expect(finalFrame.gameToken).toEqual(expect.any(String));
+    expect(res.end).toHaveBeenCalled();
+    // Streaming mode never also sends a plain JSON response.
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("streams an error frame instead of a 500 status when generation fails in stream mode", async () => {
+    const { generateGameCluePersonaPrompt } = require("../../../../src/config/serverConfig");
+    generateGameCluePersonaPrompt.mockReset();
+    generateGameCluePersonaPrompt.mockRejectedValueOnce(new Error("Claude is down"));
+
+    const handler = require("../../../../pages/api/game/start").default;
+    const req = {
+      method: "POST",
+      body: { stream: true },
+    } as Partial<NextApiRequest> as NextApiRequest;
+    const res = makeRes();
+    await handler(req, res);
+
+    const writes = (res.write as jest.Mock).mock.calls.map((call) => JSON.parse(call[0].slice(6)));
+    expect(writes[writes.length - 1]).toEqual({ error: "Failed to start a new run", done: true });
+    expect(res.end).toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

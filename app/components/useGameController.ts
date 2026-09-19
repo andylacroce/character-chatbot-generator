@@ -16,22 +16,6 @@ export type GameEvent =
   | { type: "wrong"; wrongGuessesRemaining: number }
   | { type: "gameover"; revealedName: string; finalStreak: number };
 
-/**
- * Data for a round switch already returned by the server on a correct guess, held back
- * from `currentCharacterName`/`avatarUrl`/etc. until the player explicitly continues —
- * see `continueRound` below.
- */
-interface PendingRoundAdvance {
-  gameToken: string;
-  currentCharacterName: string;
-  avatarUrl: string;
-  gender: string | null;
-  streak: number;
-  nextReply: string;
-  nextAudioFileUrl?: string;
-  roundStartIndex: number;
-}
-
 interface PersistedGameState {
   gameToken: string;
   currentCharacterName: string;
@@ -41,6 +25,15 @@ interface PersistedGameState {
   messages: Message[];
   /** Index into `messages` where the CURRENT round's conversation begins, see sendMessage below. */
   roundStartIndex: number;
+  /**
+   * Persisted so a reload while the "Correct!"/"Continue" banner is up re-shows it
+   * identically, rather than silently dropping the player back into an ordinary-looking
+   * chat with no visible sign they'd just won — the underlying `gameToken` is untouched
+   * either way (see pages/api/game/message.ts's doc comment: a correct guess no longer
+   * mutates the token at all, it just stays valid for /api/game/continue), so there's no
+   * separate "held-back round data" to lose on reload the way there used to be.
+   */
+  lastEvent: GameEvent | null;
 }
 
 /** Builds the "Bot: "/"User: "-prefixed history lines the server expects, from the transcript so far. */
@@ -72,7 +65,124 @@ function persistState(state: PersistedGameState | null) {
     streak: state.streak,
     messages: state.messages,
     roundStartIndex: state.roundStartIndex,
+    lastEvent: state.lastEvent,
   });
+}
+
+/**
+ * The real stages src/utils/gameRound.ts's generateGameRound reports as it runs, in
+ * display order. Used to compute an honest progress label from genuine server-reported
+ * "done" events (see fetchRoundWithProgress below) rather than a client-side timer
+ * simulating stages that may not match what's actually happening.
+ */
+const ROUND_STAGE_ORDER: { stage: string; label: string }[] = [
+  { stage: "personality", label: "Creating personality…" },
+  { stage: "avatar", label: "Generating portrait…" },
+  { stage: "reply", label: "Writing opening line…" },
+  { stage: "voice", label: "Selecting voice…" },
+];
+
+/**
+ * Reads a `text/event-stream` response of `data: {...}\n\n` frames, calling `onFrame` for
+ * each as it arrives. A malformed frame is skipped rather than aborting the whole stream.
+ */
+async function readSseFrames(
+  response: Response,
+  onFrame: (frame: Record<string, unknown>) => void,
+): Promise<void> {
+  const reader = response.body?.getReader();
+  if (!reader) return;
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() ?? "";
+    for (const part of parts) {
+      const line = part.trim();
+      if (!line.startsWith("data:")) continue;
+      try {
+        onFrame(JSON.parse(line.slice("data:".length).trim()));
+      } catch {
+        // Skip a malformed frame rather than aborting the whole stream.
+      }
+    }
+  }
+}
+
+/** The shape both /api/game/start and /api/game/continue resolve to — see fetchRoundWithProgress. */
+interface RoundResult {
+  gameToken: string;
+  currentCharacterName: string;
+  avatarUrl: string;
+  gender: string | null;
+  reply: string;
+  audioFileUrl?: string;
+  streak: number;
+}
+
+/**
+ * Calls a round-generation endpoint (/api/game/start or /api/game/continue) in streamed
+ * mode, reporting REAL progress to `onStageChange` as each named step of
+ * src/utils/gameRound.ts's generateGameRound genuinely completes — not a client-side
+ * timer simulating stages. `completedStages` accumulates as real "done" events arrive;
+ * the label shown is always the first stage in ROUND_STAGE_ORDER not yet completed,
+ * which naturally reflects personality/avatar (and reply/voice, which run concurrently
+ * in pairs server-side) resolving in either order — whichever of a pair is still
+ * outstanding is what's displayed, never a guess.
+ */
+async function fetchRoundWithProgress(
+  url: string,
+  body: Record<string, unknown>,
+  onStageChange: (label: string) => void,
+): Promise<RoundResult> {
+  const completedStages = new Set<string>();
+  const updateProgress = () => {
+    const next = ROUND_STAGE_ORDER.find((entry) => !completedStages.has(entry.stage));
+    onStageChange(next ? next.label : "Preparing greeting…");
+  };
+  updateProgress();
+
+  const res = await authenticatedFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, stream: true }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  let finalFrame: Record<string, unknown> | null = null;
+  await readSseFrames(res, (frame) => {
+    if (frame.done) {
+      finalFrame = frame;
+      return;
+    }
+    if (typeof frame.stage === "string") {
+      completedStages.add(frame.stage);
+      updateProgress();
+    }
+  });
+
+  if (!finalFrame) throw new Error(`Stream from ${url} ended without a final frame`);
+  const result: Record<string, unknown> = finalFrame;
+  if (typeof result.error === "string") throw new Error(result.error);
+  if (
+    typeof result.gameToken !== "string" ||
+    typeof result.reply !== "string" ||
+    typeof result.currentCharacterName !== "string"
+  ) {
+    throw new Error(`Invalid response from ${url}`);
+  }
+  return {
+    gameToken: result.gameToken,
+    currentCharacterName: result.currentCharacterName,
+    avatarUrl: (result.avatarUrl as string) || "/silhouette.svg",
+    gender: (result.gender as string | null) ?? null,
+    reply: result.reply,
+    audioFileUrl: result.audioFileUrl as string | undefined,
+    streak: (result.streak as number) ?? 0,
+  };
 }
 
 /**
@@ -104,10 +214,11 @@ export function useGameController() {
   // promoted chat partner isn't handed a previous character's unrelated Q&A. Earlier
   // rounds stay visible in the transcript for scrollback; they just aren't sent server-side.
   const [roundStartIndex, setRoundStartIndex] = useState(0);
-  // Set on a correct guess whenever the server also returned the next round's greeting,
-  // holding it back until the player clicks "Continue" rather than switching partners
-  // instantly — see continueRound below.
-  const [pendingAdvance, setPendingAdvance] = useState<PendingRoundAdvance | null>(null);
+  // True while /api/game/continue is generating the next character after a correct
+  // guess — see continueRound below. Drives the same staged-progress UI as `starting`,
+  // just for the round-advance path instead of a brand-new run.
+  const [continuing, setContinuing] = useState(false);
+  const [continueProgressMessage, setContinueProgressMessage] = useState("Starting…");
   // Set when the server classifies a chat message as an explicit give-up request (see
   // pages/api/game/message.ts) rather than an ordinary question or guess — GamePage.tsx
   // watches this to open its existing give-up confirmation dialog, the same one the
@@ -173,6 +284,7 @@ export function useGameController() {
       setStreak(persisted.streak);
       setMessages(persisted.messages);
       setRoundStartIndex(persisted.roundStartIndex ?? 0);
+      setLastEvent(persisted.lastEvent ?? null);
     }
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -206,10 +318,28 @@ export function useGameController() {
   useEffect(() => {
     persistState(
       gameToken
-        ? { gameToken, currentCharacterName, avatarUrl, gender, streak, messages, roundStartIndex }
+        ? {
+            gameToken,
+            currentCharacterName,
+            avatarUrl,
+            gender,
+            streak,
+            messages,
+            roundStartIndex,
+            lastEvent,
+          }
         : null,
     );
-  }, [gameToken, currentCharacterName, avatarUrl, gender, streak, messages, roundStartIndex]);
+  }, [
+    gameToken,
+    currentCharacterName,
+    avatarUrl,
+    gender,
+    streak,
+    messages,
+    roundStartIndex,
+    lastEvent,
+  ]);
 
   const started = gameToken !== null;
 
@@ -249,54 +379,31 @@ export function useGameController() {
 
   useEffect(() => stopAudio, [stopAudio]);
 
-  /** Starts a brand-new streak, discarding any in-progress run. */
+  /**
+   * Starts a brand-new streak, discarding any in-progress run. Drives `startProgressMessage`
+   * from real server-reported progress (see fetchRoundWithProgress) rather than a
+   * simulated timer.
+   */
   const startGame = useCallback(async () => {
     setStarting(true);
     setError("");
     setLastEvent(null);
-    setStartProgressMessage("Creating personality…");
-
-    // Simulated staged progress to mirror bot creation's spinner UX.
-    // The real /api/game/start call does persona+avatar+voice+reply in one pass, so we
-    // cycle through representative messages client-side for visual consistency while the
-    // request is in flight. Advances through the stages once and then holds on the last
-    // one — avatar generation alone can easily run past the ~2.4s a single pass through
-    // all four stages takes, and wrapping back around to "Creating personality…" reads as
-    // the request having restarted rather than still being in flight.
-    const stages = [
-      "Creating personality…",
-      "Generating portrait…",
-      "Selecting voice…",
-      "Preparing greeting…",
-    ];
-    let stage = 0;
-    const stageInterval = setInterval(() => {
-      if (stage >= stages.length - 1) return;
-      stage += 1;
-      setStartProgressMessage(stages[stage]);
-    }, 600);
-
     try {
-      const res = await authenticatedFetch("/api/game/start", { method: "POST" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (
-        typeof data.gameToken !== "string" ||
-        typeof data.reply !== "string" ||
-        typeof data.currentCharacterName !== "string"
-      ) {
-        throw new Error("Invalid response from /api/game/start");
-      }
+      const data = await fetchRoundWithProgress("/api/game/start", {}, setStartProgressMessage);
       setGameToken(data.gameToken);
       setCurrentCharacterName(data.currentCharacterName);
-      setAvatarUrl(data.avatarUrl || "/silhouette.svg");
-      setGender(data.gender ?? null);
-      setStreak(data.streak ?? 0);
+      setAvatarUrl(data.avatarUrl);
+      setGender(data.gender);
+      setStreak(data.streak);
       setMessages([
-        { sender: data.currentCharacterName, text: data.reply, audioFileUrl: data.audioFileUrl },
+        {
+          sender: data.currentCharacterName,
+          text: data.reply,
+          audioFileUrl: data.audioFileUrl,
+          avatarUrl: data.avatarUrl,
+        },
       ]);
       setRoundStartIndex(0);
-      setPendingAdvance(null);
       setGiveUpRequested(false);
     } catch (e) {
       const msg = "Failed to start a new game. Please try again.";
@@ -310,7 +417,6 @@ export function useGameController() {
         );
       }
     } finally {
-      clearInterval(stageInterval);
       setStartProgressMessage("Starting…");
       setStarting(false);
     }
@@ -326,7 +432,7 @@ export function useGameController() {
     setStreak(0);
     setMessages([]);
     setRoundStartIndex(0);
-    setPendingAdvance(null);
+    setContinuing(false);
     setGiveUpRequested(false);
     setLastEvent(null);
     setError("");
@@ -381,14 +487,14 @@ export function useGameController() {
    * this handles every possible outcome the response can carry.
    */
   const sendMessage = useCallback(async () => {
-    if (!input.trim() || !gameToken || loading || pendingAdvance) return;
+    if (!input.trim() || !gameToken || loading || lastEvent?.type === "correct" || continuing)
+      return;
     const userMessage: Message = { sender: "User", text: input };
     const previousCharacterName = currentCharacterName;
-    // Captured before roundStartIndex is used to slice the current round's history below —
-    // the NEXT round's roundStartIndex must be an absolute index into the full `messages`
-    // array, not a length relative to the current round's own slice (see the `correct`
-    // branch below for why this distinction matters).
-    const oldMessagesLength = messages.length;
+    // Captured now, before any round switch below — every reply this turn is still
+    // spoken by the pre-switch character, so its message needs the pre-switch avatar,
+    // not whatever `avatarUrl` state becomes after a correct guess promotes a new one.
+    const previousAvatarUrl = avatarUrl;
     const historyForServer = messages.slice(roundStartIndex);
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
@@ -428,32 +534,19 @@ export function useGameController() {
         }
         setMessages((prev) => [
           ...prev,
-          { sender: previousCharacterName, text: data.reply, audioFileUrl: data.audioFileUrl },
+          {
+            sender: previousCharacterName,
+            text: data.reply,
+            audioFileUrl: data.audioFileUrl,
+            avatarUrl: previousAvatarUrl,
+          },
         ]);
-        // The new partner's greeting and round data are already in hand, but held back
-        // until the player clicks "Continue" (see continueRound) instead of switching
-        // partners instantly — a beat to register the win before moving on. When the
-        // server didn't return a next greeting at all (shouldn't normally happen), fall
-        // through and apply the round switch immediately since there's nothing to hold.
-        if (typeof data.nextReply === "string") {
-          setPendingAdvance({
-            gameToken: data.gameToken,
-            currentCharacterName: data.currentCharacterName,
-            avatarUrl: data.avatarUrl || "/silhouette.svg",
-            gender: data.gender ?? null,
-            streak: data.streak ?? 0,
-            nextReply: data.nextReply,
-            nextAudioFileUrl: data.nextAudioFileUrl,
-            roundStartIndex: oldMessagesLength + 2,
-          });
-        } else {
-          setRoundStartIndex(oldMessagesLength + 2);
-          setGameToken(data.gameToken);
-          setCurrentCharacterName(data.currentCharacterName);
-          setAvatarUrl(data.avatarUrl || "/silhouette.svg");
-          setGender(data.gender ?? null);
-          setStreak(data.streak ?? 0);
-        }
+        // Deliberately not touching gameToken/currentCharacterName/avatarUrl/streak or
+        // roundStartIndex here — the next character isn't generated until the player
+        // clicks "Continue" (see continueRound below), so judging a guess stays fast
+        // instead of blocking on a full persona+avatar+voice+reply+TTS pipeline before
+        // the player even sees they got it right (see pages/api/game/message.ts's doc
+        // comment). The existing gameToken is untouched and still valid for that call.
         return;
       }
 
@@ -465,7 +558,12 @@ export function useGameController() {
         });
         setMessages((prev) => [
           ...prev,
-          { sender: previousCharacterName, text: data.reply, audioFileUrl: data.audioFileUrl },
+          {
+            sender: previousCharacterName,
+            text: data.reply,
+            audioFileUrl: data.audioFileUrl,
+            avatarUrl: previousAvatarUrl,
+          },
         ]);
         setGameToken(null);
         return;
@@ -477,7 +575,12 @@ export function useGameController() {
       }
       setMessages((prev) => [
         ...prev,
-        { sender: previousCharacterName, text: data.reply, audioFileUrl: data.audioFileUrl },
+        {
+          sender: previousCharacterName,
+          text: data.reply,
+          audioFileUrl: data.audioFileUrl,
+          avatarUrl: previousAvatarUrl,
+        },
       ]);
     } catch (e) {
       const msg = "Failed to get a reply. Please try again.";
@@ -497,37 +600,70 @@ export function useGameController() {
     input,
     gameToken,
     loading,
-    pendingAdvance,
+    lastEvent,
+    continuing,
     messages,
     roundStartIndex,
     currentCharacterName,
+    avatarUrl,
     sessionStatus,
   ]);
 
   /**
-   * Applies a held-back round switch (see the `correct` branch of sendMessage above):
-   * appends the new partner's greeting, switches identity/token/streak, and clears the
-   * "correct" event banner so play resumes normally.
+   * Called once the player clicks "Continue" after a correct guess: generates the
+   * newly-revealed character's own round (persona/avatar/voice/opening line) via
+   * /api/game/continue, driving `continueProgressMessage` from the same real
+   * server-reported progress `startGame` uses (see fetchRoundWithProgress) — the
+   * generation genuinely hasn't started before this point, see sendMessage's `correct`
+   * branch above and pages/api/game/message.ts's doc comment. On failure, restores the
+   * "Correct!" banner so the player can retry rather than being stuck on a disabled
+   * input with no way forward.
    */
-  const continueRound = useCallback(() => {
-    if (!pendingAdvance) return;
-    setMessages((prev) => [
-      ...prev,
-      {
-        sender: pendingAdvance.currentCharacterName,
-        text: pendingAdvance.nextReply,
-        audioFileUrl: pendingAdvance.nextAudioFileUrl,
-      },
-    ]);
-    setRoundStartIndex(pendingAdvance.roundStartIndex);
-    setGameToken(pendingAdvance.gameToken);
-    setCurrentCharacterName(pendingAdvance.currentCharacterName);
-    setAvatarUrl(pendingAdvance.avatarUrl);
-    setGender(pendingAdvance.gender);
-    setStreak(pendingAdvance.streak);
-    setPendingAdvance(null);
+  const continueRound = useCallback(async () => {
+    if (!gameToken || lastEvent?.type !== "correct") return;
+    const correctEvent = lastEvent;
+    const roundBaseIndex = messages.length;
     setLastEvent(null);
-  }, [pendingAdvance]);
+    setContinuing(true);
+    setError("");
+    try {
+      const data = await fetchRoundWithProgress(
+        "/api/game/continue",
+        { gameToken },
+        setContinueProgressMessage,
+      );
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: data.currentCharacterName,
+          text: data.reply,
+          audioFileUrl: data.audioFileUrl,
+          avatarUrl: data.avatarUrl,
+        },
+      ]);
+      setRoundStartIndex(roundBaseIndex);
+      setGameToken(data.gameToken);
+      setCurrentCharacterName(data.currentCharacterName);
+      setAvatarUrl(data.avatarUrl);
+      setGender(data.gender);
+      setStreak(data.streak);
+    } catch (e) {
+      setLastEvent(correctEvent);
+      const msg = "Failed to continue to the next round. Please try again.";
+      setError(msg);
+      if (typeof window !== "undefined") {
+        logEvent(
+          "error",
+          "game_client_continue_failed",
+          msg,
+          sanitizeLogMeta({ error: e instanceof Error ? e.message : String(e) }),
+        );
+      }
+    } finally {
+      setContinueProgressMessage("Starting…");
+      setContinuing(false);
+    }
+  }, [gameToken, lastEvent, messages]);
 
   /** Dismisses a pending chat-detected give-up request once GamePage has acted on it. */
   const clearGiveUpRequest = useCallback(() => setGiveUpRequested(false), []);
@@ -556,8 +692,13 @@ export function useGameController() {
     loading,
     error,
     lastEvent,
-    awaitingContinue: pendingAdvance !== null,
+    // True once a correct guess is judged and awaiting the player's "Continue" click —
+    // the next character isn't generated until then (see continueRound), so this no
+    // longer reflects "round data already fetched, just held back."
+    awaitingContinue: lastEvent?.type === "correct",
     continueRound,
+    continuing,
+    continueProgressMessage,
     giveUpRequested,
     clearGiveUpRequest,
     chatBoxRef,

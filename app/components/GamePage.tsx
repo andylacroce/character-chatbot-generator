@@ -44,6 +44,8 @@ function GamePage() {
     lastEvent,
     awaitingContinue,
     continueRound,
+    continuing,
+    continueProgressMessage,
     giveUpRequested,
     clearGiveUpRequest,
     chatBoxRef,
@@ -63,7 +65,7 @@ function GamePage() {
 
   // Shared with BotCreator.tsx/CharsGallery.tsx/ChatPage.tsx — identity label, change-name
   // and sign-in/out/admin items, folded into this page's own menu below.
-  const { menuItems: accountMenuItems, modals: accountModals } = useAccountMenu();
+  const { userNameCtx, menuItems: accountMenuItems, modals: accountModals } = useAccountMenu();
 
   const [showInstructions, setShowInstructions] = React.useState(false);
   const [showGiveUpConfirmation, setShowGiveUpConfirmation] = React.useState(false);
@@ -210,9 +212,19 @@ function GamePage() {
   // "Best" only appears once the player actually has a personal best on record — a
   // guest (never fetched, always null) or a freshly signed-in player with no streak
   // beaten yet both show just the plain streak badge, no empty/zero "Best" clutter.
+  //
+  // While the correct-guess overlay is up, `streak` state itself is still the pre-round
+  // value — it's deliberately held back until Continue (see useGameController.ts's
+  // continueRound), same as identity/avatar. But the streak *number* the overlay already
+  // displays isn't a spoiler the way the next character's name/avatar would be, so
+  // showing it here too avoids the header visibly disagreeing with the overlay open
+  // right in front of it (e.g. header "Streak: 0" behind an overlay that already says
+  // "Streak: 1").
+  const displayedStreak =
+    awaitingContinue && lastEvent?.type === "correct" ? lastEvent.streak : streak;
   const belowName = (
     <div className={styles.streakBadge} data-testid="game-streak-badge">
-      Streak: {streak}
+      Streak: {displayedStreak}
       {typeof highScore === "number" && highScore > 0 && (
         <span className={styles.highScoreBadge} data-testid="game-high-score-badge">
           {" "}
@@ -224,14 +236,14 @@ function GamePage() {
 
   const bannerContent = (
     <>
-      {lastEvent?.type === "correct" && awaitingContinue && (
-        <div className={styles.eventBanner} data-testid="game-event-correct">
-          <span>
-            🎉 Correct, it was {lastEvent.revealedName}! Streak: {lastEvent.streak}.
+      {awaitingContinue && lastEvent?.type === "correct" && (
+        <div className={styles.correctGuessBanner} data-testid="game-event-correct">
+          <span className={styles.correctGuessText}>
+            🎉 Correct! It was {lastEvent.revealedName}! Streak: {lastEvent.streak}.
           </span>
           <button
             type="button"
-            className={styles.continueButton}
+            className={styles.correctGuessContinueButton}
             onClick={continueRound}
             data-testid="game-continue-button"
           >
@@ -239,10 +251,14 @@ function GamePage() {
           </button>
         </div>
       )}
-      {lastEvent?.type === "correct" && !awaitingContinue && (
-        <div className={styles.eventBanner} data-testid="game-event-correct">
-          🎉 Correct, it was {lastEvent.revealedName}! Streak: {lastEvent.streak}. Say hello to your
-          next conversation partner.
+      {continuing && (
+        // The next character isn't generated until "Continue" is clicked (see
+        // useGameController.ts's continueRound), so this reuses the exact same staged,
+        // real-progress spinner the start screen uses below — same underlying
+        // generation pipeline, same UX, rather than a silent/generic loading state.
+        <div className={styles.startProgressContainer} data-testid="game-continue-progress">
+          <span className={styles.startSpinner} aria-label="Loading" />
+          <div className={styles.startProgressText}>{continueProgressMessage}</div>
         </div>
       )}
       {lastEvent?.type === "wrong" && (
@@ -257,6 +273,7 @@ function GamePage() {
     <ChatShell
       bot={gameBot}
       messages={messages}
+      userName={userNameCtx.name}
       menuItems={menuItems}
       belowName={belowName}
       modals={
@@ -272,7 +289,7 @@ function GamePage() {
       onSend={sendMessage}
       onKeyDown={handleKeyDown}
       loading={loading}
-      apiAvailable={!awaitingContinue}
+      apiAvailable={!awaitingContinue && !continuing}
       chatBoxRef={chatBoxRef}
       inputRef={inputRef}
       audioEnabled={audioEnabled}

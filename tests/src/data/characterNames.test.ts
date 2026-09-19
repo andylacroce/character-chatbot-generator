@@ -38,9 +38,20 @@ describe("characterNames", () => {
     // "Hero" entries (Much Ado About Nothing; the Hero-and-Leander myth) — this test
     // pins that no equally-ambiguous bare word slips back in later. Entries that
     // disambiguate a genuine collision (e.g. "Hero (Much Ado About Nothing)") are fine;
-    // only an exact, context-free match against this denylist fails.
+    // only an exact, context-free match against this denylist fails. "beauty" was a
+    // second real instance of this same bug (Beauty and the Beast's protagonist, listed
+    // as the bare word "Beauty") — fixed the same way, as
+    // "Beauty (Beauty and the Beast)". A third instance, "The Emperor" (Hans Christian
+    // Andersen's "The Emperor's New Clothes" — the character is canonically unnamed in
+    // the source, so the work itself is the narrowing identifier), revealed a gap in
+    // this test: it only matched a bare noun exactly, never a "The X" form, which is
+    // this list's actual naming convention for most such entries ("The Beast", "The
+    // Emperor") — fixed by stripping a leading article before comparing, below.
     const genericArchetypes = new Set([
       "hero",
+      "beauty",
+      "emperor",
+      "empress",
       "witch",
       "wizard",
       "king",
@@ -83,7 +94,8 @@ describe("characterNames", () => {
       "bard",
       "minstrel",
     ]);
-    const offenders = characterNames.filter((name) => genericArchetypes.has(name.toLowerCase()));
+    const stripArticle = (name: string) => name.toLowerCase().replace(/^(the|an?) /, "");
+    const offenders = characterNames.filter((name) => genericArchetypes.has(stripArticle(name)));
     expect(offenders).toEqual([]);
   });
 });

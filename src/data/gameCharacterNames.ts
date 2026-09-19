@@ -168,7 +168,7 @@ const gameCharacterNames: string[] = [
   "Oliver Twist",
   "Ebenezer Scrooge",
   "Tiny Tim",
-  "David Copperfield",
+  "David Copperfield (Charles Dickens novel)",
   "Pip",
   "Miss Havisham",
 
@@ -217,7 +217,7 @@ const gameCharacterNames: string[] = [
   "Gretel",
   "Rumpelstiltskin",
   "Puss in Boots",
-  "Beauty",
+  "Beauty (Beauty and the Beast)",
   "The Beast",
   "Bluebeard",
   "The Little Mermaid",
@@ -470,7 +470,7 @@ const gameCharacterNames: string[] = [
 
   // Fairy tales (extended)
   "Snow Queen",
-  "The Emperor",
+  "The Emperor (The Emperor's New Clothes)",
 
   // African history
   "Sundiata Keita",

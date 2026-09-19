@@ -47,11 +47,6 @@ jest.mock("../../../../src/utils/gameHighScore", () => ({
     mockUpdateHighScoreIfBeaten(...(args as unknown[])),
 }));
 
-// Mock avatar generation
-jest.mock("../../../../src/utils/avatarGeneration", () => ({
-  getOrGenerateAvatar: jest.fn(),
-}));
-
 // Mock game reply functions
 const mockGetGameReply = jest.fn();
 const mockGetOpeningReply = jest.fn();
@@ -63,25 +58,10 @@ jest.mock("../../../../src/utils/gameReply", () => ({
   AMBIGUOUS_GUESS_NOTE: "maybe guessing",
 }));
 
-// Mock character voices
-jest.mock("../../../../src/utils/characterVoices", () => ({
-  getVoiceConfigForCharacter: jest.fn(),
-}));
-
 // Mock TTS
 const mockSynthesizeReplyAudio = jest.fn();
 jest.mock("../../../../src/utils/ttsReply", () => ({
   synthesizeReplyAudio: (...args: unknown[]) => mockSynthesizeReplyAudio(...(args as unknown[])),
-}));
-
-// Mock server config
-jest.mock("../../../../src/config/serverConfig", () => ({
-  generateGameCluePersonaPrompt: jest.fn(),
-}));
-
-// Mock pickRandomCharacterName
-jest.mock("../../../../src/utils/pickRandomCharacterName", () => ({
-  pickRandomCharacterName: jest.fn(),
 }));
 
 process.env.API_SECRET = "test-api-secret";
@@ -225,29 +205,14 @@ describe("game/message API", () => {
     );
   });
 
-  it("advances the round on a correct guess", async () => {
+  it("judges a correct guess quickly without generating the next round", async () => {
+    // The next character is deliberately NOT generated here anymore (see this
+    // handler's own doc comment) — that's deferred to POST /game/continue, called only
+    // once the player clicks "Continue". This response should carry just the reaction
+    // and outcome, and the existing token should remain untouched and still valid.
     mockClassification("clear", true);
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
-    mockSynthesizeReplyAudio
-      .mockResolvedValueOnce("/api/audio?file=reaction.mp3")
-      .mockResolvedValueOnce("/api/audio?file=opening.mp3");
-
-    const { pickRandomCharacterName } = require("../../../../src/utils/pickRandomCharacterName");
-    const { generateGameCluePersonaPrompt } = require("../../../../src/config/serverConfig");
-    const avatarGeneration = require("../../../../src/utils/avatarGeneration");
-    pickRandomCharacterName.mockReturnValueOnce("Watson");
-    generateGameCluePersonaPrompt.mockResolvedValueOnce({ prompt: "new persona" });
-    avatarGeneration.getOrGenerateAvatar.mockResolvedValueOnce({
-      avatarUrl: "https://example.com/adler.png",
-      gender: "female",
-    });
-    mockGetOpeningReply.mockResolvedValueOnce("Hello, dear player.");
-    const { getVoiceConfigForCharacter } = require("../../../../src/utils/characterVoices");
-    getVoiceConfigForCharacter.mockResolvedValueOnce({
-      languageCodes: ["en-GB"],
-      name: "en-GB-Wavenad-C",
-      ssmlGender: "FEMALE",
-    });
+    mockSynthesizeReplyAudio.mockResolvedValueOnce("/api/audio?file=reaction.mp3");
 
     const handler = require("../../../../pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "It's Irene Adler!" });
@@ -259,43 +224,23 @@ describe("game/message API", () => {
     expect(json.correct).toBe(true);
     expect(json.gameOver).toBe(false);
     expect(json.revealedName).toBe("Irene Adler");
-    expect(json.currentCharacterName).toBe("Irene Adler");
     expect(json.streak).toBe(3);
     expect(json.reply).toBe("Brilliant, you got it!");
-    expect(json.nextReply).toBe("Hello, dear player.");
-    expect(json.avatarUrl).toBe("https://example.com/adler.png");
-    expect(json.gender).toBe("female");
-    const gameCharacterNames = require("../../../../src/data/gameCharacterNames").default;
-    expect(pickRandomCharacterName).toHaveBeenCalledWith(
-      ["Sherlock Holmes", "Irene Adler"],
-      gameCharacterNames,
-    );
+    expect(json.audioFileUrl).toBe("/api/audio?file=reaction.mp3");
+    expect(json.nextReply).toBeUndefined();
+    expect(json.currentCharacterName).toBeUndefined();
+    expect(json.gameToken).toBeUndefined();
 
-    const state = verifyGameState(json.gameToken);
-    expect(state?.currentCharacterName).toBe("Irene Adler");
-    expect(state?.nextCharacterName).toBe("Watson");
-    expect(state?.wrongGuessCount).toBe(0);
+    // The original token is untouched, still decodes the same hidden target, and stays
+    // usable for /game/continue.
+    const state = verifyGameState(token);
+    expect(state?.currentCharacterName).toBe("Sherlock Holmes");
+    expect(state?.nextCharacterName).toBe("Irene Adler");
   });
 
   it("never persists a personal best for a guest (no session) on a correct guess", async () => {
     mockClassification("clear", true);
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
-    const { pickRandomCharacterName } = require("../../../../src/utils/pickRandomCharacterName");
-    const { generateGameCluePersonaPrompt } = require("../../../../src/config/serverConfig");
-    const avatarGeneration = require("../../../../src/utils/avatarGeneration");
-    pickRandomCharacterName.mockReturnValueOnce("Watson");
-    generateGameCluePersonaPrompt.mockResolvedValueOnce({ prompt: "new persona" });
-    avatarGeneration.getOrGenerateAvatar.mockResolvedValueOnce({
-      avatarUrl: "https://example.com/adler.png",
-      gender: "female",
-    });
-    mockGetOpeningReply.mockResolvedValueOnce("Hello, dear player.");
-    const { getVoiceConfigForCharacter } = require("../../../../src/utils/characterVoices");
-    getVoiceConfigForCharacter.mockResolvedValueOnce({
-      languageCodes: ["en-GB"],
-      name: "en-GB-Wavenad-C",
-      ssmlGender: "FEMALE",
-    });
 
     const handler = require("../../../../pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "It's Irene Adler!" });
@@ -310,22 +255,6 @@ describe("game/message API", () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockClassification("clear", true);
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
-    const { pickRandomCharacterName } = require("../../../../src/utils/pickRandomCharacterName");
-    const { generateGameCluePersonaPrompt } = require("../../../../src/config/serverConfig");
-    const avatarGeneration = require("../../../../src/utils/avatarGeneration");
-    pickRandomCharacterName.mockReturnValueOnce("Watson");
-    generateGameCluePersonaPrompt.mockResolvedValueOnce({ prompt: "new persona" });
-    avatarGeneration.getOrGenerateAvatar.mockResolvedValueOnce({
-      avatarUrl: "https://example.com/adler.png",
-      gender: "female",
-    });
-    mockGetOpeningReply.mockResolvedValueOnce("Hello, dear player.");
-    const { getVoiceConfigForCharacter } = require("../../../../src/utils/characterVoices");
-    getVoiceConfigForCharacter.mockResolvedValueOnce({
-      languageCodes: ["en-GB"],
-      name: "en-GB-Wavenad-C",
-      ssmlGender: "FEMALE",
-    });
 
     const handler = require("../../../../pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "It's Irene Adler!" });

@@ -21,6 +21,8 @@ export interface Message {
   text: string;
   sender: string;
   audioFileUrl?: string;
+  /** The sender's avatar at the time this message was created — see src/types/message.ts. */
+  avatarUrl?: string;
 }
 
 interface ChatMessageProps {
@@ -80,6 +82,14 @@ const ChatMessage = React.memo(
     const isUser = message.sender === "User";
     const messageClass = isUser ? styles.userMessage : styles.botMessage;
     const senderClass = isUser ? styles.sender : `${styles.sender} ${styles.botSender}`;
+    // message.sender already holds the actual speaker's name at the time this message was
+    // created (see src/types/message.ts) — use it, and its own avatarUrl when present,
+    // rather than the live `bot` prop, which is only the CURRENT character. In ordinary
+    // chat these are always the same bot, so this renders identically; in the guessing
+    // game, where the chat partner changes mid-transcript, using `bot` for every message
+    // silently relabeled every past round's lines to whoever the partner is now.
+    const senderName = isUser ? userName || "Me" : message.sender;
+    const senderAvatarUrl = message.avatarUrl ?? bot.avatarUrl;
 
     return (
       <div
@@ -88,27 +98,27 @@ const ChatMessage = React.memo(
         aria-label={
           isUser
             ? `Message from you: ${sanitizeForReact(message.text)}`
-            : `Message from ${bot.name}: ${sanitizeForReact(message.text)}`
+            : `Message from ${senderName}: ${sanitizeForReact(message.text)}`
         }
       >
         <div className={styles.byline}>
           {!isUser && (
             <button
               type="button"
-              aria-label={`View ${bot.name}'s portrait`}
+              aria-label={`View ${senderName}'s portrait`}
               className={styles.avatarButton}
               onClick={onAvatarClick}
             >
               <Image
-                src={bot.avatarUrl}
-                alt={bot.name}
+                src={senderAvatarUrl}
+                alt={senderName}
                 width={28}
                 height={28}
                 className={styles.avatar}
               />
             </button>
           )}
-          <span className={senderClass}>{isUser ? userName || "Me" : bot.name}</span>
+          <span className={senderClass}>{senderName}</span>
           {!isUser && onReplayAudio && (
             <button
               type="button"

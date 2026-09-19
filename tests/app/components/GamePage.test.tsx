@@ -43,6 +43,8 @@ function baseController(overrides: Record<string, unknown> = {}) {
     lastEvent: null,
     awaitingContinue: false,
     continueRound: mockContinueRound,
+    continuing: false,
+    continueProgressMessage: "Starting…",
     giveUpRequested: false,
     clearGiveUpRequest: mockClearGiveUpRequest,
     chatBoxRef: { current: null },
@@ -113,6 +115,25 @@ describe("GamePage", () => {
     expect(screen.getAllByText("Sherlock Holmes").length).toBeGreaterThan(0);
     expect(screen.getByText("Greetings.")).toBeInTheDocument();
     expect(screen.getByTestId("game-streak-badge")).toHaveTextContent("Streak: 2");
+  });
+
+  it("shows the visitor's own preferred name on their messages instead of the generic 'Me'", () => {
+    // Regression test: GamePage never wired useAccountMenu's userNameCtx into ChatShell,
+    // so ChatMessage.tsx always fell back to "Me" for the player's own messages in the
+    // game, even though ordinary chat (ChatPage.tsx) already shows the visitor's real
+    // preferred name there — found live via manual testing.
+    localStorage.setItem("chatbot-user-name", "Andy");
+    controllerState = baseController({
+      started: true,
+      currentCharacterName: "Sherlock Holmes",
+      messages: [
+        { sender: "Sherlock Holmes", text: "Greetings." },
+        { sender: "User", text: "Hello!" },
+      ],
+    });
+    render(<GamePage />);
+    expect(screen.getByText("Andy")).toBeInTheDocument();
+    expect(screen.queryByText("Me")).not.toBeInTheDocument();
   });
 
   it("shows the personal best next to the streak when the player has one", () => {
@@ -203,10 +224,13 @@ describe("GamePage", () => {
   });
 
   it("shows the correct-guess banner", () => {
+    // awaitingContinue is always derived from lastEvent in the real hook (they can't
+    // disagree), so this mocked state sets both to match that invariant.
     controllerState = baseController({
       started: true,
       currentCharacterName: "Irene Adler",
       lastEvent: { type: "correct", revealedName: "Irene Adler", streak: 1 },
+      awaitingContinue: true,
     });
     render(<GamePage />);
     expect(screen.getByTestId("game-event-correct")).toBeInTheDocument();
@@ -228,6 +252,41 @@ describe("GamePage", () => {
 
     fireEvent.click(continueButton);
     expect(mockContinueRound).toHaveBeenCalled();
+  });
+
+  it("shows a staged progress spinner while the next character is being generated, instead of the correct-guess banner", () => {
+    // The next character isn't generated until Continue is clicked (see
+    // useGameController.ts's continueRound); while that generation is in flight, this
+    // reuses the exact same staged, real-progress spinner UX as starting a new game,
+    // per the user's request that it use "the same steps and spinners."
+    controllerState = baseController({
+      started: true,
+      currentCharacterName: "Sherlock Holmes",
+      lastEvent: null,
+      awaitingContinue: false,
+      continuing: true,
+      continueProgressMessage: "Generating portrait…",
+    });
+    render(<GamePage />);
+    expect(screen.getByTestId("game-continue-progress")).toHaveTextContent("Generating portrait…");
+    expect(screen.queryByTestId("game-event-correct")).not.toBeInTheDocument();
+    expect(screen.getByTestId("chat-input")).toBeDisabled();
+  });
+
+  it("shows the new streak in the header badge while the correct-guess overlay is up, not the stale pre-round value", () => {
+    // Regression test: `streak` state itself is deliberately held back until Continue is
+    // clicked (see useGameController.ts's continueRound), but the overlay already shows
+    // the new streak — the header used to keep showing the old number underneath it,
+    // visibly disagreeing with the overlay open right in front of it.
+    controllerState = baseController({
+      started: true,
+      currentCharacterName: "Sherlock Holmes",
+      streak: 0,
+      lastEvent: { type: "correct", revealedName: "Irene Adler", streak: 1 },
+      awaitingContinue: true,
+    });
+    render(<GamePage />);
+    expect(screen.getByTestId("game-streak-badge")).toHaveTextContent("Streak: 1");
   });
 
   it("disables the chat input while awaiting the round switch", () => {
