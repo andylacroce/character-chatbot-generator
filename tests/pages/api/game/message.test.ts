@@ -265,7 +265,11 @@ describe("game/message API", () => {
     expect(json.nextReply).toBe("Hello, dear player.");
     expect(json.avatarUrl).toBe("https://example.com/adler.png");
     expect(json.gender).toBe("female");
-    expect(pickRandomCharacterName).toHaveBeenCalledWith(["Sherlock Holmes", "Irene Adler"]);
+    const gameCharacterNames = require("../../../../src/data/gameCharacterNames").default;
+    expect(pickRandomCharacterName).toHaveBeenCalledWith(
+      ["Sherlock Holmes", "Irene Adler"],
+      gameCharacterNames,
+    );
 
     const state = verifyGameState(json.gameToken);
     expect(state?.currentCharacterName).toBe("Irene Adler");

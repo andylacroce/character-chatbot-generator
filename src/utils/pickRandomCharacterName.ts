@@ -9,13 +9,18 @@ import { randomInt } from "crypto";
 import characterNames from "../data/characterNames";
 
 /**
- * Picks a random name from the curated public-domain character list, avoiding any name
- * in `excludeNames` (case-insensitive) when possible. Falls back to the full list once
- * every name has been excluded, so this never fails to return a name.
+ * Picks a random name from `pool` (defaulting to the full curated character list),
+ * avoiding any name in `excludeNames` (case-insensitive) when possible. Falls back to
+ * the full pool once every name in it has been excluded, so this never fails to return
+ * a name. The guessing game passes `gameCharacterNames` (see GitHub issue #878) instead
+ * of the default pool, since an obscure name makes a hidden-identity round unwinnable.
  */
-export function pickRandomCharacterName(excludeNames: string[] = []): string {
+export function pickRandomCharacterName(
+  excludeNames: string[] = [],
+  pool: string[] = characterNames,
+): string {
   const excludeSet = new Set(excludeNames.map((name) => name.toLowerCase()));
-  const available = characterNames.filter((name) => !excludeSet.has(name.toLowerCase()));
-  const pool = available.length > 0 ? available : characterNames;
-  return pool[randomInt(pool.length)];
+  const available = pool.filter((name) => !excludeSet.has(name.toLowerCase()));
+  const finalPool = available.length > 0 ? available : pool;
+  return finalPool[randomInt(finalPool.length)];
 }

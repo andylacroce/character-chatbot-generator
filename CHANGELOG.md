@@ -2,6 +2,11 @@
 
 This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
 
+## 2026-09-19 — Made the guessing game winnable (GitHub issue #878)
+
+- Added `src/data/gameCharacterNames.ts`, a ~400-name curated subset of the full character list restricted to broadly recognizable figures (Greek/Roman/Norse/Egyptian mythology, Shakespeare leads, fairy tales, Sherlock Holmes, world-history household names). The game's hidden target and revealed starting character are now drawn from this pool instead of the full ~1000-entry list, whose obscure entries (minor saga figures, one-off Victorian side characters) made some rounds effectively unguessable. `/api/random-character` is unaffected — it still draws from the full list, since that flow shows the name up front.
+- Retuned `generateGameCluePersonaPrompt`'s clue-pacing rules: the opening hint must now include one real, narrowing category-level fact (e.g. "a queen from ancient Egypt") instead of pure atmosphere, and follow-up answers escalate to a specific, checkable fact within the first couple of exchanges rather than holding back "across several exchanges." The previous calibration explicitly optimized for the player *not* winning on a lucky first guess; the new goal is a long streak of correct guesses, favoring that outcome over stumping the player.
+
 ## 2026-09-19 — Chat composer control order
 
 - Moved the Send button to the far right of the chat composer, after the audio mute/stop controls, so tab order matches visual order (issue #879).

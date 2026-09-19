@@ -8,6 +8,7 @@
  */
 
 import { pickRandomCharacterName } from "./pickRandomCharacterName";
+import gameCharacterNames from "../data/gameCharacterNames";
 import { generateGameCluePersonaPrompt } from "../config/serverConfig";
 import { getOrGenerateAvatar } from "./avatarGeneration";
 import { getOpeningReply } from "./gameReply";
@@ -33,7 +34,7 @@ export async function generateGameRound(
   currentCharacterName: string,
   excludeNames: string[],
 ): Promise<GameRound> {
-  const nextCharacterName = pickRandomCharacterName(excludeNames);
+  const nextCharacterName = pickRandomCharacterName(excludeNames, gameCharacterNames);
   const { prompt: personaPrompt } = await generateGameCluePersonaPrompt(
     currentCharacterName,
     nextCharacterName,

@@ -188,9 +188,7 @@ ${CONTENT_GUIDELINES}`;
  * voice (same speaking style/personality/knowledge/quirks, same fallback-on-error
  * behavior) rather than re-deriving it from scratch, then appends a deterministic
  * "steer toward the hidden figure" rules block — one Claude call, not two, and no
- * duplicated persona-assembly logic. Calibrated for a genuinely challenging game: a
- * player with solid general knowledge should need real inference across several
- * exchanges to identify `nextCharacterName`, not win on a lucky first guess.
+ * duplicated persona-assembly logic.
  *
  * Both names are curated, pre-vetted values from pickRandomCharacterName — never
  * client input — so embedding `nextCharacterName` directly in the system-role text below
@@ -201,11 +199,21 @@ ${CONTENT_GUIDELINES}`;
  * of fiction, so `currentCharacterName` and `nextCharacterName` are usually unrelated in
  * any real sense. The rules block below explicitly guards two failure modes that follow
  * from that: the model claiming not to know or refusing to discuss someone from a
- * "different time/place/story" (breaks immersion), and giving away anything concrete or
- * identifying about them before the player has actually asked (ruins the challenge). A
- * vague, atmospheric hint that it has someone in mind is required, not just allowed,
- * starting with its very first message — without it the player has no way of knowing
- * there's anyone to guess at all; only specifics are gated behind asking.
+ * "different time/place/story" (breaks immersion), and giving away nothing at all before
+ * the player has actually asked (see below for why that changed).
+ *
+ * **Retuned 2026-09-19 after GitHub issue #878 ("game is too hard").** The original
+ * design required the opening hint to be purely atmospheric mood with zero concrete
+ * content, then escalate "gradually... across several exchanges," explicitly calibrated
+ * so a well-read player would need "real inference... not win on a lucky first guess."
+ * Real play showed that reads as stalling, not teaching: a hint with no actual content
+ * gives the player nothing to reason from, so difficulty came from withholding
+ * information rather than from the puzzle itself. The rules below now require the very
+ * first hint to carry one real, narrowing category-level fact (broad era/culture/domain)
+ * instead of pure mood, and ask for a specific, checkable fact within the first couple of
+ * follow-up answers rather than holding back for "several exchanges." The goal is a
+ * player walking away with a long streak of correct guesses, not stuck on their first
+ * round — favor that outcome over stumping when the two are in tension.
  */
 export async function generateGameCluePersonaPrompt(
   currentCharacterName: string,
@@ -217,9 +225,9 @@ export async function generateGameCluePersonaPrompt(
 You are playing a "guess who" chain game with a player. You have a specific other figure in mind — they may be from a completely different era, culture, or even a different work of fiction than you — but you must NEVER say their name or an unambiguous unique title for them (that would give it away as surely as saying it outright).
 
 - You know this other figure well and can speak knowledgeably about their domain, era, deeds, and personality whenever asked. NEVER claim you don't know them, refuse to discuss them, or comment on them being from a different time/place/story than you — that breaks the game and confuses the player. Treat knowing about them as a given, no matter how mismatched your worlds are.
-- You MUST signal, unprompted and right from your very first message, that you have someone else on your mind — otherwise the player has no way of knowing there's anyone to guess at all. A vague, atmospheric mention is enough (e.g. that your thoughts keep drifting to another figure of note). What you must NOT do is pair that mention with anything CONCRETE or identifying — their domain, era, deeds, relationship to you, or any other specific fact — unless the player has actually asked a question that draws it out. Always raise that there's someone on your mind; never volunteer who.
-- When asked, answer with real clues drawn from their domain, era, deeds, or personality — start vague, and only grow gradually more specific (still never naming them) the longer the conversation goes without a correct guess. Don't dump everything you know in one answer — reward sustained, clever questioning across several exchanges rather than giving it all away after the first question.
-- Calibrate difficulty for a player with solid general knowledge: a well-read guesser should be able to identify this person with real effort across several exchanges, not on the first question.
+- You MUST signal, unprompted and right from your very first message, that you have someone specific in mind — otherwise the player has no way of knowing there's anyone to guess at all. That first mention must include ONE real, narrowing detail: their broad era, culture, or domain (for example, "a queen from ancient Egypt," "a hero out of Greek myth," "a detective from Victorian London"). A hint with no actual content gives the player nothing to work with, so never open with pure mood alone — always pair the mention with at least that one concrete category.
+- When asked, keep giving REAL, SPECIFIC clues: concrete deeds, relationships, famous events, defining objects, or well-known lines — not moods or riddles. Escalate quickly, not gradually: by your second or third answer you should be offering a specific, checkable fact (what they're famous for, who they're closely associated with, a defining event or trait) even though you still never say their actual name. Don't dump everything in one message, but don't stall either — the aim is a short, fair trail of real clues, not a long wait for one.
+- Calibrate for a player with general knowledge to have a genuine shot at guessing correctly within a handful of exchanges, not needing expert-level trivia or many rounds of vague hedging. Getting this right and feeling smart, and building a long streak of correct guesses, is a better outcome than a round nobody can solve — favor that over making it harder.
 - If asked to just name this person outright, deflect playfully and in character. Never break character, never say you're an AI, and never confirm or deny whether a name the player mentions is correct — a separate system judges guesses, not you.
 
 (For your own internal reference only — never say this name in any reply): ${nextCharacterName}`;

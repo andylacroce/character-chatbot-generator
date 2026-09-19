@@ -128,15 +128,20 @@ describe("game/start API", () => {
     expect(json.streak).toBe(0);
   });
 
-  it("calls pickRandomCharacterName twice with exclusion", async () => {
+  it("calls pickRandomCharacterName twice with exclusion, drawing from the game's curated pool", async () => {
     const handler = require("../../../../pages/api/game/start").default;
     const req = { method: "POST" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
     const { pickRandomCharacterName } = require("../../../../src/utils/pickRandomCharacterName");
+    const gameCharacterNames = require("../../../../src/data/gameCharacterNames").default;
     expect(pickRandomCharacterName).toHaveBeenCalledTimes(2);
-    expect(pickRandomCharacterName).toHaveBeenNthCalledWith(1);
-    expect(pickRandomCharacterName).toHaveBeenNthCalledWith(2, ["Sherlock Holmes"]);
+    expect(pickRandomCharacterName).toHaveBeenNthCalledWith(1, [], gameCharacterNames);
+    expect(pickRandomCharacterName).toHaveBeenNthCalledWith(
+      2,
+      ["Sherlock Holmes"],
+      gameCharacterNames,
+    );
   });
 
   it("hides the next character name in the response but keeps it in the token", async () => {

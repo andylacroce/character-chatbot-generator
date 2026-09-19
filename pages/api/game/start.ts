@@ -12,6 +12,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { pickRandomCharacterName } from "../../../src/utils/pickRandomCharacterName";
+import gameCharacterNames from "../../../src/data/gameCharacterNames";
 import { generateGameRound } from "../../../src/utils/gameRound";
 import { signGameState } from "../../../src/utils/gameToken";
 import { getSessionUserId } from "../../../src/utils/getSessionUserId";
@@ -87,7 +88,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     const userId = await getSessionUserId(req, res);
-    const currentCharacterName = pickRandomCharacterName();
+    const currentCharacterName = pickRandomCharacterName([], gameCharacterNames);
     const {
       nextCharacterName,
       personaPrompt,
