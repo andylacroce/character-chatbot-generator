@@ -41,7 +41,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
           content="Chat with history's greatest minds, legendary heroes, and literary icons."
         />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="/andrew.png" />
+        <meta property="og:image" content="/og-image.png" />
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Portrayal" />
@@ -49,7 +49,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
           name="twitter:description"
           content="Chat with history's greatest minds, legendary heroes, and literary icons."
         />
-        <meta name="twitter:image" content="/andrew.png" />
+        <meta name="twitter:image" content="/og-image.png" />
       </head>
       <body>
         <Providers>
