@@ -26,11 +26,21 @@ export const CONTENT_GUIDELINES = `Keep all content appropriate for a general au
  * and fold in fuzzy matching against already-created characters (see the returned
  * `correctedName`) — reusing this one Claude call instead of a separate round trip.
  *
+ * `correctedName` also expands to the character's fullest commonly recognized name
+ * (first and last name at minimum, plus an honorific/regnal number/suffix where that's
+ * genuinely established) rather than just fixing casing — e.g. "Einstein" ->
+ * "Albert Einstein", "Napoleon" -> "Napoleon Bonaparte". This is the one place that
+ * expansion happens; every downstream store (avatar_cache's key/displayName, a
+ * signed-in user's `bots.name`, localStorage) just inherits whatever this returns. A
+ * figure genuinely known by a single name (e.g. "Zeus", "Gandalf") is left as-is —
+ * Claude is explicitly told never to fabricate a surname that isn't real.
+ *
  * @returns The generated system prompt (`prompt`), plus `correctedName` — the input name
- * with spelling/casing fixed, or an exact existing name from `existingNames` when the
- * input looks like a misspelling or minor variant of one (so a typo doesn't spawn a
- * duplicate avatar-cache entry for what's really the same character). Falls back to the
- * original (sanitized) `characterName` on any error.
+ * with spelling/casing fixed and expanded to its fullest known form, or an exact
+ * existing name from `existingNames` when the input looks like a misspelling or minor
+ * variant of one (so a typo or a shortened name doesn't spawn a duplicate avatar-cache
+ * entry for what's really the same character). Falls back to the original (sanitized)
+ * `characterName` on any error.
  */
 export async function generatePersonalityPrompt(
   characterName: string,
@@ -51,10 +61,34 @@ export async function generatePersonalityPrompt(
     // untrusted content belongs. These instructions reference it only generically, so a
     // maliciously-crafted name can't smuggle instructions into the system prompt itself
     // (CodeQL js/system-prompt-injection).
+    // Applied whenever correctedName isn't resolved by an EXISTING_NAMES match below —
+    // asks for the fullest commonly recognized form of the name, not just casing/typo
+    // fixes, so "Einstein" becomes "Albert Einstein" the same way "sherlok holmes"
+    // becomes "Sherlock Holmes". Deliberately conservative in four ways, the last three
+    // tightened after a real dry run of the backfill script (below) surfaced each
+    // failure mode: (1) a mononym with no real, well-established fuller form is left
+    // alone rather than given a fabricated one; (2) an expansion must add real, specific
+    // identifying information that resolves to exactly one individual — never swap one
+    // vague descriptor/epithet for a different, equally vague one (found live: "the
+    // monster" -> "the creature" for Frankenstein's deliberately unnamed creation — no
+    // identifying information was actually added), and never produce a title that's
+    // itself still ambiguous between multiple people (found live: "Buckingham" ->
+    // "Duke of Buckingham", when several historical Dukes of Buckingham exist and the
+    // title alone doesn't say which); (3) a pen name/stage name/nickname that is ITSELF
+    // the more commonly recognized form is never swapped for a less-recognized birth
+    // name (found live: "Molière" -> "Jean-Baptiste Poquelin" — technically his real
+    // name, but a strictly worse, less-recognized result than what was already there);
+    // (4) a name genuinely ambiguous between two or more distinct, similarly well-known
+    // people is left unexpanded rather than guessing (found live: "Brutus" expanded to
+    // Lucius Junius Brutus, the Republic's founder, when pop culture's "Brutus" is at
+    // least as likely Marcus Junius Brutus, Caesar's assassin — nothing in a bare name
+    // disambiguates the two).
+    const fullNameGuidance = `Also expand it to the character's fullest commonly recognized name whenever one genuinely exists — first and last name at minimum (e.g. "Einstein" -> "Albert Einstein", "Napoleon" -> "Napoleon Bonaparte", "MLK" -> "Martin Luther King Jr."), plus an honorific, regnal number, or suffix where that's genuinely how the character is commonly identified. Only apply this when the result adds real, specific identifying information and resolves to exactly one well-known individual — never swap one vague descriptor or epithet for a different, equally vague one (e.g. do not turn "the monster" into "the creature": Frankenstein's creation is deliberately unnamed in the source material, so leave an epithet-only name exactly as given), and never produce a title that is itself still ambiguous between multiple people (e.g. "Buckingham" should stay "Buckingham" rather than become the still-ambiguous "Duke of Buckingham" when multiple different Dukes of Buckingham exist). Never fabricate a surname or fuller form that isn't real and well-established — a figure genuinely known by a single name (e.g. "Zeus", "Madonna", "Gandalf") should keep just that name. Do NOT replace a pen name, stage name, or nickname with a birth/legal name when the pen/stage name is itself the more commonly recognized form (e.g. keep "Molière" as "Molière", not "Jean-Baptiste Poquelin"; keep "Mark Twain" as "Mark Twain", not "Samuel Clemens") — only expand toward MORE recognition, never toward less. If the name is genuinely ambiguous between two or more distinct, similarly well-known people or characters (e.g. "Brutus" could mean either Caesar's assassin Marcus Junius Brutus or the earlier Lucius Junius Brutus) and nothing else here disambiguates it, leave it unexpanded rather than guessing.`;
+
     const matchingInstructions =
       existingNames && existingNames.length > 0
-        ? `\nSome characters already exist (listed below as EXISTING_NAMES). The character name is given in the user message below. If it is very likely just a misspelling, alternate capitalization, or minor variant of one of them (the same character, not merely similar), set "correctedName" to that EXISTING_NAMES entry exactly as written there. Otherwise set "correctedName" to the provided name with only spelling/capitalization fixed — never invent a different character's name and never pick an EXISTING_NAMES entry that isn't clearly the same character.\n\nEXISTING_NAMES: ${existingNames.join(", ")}\n`
-        : `\nSet "correctedName" to the character name given in the user message below, with only obvious spelling/capitalization mistakes fixed (e.g. "sherlok holmes" -> "Sherlock Holmes"). Never invent a different character's name.\n`;
+        ? `\nSome characters already exist (listed below as EXISTING_NAMES). The character name is given in the user message below. If it is very likely just a misspelling, alternate capitalization, shortened form, or minor variant of one of them (the same character, not merely similar), set "correctedName" to that EXISTING_NAMES entry exactly as written there. Otherwise set "correctedName" to the provided name with spelling/capitalization fixed. ${fullNameGuidance} Never invent a different character's name and never pick an EXISTING_NAMES entry that isn't clearly the same character.\n\nEXISTING_NAMES: ${existingNames.join(", ")}\n`
+        : `\nSet "correctedName" to the character name given in the user message below, with spelling/capitalization mistakes fixed (e.g. "sherlok holmes" -> "Sherlock Holmes"). ${fullNameGuidance} Never invent a different character's name.\n`;
 
     const systemPrompt = `You are a character personality expert. Create a detailed system prompt for roleplaying as the given character.
 ${descriptionInstructions}${matchingInstructions}

@@ -31,6 +31,7 @@
     "chars:reclassify": "node scripts/reclassify-avatar-cache.cjs",
     "chars:backfill-display-names": "node scripts/backfill-avatar-display-names.cjs",
     "chars:backfill-categories": "node scripts/backfill-avatar-categories.cjs",
+    "chars:backfill-full-names": "node scripts/backfill-full-character-names.cjs",
     "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs"
   },
   "dependencies": {

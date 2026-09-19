@@ -103,10 +103,12 @@ const personalityRateLimit = createRateLimiter({
  *                 correctedName:
  *                   type: string
  *                   description: >
- *                     `name` with spelling/capitalization corrected. When it's a likely
- *                     misspelling or minor variant of an already-created character, this
- *                     is that existing character's exact name instead, so the two share
- *                     one avatar_cache entry rather than the typo spawning a duplicate.
+ *                     `name` with spelling/capitalization corrected and expanded to its
+ *                     fullest commonly recognized form (e.g. "Einstein" ->
+ *                     "Albert Einstein") when one genuinely exists. When it's a likely
+ *                     misspelling, shortened form, or minor variant of an already-created
+ *                     character, this is that existing character's exact name instead, so
+ *                     the two share one avatar_cache entry rather than spawning a duplicate.
  *       400:
  *         description: Valid name required, or invalid character name
  *       405:

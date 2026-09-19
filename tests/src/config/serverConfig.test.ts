@@ -141,5 +141,29 @@ describe("serverConfig", () => {
       const { system } = mockCreate.mock.calls[0][0];
       expect(system).toContain("EXISTING_NAMES: Sherlock Holmes, Cleopatra");
     });
+
+    it("instructs Claude to expand correctedName to the fullest known form, with or without existingNames", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+      await generatePersonalityPrompt("Einstein");
+      const { system: systemWithoutExisting } = mockCreate.mock.calls[0][0];
+      expect(systemWithoutExisting).toContain("fullest commonly recognized name");
+      expect(systemWithoutExisting).toContain("Albert Einstein");
+      expect(systemWithoutExisting).toContain("Never fabricate a surname");
+
+      jest.clearAllMocks();
+      claudeReturns(JSON.stringify(fullConfig));
+      await generatePersonalityPrompt("Einstein", undefined, ["Cleopatra"]);
+      const { system: systemWithExisting } = mockCreate.mock.calls[0][0];
+      expect(systemWithExisting).toContain("fullest commonly recognized name");
+    });
+
+    it("returns Claude's expanded correctedName (e.g. a fuller name), used in the built prompt too", async () => {
+      claudeReturns(JSON.stringify({ ...fullConfig, correctedName: "Albert Einstein" }));
+
+      const { prompt, correctedName } = await generatePersonalityPrompt("Einstein");
+
+      expect(correctedName).toBe("Albert Einstein");
+      expect(prompt).toContain("You are Albert Einstein.");
+    });
   });
 });
