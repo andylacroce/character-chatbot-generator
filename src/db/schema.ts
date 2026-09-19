@@ -174,6 +174,12 @@ export const messages = pgTable("messages", {
  * existed fall back to pages/api/chars.ts's regex-based `toDisplayName` reconstruction,
  * which is necessarily lossier (it can't know a name is a Roman numeral or a proper
  * noun exception on its own) than the name Claude already generated correctly.
+ *
+ * `category` is a deliberately small, single-value taxonomy used by the Character
+ * Wall's grouping control: history, mythology, literature, folklore, religion, or
+ * other. New rows get it from the structured Claude call already used to create the
+ * avatar prompt, so classification adds no model round-trip. Nullable for rows created
+ * before the field existed; scripts/backfill-avatar-categories.cjs fills those in.
  */
 export const avatarCache = pgTable("avatar_cache", {
   characterName: text("character_name").primaryKey(),
@@ -181,6 +187,7 @@ export const avatarCache = pgTable("avatar_cache", {
   gender: text("gender"),
   recognized: boolean("recognized").default(true).notNull(),
   displayName: text("display_name"),
+  category: text("category"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 

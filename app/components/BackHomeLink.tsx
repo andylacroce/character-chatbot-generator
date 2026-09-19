@@ -11,20 +11,31 @@
 
 import React from "react";
 import Link from "next/link";
-import { FaHome } from "react-icons/fa";
+import { FaArrowLeft, FaHome } from "react-icons/fa";
 import styles from "./styles/BackHomeLink.module.css";
 
 interface BackHomeLinkProps {
   /** Extra behavior on click, e.g. the guessing game ending its run before navigating. */
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
   className?: string;
+  label?: string;
+  icon?: "home" | "back";
 }
 
 /** "Back to Home" pill button with a house glyph — see module doc above. */
-const BackHomeLink: React.FC<BackHomeLinkProps> = ({ onClick, className = "" }) => (
+const BackHomeLink: React.FC<BackHomeLinkProps> = ({
+  onClick,
+  className = "",
+  label = "Back to Home",
+  icon = "home",
+}) => (
   <Link href="/" className={`${styles.backHomeButton} ${className}`.trim()} onClick={onClick}>
-    <FaHome size={18} className="menuIcon" />
-    <span>Back to Home</span>
+    {icon === "back" ? (
+      <FaArrowLeft size={18} className="menuIcon" />
+    ) : (
+      <FaHome size={18} className="menuIcon" />
+    )}
+    <span>{label}</span>
   </Link>
 );
 

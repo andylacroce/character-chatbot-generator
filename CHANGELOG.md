@@ -2,6 +2,17 @@
 
 This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
 
+## 2026-09-18 — Character Wall archival redesign
+
+- Removed the landing hero's now-misplaced “Type any name” instruction after the two discovery actions moved above the name field; the field placeholder and existing character-guidance link already communicate it more directly.
+- Replaced the Character Wall's corkboard, pushpins, and polaroid pile with a responsive tattered-parchment mosaic: aged archive typography, deckled portrait cards reduced to image plus full wrapping name, and a matching museum-plate lightbox.
+- Iterated away from an initial two-page book treatment after visual review. The final masonry collage has no spine or artificial page breaks, uses substantially more of the available width, keeps portraits compact, and removes all decorative dot/speckle overlays.
+- Added an accessible floating "To top" control for the infinite gallery. It reads and listens to every browser scroll owner, including `body` (the actual owner under this app's flex-root layout), so it appears only after 360px instead of staying hidden or always visible. Clicking scrolls a marker before the app header fully to the top; the pill stays above common corner widgets/phone safe areas and respects reduced-motion preferences.
+- Added a top-of-gallery Sort by select (defaulting to Recently added) and an off-by-default Group by category switch. Ordering is applied to the complete cached result set before pagination; grouping uses a stable six-part historical/fictional taxonomy and starts every category collapsed for a compact overview.
+- Expanded `avatar_cache` with a nullable `category` column, taught new avatar generations to classify within their existing Claude call, and added an opt-in, null-only batch backfill command. Applied the schema expansion and backfilled all 129 eligible production rows; no recognized portrait remains uncategorized.
+- Added a dedicated dark archival palette: charred parchment, warm ivory type, subdued dark print mounts, themed controls, and a matching lightbox instead of forcing the light parchment colors in dark mode.
+- Replaced the wall's misleading fixed "Back to Home" label with a universal arrow + "Back" history action, since the wall is reachable from chat, the creator, and other menus; an empty history falls back safely to Home.
+
 ## 2026-09-18 — Fixed a nonsensical published character; hardened the recognition guardrail
 
 - **Live incident:** a bare `"Hero"` character reached the public Character Wall with a nonsensical personality. Root cause: the guessing game and `/api/random-character` pick names blindly from the curated list (`src/data/characterNames.ts`) with zero Claude/copyright/recognition check, and that list contained a bare `"Hero"` entry ambiguous with the plain English word; separately, `/api/validate-character.ts`'s own curated-allowlist short-circuit checked the same list, so even a manually-typed "Hero" skipped Claude's recognition classification entirely.

@@ -40,7 +40,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 20 messages, with a rolling summary checkpoint for signed-in users so long conversations stay cheap
 - **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
-- **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, laid out as a scattered polaroid/corkboard collage — see [Character Wall](#character-wall-chars)
+- **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, presented as a responsive tattered-parchment mosaic — see [Character Wall](#character-wall-chars)
 - **Personalized Greeting**: Characters can greet you by name — a one-time, skippable prompt the first time you create a character, editable anytime from the account menu — see [Personalized Greeting](#personalized-greeting)
 - **Internal Analytics**: A small self-hosted usage log (no third-party analytics service) plus an admin-only `/admin` stats view, with a nav link that only appears for signed-in admins — see [Internal Analytics](#internal-analytics-admin)
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,100+ passing tests
@@ -254,13 +254,29 @@ required. It reads from the same global `avatar_cache` table described in
 [Account Persistence](#account-persistence-optional) above, so a name only ever needs to be
 generated once for it to show up here for everyone.
 
-- **Design**: laid out as an old-school scrapbook collage — polaroid-style photo frames at
-  slightly different sizes and rotation angles, "pinned" to a dot-grid corkboard, rather than
-  an aligned grid. Each photo's size, rotation, and pin color are derived from a hash of the
-  character's name, so the scatter looks hand-placed but stays put across page reloads.
+- **Design**: the page itself is a broad sheet of tattered parchment holding a dense,
+  masonry-style collage of deckled archival prints. It uses the available width instead of
+  dividing portraits into book spreads, then steps down to two columns on phones and one on
+  the narrowest screens. Card shape and restrained rotation are derived from a hash of the
+  character's name, so the composition stays stable across reloads.
+- **Sort and group controls**: the toolbar defaults to Recently added with grouping off. It
+  can order the complete collection by newest, oldest, or name, while the Group by category
+  switch reveals collapsed, independently expandable sections for Historical Figures,
+  Mythology, Literature, Folklore & Legend, Religion & Philosophy, and Other. Sorting happens
+  before API pagination, so scrolling never produces page-local ordering artifacts.
+- **Long-gallery navigation**: a high-contrast floating "To top" control appears only after
+  360px of actual scrolling. It listens to the body (the scroll owner in this app's flex
+  layout) plus the window/document fallbacks used by other engines, then scrolls a marker
+  before the app header into view. It stays clear of common lower-corner widgets and phone
+  safe areas, and respects reduced-motion preferences.
 - **Scales without hammering the database**: paginated (`GET /api/chars?limit=&offset=`) and
   backed by a 60-second in-process cache, so a burst of visitors scrolling through hundreds of
   portraits costs at most one database query per minute, not one per page of results.
+- **Category data**: new portraits persist their category in `avatar_cache` as part of the
+  existing Claude prompt-generation response. After adding the nullable column with
+  `npm run db:push`, run `npm run chars:backfill-categories -- --dry-run` to preview the
+  historical classification, then `npm run chars:backfill-categories` to fill only rows that
+  are still uncategorized.
 - **Click a portrait to open it full-size** in a native `<dialog>` lightbox, with a "Chat with
   this character" button that launches straight into a conversation — resuming your own saved
   version of that character if you're signed in and already created one, or generating a fresh
@@ -400,4 +416,7 @@ Educational/portfolio project. Not affiliated with Anthropic or Google.
 
 ## Agent Instructions
 
-Agent-focused instructions live at `./.github/copilot-instructions.md` and cover setup, security, streaming/TTS patterns, and critical files to read before changing core behavior.
+Codex reads [`AGENTS.md`](AGENTS.md) at the repository root. The lightweight
+Copilot pointer remains at `./.github/copilot-instructions.md`; both agent guides
+refer to [`CLAUDE.md`](CLAUDE.md) for the detailed architecture and historical
+reasons behind non-obvious behavior.

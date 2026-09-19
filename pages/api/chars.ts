@@ -13,6 +13,11 @@ import { avatarCache } from "../../src/db/schema";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { withRequestLog } from "../../src/utils/withRequestLog";
+import {
+  getCharacterCategoryOrder,
+  isCharacterCategory,
+  type CharacterCategory,
+} from "../../src/utils/characterCategories";
 
 /** Rate limiter: 60 requests per minute per IP — higher than most since infinite scroll on the gallery fires one request per batch. */
 const charsRateLimit = createRateLimiter({
@@ -23,6 +28,11 @@ const charsRateLimit = createRateLimiter({
 
 const DEFAULT_LIMIT = 60;
 const MAX_LIMIT = 100;
+const GALLERY_SORTS = ["newest", "oldest", "name-asc", "name-desc"] as const;
+const GALLERY_GROUPS = ["none", "category"] as const;
+
+type GallerySort = (typeof GALLERY_SORTS)[number];
+type GalleryGroup = (typeof GALLERY_GROUPS)[number];
 
 // Small connector words conventionally kept lowercase mid-name in English display text
 // (e.g. "Joan of Arc", "Catherine de Medici", "Leonardo da Vinci", "Vincent van Gogh") —
@@ -78,6 +88,8 @@ function parseIntParam(value: unknown, fallback: number): number {
 interface CharacterEntry {
   name: string;
   avatarUrl: string;
+  category: CharacterCategory;
+  createdAtMs: number;
 }
 
 // In-process cache of the full (already name-formatted) row list, refreshed at
@@ -114,9 +126,36 @@ async function getAllCharacters(): Promise<CharacterEntry[]> {
     // existed (or run through scripts/backfill-avatar-display-names.cjs).
     name: row.displayName || toDisplayName(row.characterName),
     avatarUrl: row.avatarUrl,
+    category: isCharacterCategory(row.category) ? row.category : "other",
+    createdAtMs: row.createdAt.getTime(),
   }));
   cache = { entries, fetchedAt: Date.now() };
   return entries;
+}
+
+/** Parses a finite query option, returning the declared fallback for unknown values. */
+function parseOption<T extends string>(value: unknown, options: readonly T[], fallback: T): T {
+  return typeof value === "string" && options.includes(value as T) ? (value as T) : fallback;
+}
+
+/** Orders the cached full list before pagination so sorting stays correct across pages. */
+function orderCharacters(
+  entries: CharacterEntry[],
+  sort: GallerySort,
+  group: GalleryGroup,
+): CharacterEntry[] {
+  return [...entries].sort((a, b) => {
+    if (group === "category") {
+      const categoryOrder =
+        getCharacterCategoryOrder(a.category) - getCharacterCategoryOrder(b.category);
+      if (categoryOrder !== 0) return categoryOrder;
+    }
+
+    if (sort === "oldest") return a.createdAtMs - b.createdAtMs;
+    if (sort === "name-asc") return a.name.localeCompare(b.name);
+    if (sort === "name-desc") return b.name.localeCompare(a.name);
+    return b.createdAtMs - a.createdAtMs;
+  });
 }
 
 /**
@@ -143,6 +182,19 @@ async function getAllCharacters(): Promise<CharacterEntry[]> {
  *         schema:
  *           type: integer
  *           default: 0
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [newest, oldest, name-asc, name-desc]
+ *           default: newest
+ *       - in: query
+ *         name: group
+ *         description: Category grouping makes category the primary ordering key.
+ *         schema:
+ *           type: string
+ *           enum: [none, category]
+ *           default: none
  *     responses:
  *       200:
  *         description: One page of the character portrait gallery
@@ -160,6 +212,9 @@ async function getAllCharacters(): Promise<CharacterEntry[]> {
  *                         type: string
  *                       avatarUrl:
  *                         type: string
+ *                       category:
+ *                         type: string
+ *                         enum: [history, mythology, literature, folklore, religion, other]
  *                 hasMore:
  *                   type: boolean
  *       405:
@@ -185,14 +240,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const limit = Math.min(parseIntParam(req.query.limit, DEFAULT_LIMIT), MAX_LIMIT) || DEFAULT_LIMIT;
   const offset = parseIntParam(req.query.offset, 0);
+  const sort = parseOption(req.query.sort, GALLERY_SORTS, "newest");
+  const group = parseOption(req.query.group, GALLERY_GROUPS, "none");
 
   try {
     const all = await getAllCharacters();
-    const page = all.slice(offset, offset + limit);
+    const ordered = orderCharacters(all, sort, group);
+    const page = ordered.slice(offset, offset + limit).map(({ createdAtMs: _, ...entry }) => entry);
 
     res.status(200).json({
       characters: page,
-      hasMore: offset + limit < all.length,
+      hasMore: offset + limit < ordered.length,
     });
   } catch (err) {
     logEvent(

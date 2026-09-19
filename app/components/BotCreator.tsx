@@ -317,10 +317,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                 </p>
                 <p className={styles.kicker}>Begin a conversation</p>
                 <h1 className={styles.headline}>Who will you bring to life?</h1>
-                <p className={styles.subhead}>
-                  Type any name. Public domain classics, myths, and historical figures work best,
-                  but feel free to go off script.
-                </p>
                 <Link href="/chars" className={styles.wallCta}>
                   <svg
                     width="16"

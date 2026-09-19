@@ -7,8 +7,13 @@ const mockSelect = jest.fn(() => ({ from: mockFrom }));
 const mockDb = { select: mockSelect };
 jest.mock("../../../src/db/client", () => ({ getDb: () => mockDb }));
 
-function makeRow(name: string, avatarUrl = `https://example.test/${name}.png`) {
-  return { characterName: name, avatarUrl, gender: null, createdAt: new Date() };
+function makeRow(
+  name: string,
+  avatarUrl = `https://example.test/${name}.png`,
+  category: string | null = null,
+  createdAt = new Date(),
+) {
+  return { characterName: name, avatarUrl, gender: null, category, createdAt };
 }
 
 describe("chars API", () => {
@@ -50,7 +55,11 @@ describe("chars API", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({
       characters: [
-        { name: "Sherlock Holmes", avatarUrl: "https://example.test/sherlock holmes.png" },
+        {
+          name: "Sherlock Holmes",
+          avatarUrl: "https://example.test/sherlock holmes.png",
+          category: "other",
+        },
       ],
       hasMore: true,
     });
@@ -76,9 +85,56 @@ describe("chars API", () => {
     const { req, res } = createMocks({ method: "GET", query: { limit: "60", offset: "0" } });
     await handler(req, res);
     expect(res._getJSONData()).toEqual({
-      characters: [{ name: "Ada Lovelace", avatarUrl: "https://example.test/ada lovelace.png" }],
+      characters: [
+        {
+          name: "Ada Lovelace",
+          avatarUrl: "https://example.test/ada lovelace.png",
+          category: "other",
+        },
+      ],
       hasMore: false,
     });
+  });
+
+  it("sorts the complete cached list before applying pagination", async () => {
+    mockOrderBy.mockResolvedValue([
+      makeRow("zeus", undefined, "mythology", new Date("2026-01-02")),
+      makeRow("ada lovelace", undefined, "history", new Date("2026-01-01")),
+    ]);
+    const handler = (await import("../../../pages/api/chars")).default;
+    const { req, res } = createMocks({ method: "GET", query: { sort: "name-asc", limit: "1" } });
+
+    await handler(req, res);
+
+    expect(res._getJSONData()).toEqual({
+      characters: [
+        {
+          name: "Ada Lovelace",
+          avatarUrl: "https://example.test/ada lovelace.png",
+          category: "history",
+        },
+      ],
+      hasMore: true,
+    });
+  });
+
+  it("uses category as the primary ordering key when grouping", async () => {
+    mockOrderBy.mockResolvedValue([
+      makeRow("zeus", undefined, "mythology"),
+      makeRow("ada lovelace", undefined, "history"),
+      makeRow("sherlock holmes", undefined, "literature"),
+    ]);
+    const handler = (await import("../../../pages/api/chars")).default;
+    const { req, res } = createMocks({
+      method: "GET",
+      query: { sort: "name-asc", group: "category" },
+    });
+
+    await handler(req, res);
+
+    expect(
+      (res._getJSONData().characters as Array<{ name: string }>).map(({ name }) => name),
+    ).toEqual(["Ada Lovelace", "Zeus", "Sherlock Holmes"]);
   });
 
   it("clamps limit to the configured maximum", async () => {

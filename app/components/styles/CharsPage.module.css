@@ -1,267 +1,518 @@
-/* =============================
-   CharsPage.module.css
-   - Public gallery of every generated character portrait, laid out as an
-     actual old-school scrapbook collage: white polaroid-style photo frames,
-     scattered at slight random rotations, overlapping like photos pinned to
-     a corkboard — not an aligned grid or masonry wall. Rotation, size, and
-     pin color are each chosen by an independent hash of the character's
-     name (see CharsGallery.tsx), so the scatter looks organic and
-     hand-placed rather than a repeating pattern, while staying stable
-     across reloads/pagination for the same name.
-   - The flex-wrap flow (not Grid/columns) is what makes the negative-margin
-     overlap and per-tile rotation actually read as a pile of photos rather
-     than a broken layout — a strict grid fights this look.
-   - Effects: a handwritten caption (Caveat) under each photo like a real
-     scrapbook annotation, a "pick the photo up" hover (un-rotate, lift,
-     scale, deepen the shadow), a shimmer skeleton while each image loads,
-     and a staggered fade/rise-in as tiles scroll into view
-     (IntersectionObserver). Infinite-scroll pagination (see
-     CharsGallery.tsx) keeps the DOM/network work bounded regardless of
-     gallery size. Corkboard backdrop and photo frames stay a fixed warm
-     off-white regardless of light/dark mode — a physical photo doesn't
-     re-theme itself — while the surrounding page chrome still follows
-     globals.css/darkmode.css.
-   ============================= */
+/* The Character Wall is one broad, tattered archival sheet holding a dense
+   portrait mosaic. Paper colors stay warm in both application themes. */
 
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Caveat:wght@600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Playfair+Display:wght@500;600;700&display=swap");
 
 .page {
-  max-width: min(96vw, 1800px);
+  --color-text: #352b1d;
+  --color-text-secondary: #66543a;
+  --color-primary: #80532c;
+  --color-accent: #9e5f32;
+  --color-outline: rgba(96, 70, 38, 0.42);
+  --color-surface: rgba(240, 225, 193, 0.76);
+  --color-background: rgba(250, 240, 216, 0.78);
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 1800px);
   margin: 0 auto;
-  padding: 3rem clamp(0.75rem, 2vw, 2rem) 5rem;
-  font-family: var(--font-primary), sans-serif;
+  padding: clamp(1.4rem, 3vw, 2.5rem) clamp(0.75rem, 2.6vw, 2.75rem) 6rem;
+  overflow-x: clip;
   color: var(--color-text);
+}
+
+.page::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0.2rem;
+  clip-path: polygon(
+    12px 0,
+    calc(100% - 18px) 0,
+    100% 14px,
+    calc(100% - 9px) 25%,
+    100% 50%,
+    calc(100% - 12px) 75%,
+    100% calc(100% - 14px),
+    calc(100% - 18px) 100%,
+    14px 100%,
+    0 calc(100% - 16px),
+    9px 75%,
+    0 50%,
+    12px 25%,
+    0 14px
+  );
+  background:
+    linear-gradient(96deg, rgba(87, 56, 24, 0.14), transparent 7% 92%, rgba(87, 56, 24, 0.15)),
+    linear-gradient(178deg, #d7c49e 0%, #ede0c4 8%, #e5d3ae 52%, #f0e4c8 91%, #cdb78e 100%);
+  box-shadow:
+    inset 0 0 90px rgba(78, 51, 21, 0.2),
+    inset 0 0 0 1px rgba(90, 62, 30, 0.28);
+  filter: drop-shadow(0 20px 34px rgba(39, 27, 13, 0.2));
+}
+
+.topMarker {
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+:global(.dark) .page {
+  --color-text: #eee2ca;
+  --color-text-secondary: #bfae91;
+  --color-primary: #dda06b;
+  --color-accent: #8fc4c8;
+  --color-outline: rgba(210, 181, 139, 0.42);
+  --color-surface: rgba(49, 40, 29, 0.82);
+  --color-background: rgba(28, 23, 17, 0.9);
+}
+
+:global(.dark) .page::before {
+  background:
+    linear-gradient(96deg, rgba(0, 0, 0, 0.34), transparent 8% 91%, rgba(0, 0, 0, 0.38)),
+    linear-gradient(178deg, #33291d 0%, #211b14 9%, #2b2219 52%, #1d1812 92%, #3a2d1e 100%);
+  box-shadow:
+    inset 0 0 110px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(224, 190, 139, 0.2);
+  filter: drop-shadow(0 20px 34px rgba(0, 0, 0, 0.52));
 }
 
 .header {
+  width: min(100%, 760px);
+  margin: 0 auto clamp(0.8rem, 1.8vw, 1.35rem);
   text-align: center;
-  margin-bottom: 2.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--color-primary);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  line-height: 1.5;
+  text-transform: uppercase;
 }
 
 .title {
-  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
-  font-weight: 500;
-  font-size: 2.6rem;
-  margin: 0 0 0.5rem;
+  margin: 0;
   color: var(--color-text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(2.15rem, 4.5vw, 4.15rem);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+
+.flourish {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.8rem;
+  width: min(72%, 300px);
+  margin: 0.65rem auto 0.45rem;
+  color: var(--color-primary);
+}
+
+.flourish span {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, currentcolor);
+  opacity: 0.65;
+}
+
+.flourish span:last-child {
+  background: linear-gradient(90deg, currentcolor, transparent);
+}
+
+.flourish b {
+  font-size: 0.68rem;
+  font-weight: 400;
+}
+
+.subtitle {
+  margin: 0 auto;
+  color: var(--color-text-secondary);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  font-style: italic;
+  line-height: 1.45;
 }
 
 .state {
-  text-align: center;
-  color: var(--color-text-secondary);
   padding: 4rem 1rem;
-  font-size: 1.05rem;
+  color: var(--color-text-secondary);
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.3rem;
+  text-align: center;
 }
 
-/* The corkboard. A subtle dot-grid texture (a "pinboard" cue) sits behind
-   the scattered photos — faint enough to stay out of the way in both
-   themes, since it's drawn from the accent color at very low opacity
-   rather than a fixed color. */
-.board {
-  display: flex;
-  flex-wrap: wrap;
+.controls {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  align-items: flex-start;
-  padding: 2.5rem 1rem;
-  border-radius: 24px;
-  background-color: var(--color-surface-variant);
-  background-image: radial-gradient(
-    color-mix(in srgb, var(--color-accent) 35%, transparent) 1px,
-    transparent 1px
-  );
-  background-size: 22px 22px;
+  gap: clamp(0.85rem, 2vw, 1.5rem);
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto clamp(0.7rem, 1.3vw, 1rem);
+  padding: 0.35rem 0.65rem;
+  border-block: 1px solid rgba(96, 70, 38, 0.24);
+  background: rgba(239, 224, 192, 0.34);
 }
 
-@media (max-width: 600px) {
-  .title {
-    font-size: 1.8rem;
-  }
-
-  .board {
-    padding: 1.5rem 0.5rem;
-    border-radius: 16px;
-  }
+:global(.dark) .controls {
+  border-color: rgba(218, 184, 132, 0.24);
+  background: rgba(12, 10, 8, 0.2);
 }
 
-/* Polaroid-style photo frame. Width varies (small/medium/large, chosen by
-   name hash) and each is rotated a few degrees off-axis; negative margins
-   let neighboring photos overlap at the edges like a real scattered pile.
-   The frame color is a fixed warm off-white in both themes — it's meant to
-   read as a physical object sitting on the corkboard, not a themed UI panel. */
+.control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.control > span {
+  color: var(--color-text-secondary);
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.control select {
+  width: auto;
+  min-height: 2rem;
+  padding: 0.25rem 1.7rem 0.25rem 0.3rem;
+  border: 0;
+  border-bottom: 1px solid var(--color-outline);
+  border-radius: 0;
+  color: var(--color-text);
+  background-color: transparent;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.control select:hover {
+  border-color: var(--color-primary);
+}
+
+.control select:focus-visible {
+  border-color: var(--color-accent);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+:global(.dark) .control select option {
+  color: #eee2ca;
+  background: #211b14;
+}
+
+.groupToggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2rem;
+  padding: 0;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.toggleInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.switchTrack {
+  position: relative;
+  flex: 0 0 auto;
+  width: 2.15rem;
+  height: 1.15rem;
+  border: 1px solid var(--color-outline);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text-secondary) 16%, var(--color-background));
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.switchTrack span {
+  position: absolute;
+  top: 0.12rem;
+  left: 0.13rem;
+  width: 0.78rem;
+  height: 0.78rem;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+  box-shadow: 0 1px 3px rgba(32, 24, 15, 0.25);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+
+.toggleInput:checked + .switchTrack {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 28%, var(--color-background));
+}
+
+.toggleInput:checked + .switchTrack span {
+  background: var(--color-primary);
+  transform: translateX(0.98rem);
+}
+
+.toggleInput:focus-visible + .switchTrack {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.toggleLabel {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.groupedGallery {
+  display: grid;
+  gap: clamp(2.5rem, 6vw, 5rem);
+}
+
+.galleryGroup {
+  min-width: 0;
+}
+
+.groupHeading {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  padding: 0 0.25rem 0.55rem;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-primary) 48%, transparent);
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.groupHeading:hover .groupTitle {
+  color: var(--color-primary);
+}
+
+.groupHeading:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.groupTitle {
+  color: var(--color-text);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.5rem, 3vw, 2.15rem);
+  font-weight: 600;
+  transition: color 150ms ease;
+}
+
+.groupMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.groupMeta small {
+  color: var(--color-text-secondary);
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.groupChevron {
+  color: var(--color-primary);
+  font-family: Georgia, serif;
+  font-size: 1.8rem;
+  line-height: 1;
+  transform: rotate(90deg);
+  transition: transform 160ms ease;
+}
+
+.groupHeading[aria-expanded="true"] .groupChevron {
+  transform: rotate(-90deg);
+}
+
+.mosaic {
+  columns: 6 12.5rem;
+  column-gap: clamp(0.7rem, 1.5vw, 1.35rem);
+  padding: clamp(0.45rem, 1vw, 0.8rem);
+}
+
 .tile {
   --rot-scale: 1;
   position: relative;
-  display: block;
-  box-sizing: border-box;
-  background: #faf6ee;
-  padding: 10px 10px 0;
-  border-radius: 3px;
+  z-index: 1;
+  display: inline-block;
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 clamp(0.7rem, 1.5vw, 1.35rem);
+  padding: clamp(0.55rem, 1.1vw, 0.9rem);
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  color: #352b1d;
+  background-color: #eee3c9;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.3), transparent 45%);
+  box-shadow:
+    0 13px 25px rgba(55, 37, 17, 0.22),
+    0 3px 6px rgba(55, 37, 17, 0.2);
+  clip-path: polygon(
+    0.7% 1.1%,
+    14% 0.2%,
+    29% 0.8%,
+    48% 0%,
+    67% 0.6%,
+    85% 0.1%,
+    99.3% 1%,
+    100% 22%,
+    99.5% 47%,
+    100% 72%,
+    99.1% 99%,
+    78% 99.6%,
+    57% 99.1%,
+    36% 100%,
+    15% 99.3%,
+    0.4% 99%,
+    0% 73%,
+    0.6% 49%,
+    0% 24%
+  );
   cursor: pointer;
-  box-shadow:
-    0 6px 14px rgba(0, 0, 0, 0.28),
-    0 1px 2px rgba(0, 0, 0, 0.15);
+  break-inside: avoid;
+  opacity: 1;
   transform: rotate(calc(var(--rot, 0deg) * var(--rot-scale)));
+  transform-origin: center;
   transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
-    z-index 0s;
-  opacity: 0;
-  /* Vertical overlap gives the "stacked pile" look; horizontal overlap has to
-     stay much lighter than that, or a neighboring photo's edge covers this
-     one's caption text — legibility loses to authenticity past this point. */
-  margin: -14px -6px 10px;
+    transform 280ms ease,
+    box-shadow 280ms ease,
+    filter 280ms ease;
 }
 
-.s1 {
-  width: 150px;
-}
-
-.s2 {
-  width: 195px;
-}
-
-.s3 {
-  width: 240px;
-}
-
-/* Caption size follows the photo's own width class — a fixed font-size
-   either looks tiny on the largest photos or overflows/collides with
-   neighbors on the smallest ones. */
-.s1 .caption {
-  font-size: 1.05rem;
-}
-
-.s2 .caption {
-  font-size: 1.25rem;
-}
-
-.s3 .caption {
-  font-size: 1.45rem;
-}
-
-@media (max-width: 600px) {
-  .tile {
-    /* Rotation's *layout box* doesn't grow to match, but its *rendered*
-       footprint does — on a 100-160px photo that's enough to visually cover
-       a neighbor's caption even with zero margin between them, so rotation
-       is dampened here rather than fully relied on for the scattered look. */
-    --rot-scale: 0.35;
-    /* No horizontal overlap at all at this size — the same few px that reads
-       as a light scatter on a 200px desktop photo is proportionally much
-       bigger on a 100-160px one, and swallows the caption next to it. */
-    margin: -8px 0 10px;
-  }
-
-  .s1 .caption {
-    font-size: 0.82rem;
-  }
-
-  .s2 .caption {
-    font-size: 0.95rem;
-  }
-
-  .s3 .caption {
-    font-size: 1.1rem;
-  }
-
-  .s1 {
-    width: 100px;
-  }
-
-  .s2 {
-    width: 130px;
-  }
-
-  .s3 {
-    width: 160px;
-  }
-}
-
-.tile:hover {
-  transform: rotate(0deg) scale(1.18) translateY(-6px);
-  box-shadow:
-    0 18px 34px rgba(0, 0, 0, 0.38),
-    0 4px 10px rgba(0, 0, 0, 0.2);
-  z-index: 20;
-}
-
-/* A pushpin "holding" every photo to the corkboard — always present (unlike
-   the tape it replaced, which only showed up on a random minority of
-   tiles), with its color varying per-name so the board doesn't look
-   uniform. Colors pull from the app's existing theme tokens, so pins
-   re-theme with light/dark mode along with everything else. */
 .tile::before {
   content: "";
   position: absolute;
-  top: -6px;
-  left: 50%;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  transform: translateX(-50%);
-  background:
-    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.9), transparent 45%),
-    var(--pin-color, var(--color-primary));
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
-  z-index: 1;
+  inset: 5px;
+  z-index: -1;
+  border: 1px solid rgba(88, 63, 32, 0.17);
+  pointer-events: none;
 }
 
-.pinClay {
-  --pin-color: var(--color-primary);
+:global(.dark) .tile {
+  color: #eee2ca;
+  background-color: #3a3024;
+  background-image: linear-gradient(145deg, rgba(237, 213, 172, 0.08), transparent 45%);
+  box-shadow:
+    0 13px 25px rgba(0, 0, 0, 0.42),
+    0 3px 6px rgba(0, 0, 0, 0.36);
 }
 
-.pinTeal {
-  --pin-color: var(--color-accent);
+:global(.dark) .tile::before {
+  border-color: rgba(222, 191, 143, 0.2);
 }
 
-.pinMoss {
-  --pin-color: var(--color-success);
+.s1 {
+  --rot-scale: 0.82;
 }
 
-.pinRust {
-  --pin-color: var(--color-error);
+.s2 {
+  --rot-scale: 0.65;
 }
 
-/* Staggered scroll-reveal — toggled by IntersectionObserver in CharsGallery.tsx. */
-.tileIn {
-  animation: tileReveal 0.5s ease forwards;
-  animation-delay: var(--reveal-delay, 0s);
-}
-
-@keyframes tileReveal {
-  from {
-    opacity: 0;
-    transform: rotate(calc(var(--rot, 0deg) * var(--rot-scale))) translateY(20px) scale(0.85);
-  }
-
-  to {
-    opacity: 1;
-    transform: rotate(calc(var(--rot, 0deg) * var(--rot-scale)));
-  }
+.s3 {
+  --rot-scale: 0.5;
 }
 
 .photoFrame {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
   overflow: hidden;
-  background: #e8e2d4;
+  border: 1px solid rgba(64, 47, 27, 0.75);
+  background: #b7a687;
+  clip-path: polygon(
+    0.5% 0.8%,
+    25% 0%,
+    51% 0.5%,
+    74% 0%,
+    99.4% 0.7%,
+    100% 27%,
+    99.5% 55%,
+    100% 99.2%,
+    72% 100%,
+    46% 99.4%,
+    21% 100%,
+    0.5% 99.1%,
+    0% 66%,
+    0.5% 34%
+  );
+}
+
+:global(.dark) .photoFrame {
+  border-color: rgba(223, 198, 157, 0.58);
+  background: #17130f;
+}
+
+.s1 .photoFrame {
+  aspect-ratio: 4 / 5;
+}
+
+.s2 .photoFrame {
+  aspect-ratio: 1 / 1;
+}
+
+.s3 .photoFrame {
+  aspect-ratio: 8 / 5;
+}
+
+/* A quiet vignette gives the portrait an older print quality without a texture overlay. */
+.photoFrame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 1px rgba(244, 226, 185, 0.32),
+    inset 0 0 30px rgba(39, 25, 11, 0.48);
+  background: linear-gradient(118deg, rgba(255, 238, 193, 0.13), transparent 38%);
 }
 
 .skeleton {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #e8e2d4 25%, #f5f1e6 50%, #e8e2d4 75%);
+  z-index: 0;
+  background: linear-gradient(90deg, #ab9a7b 25%, #d3c5a7 50%, #ab9a7b 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
+:global(.dark) .skeleton {
+  background: linear-gradient(90deg, #2a231a 25%, #473a2b 50%, #2a231a 75%);
+  background-size: 200% 100%;
+}
+
 @keyframes shimmer {
-  0% {
+  from {
     background-position: 200% 0;
   }
-
-  100% {
+  to {
     background-position: -200% 0;
   }
 }
@@ -269,140 +520,375 @@
 .image {
   position: absolute;
   inset: 0;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: opacity 0.3s ease;
-  opacity: 0;
-}
-
-.image.loaded {
+  filter: sepia(0.16) saturate(0.78) contrast(1.06) brightness(0.94);
   opacity: 1;
+  transform: scale(1.015);
+  transition:
+    opacity 300ms ease,
+    filter 350ms ease,
+    transform 500ms ease;
 }
 
-/* The handwritten caption in the polaroid's bottom margin — a scrapbook
-   annotation under the photo, not an overlay on top of it. */
 .caption {
-  font-family: "Caveat", cursive;
+  margin-top: clamp(0.42rem, 0.8vw, 0.68rem);
+  color: #30271b;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1.25rem, 2.1vw, 2rem);
   font-weight: 700;
-  font-size: 1.35rem;
-  line-height: 1.15;
-  color: #3a3226;
-  text-align: center;
-  padding: 0.35rem 0.2rem 0.6rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: -0.025em;
+  line-height: 1.03;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 
-/* Invisible trigger element at the bottom of the board — IntersectionObserver
-   fires the next page fetch when this scrolls into view. */
+:global(.dark) .caption {
+  color: #f0e3c9;
+}
+
+.s1 .caption {
+  font-size: clamp(1.08rem, 1.7vw, 1.55rem);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tile:hover {
+    z-index: 5;
+    box-shadow:
+      0 24px 40px rgba(55, 37, 17, 0.32),
+      0 7px 12px rgba(55, 37, 17, 0.18);
+    filter: brightness(1.025);
+    transform: rotate(0deg) translateY(-8px) scale(1.018);
+  }
+
+  .tile:hover .image {
+    filter: sepia(0.05) saturate(0.96) contrast(1.03);
+    transform: scale(1.045);
+  }
+}
+
+.tile:focus-visible {
+  z-index: 6;
+  outline: 3px solid var(--color-accent);
+  outline-offset: 5px;
+  transform: rotate(0deg) translateY(-4px);
+}
+
 .sentinel {
   height: 1px;
 }
 
 .loadingMore {
-  text-align: center;
+  padding: 1.75rem 0;
   color: var(--color-text-secondary);
-  font-size: 0.85rem;
-  padding: 1.5rem 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.1rem;
+  text-align: center;
 }
 
-/* Native <dialog> lightbox, styled as one big polaroid — same fixed
-   off-white frame and handwritten caption as the tiles on the board, just
-   picked up and enlarged. showModal()/close() (called from CharsGallery.tsx)
-   give focus-trapping and Escape-to-close for free — no modal library, no
-   manually-managed focus trap. Opening/closing is wrapped in the View
-   Transitions API when the browser supports it, which cross-fades the whole
-   before/after snapshot with zero extra CSS required for that base effect.
-   Centering is set explicitly (position/top/left/translate) rather than
-   relying on <dialog>'s own UA-stylesheet auto-margin centering, which
-   varies enough across browsers/content sizes to drift off-center. */
+/* Floating return control, styled as a high-contrast archival index tab. */
+.toTop {
+  position: fixed;
+  right: clamp(0.9rem, 2.5vw, 2rem);
+  bottom: max(4.5rem, calc(env(safe-area-inset-bottom) + 1rem));
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 6.4rem;
+  height: 3rem;
+  padding: 0 1rem;
+  border: 1px solid #d0ad78;
+  border-radius: 999px;
+  color: #fff7e7;
+  background: #8d4a35;
+  box-shadow:
+    0 8px 22px rgba(22, 15, 8, 0.34),
+    inset 0 0 0 2px rgba(255, 242, 214, 0.14);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.9rem) scale(0.88);
+  visibility: hidden;
+  transition:
+    opacity 180ms ease,
+    transform 220ms ease,
+    visibility 0s linear 220ms,
+    background 160ms ease;
+}
+
+.toTopVisible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.toTopArrow {
+  font-family: Georgia, serif;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.toTopLabel {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.toTop:hover {
+  background: #744332;
+  transform: translateY(-3px) scale(1.03);
+}
+
+.toTop:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+/* The enlarged portrait continues the archival-print treatment. */
 .lightbox {
   position: fixed;
   top: 50%;
   left: 50%;
-  translate: -50% -50%;
+  width: min(91vw, 550px);
+  max-height: 90svh;
   margin: 0;
-  border: none;
-  border-radius: 4px;
-  padding: 18px 18px 0;
-  width: min(90vw, 520px);
-  max-height: 85vh;
-  background: #faf6ee;
-  color: #3a3226;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  padding: clamp(0.9rem, 3vw, 1.4rem);
+  overflow: auto;
+  border: 1px solid #9d8967;
+  border-radius: 1px;
+  color: #33291c;
+  background-color: #e9ddc2;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.25), transparent 52%);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.5),
+    inset 0 0 35px rgba(82, 57, 26, 0.14);
+  translate: -50% -50%;
 }
 
 .lightbox::backdrop {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(6px);
+  background: rgba(20, 15, 9, 0.76);
+  backdrop-filter: blur(7px) sepia(0.18);
 }
 
 .lightboxImage {
   display: block;
   width: 100%;
   aspect-ratio: 1 / 1;
+  border: 1px solid rgba(62, 45, 25, 0.72);
+  background: #b7a687;
   object-fit: cover;
-  background: #e8e2d4;
+  filter: sepia(0.1) saturate(0.86) contrast(1.04);
   cursor: zoom-out;
 }
 
 .lightboxName {
-  font-family: "Caveat", cursive;
-  font-weight: 700;
-  font-size: 1.7rem;
-  text-align: center;
   margin: 0;
-  padding: 0.5rem 0.5rem 0;
+  padding: 0.65rem 0.5rem 0;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1.6rem, 5vw, 2.15rem);
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: center;
 }
 
 .lightboxChat {
   display: block;
   width: fit-content;
-  margin: 0.7rem auto 1.1rem;
-  padding: 0.5em 1.1em;
-  border-radius: 999px;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
+  margin: 0.85rem auto 0.2rem;
+  padding: 0.62em 1.25em;
+  border: 1px solid #713b2d;
+  border-radius: 1px;
+  color: #fffaf0;
+  background: #8d4a35;
   font-family: var(--font-primary), sans-serif;
-  font-weight: 600;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   text-decoration: none;
-  transition: background 0.15s ease;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
 }
 
 .lightboxChat:hover,
-.lightboxChat:focus {
-  background: var(--button-hover-bg);
+.lightboxChat:focus-visible {
+  background: #713b2d;
   outline: none;
+  transform: translateY(-1px);
 }
 
 .lightboxClose {
-  /* Sits just inside the frame's own padding, not outside its edge — a
-     dialog isn't guaranteed not to clip an absolutely-positioned child that
-     pokes past its own box in every browser. */
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 2.2rem;
-  height: 2.2rem;
-  border: none;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: grid;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border: 1px solid rgba(246, 236, 214, 0.65);
   border-radius: 50%;
-  background: var(--color-text);
-  color: var(--color-background);
-  font-size: 1.3rem;
+  color: #f7efdf;
+  background: rgba(43, 32, 20, 0.88);
+  box-shadow: 0 3px 9px rgba(0, 0, 0, 0.35);
+  font-size: 1.4rem;
   line-height: 1;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
-  transition: transform 0.15s ease;
+  place-items: center;
+  transition: transform 150ms ease;
 }
 
 .lightboxClose:hover,
-.lightboxClose:focus {
-  transform: scale(1.08);
+.lightboxClose:focus-visible {
   outline: none;
+  transform: scale(1.08);
+}
+
+:global(.dark) .lightbox {
+  border-color: #66543d;
+  color: #eee2ca;
+  background-color: #2b241b;
+  background-image: linear-gradient(145deg, rgba(235, 207, 163, 0.07), transparent 52%);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.72),
+    inset 0 0 42px rgba(0, 0, 0, 0.36);
+}
+
+:global(.dark) .lightboxImage {
+  border-color: rgba(222, 194, 150, 0.52);
+  background: #17130f;
+}
+
+@media (max-width: 700px) {
+  .page {
+    padding: 1.25rem 0.65rem 4rem;
+  }
+
+  .header {
+    margin-bottom: 0.75rem;
+    padding-inline: 0.65rem;
+  }
+
+  .eyebrow {
+    font-size: 0.61rem;
+    letter-spacing: 0.18em;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: calc(100% - 1rem);
+    gap: 0.5rem 1rem;
+    padding: 0.35rem 0.45rem;
+  }
+
+  .control {
+    min-width: 0;
+  }
+
+  .control > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .control select {
+    width: 100%;
+    min-height: 2rem;
+    font-size: 0.92rem;
+  }
+
+  .groupToggle {
+    gap: 0.45rem;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .toggleLabel {
+    font-size: 0;
+    white-space: normal;
+  }
+
+  .toggleLabel::after {
+    content: "Group";
+    font-size: 0.86rem;
+  }
+
+  .subtitle {
+    max-width: 32ch;
+  }
+
+  .mosaic {
+    width: 100%;
+    column-width: auto;
+    column-count: 2;
+    column-gap: 0.7rem;
+    padding: 0.25rem;
+  }
+
+  .tile {
+    --rot-scale: 0.45;
+    padding: clamp(0.42rem, 2vw, 0.65rem);
+  }
+
+  .caption,
+  .s1 .caption {
+    font-size: clamp(1.03rem, 5vw, 1.4rem);
+  }
+
+  .lightbox {
+    width: min(94vw, 520px);
+  }
+
+  .toTop {
+    right: 0.75rem;
+    bottom: max(4.25rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+    min-width: 6rem;
+    height: 2.8rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .mosaic {
+    column-width: auto;
+    column-count: 1;
+  }
+
+  .s1 .photoFrame {
+    aspect-ratio: 1 / 1;
+  }
+
+  .caption,
+  .s1 .caption {
+    font-size: 1.35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile,
+  .image,
+  .lightboxChat,
+  .lightboxClose,
+  .toTop {
+    animation: none;
+    transition: none;
+  }
+
+  .tile {
+    opacity: 1;
+  }
+  .skeleton {
+    animation: none;
+  }
 }

@@ -22,6 +22,7 @@ import anthropic from "./anthropicClient";
 import { getDb } from "../db/client";
 import { avatarCache, bots } from "../db/schema";
 import { recordEvent } from "./analytics";
+import { isCharacterCategory, type CharacterCategory } from "./characterCategories";
 
 /** Options controlling avatar cache/persistence behavior — see pages/api/generate-avatar.ts's @swagger block for the full rationale on each. */
 export interface AvatarGenerationOptions {
@@ -120,6 +121,7 @@ async function cacheAvatar(
   avatarUrl: string,
   gender: string | null,
   recognized: boolean,
+  category: CharacterCategory | null,
 ): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   try {
@@ -135,10 +137,11 @@ async function cacheAvatar(
         gender,
         recognized,
         displayName: sanitizedName,
+        category,
       })
       .onConflictDoUpdate({
         target: avatarCache.characterName,
-        set: { avatarUrl, gender, recognized, displayName: sanitizedName },
+        set: { avatarUrl, gender, recognized, displayName: sanitizedName, category },
       });
   } catch (err) {
     logEvent(
@@ -252,6 +255,7 @@ export async function getOrGenerateAvatar(
   }
 
   let genderOut: string | null = null;
+  let categoryOut: CharacterCategory | null = null;
 
   try {
     logEvent(
@@ -283,7 +287,14 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
 - composition: framing and pose guidance (e.g., close-up headshot, 3/4 view) (100 chars max)
 - iconicElements: generic props, clothing, or background elements evoking the theme without copying a specific copyrighted design (100 chars max)
 - negativePrompts: explicit exclusions to ensure a single, original portrait (150 chars max). Must include: "no collage, no side-by-side photos, no multiple people, single face only, no reflections, no double exposures, no duplicates, no text, no watermark, no logo, no extra limbs, no extra hands, no extra faces, not a real person, no celebrity likeness, no exact copyrighted design".
-- gender: character's gender (for voice matching)`,
+- gender: character's gender (for voice matching)
+- category: choose exactly one stable gallery category identifier:
+  - "history" for real historical people, including rulers, scientists, artists, writers, and political figures
+  - "mythology" for named figures from a culture's mythology or ancient epic tradition
+  - "literature" for characters originating in a named written work
+  - "folklore" for fairy-tale, legendary, or oral-tradition figures without one defining authored work
+  - "religion" for religious figures, saints, theologians, and philosophers best known for a school of thought
+  - "other" only when none of the above fits`,
           },
         ],
         temperature: 0.3,
@@ -296,6 +307,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
       const promptData = JSON.parse(rawContent);
 
       genderOut = promptData.gender || null;
+      categoryOut = isCharacterCategory(promptData.category) ? promptData.category : null;
 
       prompt =
         `Original, stylized character illustration loosely inspired by the name "${characterName}", not a depiction of any real person and not an exact reproduction of any copyrighted character design. ${promptData.subject || ""}. ${promptData.iconicElements || ""}. ${promptData.composition || ""}. Style: ${promptData.artStyle || "stylized illustration"}. single, solo, alone, centered, close-up portrait, no other people. Exclude: ${promptData.negativePrompts || "multiple people, extra faces, duplicates, real person likeness, exact copyrighted design"}`.trim();
@@ -392,7 +404,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
     }
 
     if (!bypassSharedCache) {
-      await cacheAvatar(characterName, avatarUrl, genderOut, isRecognized);
+      await cacheAvatar(characterName, avatarUrl, genderOut, isRecognized, categoryOut);
     }
     void recordEvent("avatar_generated", {
       provider: usedProvider,

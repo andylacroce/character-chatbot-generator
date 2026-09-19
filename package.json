@@ -30,6 +30,7 @@
     "db:studio": "drizzle-kit studio",
     "chars:reclassify": "node scripts/reclassify-avatar-cache.cjs",
     "chars:backfill-display-names": "node scripts/backfill-avatar-display-names.cjs",
+    "chars:backfill-categories": "node scripts/backfill-avatar-categories.cjs",
     "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs"
   },
   "dependencies": {

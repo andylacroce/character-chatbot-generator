@@ -168,14 +168,6 @@
   text-wrap: balance;
 }
 
-.subhead {
-  color: var(--color-text-secondary);
-  line-height: 1.65;
-  font-size: 0.98rem;
-  margin: 0 auto;
-  max-width: 40ch;
-}
-
 .wallCta {
   display: inline-flex;
   align-items: center;
