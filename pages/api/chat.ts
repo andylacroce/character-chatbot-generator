@@ -558,6 +558,10 @@ CRITICAL CONTEXT INSTRUCTIONS:
 - If the previous response was incomplete or truncated, seamlessly continue from the exact point where it ended.
 - Pay attention to all plot details, character names, and setting information from the conversation to ensure narrative continuity.`;
 
+    // Claude's own prose defaults lean on em dashes far more than natural character dialogue
+    // does, so this is stated as its own explicit instruction rather than left implicit.
+    const formattingInstructions = `\n\nFORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, period, colon, or parentheses instead.`;
+
     // personality is user-controlled (round-tripped from the client on every request), and
     // conversationSummary is Claude's own summary of user-supplied history — a crafted earlier
     // message could induce the summarizer to carry an injected instruction through verbatim. Both
@@ -568,8 +572,8 @@ CRITICAL CONTEXT INSTRUCTIONS:
     const userNameBlock = userName ? `\n<user_name>\n${userName}\n</user_name>` : "";
 
     const systemPrompt = conversationSummary
-      ? `${promptInjectionGuard}\n\n${characterPersonaBlock}${userNameBlock}\n${historyContextInstructions}\n\n<conversation_summary>\n${conversationSummary}\n</conversation_summary>`
-      : `${promptInjectionGuard}\n\n${characterPersonaBlock}${userNameBlock}\n${historyContextInstructions}`;
+      ? `${promptInjectionGuard}\n\n${characterPersonaBlock}${userNameBlock}\n${historyContextInstructions}\n\n<conversation_summary>\n${conversationSummary}\n</conversation_summary>${formattingInstructions}`
+      : `${promptInjectionGuard}\n\n${characterPersonaBlock}${userNameBlock}\n${historyContextInstructions}${formattingInstructions}`;
 
     // Build messages array: full conversation history (verbatim) + new user message
     const messages: ClaudeMessage[] = buildClaudeMessages(limitedHistory, userMessage);
