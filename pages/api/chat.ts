@@ -446,7 +446,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // character never saved server-side (e.g. a copyright-warning override — see
     // CopyrightWarningModal, never persisted at all) fall through to today's fully
     // client-authoritative behavior, unchanged below.
-    const userId = await getSessionUserId(req, res);
+    const userId = await getSessionUserId(req);
     const botRow = userId ? await lookupBot(userId, botName) : null;
     const personality = botRow ? botRow.personality : requestPersonality;
 

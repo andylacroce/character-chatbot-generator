@@ -42,7 +42,15 @@ const customJestConfig = {
     "<rootDir>/tests/**/*.test.(ts|tsx|js|jsx)",
     "<rootDir>/**/__tests__/**/*.(ts|tsx|js|jsx)",
   ],
-  testPathIgnorePatterns: ["<rootDir>/node_modules/", "<rootDir>/.next/"],
+  // apps/mobile and packages/shared are separate npm workspace packages with their own
+  // test runners (packages/shared's own `npm test`; apps/mobile has none yet) — excluded
+  // here so this web test suite never reaches into their source or (nested) node_modules.
+  testPathIgnorePatterns: [
+    "<rootDir>/node_modules/",
+    "<rootDir>/.next/",
+    "<rootDir>/apps/",
+    "<rootDir>/packages/",
+  ],
   verbose: true,
   collectCoverage: true, // Enable coverage reports
   // Without this, coverage is only measured over files some test happens to import,

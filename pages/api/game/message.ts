@@ -323,7 +323,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return;
     }
 
-    const userId = await getSessionUserId(req, res);
+    const userId = await getSessionUserId(req);
 
     if (classification.correct) {
       const revealedName = state.nextCharacterName;

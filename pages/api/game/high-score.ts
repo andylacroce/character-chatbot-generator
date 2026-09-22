@@ -58,7 +58,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const userId = await getSessionUserId(req, res);
+  const userId = await getSessionUserId(req);
   const guestId = userId ? null : getGuestId(req);
   if ((!userId && !guestId) || !process.env.DATABASE_URL) {
     res.status(200).json({ highScore: null });

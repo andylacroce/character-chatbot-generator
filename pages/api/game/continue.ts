@@ -117,7 +117,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
-    const userId = await getSessionUserId(req, res);
+    const userId = await getSessionUserId(req);
     // The streak was already incremented in /game/message's response to the player, but
     // never written back into this token (see that handler's doc comment) — recompute it
     // the same way here, from the same trusted source value.

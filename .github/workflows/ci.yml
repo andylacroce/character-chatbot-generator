@@ -3,8 +3,12 @@ name: CI — lint, test, coverage & build
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "apps/mobile/**"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "apps/mobile/**"
 
 permissions:
   contents: read
@@ -28,9 +32,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Cache Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          # Exact match requires both the lockfile and source to be unchanged;
+          # falling back to the restore-keys prefix on a source change still
+          # reuses Next's dependency-graph cache instead of building cold.
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/**', 'pages/**', 'src/**') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
 
       - name: Check formatting
         run: npm run format:check
