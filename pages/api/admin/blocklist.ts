@@ -26,8 +26,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getSessionUserId } from "../../../src/utils/getSessionUserId";
-import { isAdmin } from "../../../src/utils/isAdmin";
+import { requireAdmin } from "../../../src/utils/adminGuard";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import {
@@ -124,21 +123,11 @@ const adminBlocklistRateLimit = createRateLimiter({
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(adminBlocklistRateLimit, req, res))) return;
 
-  const userId = await getSessionUserId(req, res);
-  if (!userId) {
-    res.status(401).json({ error: "Not signed in" });
-    return;
-  }
-  if (!(await isAdmin(req, res))) {
-    logEvent(
-      "warn",
-      "admin_blocklist_forbidden",
-      "Non-admin user denied access to the character blocklist",
-      sanitizeLogMeta({ userId }),
-    );
-    res.status(403).json({ error: "Not authorized" });
-    return;
-  }
+  const userId = await requireAdmin(req, res, {
+    event: "admin_blocklist_forbidden",
+    message: "Non-admin user denied access to the character blocklist",
+  });
+  if (!userId) return;
 
   if (req.method === "GET") {
     const entries = await listBlocklist();

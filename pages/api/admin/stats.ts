@@ -16,8 +16,7 @@ import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../../src/db/client";
 import { analyticsEvents, bots, messages } from "../../../src/db/schema";
 import { getCurrentEnvironment } from "../../../src/utils/environment";
-import { getSessionUserId } from "../../../src/utils/getSessionUserId";
-import { isAdmin } from "../../../src/utils/isAdmin";
+import { requireAdmin } from "../../../src/utils/adminGuard";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
@@ -147,22 +146,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const userId = await getSessionUserId(req, res);
-  if (!userId) {
-    res.status(401).json({ error: "Not signed in" });
-    return;
-  }
-  if (!(await isAdmin(req, res))) {
-    // Security-relevant: a signed-in user without admin access hit an admin-only route.
-    logEvent(
-      "warn",
-      "admin_stats_forbidden",
-      "Non-admin user denied access to admin stats",
-      sanitizeLogMeta({ userId }),
-    );
-    res.status(403).json({ error: "Not authorized" });
-    return;
-  }
+  const userId = await requireAdmin(req, res, {
+    event: "admin_stats_forbidden",
+    message: "Non-admin user denied access to admin stats",
+  });
+  if (!userId) return;
   if (!process.env.DATABASE_URL) {
     res.status(200).json({
       ...EMPTY_STATS,

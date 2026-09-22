@@ -9,10 +9,8 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getSessionUserId } from "../../../src/utils/getSessionUserId";
-import { isAdmin } from "../../../src/utils/isAdmin";
+import { requireAdmin } from "../../../src/utils/adminGuard";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { listWarnings } from "../../../src/utils/characterWarningLog";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
 
@@ -52,21 +50,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const userId = await getSessionUserId(req, res);
-  if (!userId) {
-    res.status(401).json({ error: "Not signed in" });
-    return;
-  }
-  if (!(await isAdmin(req, res))) {
-    logEvent(
-      "warn",
-      "admin_warnings_forbidden",
-      "Non-admin user denied access to the warning log",
-      sanitizeLogMeta({ userId }),
-    );
-    res.status(403).json({ error: "Not authorized" });
-    return;
-  }
+  const userId = await requireAdmin(req, res, {
+    event: "admin_warnings_forbidden",
+    message: "Non-admin user denied access to the warning log",
+  });
+  if (!userId) return;
 
   const entries = await listWarnings();
   res.status(200).json({ entries });

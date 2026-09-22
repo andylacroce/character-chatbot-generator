@@ -17,6 +17,7 @@ import { getSessionUserId } from "../../../src/utils/getSessionUserId";
 import { recordEvent } from "../../../src/utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
+import { setSseHeaders, writeSseFrame } from "../../../src/utils/sse";
 
 /** Rate limiter: 10 requests per minute per IP, same tier as the other game endpoints. */
 const gameContinueRateLimit = createRateLimiter({
@@ -125,9 +126,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const newUsedNames = [...state.usedNames, revealedName];
 
     if (stream) {
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
+      setSseHeaders(res);
     }
 
     const {
@@ -141,9 +140,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } = await generateGameRound(
       revealedName,
       newUsedNames,
-      stream
-        ? (stage) => res.write(`data: ${JSON.stringify({ stage, done: false })}\n\n`)
-        : undefined,
+      stream ? (stage) => writeSseFrame(res, { stage, done: false }) : undefined,
     );
 
     const newToken = signGameState({
@@ -181,7 +178,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       streak: newStreak,
     };
     if (stream) {
-      res.write(`data: ${JSON.stringify({ ...result, done: true })}\n\n`);
+      writeSseFrame(res, { ...result, done: true });
       res.end();
       return;
     }
@@ -194,9 +191,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
     if (stream) {
-      res.write(
-        `data: ${JSON.stringify({ error: "Failed to generate the next round", done: true })}\n\n`,
-      );
+      writeSseFrame(res, { error: "Failed to generate the next round", done: true });
       res.end();
       return;
     }

@@ -31,6 +31,7 @@ import anthropic from "../../src/utils/anthropicClient";
 import { getSessionUserId } from "../../src/utils/getSessionUserId";
 import { getCurrentEnvironment } from "../../src/utils/environment";
 import { getDb } from "../../src/db/client";
+import { setSseHeaders, writeSseFrame } from "../../src/utils/sse";
 import { bots, messages as messagesTable, users } from "../../src/db/schema";
 import { sanitizeCharacterName, sanitizeUserName } from "../../src/utils/security";
 import {
@@ -704,9 +705,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
 
     // Handle streaming mode
     if (stream) {
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
+      setSseHeaders(res);
 
       try {
         const streamResponse = anthropic.messages.stream({
@@ -726,7 +725,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
             const content = chunk.delta.text;
             if (content) {
               botReply += content;
-              res.write(`data: ${JSON.stringify({ chunk: content, done: false })}\n\n`);
+              writeSseFrame(res, { chunk: content, done: false });
             }
           }
         }
@@ -738,7 +737,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
             "Streamed response was empty",
             sanitizeLogMeta({ requestId }),
           );
-          res.write(`data: ${JSON.stringify({ error: "Empty response", done: true })}\n\n`);
+          writeSseFrame(res, { error: "Empty response", done: true });
           res.end();
           return;
         }
@@ -781,7 +780,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
           );
         }
 
-        res.write(`data: ${JSON.stringify({ reply: botReply, audioFileUrl, done: true })}\n\n`);
+        writeSseFrame(res, { reply: botReply, audioFileUrl, done: true });
         res.end();
 
         setReplyCache(cacheKey, botReply);
@@ -820,7 +819,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
             error: streamErr instanceof Error ? streamErr.message : String(streamErr),
           }),
         );
-        res.write(`data: ${JSON.stringify({ error: "Streaming failed", done: true })}\n\n`);
+        writeSseFrame(res, { error: "Streaming failed", done: true });
         res.end();
         return;
       }

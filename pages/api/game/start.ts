@@ -21,6 +21,7 @@ import { getCurrentEnvironment } from "../../../src/utils/environment";
 import { recordEvent } from "../../../src/utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
+import { setSseHeaders, writeSseFrame } from "../../../src/utils/sse";
 
 /**
  * Rate limiter: 10 requests per minute per IP. A run start costs a personality
@@ -114,9 +115,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const currentCharacterName = pickRandomCharacterName([], gameCharacterNames);
 
     if (stream) {
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
+      setSseHeaders(res);
     }
 
     const {
@@ -130,9 +129,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } = await generateGameRound(
       currentCharacterName,
       [currentCharacterName],
-      stream
-        ? (stage) => res.write(`data: ${JSON.stringify({ stage, done: false })}\n\n`)
-        : undefined,
+      stream ? (stage) => writeSseFrame(res, { stage, done: false }) : undefined,
     );
 
     const runId = crypto.randomUUID();
@@ -171,7 +168,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       streak: 0,
     };
     if (stream) {
-      res.write(`data: ${JSON.stringify({ ...result, done: true })}\n\n`);
+      writeSseFrame(res, { ...result, done: true });
       res.end();
       return;
     }
@@ -184,7 +181,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
     if (stream) {
-      res.write(`data: ${JSON.stringify({ error: "Failed to start a new run", done: true })}\n\n`);
+      writeSseFrame(res, { error: "Failed to start a new run", done: true });
       res.end();
       return;
     }
