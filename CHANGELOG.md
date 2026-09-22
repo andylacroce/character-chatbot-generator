@@ -2,6 +2,10 @@
 
 This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
 
+## 2026-09-22 — Chat replies no longer use em dashes
+
+- Added an explicit formatting instruction to the system prompts for ordinary chat replies (`pages/api/chat.ts`) and every guessing-game in-character turn (`src/utils/gameReply.ts`) telling Claude never to use an em dash, since Claude's own prose defaults lean on it far more than natural character dialogue does.
+
 ## 2026-09-19 — Guessing-game leaderboard
 
 - Added a public, opt-in leaderboard (`/leaderboard`) for the guessing game: any player whose best streak reaches the overall top 10 — signed in or guest — can claim a moderated public display name. Guest scores are bound to a persistent browser cookie, so no sign-in is needed; names are screened by Claude before publishing, and each name locks to the run that claimed it (a different name for the same run is rejected). Leaving the leaderboard removes the public name while keeping the private best. Also disambiguated `"Rosalind"` to `"Rosalind (As You Like It)"` in the character lists so game rounds can't be mistaken for the DNA researcher.
