@@ -2,6 +2,13 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.6.1 — 2026-09-22 — Monorepo migration: fold in the mobile app and shared package
+
+- Folded the separate `character-chatbot-mobile` and `character-chatbot-shared` repos into this one as `apps/mobile` and `packages/shared` (via `git subtree`, full history preserved), wired up as a real npm workspace. Web stays at the repo root to avoid touching Vercel's working deploy config.
+- `packages/shared` drops its `tsc`/`dist` build step in favor of raw TS source, consumed directly by both Next's `transpilePackages` and Metro's SDK 57 zero-config workspace detection — no manual build/install step needed to pick up a shared-code change from either app anymore.
+- Added a backend-mediated Google Sign-In bridge (`/api/auth/mobile-google-start`/`-callback`) for the mobile app, since plain Expo Go has no supported native Google Sign-In path; `getSessionUserId` now reads `next-auth/jwt`'s `getToken()` directly, supporting both the web session cookie and a mobile bearer token with no extra branching. Not yet wired up on the mobile side.
+- CI restructured for the new layout: mobile's workflow moved to the repo root (it was silently dead in its old nested location — GitHub only reads workflows there) and made path-filtered so it only runs on `apps/mobile`/`packages/shared` changes; web's CI skips mobile-only pushes. Both gained npm dependency caching, and web's gained a Next.js build cache — a full `npm ci` was newly pulling in ~950 unused React Native/Expo packages on every web CI run with no caching at all.
+
 ## v0.6.0 — 2026-09-22 — Shared character-loading lightbox, header layout changes
 
 - Added `CharacterLoadingOverlay`, one shared staged-progress lightbox for every "a character is being generated/loaded" moment: the guessing game's start-a-run and next-round generation (previously a plain inline spinner) and the landing page's character-creation flow (URL auto-launch, resume/new-chat interstitial, validation, and personality/avatar/voice generation — previously four near-duplicate inline progress blocks). Shows a live checklist with a checkmark on each genuinely-completed step, a spinner on the active one, driven by real server-reported progress.
