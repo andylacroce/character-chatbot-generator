@@ -12,6 +12,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authenticatedFetch } from "../../src/utils/api";
+import { getJSON, setJSON } from "../../src/utils/storage";
+import { STORAGE_KEYS } from "../../src/utils/storageKeys";
 import styles from "./styles/LandingCharacterCarousel.module.css";
 
 interface CharEntry {
@@ -34,15 +36,29 @@ const LandingCharacterCarousel: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
+    // Paint last visit's sample immediately (read post-mount, not as useState's initializer,
+    // so this client-only read never disagrees with the server-rendered placeholder markup
+    // and trips a hydration mismatch) while a fresh sample loads underneath it — avoids the
+    // header sitting on a blank placeholder for a cold /api/chars round trip on every visit.
+    const cached = getJSON<{ characters: CharEntry[] }>(STORAGE_KEYS.landingCarouselCache);
+    // Deliberately synchronous: this primes state from a client-only cache the instant
+    // after mount, not in response to an external event, so the one-render lag this rule
+    // otherwise guards against is the entire point here rather than a mistake.
+    /* eslint-disable-next-line react-hooks/set-state-in-effect */
+    if (cached?.characters?.length) setCharacters(cached.characters);
     authenticatedFetch(`/api/chars?limit=${POOL_LIMIT}&sample=${ROTATE_COUNT}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
         const pool: CharEntry[] = Array.isArray(data?.characters) ? data.characters : [];
+        if (pool.length === 0) return;
         setCharacters(pool);
+        setIndex(0);
+        setJSON(STORAGE_KEYS.landingCarouselCache, { characters: pool });
       })
       .catch(() => {
-        /* Keep the reserved header space if the optional gallery request fails. */
+        /* Keep whatever's already showing (cached sample, or the reserved header space)
+           if the fresh gallery request fails. */
       });
     return () => {
       cancelled = true;
@@ -70,7 +86,7 @@ const LandingCharacterCarousel: React.FC = () => {
     return (
       <div className={styles.carousel} aria-hidden="true">
         <span className={styles.portraitWrap}>
-          <span className={styles.portrait} />
+          <span className={`${styles.portrait} ${styles.portraitLoading}`} />
         </span>
         <span className={styles.nameLabel} />
       </div>

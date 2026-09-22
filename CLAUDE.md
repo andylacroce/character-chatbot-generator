@@ -81,6 +81,7 @@ Distilled from Anthropic's own prompting-best-practices reference (`platform.cla
 - **For a structured-JSON judgment call, order the schema so an explanation field comes before the decision field** (e.g. `{"reasoning": ..., "status": ..., "correct": ...}`, not the reverse). This gives the model a lightweight, embedded chain-of-thought without violating a "return ONLY JSON" constraint or meaningfully increasing latency at a small `max_tokens` cap — worth trying before reaching for a bigger model on an accuracy problem.
 - **Prefer telling the model what *to* do over what *not* to do**, and add a one-line "why" behind a constraint when it's non-obvious (Claude generalizes better from a reason than a bare rule) — both already the dominant style in this app's existing prompts (e.g. `characterVoices.ts`'s voice-casting prompt explains *why* gender must match the chosen voice, not just that it must).
 - **Known gap, not yet applied:** Anthropic's current guidance prefers constraining output via tool-use/Structured Outputs over a freeform "return ONLY JSON" instruction plus manual regex extraction (`src/utils/parseClaudeJson.ts`'s `extractJson`, used almost everywhere in this app). Not migrated here — it would touch most Claude call sites for a reliability upside that hasn't actually caused a production bug yet — but worth reaching for if a *new* structured-output call proves flaky under `extractJson`, rather than adding another one-off parsing workaround.
+- **Ordinary character dialogue never uses an em dash — a deliberate exception to "prefer what *to* do over what *not* to do" above, added 2026-09-22.** Every in-character system prompt (`pages/api/chat.ts`'s ordinary chat replies, and every call in `src/utils/gameReply.ts` — the guessing game's ordinary turns, opening greetings, and guess-reaction replies) appends a trailing `FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, period, colon, or parentheses instead.` instruction. Stated as an explicit negative rather than reframed positively, since Claude's own prose defaults lean on em dashes far more than natural character dialogue does — there's no single positive phrasing ("use short sentences," "write conversationally") that reliably suppresses it. Not applied to the `"text-simple"` judgment/classification prompts above, only to prompts generating dialogue actually shown to the player.
 
 ### Copyright/trademark validation
 
@@ -154,7 +155,7 @@ A public, no-auth gallery of every *recognized* portrait in the shared `avatar_c
 
 ### Client-side storage
 
-`src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Known keys: `chatbot-bot`, `chatbot-history-<bot.name>`, `voiceConfig-<bot.name>` (versioned — use the versioned helpers in `storage.ts`, never write the shape directly), `audioEnabled`, `darkMode`, `bot-session-id`, `chatbot-user-name` and `chatbot-user-name-gate-skipped` (the visitor's own preferred name and whether they've dismissed the name gate — see "Personalized greeting" below), and `chatbot-game-token`/`chatbot-game-transcript`/`chatbot-game-instructions-seen` (the guessing game's current round token, its transcript, and its one-time "how to play" gate — see "Guessing game" below). Never store secrets or PII here; it's client-side only.
+`src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Known keys: `chatbot-bot`, `chatbot-history-<bot.name>`, `voiceConfig-<bot.name>` (versioned — use the versioned helpers in `storage.ts`, never write the shape directly), `audioEnabled`, `darkMode`, `bot-session-id`, `chatbot-user-name` and `chatbot-user-name-gate-skipped` (the visitor's own preferred name and whether they've dismissed the name gate — see "Personalized greeting" below), `chatbot-game-token`/`chatbot-game-transcript`/`chatbot-game-instructions-seen` (the guessing game's current round token, its transcript, and its one-time "how to play" gate — see "Guessing game" below), and `chatbot-landing-carousel-cache` (the landing header carousel's last-fetched portrait sample, repainted immediately on a return visit — see "Unified header" below). Never store secrets or PII here; it's client-side only.
 
 ### Guessing game
 
@@ -348,6 +349,20 @@ tightened after an early draft duplicated it three times).
   prevent header layout shift as the carousel advances through names of very different
   lengths or waits for its API response. An earlier version let a long name reflow the
   header's height on every tick; the empty/loading state now reserves the same footprint.
+- **The empty/loading state used to sit blank for the length of a cold `/api/chars` round
+  trip (a real Neon query behind that route's own 60s in-process cache, worse on a cold
+  serverless instance) — fixed 2026-09-22 two ways, after live feedback that it read as
+  broken rather than loading.** First, the component now caches its last-fetched sample in
+  `localStorage` (`STORAGE_KEYS.landingCarouselCache`) and paints it immediately on mount —
+  read in the same effect that fires the fetch, not as `useState`'s lazy initializer, since
+  the latter would run during client hydration and disagree with the server-rendered empty
+  placeholder, tripping a hydration mismatch; a fresh, non-empty response then replaces both
+  the shown sample and the cache, and an empty or failed fetch just leaves the cached sample
+  showing rather than reverting to the placeholder. This means only a true first-ever visit
+  (no cache yet) still waits on the network. Second, that first-visit placeholder itself
+  (`.portraitLoading`) now has a subtle opacity pulse (respecting
+  `prefers-reduced-motion`) instead of sitting static, so it reads as loading rather than
+  stuck even before any cache exists.
 - **A CSS specificity bug worth knowing about if the header ever shifts layout again:**
   `AppHeader.module.css` originally had a generic `.headerCenter > button { display: block;
   }` rule (specificity 0,1,1) meant for the chat page's avatar button. Because the

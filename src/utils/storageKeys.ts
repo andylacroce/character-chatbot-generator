@@ -21,6 +21,10 @@ export const STORAGE_KEYS = {
   gameToken: "chatbot-game-token",
   gameTranscript: "chatbot-game-transcript",
   gameInstructionsSeen: "chatbot-game-instructions-seen",
+  // The landing header carousel's last-fetched portrait sample, shown immediately on a
+  // returning visit while a fresh sample loads in the background, so the header doesn't
+  // sit on a blank placeholder for the length of a cold /api/chars round trip.
+  landingCarouselCache: "chatbot-landing-carousel-cache",
 } as const;
 
 /** Prefixes for keys that are suffixed per-character by bot name. */

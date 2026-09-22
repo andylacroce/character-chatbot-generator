@@ -30,8 +30,25 @@
 
 @media (prefers-reduced-motion: reduce) {
   .portraitWrap,
-  .nameLabel {
+  .nameLabel,
+  .portraitLoading {
     animation: none !important;
+  }
+}
+
+/* Reads as "loading", not "stuck" — shown only while there's no cached sample yet to
+   paint immediately (see the component's effect). */
+.portraitLoading {
+  animation: portraitPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes portraitPulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.85;
   }
 }
 

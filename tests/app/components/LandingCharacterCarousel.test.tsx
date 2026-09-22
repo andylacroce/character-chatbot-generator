@@ -1,6 +1,7 @@
 import React from "react";
 import { act, render, screen, fireEvent } from "@testing-library/react";
 import LandingCharacterCarousel from "../../../app/components/LandingCharacterCarousel";
+import { STORAGE_KEYS } from "../../../src/utils/storageKeys";
 
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
@@ -12,10 +13,20 @@ jest.mock("../../../src/utils/api", () => ({
   authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...args),
 }));
 
+/** A promise the test can resolve on its own schedule, to assert on pre-fetch render state. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
 describe("LandingCharacterCarousel", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    // This component now caches its last-fetched sample in localStorage — clear it so
+    // one test's cache write can never leak into another test's assertions.
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -73,6 +84,54 @@ describe("LandingCharacterCarousel", () => {
     act(() => jest.advanceTimersByTime(4000));
 
     expect(await screen.findByLabelText("Chat with Cleopatra")).toBeInTheDocument();
+  });
+
+  it("paints last visit's cached sample immediately, before the fetch resolves", async () => {
+    localStorage.setItem(
+      STORAGE_KEYS.landingCarouselCache,
+      JSON.stringify({ characters: [{ name: "Cached Hero", avatarUrl: "/cached.png" }] }),
+    );
+    const { promise, resolve } = deferred<{ json: () => Promise<unknown> }>();
+    mockAuthenticatedFetch.mockReturnValue(promise);
+
+    render(<LandingCharacterCarousel />);
+
+    // Still awaiting the fetch, yet the cached portrait is already showing.
+    expect(await screen.findByLabelText("Chat with Cached Hero")).toBeInTheDocument();
+
+    await act(async () => {
+      resolve({ json: async () => ({ characters: [] }) });
+    });
+  });
+
+  it("replaces the cached sample once a fresh, non-empty fetch resolves", async () => {
+    localStorage.setItem(
+      STORAGE_KEYS.landingCarouselCache,
+      JSON.stringify({ characters: [{ name: "Cached Hero", avatarUrl: "/cached.png" }] }),
+    );
+    mockAuthenticatedFetch.mockResolvedValue({
+      json: async () => ({ characters: [{ name: "Fresh Hero", avatarUrl: "/fresh.png" }] }),
+    });
+
+    render(<LandingCharacterCarousel />);
+
+    expect(await screen.findByLabelText("Chat with Fresh Hero")).toBeInTheDocument();
+    expect(
+      JSON.parse(localStorage.getItem(STORAGE_KEYS.landingCarouselCache) as string).characters,
+    ).toEqual([{ name: "Fresh Hero", avatarUrl: "/fresh.png" }]);
+  });
+
+  it("keeps showing the cached sample when a fresh fetch returns empty or fails", async () => {
+    localStorage.setItem(
+      STORAGE_KEYS.landingCarouselCache,
+      JSON.stringify({ characters: [{ name: "Cached Hero", avatarUrl: "/cached.png" }] }),
+    );
+    mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ characters: [] }) });
+
+    render(<LandingCharacterCarousel />);
+    await act(async () => {});
+
+    expect(screen.getByLabelText("Chat with Cached Hero")).toBeInTheDocument();
   });
 
   it("pauses auto-advance while hovered", async () => {
