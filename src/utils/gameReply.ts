@@ -53,7 +53,9 @@ export async function getGameReply(
 ${personaPrompt}
 </character_persona>
 
-This is roughly exchange #${clueRound} of this round with the player, pace how much you reveal accordingly, per the game rules above.${extraInstruction ? `\n\n${extraInstruction}` : ""}`;
+This is roughly exchange #${clueRound} of this round with the player, pace how much you reveal accordingly, per the game rules above.${extraInstruction ? `\n\n${extraInstruction}` : ""}
+
+FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, period, colon, or parentheses instead.`;
 
   const messages: ClaudeMessage[] = buildClaudeMessages(conversationHistory, userMessage);
 
@@ -142,7 +144,9 @@ export async function getGuessReactionReply(
 ${personaPrompt}
 </character_persona>
 
-SPECIAL INSTRUCTION FOR THIS REPLY ONLY: ${outcomeInstruction}`;
+SPECIAL INSTRUCTION FOR THIS REPLY ONLY: ${outcomeInstruction}
+
+FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, period, colon, or parentheses instead.`;
 
   try {
     const messages: ClaudeMessage[] = buildClaudeMessages(conversationHistory, userMessage);
