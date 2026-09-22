@@ -81,8 +81,7 @@ export interface ChatResponse {
 
 /** One `data:` frame of the /api/chat SSE stream. */
 export type ChatStreamFrame =
-  | { chunk: string; done: false }
-  | { reply: string; audioFileUrl?: string; done: true };
+  { chunk: string; done: false } | { reply: string; audioFileUrl?: string; done: true };
 
 /**
  * POST /api/validate-character request body. Was mistyped here as `{characterName}` —
@@ -144,12 +143,7 @@ export interface GenerateAvatarResponse {
 
 /** Taxonomy assigned to a character at creation time (src/utils/characterCategories.ts). */
 export type CharacterCategory =
-  | "history"
-  | "mythology"
-  | "literature"
-  | "folklore"
-  | "religion"
-  | "other";
+  "history" | "mythology" | "literature" | "folklore" | "religion" | "other";
 
 /** `sort` query param accepted by GET /api/chars. */
 export type CharsSort = "newest" | "oldest" | "name-asc" | "name-desc";

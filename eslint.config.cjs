@@ -18,6 +18,11 @@ module.exports = [
       "jest.setup.js",
       "scripts/**",
       "**/*.sh",
+      // apps/mobile is a separate React Native/Expo app with its own eslint.config.js
+      // (eslint-config-expo, not eslint-config-next) and its own npm run lint/ci —
+      // this repo's web-focused rules (react/no-unescaped-entities, react-hooks/refs'
+      // false positive on Animated.Value refs, etc.) don't apply to RN code.
+      "apps/mobile/**",
     ],
   },
   ...nextConfig,

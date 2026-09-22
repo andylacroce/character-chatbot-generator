@@ -7,7 +7,7 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/native": "^7.3.18",
     "@react-navigation/native-stack": "^7.18.10",
-    "character-chatbot-shared": "git+https://github.com/andylacroce/character-chatbot-shared.git",
+    "character-chatbot-shared": "*",
     "expo": "~57.0.22",
     "expo-asset": "~57.0.17",
     "expo-audio": "~57.0.5",
@@ -41,7 +41,7 @@
     "ci": "npm run lint -- --max-warnings=0 && npm run lint:md && npm run format:check && npm run type-check",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "lint:md": "markdownlint --config .markdownlint.json \"**/*.md\" --ignore \"node_modules/**\"",
+    "lint:md": "markdownlint --config .markdownlint.json \"**/*.md\" --ignore \"**/node_modules/**\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "type-check": "tsc --noEmit"

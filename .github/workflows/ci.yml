@@ -3,8 +3,12 @@ name: CI — lint, test, coverage & build
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "apps/mobile/**"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "apps/mobile/**"
 
 permissions:
   contents: read

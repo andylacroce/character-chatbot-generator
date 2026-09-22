@@ -8,6 +8,10 @@
     "url": "https://github.com/andylacroce/character-chatbot-generator.git"
   },
   "author": "Andy Lacroce",
+  "workspaces": [
+    "apps/mobile",
+    "packages/shared"
+  ],
   "scripts": {
     "dev": "next dev --turbopack",
     "predev": "npm run docs:api && npm run db:check",
@@ -19,7 +23,7 @@
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "lint:md": "markdownlint --config .markdownlint.json \"**/*.md\" --ignore \"node_modules/**\"",
+    "lint:md": "markdownlint --config .markdownlint.json \"**/*.md\" --ignore \"**/node_modules/**\" --ignore \"apps/mobile/**\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "jest",

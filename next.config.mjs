@@ -38,6 +38,10 @@ const nextConfig = {
     optimizeCss: true,
   },
   serverExternalPackages: ["winston"],
+  // packages/shared ships raw TS source (no build step) — Next transpiles it
+  // directly via SWC, same as Metro's zero-config workspace transpilation on
+  // the mobile side.
+  transpilePackages: ["character-chatbot-shared"],
   images: {
     // Avatars uploaded to Vercel Blob (pages/api/generate-avatar.ts) come back as
     // <random-store-id>.public.blob.vercel-storage.com URLs — the store id varies
