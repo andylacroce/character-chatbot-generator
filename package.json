@@ -41,7 +41,7 @@
     "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.126.0",
+    "@anthropic-ai/sdk": "^0.127.0",
     "@auth/drizzle-adapter": "^1.11.3",
     "@google-cloud/text-to-speech": "^7.1.0",
     "@neondatabase/serverless": "^1.1.0",
