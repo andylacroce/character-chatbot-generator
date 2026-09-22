@@ -20,7 +20,7 @@ export async function requireAdmin(
   res: NextApiResponse,
   options: { event: string; message: string },
 ): Promise<string | null> {
-  const userId = await getSessionUserId(req, res);
+  const userId = await getSessionUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Not signed in" });
     return null;

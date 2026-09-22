@@ -110,7 +110,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const stream = req.body?.stream === true;
 
   try {
-    const userId = await getSessionUserId(req, res);
+    const userId = await getSessionUserId(req);
     const guestId = userId ? null : ensureGuestId(req, res);
     const currentCharacterName = pickRandomCharacterName([], gameCharacterNames);
 

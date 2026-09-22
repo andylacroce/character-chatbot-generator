@@ -76,7 +76,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(405).end(`Method ${req.method} Not Allowed`);
     return;
   }
-  const userId = await getSessionUserId(req, res);
+  const userId = await getSessionUserId(req);
   const guestId = userId ? null : getGuestId(req);
   if ((!userId && !guestId) || !process.env.DATABASE_URL) {
     if (req.method === "GET") {

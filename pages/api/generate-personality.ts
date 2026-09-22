@@ -173,7 +173,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Deliberately excludes name/personality text — this table is a small internal usage
     // log, not a place to accumulate user-supplied content (see analyticsEvents doc).
-    const userId = await getSessionUserId(req, res);
+    const userId = await getSessionUserId(req);
     void recordEvent(
       "bot_created",
       { hasDescription: Boolean(sanitizedDescription), guest: !userId },

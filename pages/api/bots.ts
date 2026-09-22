@@ -108,7 +108,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const userId = await getSessionUserId(req, res);
+  const userId = await getSessionUserId(req);
   if (!userId || !process.env.DATABASE_URL) {
     res.status(200).json(req.method === "GET" ? { bots: [] } : { persisted: false });
     return;

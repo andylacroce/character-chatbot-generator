@@ -78,7 +78,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const userId = await getSessionUserId(req, res);
+  const userId = await getSessionUserId(req);
   const botName = typeof req.query.botName === "string" ? req.query.botName : "";
   const sanitizedName = sanitizeCharacterName(botName);
   if (!userId || !sanitizedName || !process.env.DATABASE_URL) {
