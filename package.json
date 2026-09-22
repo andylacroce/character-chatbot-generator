@@ -45,7 +45,7 @@
     "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.126.0",
+    "@anthropic-ai/sdk": "^0.127.0",
     "@auth/drizzle-adapter": "^1.11.3",
     "@google-cloud/text-to-speech": "^7.1.0",
     "@neondatabase/serverless": "^1.1.0",
@@ -85,7 +85,7 @@
     "@typescript-eslint/parser": "^8.70.0",
     "autoprefixer": "^10.6.0",
     "babel-jest": "^30.4.1",
-    "dotenv": "^18.0.0",
+    "dotenv": "^18.0.1",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.5",
