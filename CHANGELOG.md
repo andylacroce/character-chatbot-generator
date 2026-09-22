@@ -1,6 +1,17 @@
 # Changelog
 
-This changelog was backfilled from the project's git history on 2026-09-12. It reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed; the project has no version tags, so sections are grouped by date range instead.
+This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
+
+## v0.5.1 — 2026-09-22 — README overhaul, MIT license, privacy/disclaimer accuracy fixes
+
+- Added an MIT `LICENSE` file and updated `package.json`/`README.md` to reference it explicitly, replacing the previously-implicit "educational/portfolio project" framing with an actual license decision.
+- Restructured `README.md`: moved Project Structure to the end as reference material, added badges/a table of contents/a live demo link, fixed a stale description of `npm run ci`'s steps, consolidated redundant testing sections, and documented two previously-undocumented env vars (`GAME_TOKEN_SECRET`, `EMAIL_SERVER`/`EMAIL_FROM`).
+- Fixed a real inaccuracy in the privacy policy: it claimed guest data is "never saved to our servers," which was false for the guessing game's server-side guest best-streak tracking. Added "Guessing game" and "Cookies" sections, replaced a stale Gemini/Vertex avatar-generation mention with the actual current providers (Cloudflare Workers AI, Pollinations.ai), and added the visitor's own preferred name to the list of data stored for a signed-in user.
+- The data-deletion page's promise now explicitly covers guessing-game history and leaderboard name, and clarifies that aggregate anonymous usage counts aren't affected by a deletion request.
+
+## 2026-09-22 — Landing page CTA order
+
+- Swapped the landing page's two CTAs so "Play the Guessing Game" appears before "Pick from the Character Wall".
 
 ## 2026-09-22 — Chat replies no longer use em dashes
 

@@ -18,7 +18,7 @@ export default function PrivacyPage() {
         &larr; Back to Portrayal
       </Link>
       <h1 className={styles.title}>Privacy Policy</h1>
-      <p className={styles.updated}>Last updated: August 2026</p>
+      <p className={styles.updated}>Last updated: September 2026</p>
 
       <div className={styles.section}>
         <p>
@@ -34,7 +34,9 @@ export default function PrivacyPage() {
           You do not need an account to use this app. As a guest, the character you create and your
           conversation with it are stored only in your own browser (local storage) and are never
           saved to our servers. Closing your browser, clearing site data, or switching devices will
-          lose that history, exactly as you&apos;d expect from browser-only storage.
+          lose that history, exactly as you&apos;d expect from browser-only storage. The one
+          exception is the guessing game, which tracks a guest&apos;s best streak server-side — see{" "}
+          <strong>Guessing game</strong> below.
         </p>
         <p>
           Regardless of whether you&apos;re signed in, the text you send is sent to Anthropic&apos;s
@@ -60,12 +62,48 @@ export default function PrivacyPage() {
             <strong>Chat history</strong>: messages exchanged with your saved characters, so a
             conversation can continue across devices and browser sessions.
           </li>
+          <li>
+            <strong>Your preferred name</strong>: if you tell a character what to call you, we save
+            that too, so it follows you across devices the same as your characters and chat history.
+          </li>
         </ul>
         <p>
           This lets your saved characters and chat history follow you across devices, instead of
           being trapped in one browser&apos;s local storage. If you never sign in, none of this
           applies to you.
         </p>
+      </div>
+
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Guessing game</h2>
+        <p>
+          The guessing game (/game) works a little differently from ordinary chat. Whether
+          you&apos;re signed in or playing as a guest, we store your best streak for that game
+          server-side, since the public leaderboard needs somewhere to compare scores from. A guest
+          is identified only by a random token in a browser cookie (see <strong>Cookies</strong>{" "}
+          below) — never by anything that identifies you personally.
+        </p>
+        <p>
+          Joining the public leaderboard is entirely optional. If you opt in, your chosen display
+          name (screened by Claude before it&apos;s published) and best streak are shown publicly;
+          leaving the leaderboard removes the public name while keeping your private best score.
+        </p>
+      </div>
+
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Cookies</h2>
+        <p>We use two functional cookies, never advertising or tracking cookies:</p>
+        <ul>
+          <li>
+            <strong>Sign-in session</strong> (if you sign in): an encrypted session cookie set by
+            our authentication provider, so you stay signed in between visits.
+          </li>
+          <li>
+            <strong>Guessing game guest identity</strong>: a random token, not tied to your name,
+            email, or any other personal information, that lets us track a guest&apos;s best streak
+            for the leaderboard described above. Set only if you play the guessing game as a guest.
+          </li>
+        </ul>
       </div>
 
       <div className={styles.section}>
@@ -76,11 +114,18 @@ export default function PrivacyPage() {
             <strong>Anthropic</strong> — generates in-character replies from your messages.
           </li>
           <li>
-            <strong>Google Cloud</strong> — synthesizes voice audio (Text-to-Speech) and generates
-            character portraits (Gemini image generation).
+            <strong>Google Cloud</strong> — synthesizes voice audio (Text-to-Speech) only.
           </li>
           <li>
             <strong>Google</strong> — if you choose to sign in, for authentication only.
+          </li>
+          <li>
+            <strong>Cloudflare</strong> — renders character portraits (Workers AI), when configured.
+          </li>
+          <li>
+            <strong>Pollinations.ai</strong> — a free, anonymous third-party image service that
+            renders character portraits when Cloudflare isn&apos;t available. It requires no account
+            and receives only the image description, never your identity.
           </li>
           <li>
             <strong>Neon</strong> — hosts the database that stores signed-in users&apos; accounts,
@@ -95,6 +140,11 @@ export default function PrivacyPage() {
         <p>
           Each of these providers has its own privacy policy governing how it handles data it
           processes on our behalf.
+        </p>
+        <p>
+          We also keep a small internal log of product-usage events (e.g. how many characters are
+          created, whether a guess was correct) for our own analytics. It never includes chat text,
+          character names, or guesses — only counts and outcome labels.
         </p>
       </div>
 

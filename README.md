@@ -1,34 +1,34 @@
-## Project Structure
-
-```text
-app/
-   components/        # React components & hooks
-      CopyrightWarningModal.tsx  # Warning modal for copyrighted characters
-      useBotCreation.ts          # Bot creation with validation flow
-pages/api/           # API routes (chat, audio, health, transcript)
-   chat.ts            # Main chat endpoint with streaming & summarization
-   audio.ts           # TTS audio generation
-   generate-avatar.ts # Avatar generation via Claude + free image providers (Cloudflare Workers AI, Pollinations.ai fallback)
-   validate-character.ts # Copyright/trademark validation
-   random-character.ts   # Public domain character suggestions
-   bots.ts            # List/persist a signed-in user's characters (optional)
-   messages.ts        # List a signed-in user's chat history for one character (optional)
-   admin/stats.ts     # Admin-only aggregate usage stats (optional, see Internal Analytics)
-   admin/allowlist.ts, admin/blocklist.ts, admin/warnings.ts # Admin-only copyright moderation (see Copyright Protection)
-   game/start.ts, game/message.ts, game/give-up.ts # Guessing game (see Guessing Game)
-src/
-   utils/             # Utilities (TTS, logger, cache, security)
-   types/             # TypeScript type definitions
-   config/            # Configuration files
-   db/                # Drizzle schema + client (optional account persistence)
-   auth/              # Auth.js configuration (Google sign-in)
-tests/               # Jest test suite (80%+ branch coverage)
-proxy.ts             # API authentication middleware (Next.js 16)
-```
-
 # Portrayal
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/andylacroce/character-chatbot-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/andylacroce/character-chatbot-generator/actions/workflows/ci.yml)
+
 A Next.js 16 + TypeScript app for chatting with history's greatest minds, legendary heroes, and literary icons, with Claude-powered responses, factually-grounded personalities, and Google Text-to-Speech audio replies.
+
+**[Live demo](https://character-chatbot-generator.vercel.app)**
+
+## Table of Contents
+
+- [Key Features](#key-features)
+- [Prerequisites](#prerequisites)
+- [External Services & Accounts](#external-services--accounts)
+- [Quickstart (Local Development)](#quickstart-local-development)
+- [CI-Style Local Validation](#ci-style-local-validation)
+- [API Documentation](#api-documentation)
+- [Environment Variables](#environment-variables)
+- [Avatar Generation](#avatar-generation)
+- [API Security](#api-security)
+- [Account Persistence (Optional)](#account-persistence-optional)
+- [Character Wall (`/chars`)](#character-wall-chars)
+- [Guessing Game (`/game`)](#guessing-game-game)
+- [Personalized Greeting](#personalized-greeting)
+- [Internal Analytics (`/admin`)](#internal-analytics-admin)
+- [Storage (Client-Side)](#storage-client-side)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License & Disclaimer](#license--disclaimer)
+- [Agent Instructions](#agent-instructions)
 
 ## Key Features
 
@@ -120,34 +120,19 @@ Visit `http://localhost:3000`
 
 - `npm run dev` — Next dev with Turbopack
 - `npm run lint` / `npm run lint:fix`
-- `npm run test` / `npm run test:watch` / `npm run test:coverage`
+- `npm run test` / `npm run test:watch` / `npm run test:coverage` (80%+ branch coverage enforced)
 - `npm run type-check` / `npm run type-check:watch`
 - `npm run analyze` — bundle analysis
-- `npm run ci` — lint + type-check + coverage + build
-
-## Testing
-
-Run the full test suite with coverage:
-
-```powershell
-npm run test:coverage
-```
-
-Run linting:
-
-```powershell
-npm run lint
-```
-
-Run type-check only:
-
-```powershell
-npm run type-check
-```
+- `npm run ci` — the full local gate before considering any change done; see below
 
 ## CI-Style Local Validation
 
-Use a single command to run lint, TypeScript type-check, tests with coverage, and a production build:
+`npm run ci` is the single composite command to run before considering work done — it's
+also what `.github/workflows/ci.yml` runs on every push. It chains, in order: auto-format
+(`format`), lint with zero warnings allowed, markdown lint, TypeScript type-check, a
+read-only DB schema drift check, TypeDoc generation, the full test suite with coverage,
+and a production build. See the `"ci"` script in `package.json` for the exact, current
+step list rather than relying on this description if the two ever disagree.
 
 ```powershell
 npm run ci
@@ -178,6 +163,8 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 - `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Redis REST endpoint (Vercel KV / Marketplace Redis) used to share API rate-limit counters across serverless instances. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` work too. With neither pair set, limits fall back to an in-process counter, which is per-instance on Vercel and exactly right for local development.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — Enables optional Google account sign-in and server-side persistence (see [Account Persistence](#account-persistence-optional) below). The app is fully functional as a guest with none of these set.
+- `EMAIL_SERVER` + `EMAIL_FROM` — Enables passwordless magic-link sign-in alongside Google (a plain SMTP connection string works — Gmail App Password, Resend, etc.). Needs `DATABASE_URL` set too.
+- `GAME_TOKEN_SECRET` — Key used to encrypt the guessing game's round token (see [Guessing Game](#guessing-game-game) below). Falls back to `NEXTAUTH_SECRET`, then the already-required `API_SECRET`, so the game works with zero new configuration.
 - `ADMIN_EMAILS` — Comma-separated allowlist of emails allowed to view the internal `/admin` stats page (see [Internal Analytics](#internal-analytics-admin) below). With none set, nobody is admin. Never honored on a Vercel Preview deployment regardless of this value.
 
 ## Avatar Generation
@@ -398,6 +385,34 @@ signed-in user too (the server is the durable copy; see
 
 **Important**: Never store secrets or PII in client storage. All data is client-side only.
 
+## Project Structure
+
+```text
+app/
+   components/        # React components & hooks
+      CopyrightWarningModal.tsx  # Warning modal for copyrighted characters
+      useBotCreation.ts          # Bot creation with validation flow
+pages/api/           # API routes (chat, audio, health, transcript)
+   chat.ts            # Main chat endpoint with streaming & summarization
+   audio.ts           # TTS audio generation
+   generate-avatar.ts # Avatar generation via Claude + free image providers (Cloudflare Workers AI, Pollinations.ai fallback)
+   validate-character.ts # Copyright/trademark validation
+   random-character.ts   # Public domain character suggestions
+   bots.ts            # List/persist a signed-in user's characters (optional)
+   messages.ts        # List a signed-in user's chat history for one character (optional)
+   admin/stats.ts     # Admin-only aggregate usage stats (optional, see Internal Analytics)
+   admin/allowlist.ts, admin/blocklist.ts, admin/warnings.ts # Admin-only copyright moderation (see Copyright Protection)
+   game/start.ts, game/message.ts, game/give-up.ts, game/continue.ts # Guessing game (see Guessing Game)
+src/
+   utils/             # Utilities (TTS, logger, cache, security)
+   types/             # TypeScript type definitions
+   config/            # Configuration files
+   db/                # Drizzle schema + client (optional account persistence)
+   auth/              # Auth.js configuration (Google sign-in)
+tests/               # Jest test suite (80%+ branch coverage)
+proxy.ts             # API authentication middleware (Next.js 16)
+```
+
 ## Troubleshooting
 
 ### Hydration Mismatch Warning
@@ -423,7 +438,7 @@ PRs welcome! Please include:
 
 ## License & Disclaimer
 
-Educational/portfolio project. Not affiliated with Anthropic or Google.
+Licensed under the [MIT License](LICENSE). Educational/portfolio project, not affiliated with Anthropic or Google.
 
 **Copyright Notice**: This app includes AI-powered copyright/trademark validation to help users avoid creating chatbots based on copyrighted or trademarked characters. When a potentially copyrighted character is detected, users receive warnings and suggestions for public domain alternatives. Users are solely responsible for ensuring their use complies with applicable copyright and trademark laws. The validation system provides guidance but does not constitute legal advice.
 

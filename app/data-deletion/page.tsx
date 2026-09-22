@@ -18,7 +18,7 @@ export default function DataDeletionPage() {
         &larr; Back to Portrayal
       </Link>
       <h1 className={styles.title}>Data Deletion Instructions</h1>
-      <p className={styles.updated}>Last updated: August 2026</p>
+      <p className={styles.updated}>Last updated: September 2026</p>
 
       <div className={styles.section}>
         <p>
@@ -41,8 +41,9 @@ export default function DataDeletionPage() {
           you can, to help us find the right account.
         </p>
         <div className={styles.callout}>
-          We&apos;ll delete your account record, every character you saved, and your full chat
-          history within 30 days, and confirm by email once it&apos;s done.
+          We&apos;ll delete your account record, every character you saved, your full chat history,
+          and your guessing-game history (including your leaderboard name and score, if you opted
+          in) within 30 days, and confirm by email once it&apos;s done.
         </div>
       </div>
 
@@ -53,6 +54,11 @@ export default function DataDeletionPage() {
           image-generation costs down — that shared cache isn&apos;t tied to your identity and
           isn&apos;t part of your personal data, so it isn&apos;t deleted as part of an account
           deletion request. It contains no information about you.
+        </p>
+        <p>
+          Aggregate, anonymous usage counts (e.g. how many characters were created on a given day)
+          aren&apos;t tied to your identity in a way that can be un-scrambled, so they aren&apos;t
+          part of a deletion request either.
         </p>
       </div>
 

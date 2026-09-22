@@ -43,6 +43,42 @@ Run tests matching a name: `npx jest -t "some test description"`
 
 Coverage is enforced globally at 80% (branches/functions/lines/statements) in `jest.config.cjs` — `npm run test:coverage` fails the build if it drops below that.
 
+## Versioning
+
+Introduced 2026-09-22 — no tags exist before that date, and nothing before it should be
+back-tagged. Git tags (`vX.Y.Z`, matching `package.json`'s `version`) mark shipped points
+in history, so a regression can be bisected against a known-good release instead of an
+arbitrary commit.
+
+- **Scheme is semver-shaped but sized for a single-maintainer hobby app, not a public API
+  contract:**
+  - **PATCH** (`0.5.0` → `0.5.1`): bug fixes, refactors, internal cleanup — anything with
+    no user-visible new capability.
+  - **MINOR** (`0.5.x` → `0.6.0`): a new user-facing feature or behavior change.
+  - **MAJOR:** reserved, essentially never used here — only for a break that demands
+    manual action from anyone depending on this app (e.g. a non-backward-compatible
+    schema change with no migration path). Bump only by explicit agreement, never as
+    part of routine work.
+- **Docs-only or pure-chore commits (README/CLAUDE.md wording, comment cleanup, a
+  dependency bump with no behavior change) don't get a bump or a tag at all** — tags mark
+  shipped functional/user-facing change, not every commit.
+- **Tag only at a "ship it" moment** (see the global git workflow rule in
+  `~/.claude/CLAUDE.md`) that ships a real change meeting the bar above — never
+  speculatively, never mid-task.
+- **Mechanics, each time a tag-worthy change ships:**
+  1. `npm run ci` must already be green (already required before any ship).
+  2. Decide patch vs. minor using the rule above.
+  3. Bump `package.json`'s `version`: `npm version patch --no-git-tag-version` (or
+     `minor`) — the flag stops npm from making its own commit/tag, so the bump folds
+     into the normal commit instead.
+  4. Give the shipped `CHANGELOG.md` entry's heading the new version, e.g.
+     `## v0.6.0 — 2026-09-22 — Title`.
+  5. Commit the version bump + CHANGELOG entry together with (or immediately after) the
+     shipped change.
+  6. `git tag -a vX.Y.Z -m "<one-line summary>"` — annotated, not lightweight, so the tag
+     carries its own message independent of the commit it points to.
+  7. `git push --follow-tags` — pushes the commit and the new tag together in one step.
+
 ## Architecture
 
 Next.js 16 (Pages Router API + App Router UI) app. UI in `app/`, API routes in `pages/api/` (deliberately Pages Router, not App Router route handlers — server handlers are authoritative here).
@@ -186,8 +222,8 @@ Getting the "who's hidden" direction backwards here is an easy mistake (an earli
 - **Rate limits:** `game-start` (10/min/IP — sized for the combined personality+avatar generation cost, since calling those pipelines in-process means this limiter is the only ceiling on that cost), `game-continue` (10/min/IP, same reasoning as `game-start`), `game-message` (10/min/IP, same tier as `chat`), `game-give-up` (10/min/IP), `game-high-score` (20/min/IP, same tier as `user-profile`).
 - **Personal high score (done, ahead of the cross-user leaderboard below).** `src/db/schema.ts`'s `gameHighScores` table (`(user_id, environment)` primary key, `environment`-scoped like `bots`/`analyticsEvents`) holds a signed-in user's best-ever streak. `src/utils/gameHighScore.ts`'s `updateHighScoreIfBeaten` is called fire-and-forget from `pages/api/game/message.ts`'s correct-guess branch — a streak only ever increases within a run, so the moment it's incremented is also the moment it might be a new personal best; a Postgres upsert with a `setWhere` guard (`highScore < newStreak`) means a stale/racing write can never overwrite a higher score. This increment happens exactly once, at judgment time, regardless of whether or when the player clicks Continue — `pages/api/game/continue.ts` independently recomputes the same `streak + 1` from the same trusted token field purely to build its own new token, not to re-trigger the high-score write. `GET /api/game/high-score` (no-DB gets `{ highScore: null }`, same shape as `/api/user-profile`; a guest gets its cookie-bound best from `game_results`) is fetched once per sign-in by `useGameController.ts`, gated on `useSession()` reporting `"authenticated"` — a guest calls it too (cookie-bound, no session needed), so `GamePage.tsx`'s "Best: N" badge now shows for guests as well as signed-in users. The client then bumps `highScore` optimistically on every correct guess (`Math.max` against the new streak) rather than re-fetching, since the same monotonic-streak reasoning applies client-side too. **Requires a `db:push` before it does anything live** — see "Phase 3b" above's environment-scoping note; a fresh table doesn't exist in the live DB until that's run, and `npm run db:check` deliberately treats a wholly-missing table as "not a drift concern" rather than failing, so this step is easy to forget silently.
 - **Public leaderboard (Phase 2, done).** `game_results` holds one row per run (`id` = the token's `runId`, exactly one of `user_id`/`guest_id`, `environment`-scoped, `bestStreak` only ever raised via a guarded upsert). A guest's identity is a random 32-byte token in the HTTP-only `portrayal-game-guest` cookie, hashed (SHA-256) before storage, so raw credentials never enter the database (`src/utils/gameGuestIdentity.ts`); `ensureGuestId` mints it at game start, `getGuestId` only ever reads. `recordGameResult` is called from `message.ts`'s correct-guess branch for both signed-in and guest runs, but only when the token's issuance (`issuedForUserId`/`issuedForGuestId` plus `environment`) still matches the caller — a token copied to another browser or account can't credit anyone. `continue.ts` refuses to advance a round until `canContinue` is true (set only on the fresh token `message.ts` returns with a correct judgment), so `/game/continue` can't be driven from an unjudged token. `getLeaderboard` ranks account bests (from `game_high_scores`) plus per-guest bests (`max(bestStreak)` grouped by guest from `game_results`) together (private scores included for ranking only) and publishes just the opted-in top-ten names — one entry per account/guest, keyed to `users.leaderboardName`/`game_guest_profiles.leaderboardName`. Opting in goes through `GET`/`POST /api/game/leaderboard-settings`: top-ten eligibility is rechecked server-side, and the name passes `checkLeaderboardName` (length/script rules plus a Claude moderation call that fails closed to `unavailable`). **A per-run "locked name" mechanism (a `leaderboard_name` column on `game_results`, a `runId` param on this endpoint, a 409 on renaming a claimed run) shipped alongside the leaderboard and was removed 2026-09-21 as dead code:** no client component ever tracked or passed a `runId` — `LeaderboardClaim` is only ever mounted bare, from `GamePage.tsx`'s menu and `/leaderboard` itself — and `getLeaderboard()` only ever displays one name per account/guest, never a per-run name, so there was nothing for a per-run lock to protect. Opt-in naming is keyed only by account/guest identity now; a player can update their public name at any time.
-- **Phasing:** Phase 1 (the core loop), the personal-high-score piece, real SSE-driven round-generation progress, and aggregate `analyticsEvents` instrumentation (all above) are complete. Phase 2 (done): a `game_results` table plus `users.showOnLeaderboard`/`gameGuestProfiles` backing a public `/leaderboard` page of best streaks, built on top of the personal-high-score groundwork already in place — see the leaderboard bullets below. Ordinary per-turn chat replies in the game still aren't streamed the way `pages/api/chat.ts`'s `stream: true` mode streams ordinary chat.
-- **Not yet done:** Ordinary per-turn chat replies in the game still aren't streamed the way `pages/api/chat.ts`'s `stream: true` mode streams ordinary chat. Tracked in [GitHub issue #876](https://github.com/andylacroce/character-chatbot-generator/issues/876), alongside Phase 3.
+- **Phasing:** Phase 1 (the core loop), the personal-high-score piece, real SSE-driven round-generation progress, and aggregate `analyticsEvents` instrumentation (all above) are complete. Phase 2 (done): a `game_results` table plus `users.showOnLeaderboard`/`gameGuestProfiles` backing a public `/leaderboard` page of best streaks, built on top of the personal-high-score groundwork already in place — see the leaderboard bullets below. [GitHub issue #876](https://github.com/andylacroce/character-chatbot-generator/issues/876) tracked both phases and is now closed.
+- **Won't do: streaming ordinary per-turn game chat replies.** `pages/api/chat.ts` has a `stream: true` server mode, but no client in this app (`useChatController.ts` or otherwise) ever calls it that way — ordinary chat's own UI always renders one full reply at once, with no live typing effect anywhere in this app today. Since chat itself doesn't visibly stream, there's no existing pattern for the game to match; building word-by-word rendering for the game alone would mean new client-side work (`useGameController.ts` only has the different, stage-based progress-frame pattern from round-generation, not incremental text) for a UX improvement neither surface currently has. Closed as won't-do 2026-09-22 rather than built. If this becomes worth doing, start with ordinary chat's own UI, where the server piece already exists, not the game.
 - **Not mechanically verifiable regardless:** whether a given real-world guess is judged fairly, and whether clue difficulty/pacing actually holds up in real conversations, are ongoing manual-QA/prompt-iteration concerns.
 
 ### Account persistence (in progress)
@@ -510,7 +546,7 @@ fully closed.
 ## Environment variables
 
 Required: `ANTHROPIC_API_KEY`, `API_SECRET` (checked by `proxy.ts`), `GOOGLE_APPLICATION_CREDENTIALS_JSON` (path or raw JSON — for TTS).
-Optional: `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` (enables Cloudflare Workers AI as the primary avatar image provider — see "Avatar generation" above; without them, avatar generation still works via the Pollinations.ai fallback with no config at all), `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` (enables Vercel Blob logging and durable avatar URLs), `TTS_TMP_DIR` (defaults to system temp), `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) to share rate-limit counters across instances, `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (enables account sign-in and persistence — see "Account persistence" above; the app is fully functional as a guest with none of these set), `GAME_TOKEN_SECRET` (optional key for the guessing game's encrypted round token — see "Guessing game" above; falls back to `NEXTAUTH_SECRET` then the already-required `API_SECRET`, so the game works with zero new configuration).
+Optional: `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` (enables Cloudflare Workers AI as the primary avatar image provider — see "Avatar generation" above; without them, avatar generation still works via the Pollinations.ai fallback with no config at all), `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` (enables Vercel Blob logging and durable avatar URLs), `TTS_TMP_DIR` (defaults to system temp), `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) to share rate-limit counters across instances, `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (enables account sign-in and persistence — see "Account persistence" above; the app is fully functional as a guest with none of these set), `EMAIL_SERVER` + `EMAIL_FROM` (enables passwordless magic-link sign-in alongside Google — see "Account persistence" above's magic-link bullet; needs `DATABASE_URL` set too), `GAME_TOKEN_SECRET` (optional key for the guessing game's encrypted round token — see "Guessing game" above; falls back to `NEXTAUTH_SECRET` then the already-required `API_SECRET`, so the game works with zero new configuration), `ADMIN_EMAILS` (comma-separated allowlist for the internal `/admin` stats page — see "Internal analytics" above; fails closed with none set).
 
 ### Rate limiting
 

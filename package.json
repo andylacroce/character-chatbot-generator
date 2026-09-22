@@ -1,7 +1,13 @@
 {
   "name": "portrayal",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andylacroce/character-chatbot-generator.git"
+  },
+  "author": "Andy Lacroce",
   "scripts": {
     "dev": "next dev --turbopack",
     "predev": "npm run docs:api && npm run db:check",
