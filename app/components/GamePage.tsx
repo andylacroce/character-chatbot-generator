@@ -21,6 +21,7 @@ import ChatShell from "./ChatShell";
 import BackHomeLink from "./BackHomeLink";
 import GameInstructionsModal from "./GameInstructionsModal";
 import LeaderboardClaim from "./LeaderboardClaim";
+import CharacterLoadingOverlay from "./CharacterLoadingOverlay";
 import storage from "../../src/utils/storage";
 import { STORAGE_KEYS } from "../../src/utils/storageKeys";
 import { useGameController } from "./useGameController";
@@ -49,6 +50,7 @@ function GamePage() {
     continueRound,
     continuing,
     continueProgressMessage,
+    continueProgressStages = [],
     giveUpRequested,
     clearGiveUpRequest,
     chatBoxRef,
@@ -62,6 +64,7 @@ function GamePage() {
     quitGame,
     giveUp,
     startProgressMessage,
+    startProgressStages = [],
     sendMessage,
     handleKeyDown,
   } = useGameController();
@@ -149,12 +152,13 @@ function GamePage() {
           >
             {gameOver ? "Play Again" : "Start Game"}
           </button>
-          {starting && (
-            <div className={styles.startProgressContainer} data-testid="game-start-progress">
-              <span className={styles.startSpinner} aria-label="Loading" />
-              <div className={styles.startProgressText}>{startProgressMessage}</div>
-            </div>
-          )}
+          <CharacterLoadingOverlay
+            show={starting}
+            title="Starting new game…"
+            message={startProgressMessage}
+            stages={startProgressStages}
+            testId="game-start-progress"
+          />
           {gameOver && (
             <>
               <LeaderboardClaim />
@@ -267,16 +271,17 @@ function GamePage() {
           </button>
         </div>
       )}
-      {continuing && (
-        // The next character isn't generated until "Continue" is clicked (see
-        // useGameController.ts's continueRound), so this reuses the exact same staged,
-        // real-progress spinner the start screen uses below — same underlying
-        // generation pipeline, same UX, rather than a silent/generic loading state.
-        <div className={styles.startProgressContainer} data-testid="game-continue-progress">
-          <span className={styles.startSpinner} aria-label="Loading" />
-          <div className={styles.startProgressText}>{continueProgressMessage}</div>
-        </div>
-      )}
+      {/* The next character isn't generated until "Continue" is clicked (see
+          useGameController.ts's continueRound), so this reuses the exact same lightbox
+          the start screen uses above — same underlying generation pipeline, same UX,
+          rather than a silent/generic loading state. */}
+      <CharacterLoadingOverlay
+        show={continuing}
+        title="Loading next character…"
+        message={continueProgressMessage}
+        stages={continueProgressStages}
+        testId="game-continue-progress"
+      />
       {lastEvent?.type === "wrong" && (
         <div className={styles.eventBanner} data-testid="game-event-wrong">
           Not quite. You have one more guess before this run ends.

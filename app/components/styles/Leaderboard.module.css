@@ -4,10 +4,6 @@
   color: var(--color-text);
 }
 
-.headerTitle {
-  font-weight: 700;
-  font-size: 1.1rem;
-}
 .main {
   width: min(100% - 2rem, 760px);
   margin: 2.5rem auto;

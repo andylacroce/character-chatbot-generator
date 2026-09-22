@@ -333,52 +333,7 @@
   }
 }
 
-/* ===== Progress / error ===== */
-
-.progressContainer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  margin-top: 0.7rem;
-  margin-bottom: 0.7rem;
-  min-height: 80px;
-}
-
-.genericSpinner {
-  width: 38px;
-  height: 38px;
-  border: 4px solid var(--card-body-bg);
-  border-top: 4px solid var(--color-primary);
-  background: var(--color-background);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 0.7rem;
-  display: inline-block;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.progressText {
-  font-size: 1.08rem;
-  color: var(--color-text);
-  text-align: center;
-  margin-bottom: 0.2rem;
-  font-family: var(--font-primary), sans-serif;
-  /* Reserves space for two lines so the Cancel button below doesn't bounce
-     vertically as this text's length changes between progress messages. */
-  line-height: 1.4;
-  min-height: 2.8em;
-}
+/* ===== Error ===== */
 
 .error {
   width: 100%;

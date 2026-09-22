@@ -25,6 +25,7 @@ import { useAccountMenu } from "./useAccountMenu";
 import { NameCaptureModal } from "./NameCaptureModal";
 import { CopyrightWarningModal } from "./CopyrightWarningModal";
 import { CharacterDescriptionModal } from "./CharacterDescriptionModal";
+import CharacterLoadingOverlay, { type LoadingStage } from "./CharacterLoadingOverlay";
 
 interface Bot {
   name: string;
@@ -130,6 +131,18 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     Boolean(nameFromUrl) && !error && !returningToCreator && !launchCancelled;
 
   const currentStep = progressSteps.find((s) => s.key === progress);
+  // Feeds CharacterLoadingOverlay's checklist — the same shared lightbox the guessing
+  // game uses for its own round generation (see CharacterLoadingOverlay.tsx's doc
+  // comment). The active row's label prefers `loadingMessage` over the step's own static
+  // label so a mid-step fallback (e.g. "Using default image"/"Using default voice") still
+  // shows, exactly as it did in the plain-text progress line this replaced.
+  const activeStepIndex = progressSteps.findIndex((s) => s.key === progress);
+  const progressStages: LoadingStage[] = progressSteps.map((step, index) => ({
+    stage: step.key,
+    label: index === activeStepIndex && loadingMessage ? loadingMessage : `${step.label}…`,
+    done: activeStepIndex >= 0 && index < activeStepIndex,
+    active: index === activeStepIndex,
+  }));
   // Deliberately excludes `randomizing`: that request is near-instant, and gating the
   // input row / dropdown visibility on it caused a jarring flash and layout shift for a
   // loading state nobody actually perceives as "loading". `randomizing` still disables
@@ -456,60 +469,45 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
             </>
           )}
 
-          {isLaunchingFromUrl && !isBusy && !interstitial && (
-            <div className={styles.progressContainer} data-testid="bot-creator-auto-launch">
-              <span className={styles.genericSpinner} aria-label="Loading" />
-              <div className={styles.progressText}>Loading {nameFromUrl}&hellip;</div>
-            </div>
-          )}
+          <CharacterLoadingOverlay
+            show={isLaunchingFromUrl && !isBusy && !interstitial}
+            title="Loading character…"
+            message={`Loading ${nameFromUrl}…`}
+            stages={[]}
+            testId="bot-creator-auto-launch"
+          />
 
           {interstitial && (
-            <div className={styles.progressContainer} data-testid="bot-creator-interstitial">
-              <span className={styles.genericSpinner} aria-label="Loading" />
-              <div className={styles.progressText}>
-                {interstitial.kind === "resume"
+            <CharacterLoadingOverlay
+              show
+              title={interstitial.kind === "resume" ? "Resuming chat…" : "Starting chat…"}
+              message={
+                interstitial.kind === "resume"
                   ? `Resuming your chat with ${interstitial.name}…`
-                  : `Starting a new chat with ${interstitial.name}…`}
-              </div>
-              <button
-                type="button"
-                className={styles.textLink}
-                aria-label="Cancel"
-                onClick={handleCancelLaunch}
-              >
-                Cancel
-              </button>
-            </div>
+                  : `Starting a new chat with ${interstitial.name}…`
+              }
+              stages={[]}
+              testId="bot-creator-interstitial"
+              onCancel={handleCancelLaunch}
+            />
           )}
 
-          {validating && (
-            <div className={styles.progressContainer} data-testid="bot-creator-validating">
-              <span className={styles.genericSpinner} aria-label="Loading" />
-              <div className={styles.progressText}>Validating character...</div>
-              <button
-                type="button"
-                className={styles.textLink}
-                aria-label="Cancel"
-                onClick={handleCancelLaunch}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-          {loading && currentStep && (
-            <div className={styles.progressContainer} data-testid="bot-creator-progress">
-              <span className={styles.genericSpinner} aria-label="Loading" />
-              <div className={styles.progressText}>{loadingMessage || currentStep.label}</div>
-              <button
-                type="button"
-                className={styles.textLink}
-                aria-label="Cancel"
-                onClick={handleCancelLaunch}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
+          <CharacterLoadingOverlay
+            show={validating}
+            title="Checking name…"
+            message="Validating character..."
+            stages={[]}
+            testId="bot-creator-validating"
+            onCancel={handleCancelLaunch}
+          />
+          <CharacterLoadingOverlay
+            show={loading && Boolean(currentStep)}
+            title="Creating your character…"
+            message={loadingMessage || currentStep?.label || ""}
+            stages={progressStages}
+            testId="bot-creator-progress"
+            onCancel={handleCancelLaunch}
+          />
           {error && <div className={styles.error}>{error}</div>}
 
           {!isBusy && !isLaunchingFromUrl && !interstitial && (

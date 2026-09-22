@@ -329,7 +329,7 @@ const CharsGallery: React.FC = () => {
       />
       <AppHeader
         menuItems={menuItems}
-        center={
+        left={
           <BackHomeLink
             label="Back"
             icon="back"

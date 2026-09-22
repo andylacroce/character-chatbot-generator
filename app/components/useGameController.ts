@@ -9,6 +9,7 @@ import { useAudioPlayer } from "./useAudioPlayer";
 import { getReplayAudioUrl } from "../../src/utils/replayAudio";
 import { useAudioEnabled } from "./useAudioEnabled";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
+import type { LoadingStage } from "./CharacterLoadingOverlay";
 
 /** A transient result banner shown after a guess is judged, see GamePage.tsx. */
 export type GameEvent =
@@ -71,16 +72,29 @@ function persistState(state: PersistedGameState | null) {
 
 /**
  * The real stages src/utils/gameRound.ts's generateGameRound reports as it runs, in
- * display order. Used to compute an honest progress label from genuine server-reported
- * "done" events (see fetchRoundWithProgress below) rather than a client-side timer
- * simulating stages that may not match what's actually happening.
+ * display order, plus a trailing synthetic "greeting" entry standing in for the final
+ * TTS-synthesis step (the server never reports it by name — it's simply whatever's left
+ * once the other four are done, right up until the last frame arrives). Used to compute
+ * an honest progress checklist from genuine server-reported "done" events (see
+ * fetchRoundWithProgress below) rather than a client-side timer simulating stages that
+ * may not match what's actually happening.
  */
 const ROUND_STAGE_ORDER: { stage: string; label: string }[] = [
   { stage: "personality", label: "Creating personality…" },
   { stage: "avatar", label: "Generating portrait…" },
   { stage: "reply", label: "Writing opening line…" },
   { stage: "voice", label: "Selecting voice…" },
+  { stage: "greeting", label: "Preparing greeting…" },
 ];
+
+/** The checklist's starting state: nothing done yet, the first stage active. */
+function initialRoundStages(): LoadingStage[] {
+  return ROUND_STAGE_ORDER.map((entry, index) => ({
+    ...entry,
+    done: false,
+    active: index === 0,
+  }));
+}
 
 /**
  * Reads a `text/event-stream` response of `data: {...}\n\n` frames, calling `onFrame` for
@@ -125,23 +139,31 @@ interface RoundResult {
 
 /**
  * Calls a round-generation endpoint (/api/game/start or /api/game/continue) in streamed
- * mode, reporting REAL progress to `onStageChange` as each named step of
+ * mode, reporting REAL progress to `onProgress` as each named step of
  * src/utils/gameRound.ts's generateGameRound genuinely completes — not a client-side
  * timer simulating stages. `completedStages` accumulates as real "done" events arrive;
- * the label shown is always the first stage in ROUND_STAGE_ORDER not yet completed,
- * which naturally reflects personality/avatar (and reply/voice, which run concurrently
- * in pairs server-side) resolving in either order — whichever of a pair is still
- * outstanding is what's displayed, never a guess.
+ * the active stage is always the first one in ROUND_STAGE_ORDER not yet completed, which
+ * naturally reflects personality/avatar (and reply/voice, which run concurrently in
+ * pairs server-side) resolving in either order — whichever of a pair is still
+ * outstanding is what's displayed, never a guess. The synthetic trailing "greeting"
+ * stage is never in `completedStages` (the server doesn't report it by name), so it
+ * naturally becomes "active" once the real four are done and stays that way until the
+ * final frame resolves the whole call.
  */
 async function fetchRoundWithProgress(
   url: string,
   body: Record<string, unknown>,
-  onStageChange: (label: string) => void,
+  onProgress: (label: string, stages: LoadingStage[]) => void,
 ): Promise<RoundResult> {
   const completedStages = new Set<string>();
   const updateProgress = () => {
-    const next = ROUND_STAGE_ORDER.find((entry) => !completedStages.has(entry.stage));
-    onStageChange(next ? next.label : "Preparing greeting…");
+    const activeIndex = ROUND_STAGE_ORDER.findIndex((entry) => !completedStages.has(entry.stage));
+    const stages = ROUND_STAGE_ORDER.map((entry, index) => ({
+      ...entry,
+      done: completedStages.has(entry.stage),
+      active: index === activeIndex,
+    }));
+    onProgress(stages[activeIndex]?.label ?? "Preparing greeting…", stages);
   };
   updateProgress();
 
@@ -219,6 +241,8 @@ export function useGameController() {
   // just for the round-advance path instead of a brand-new run.
   const [continuing, setContinuing] = useState(false);
   const [continueProgressMessage, setContinueProgressMessage] = useState("Starting…");
+  const [continueProgressStages, setContinueProgressStages] =
+    useState<LoadingStage[]>(initialRoundStages());
   // Set when the server classifies a chat message as an explicit give-up request (see
   // pages/api/game/message.ts) rather than an ordinary question or guess — GamePage.tsx
   // watches this to open its existing give-up confirmation dialog, the same one the
@@ -228,6 +252,8 @@ export function useGameController() {
   const [loading, setLoading] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startProgressMessage, setStartProgressMessage] = useState("Starting…");
+  const [startProgressStages, setStartProgressStages] =
+    useState<LoadingStage[]>(initialRoundStages());
   const [error, setError] = useState("");
   const [lastEvent, setLastEvent] = useState<GameEvent | null>(null);
   const chatBoxRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
@@ -389,7 +415,10 @@ export function useGameController() {
     setError("");
     setLastEvent(null);
     try {
-      const data = await fetchRoundWithProgress("/api/game/start", {}, setStartProgressMessage);
+      const data = await fetchRoundWithProgress("/api/game/start", {}, (label, stages) => {
+        setStartProgressMessage(label);
+        setStartProgressStages(stages);
+      });
       setGameToken(data.gameToken);
       setCurrentCharacterName(data.currentCharacterName);
       setAvatarUrl(data.avatarUrl);
@@ -418,6 +447,7 @@ export function useGameController() {
       }
     } finally {
       setStartProgressMessage("Starting…");
+      setStartProgressStages(initialRoundStages());
       setStarting(false);
     }
   }, []);
@@ -630,7 +660,10 @@ export function useGameController() {
       const data = await fetchRoundWithProgress(
         "/api/game/continue",
         { gameToken },
-        setContinueProgressMessage,
+        (label, stages) => {
+          setContinueProgressMessage(label);
+          setContinueProgressStages(stages);
+        },
       );
       setMessages((prev) => [
         ...prev,
@@ -661,6 +694,7 @@ export function useGameController() {
       }
     } finally {
       setContinueProgressMessage("Starting…");
+      setContinueProgressStages(initialRoundStages());
       setContinuing(false);
     }
   }, [gameToken, lastEvent, messages]);
@@ -699,6 +733,7 @@ export function useGameController() {
     continueRound,
     continuing,
     continueProgressMessage,
+    continueProgressStages,
     giveUpRequested,
     clearGiveUpRequest,
     chatBoxRef,
@@ -712,6 +747,7 @@ export function useGameController() {
     quitGame,
     giveUp,
     startProgressMessage,
+    startProgressStages,
     sendMessage,
     handleKeyDown,
   };

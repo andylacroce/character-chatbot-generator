@@ -1,8 +1,8 @@
 /* =============================
    AppHeader.module.css
    - Shared sticky header shell used by chat, game, and the landing page: positioning,
-     the 1fr/auto/1fr grid, and the dark-mode toggle's look (rendered inside the
-     hamburger dropdown, not as a separate header control — see AppHeader.tsx).
+     the 1fr/auto/1fr grid, and the dark-mode toggle's look (its own small button in
+     .headerRight, beside the hamburger — see AppHeader.tsx).
    - Deliberately holds ONLY generic chrome — content each caller puts in the
      center/extra slots (chat's avatar+name, its brand link; the landing page's
      character carousel) is styled by that caller's own module (ChatPage.module.css,
@@ -36,7 +36,7 @@
   margin: 0;
 }
 
-/* Side columns are `minmax(3.5rem, auto)` (a fixed floor, growing only if content
+/* Side columns are `minmax(7rem, auto)` (a fixed floor, growing only if content
    genuinely needs more — never wider than that), and the center column is the
    only `1fr` track. This used to be `1fr auto 1fr` (center `auto`, sides `1fr`),
    which reads intuitively but is backwards for CSS Grid's sizing algorithm: an
@@ -49,10 +49,18 @@
    (living in .headerRight, see AppHeader.tsx) getting pushed hard against the
    screen edge specifically on the admin pages. Making the sides the fixed-floor
    tracks and the center the flexible one guarantees both sides always get their
-   reserved minimum, and lets center content wrap normally into whatever's left. */
+   reserved minimum, and lets center content wrap normally into whatever's left.
+   The floor itself was bumped from 3.5rem to 7rem when the dark-mode toggle moved
+   out of the hamburger dropdown into its own button beside it (see AppHeader.tsx):
+   .headerRight's real content (toggle + gap + hamburger) is ~6.75rem wide, wider
+   than the old floor, which left .headerLeft (always empty) narrower than
+   .headerRight and visibly pushed the center column (the landing page's character
+   carousel, most noticeably) off true center. 7rem comfortably covers both
+   buttons at every breakpoint below, so .headerLeft and .headerRight always
+   resolve to the same width and the center track stays symmetric. */
 .chatHeaderContent {
   display: grid;
-  grid-template-columns: minmax(3.5rem, auto) 1fr minmax(3.5rem, auto);
+  grid-template-columns: minmax(7rem, auto) 1fr minmax(7rem, auto);
   align-items: center;
   max-width: 800px;
   margin: 0 auto;
@@ -61,9 +69,13 @@
   gap: 0.5rem;
 }
 
-/* Always empty now (the hamburger has one standing position, in .headerRight — see
-   AppHeader.tsx's doc comment) — kept as a grid cell, at the same fixed floor width
-   as .headerRight, purely so .headerCenter stays visually centered. */
+/* Empty on most pages (the hamburger has one standing position, in .headerRight — see
+   AppHeader.tsx's doc comment) — in that case it's just a grid cell at the same fixed
+   floor width as .headerRight, purely so .headerCenter stays visually centered. A page
+   that passes AppHeader's `left` prop (the Character Wall's and leaderboard's "Back"
+   link) renders it here instead, left-aligned by ordinary block-level default rather
+   than centered — those pages pass no `center` content, so there's nothing for the
+   column growing past its floor to visually unbalance. */
 .headerLeft {
   grid-column: 1;
   min-width: 0;
@@ -89,13 +101,11 @@
   gap: 1.2rem;
 }
 
-/* DarkModeToggle.tsx's own base class — it's always rendered inside the hamburger
-   dropdown now (see AppHeader.tsx), where HamburgerMenu.module.css's generic
-   `.menuDropdown button` reset (higher specificity: one class + one element vs. this
-   rule's one class) already wins on every property they both set, so this mostly only
-   supplies the icon/text sizing below. Kept here (not moved into HamburgerMenu's own
-   module) because DarkModeToggle.tsx imports this file directly, and it's also used
-   standalone by anything rendering the toggle outside a dropdown. */
+/* DarkModeToggle.tsx's own base class — a small standalone pill button living directly
+   in .headerRight (see AppHeader.tsx), rendered with `hideLabel` there so only the
+   icon shows. Kept here (not moved into a DarkModeToggle-specific module) because
+   DarkModeToggle.tsx imports this file directly and predates this file's other
+   header-chrome content. */
 .darkModeToggle {
   background: none;
   border: 1px solid var(--color-outline);
@@ -141,25 +151,18 @@
   border-color: var(--color-outline);
 }
 
-/* The dark-mode toggle's in-dropdown appearance (AppHeader.tsx) — overrides the pill
-   look above so it reads as an ordinary menu row instead of a standalone button. */
-.menuDarkModeToggle {
-  width: 100%;
-  justify-content: flex-start;
-}
-
 @media (max-width: 800px) {
   .chatHeaderContent {
     padding-left: 4vw !important;
     padding-right: 4vw !important;
     max-width: 100%;
-    grid-template-columns: minmax(3.5rem, auto) 1fr minmax(3.5rem, auto);
+    grid-template-columns: minmax(7rem, auto) 1fr minmax(7rem, auto);
   }
 }
 @media (max-width: 600px) {
   .chatHeaderContent {
     display: grid !important;
-    grid-template-columns: minmax(3.5rem, auto) 1fr minmax(3.5rem, auto) !important;
+    grid-template-columns: minmax(7rem, auto) 1fr minmax(7rem, auto) !important;
     align-items: start !important;
     justify-items: center !important;
     padding-left: 2vw !important;

@@ -17,12 +17,13 @@ describe("AppHeader", () => {
     expect(screen.getByLabelText("Do a thing")).toBeInTheDocument();
   });
 
-  it("folds the dark-mode toggle into the hamburger dropdown instead of a separate header control", () => {
+  it("renders the dark-mode toggle as its own header control, not folded into the hamburger dropdown", () => {
     render(<AppHeader menuItems={<button>Item</button>} center={<div>Center</div>} />);
-    expect(screen.queryByLabelText(/switch to (dark|light) mode/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/switch to (dark|light) mode/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText("Open menu"));
-    expect(screen.getByLabelText(/switch to (dark|light) mode/i)).toBeInTheDocument();
+    // Still just the one toggle — it isn't duplicated into the dropdown too.
+    expect(screen.getAllByLabelText(/switch to (dark|light) mode/i)).toHaveLength(1);
   });
 
   it("always renders the hamburger in the header's right-hand slot", () => {

@@ -4,8 +4,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { authenticatedFetch } from "../../src/utils/api";
+import { hasNavigatedWithinSession } from "../../src/utils/clientNavigationState";
 import AppHeader from "./AppHeader";
+import BackHomeLink from "./BackHomeLink";
 import LeaderboardClaim from "./LeaderboardClaim";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/Leaderboard.module.css";
@@ -18,6 +21,7 @@ interface Entry {
 
 /** Lists public entries without revealing the names or scores of players who did not opt in. */
 export default function LeaderboardPage() {
+  const router = useRouter();
   const { menuItems, modals } = useAccountMenu();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +52,17 @@ export default function LeaderboardPage() {
     <div className={styles.page}>
       <AppHeader
         menuItems={menuItems}
-        center={<span className={styles.headerTitle}>Leaderboard</span>}
+        left={
+          <BackHomeLink
+            label="Back"
+            icon="back"
+            onClick={(event) => {
+              event.preventDefault();
+              if (hasNavigatedWithinSession()) router.back();
+              else router.push("/");
+            }}
+          />
+        }
       />
       {modals}
       <main className={styles.main}>

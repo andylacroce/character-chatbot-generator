@@ -2,6 +2,13 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.6.0 — 2026-09-22 — Shared character-loading lightbox, header layout changes
+
+- Added `CharacterLoadingOverlay`, one shared staged-progress lightbox for every "a character is being generated/loaded" moment: the guessing game's start-a-run and next-round generation (previously a plain inline spinner) and the landing page's character-creation flow (URL auto-launch, resume/new-chat interstitial, validation, and personality/avatar/voice generation — previously four near-duplicate inline progress blocks). Shows a live checklist with a checkmark on each genuinely-completed step, a spinner on the active one, driven by real server-reported progress.
+- Added a "Back" button to the leaderboard page's header, matching the Character Wall's existing back-navigation pattern.
+- Moved the dark-mode toggle out of the hamburger dropdown into its own small icon button in the header, next to the hamburger, on every page — reversing an earlier design that had folded it into the dropdown to save mobile header space, after feedback that the toggle should be reachable in one tap. Required widening the header's side columns so `AppHeader`'s center content (the landing page's carousel, chat/game's avatar+name) stayed visually centered against the now-wider right side.
+- The Character Wall's and leaderboard's "Back" link now renders in the header's left slot (a new optional `left` prop on `AppHeader`) instead of the center slot, so it reads as left-aligned page navigation rather than the header's focal content.
+
 ## v0.5.1 — 2026-09-22 — README overhaul, MIT license, privacy/disclaimer accuracy fixes
 
 - Added an MIT `LICENSE` file and updated `package.json`/`README.md` to reference it explicitly, replacing the previously-implicit "educational/portfolio project" framing with an actual license decision.

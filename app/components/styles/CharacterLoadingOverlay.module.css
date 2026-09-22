@@ -1,0 +1,170 @@
+/* =============================
+   CharacterLoadingOverlay.module.css
+   - The one shared "a character is being generated/loaded" lightbox, used by both the
+     guessing game (starting a run, loading the next round) and the landing page's own
+     character-creation flow (BotCreator.tsx). Kept as its own file per this repo's
+     no-shared-CSS-modules rule, even though it borrows the same visual language
+     (backdrop/box shape, tokens) as BotCreator.module.css's disclaimer* classes.
+   ============================= */
+
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+.box {
+  color: var(--color-text);
+  font-family: var(--font-primary);
+  background: var(--card-body-bg);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  padding: 1.75rem;
+  max-width: 340px;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 1.1rem 0;
+  color: var(--color-primary);
+  font-family: var(--font-secondary), var(--font-primary), sans-serif;
+}
+
+.stageList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  text-align: left;
+}
+
+.stageList li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.92rem;
+  line-height: 1.3;
+}
+
+.stageDone {
+  color: var(--color-text-secondary);
+}
+
+.stageActive {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.stagePending {
+  color: var(--color-text-secondary);
+  opacity: 0.6;
+}
+
+.stageIconDone {
+  flex: none;
+  color: var(--color-primary);
+  font-size: 1.1rem;
+}
+
+.stageDot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--color-text-secondary);
+  box-sizing: border-box;
+}
+
+.stageSpinner {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid var(--color-surface);
+  border-top: 2.5px solid var(--color-primary);
+  border-radius: 50%;
+  animation: characterLoadingSpin 1s linear infinite;
+  display: inline-block;
+}
+
+.fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.fallback .stageSpinner {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+.message {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cancelButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  padding: 0.2rem 0;
+}
+
+.cancelButton:hover,
+.cancelButton:focus-visible {
+  color: var(--color-text);
+  outline: none;
+}
+
+@keyframes characterLoadingSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stageSpinner {
+    animation: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .box {
+    padding: 1.25rem;
+    max-width: 300px;
+  }
+
+  .title {
+    font-size: 1.05rem;
+  }
+}
