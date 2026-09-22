@@ -9,10 +9,8 @@ jest.mock("../../../../src/utils/gameGuestIdentity", () => ({
   getGuestId: (...args: unknown[]) => mockGetGuestId(...args),
 }));
 const mockIsTopTenPlayer = jest.fn();
-const mockGetClaimableRun = jest.fn();
 jest.mock("../../../../src/utils/gameLeaderboard", () => ({
   isTopTenPlayer: (...args: unknown[]) => mockIsTopTenPlayer(...args),
-  getClaimableRun: (...args: unknown[]) => mockGetClaimableRun(...args),
 }));
 const mockCheckLeaderboardName = jest.fn();
 jest.mock("../../../../src/utils/leaderboardName", () => ({
@@ -51,7 +49,6 @@ describe("game/leaderboard-settings API", () => {
     mockGetSessionUserId.mockResolvedValue(null);
     mockGetGuestId.mockReturnValue("guest-hash");
     mockIsTopTenPlayer.mockResolvedValue(true);
-    mockGetClaimableRun.mockResolvedValue(null);
     mockCheckLeaderboardName.mockResolvedValue({ status: "approved", name: "Guest Ace" });
     mockReturning.mockResolvedValue([{ showOnLeaderboard: true, name: "Guest Ace" }]);
     mockWhere.mockResolvedValue([]);
@@ -132,45 +129,19 @@ describe("game/leaderboard-settings API", () => {
     expect(mockInsert).not.toHaveBeenCalled();
   });
 
-  it("locks an approved name to its run across later score increases", async () => {
-    mockGetClaimableRun.mockResolvedValue({
-      id: "run-1",
-      bestStreak: 4,
-      leaderboardName: "Guest Ace",
-    });
-    const handler = (await import("../../../../pages/api/game/leaderboard-settings")).default;
-    const { req, res } = createMocks({
-      method: "POST",
-      body: { showOnLeaderboard: true, name: "Different Name", runId: "run-1" },
-    });
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(409);
-    expect(mockCheckLeaderboardName).not.toHaveBeenCalled();
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
-
-  it("lets an account claim its run without relying on the guest cookie", async () => {
+  it("lets a signed-in account submit a moderated name without relying on the guest cookie", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
-    mockGetClaimableRun.mockResolvedValue({ id: "run-1", bestStreak: 4, leaderboardName: null });
     mockCheckLeaderboardName.mockResolvedValue({ status: "approved", name: "Ada" });
-    mockReturning
-      .mockResolvedValueOnce([{ id: "run-1" }])
-      .mockResolvedValueOnce([{ showOnLeaderboard: true, name: "Ada" }]);
+    mockReturning.mockResolvedValueOnce([{ showOnLeaderboard: true, name: "Ada" }]);
     const handler = (await import("../../../../pages/api/game/leaderboard-settings")).default;
     const { req, res } = createMocks({
       method: "POST",
-      body: { showOnLeaderboard: true, name: "Ada", runId: "run-1" },
+      body: { showOnLeaderboard: true, name: "Ada" },
     });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
     expect(mockGetGuestId).not.toHaveBeenCalled();
-    expect(mockUpdate).toHaveBeenCalledTimes(2);
-    expect(res._getJSONData()).toEqual(
-      expect.objectContaining({
-        name: "Ada",
-        runId: "run-1",
-        locked: true,
-      }),
-    );
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(res._getJSONData()).toEqual(expect.objectContaining({ name: "Ada" }));
   });
 });

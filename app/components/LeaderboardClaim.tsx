@@ -11,18 +11,10 @@ interface Settings {
   eligible: boolean;
   showOnLeaderboard: boolean;
   name: string | null;
-  runId: string | null;
-  locked: boolean;
 }
 
 /** Shows a name form only when this account or guest browser owns a top-ten score. */
-export default function LeaderboardClaim({
-  onChange,
-  runId,
-}: {
-  onChange?: () => void;
-  runId?: string | null;
-}) {
+export default function LeaderboardClaim({ onChange }: { onChange?: () => void }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -30,9 +22,7 @@ export default function LeaderboardClaim({
 
   useEffect(() => {
     let mounted = true;
-    authenticatedFetch(
-      `/api/game/leaderboard-settings${runId ? `?runId=${encodeURIComponent(runId)}` : ""}`,
-    )
+    authenticatedFetch("/api/game/leaderboard-settings")
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load leaderboard settings");
         return res.json();
@@ -49,7 +39,7 @@ export default function LeaderboardClaim({
     return () => {
       mounted = false;
     };
-  }, [runId]);
+  }, []);
 
   if (!settings)
     return error ? (
@@ -68,11 +58,7 @@ export default function LeaderboardClaim({
       const res = await authenticatedFetch("/api/game/leaderboard-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          showOnLeaderboard: true,
-          name,
-          ...(settings.runId ? { runId: settings.runId } : {}),
-        }),
+        body: JSON.stringify({ showOnLeaderboard: true, name }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not save your name");
@@ -94,10 +80,7 @@ export default function LeaderboardClaim({
       const res = await authenticatedFetch("/api/game/leaderboard-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          showOnLeaderboard: false,
-          ...(settings.runId ? { runId: settings.runId } : {}),
-        }),
+        body: JSON.stringify({ showOnLeaderboard: false }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not leave the leaderboard");
@@ -116,28 +99,21 @@ export default function LeaderboardClaim({
       <p>
         Choose the name shown publicly with your best streak. Your account identity stays private.
       </p>
-      {settings.locked && settings.showOnLeaderboard ? (
-        <p>
-          Listed as <strong>{settings.name}</strong> for this run.
-        </p>
-      ) : (
-        <form onSubmit={save} className={styles.claimForm}>
-          <label htmlFor="leaderboard-name">Leaderboard name</label>
-          <input
-            id="leaderboard-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            minLength={2}
-            maxLength={30}
-            required
-            autoComplete="off"
-            readOnly={settings.locked}
-          />
-          <button type="submit" disabled={saving}>
-            {settings.locked ? "Show this run" : "Join leaderboard"}
-          </button>
-        </form>
-      )}
+      <form onSubmit={save} className={styles.claimForm}>
+        <label htmlFor="leaderboard-name">Leaderboard name</label>
+        <input
+          id="leaderboard-name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          minLength={2}
+          maxLength={30}
+          required
+          autoComplete="off"
+        />
+        <button type="submit" disabled={saving}>
+          {settings.showOnLeaderboard ? "Update name" : "Join leaderboard"}
+        </button>
+      </form>
       {settings.showOnLeaderboard && (
         <button type="button" className={styles.leaveButton} onClick={leave} disabled={saving}>
           Remove my name

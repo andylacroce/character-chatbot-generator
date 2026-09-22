@@ -15,39 +15,6 @@ export interface LeaderboardEntry {
 export type LeaderboardIdentity =
   { userId: string; guestId?: never } | { guestId: string; userId?: never };
 
-/** A single verified run that a player may lock a public name to. */
-export interface ClaimableRun {
-  id: string;
-  bestStreak: number;
-  leaderboardName: string | null;
-}
-
-/** Returns the requested run when owned by this identity in this environment, else null. */
-export async function getClaimableRun(
-  identity: LeaderboardIdentity,
-  runId: string,
-): Promise<ClaimableRun | null> {
-  if (!process.env.DATABASE_URL || typeof runId !== "string" || runId.length === 0) return null;
-  const owner =
-    identity.userId !== undefined
-      ? eq(gameResults.userId, identity.userId)
-      : eq(gameResults.guestId, identity.guestId);
-  const rows = await getDb()
-    .select({
-      id: gameResults.id,
-      bestStreak: gameResults.bestStreak,
-      leaderboardName: gameResults.leaderboardName,
-    })
-    .from(gameResults)
-    .where(
-      and(eq(gameResults.id, runId), eq(gameResults.environment, getCurrentEnvironment()), owner),
-    );
-  const row = rows[0];
-  return row
-    ? { id: row.id, bestStreak: row.bestStreak, leaderboardName: row.leaderboardName ?? null }
-    : null;
-}
-
 /** The highest ten verified personal scores, including private scores for ranking only. */
 async function getTopScores() {
   const guestBest = sql<number>`max(${gameResults.bestStreak})::int`;

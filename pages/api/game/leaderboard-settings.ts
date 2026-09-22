@@ -1,10 +1,10 @@
 /** Public leaderboard visibility setting for an account or guest browser. */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb } from "../../../src/db/client";
-import { gameGuestProfiles, gameResults, users } from "../../../src/db/schema";
-import { getClaimableRun, isTopTenPlayer } from "../../../src/utils/gameLeaderboard";
+import { gameGuestProfiles, users } from "../../../src/db/schema";
+import { isTopTenPlayer } from "../../../src/utils/gameLeaderboard";
 import { checkLeaderboardName } from "../../../src/utils/leaderboardName";
 import { getGuestId } from "../../../src/utils/gameGuestIdentity";
 import { getSessionUserId } from "../../../src/utils/getSessionUserId";
@@ -26,12 +26,6 @@ const leaderboardSettingsRateLimit = createRateLimiter({
  *   get:
  *     summary: Get this player's leaderboard visibility
  *     tags: [Game]
- *     parameters:
- *       - in: query
- *         name: runId
- *         required: false
- *         schema: { type: string }
- *         description: When supplied, also returns that run's locked name state.
  *     responses:
  *       200:
  *         description: Current opt-in setting, or unavailable for guests
@@ -44,8 +38,6 @@ const leaderboardSettingsRateLimit = createRateLimiter({
  *                 showOnLeaderboard: { type: boolean }
  *                 eligible: { type: boolean }
  *                 name: { type: string, nullable: true }
- *                 runId: { type: string, nullable: true }
- *                 locked: { type: boolean }
  *   post:
  *     summary: Submit a moderated name or leave the public leaderboard
  *     tags: [Game]
@@ -59,7 +51,6 @@ const leaderboardSettingsRateLimit = createRateLimiter({
  *             properties:
  *               showOnLeaderboard: { type: boolean }
  *               name: { type: string, description: Required when opting in }
- *               runId: { type: string, description: Locks the name to this run when supplied }
  *     responses:
  *       200:
  *         description: Setting saved
@@ -69,10 +60,6 @@ const leaderboardSettingsRateLimit = createRateLimiter({
  *         description: No account or guest game identity
  *       403:
  *         description: A top-ten score is required to opt in
- *       404:
- *         description: Run not found for this player
- *       409:
- *         description: This run already has a different leaderboard name
  *       405:
  *         description: Method not allowed
  *       429:
@@ -107,9 +94,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   try {
     const identity = userId ? { userId } : { guestId: guestId! };
-    /** Normalizes a requested name the same way the moderator does for comparison. */
-    const normalize = (raw: unknown) =>
-      typeof raw === "string" ? raw.normalize("NFKC").trim().replace(/\s+/g, " ") : "";
     if (req.method === "GET") {
       const rows = userId
         ? await getDb()
@@ -123,48 +107,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             })
             .from(gameGuestProfiles)
             .where(eq(gameGuestProfiles.guestId, guestId!));
-      const queryRunId =
-        typeof req.query?.runId === "string" && req.query.runId.length > 0 ? req.query.runId : null;
-      const claimable = queryRunId ? await getClaimableRun(identity, queryRunId) : null;
       res.status(200).json({
         available: true,
         showOnLeaderboard: rows[0]?.showOnLeaderboard ?? false,
         eligible: await isTopTenPlayer(identity),
         name: rows[0]?.name ?? null,
-        runId: claimable?.id ?? null,
-        locked: Boolean(claimable?.leaderboardName),
       });
     } else {
       if (req.body.showOnLeaderboard && !(await isTopTenPlayer(identity))) {
         res.status(403).json({ error: "Reach the top 10 to join the leaderboard" });
         return;
       }
-      const bodyRunId =
-        typeof req.body?.runId === "string" && req.body.runId.length > 0
-          ? (req.body.runId as string)
-          : null;
-      const claimable = bodyRunId ? await getClaimableRun(identity, bodyRunId) : null;
-      if (bodyRunId && !claimable) {
-        res.status(404).json({ error: "Run not found" });
-        return;
-      }
-      // A claimed run keeps its first approved name; a different name is a conflict,
-      // checked before spending a moderation call or writing anything.
-      if (claimable?.leaderboardName && normalize(req.body?.name) !== claimable.leaderboardName) {
-        if (req.body.showOnLeaderboard) {
-          res.status(409).json({ error: "This run already has a leaderboard name" });
-          return;
-        }
-      }
-      const reusingLockedName =
-        Boolean(claimable?.leaderboardName) &&
-        req.body.showOnLeaderboard &&
-        normalize(req.body?.name) === claimable?.leaderboardName;
-      const checked = reusingLockedName
-        ? { status: "approved" as const, name: claimable?.leaderboardName as string }
-        : req.body.showOnLeaderboard
-          ? await checkLeaderboardName(req.body.name)
-          : null;
+      const checked = req.body.showOnLeaderboard ? await checkLeaderboardName(req.body.name) : null;
       if (checked?.status === "rejected") {
         res.status(400).json({ error: "Choose a different display name" });
         return;
@@ -177,15 +131,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         showOnLeaderboard: req.body.showOnLeaderboard as boolean,
         ...(checked?.status === "approved" ? { leaderboardName: checked.name } : {}),
       };
-      // Lock a newly approved name to its run so later score increases cannot rename it.
-      if (claimable && checked?.status === "approved" && !claimable.leaderboardName) {
-        const owner = userId ? eq(gameResults.userId, userId) : eq(gameResults.guestId, guestId!);
-        await getDb()
-          .update(gameResults)
-          .set({ leaderboardName: checked.name })
-          .where(and(eq(gameResults.id, claimable.id), owner))
-          .returning({ id: gameResults.id });
-      }
       const rows = userId
         ? await getDb()
             .update(users)
@@ -209,10 +154,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         showOnLeaderboard: rows[0].showOnLeaderboard,
         eligible: await isTopTenPlayer(identity),
         name: rows[0].name,
-        runId: claimable?.id ?? null,
-        locked: Boolean(
-          claimable ? (claimable.leaderboardName ?? checked?.status === "approved") : false,
-        ),
       });
     }
   } catch (err) {

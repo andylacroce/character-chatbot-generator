@@ -341,8 +341,6 @@ export const gameResults = pgTable(
     guestId: text("guest_id"),
     environment: text("environment").notNull(),
     bestStreak: integer("best_streak").notNull(),
-    // Moderated public name locked to this run once claimed; null until claimed.
-    leaderboardName: text("leaderboard_name"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   },
