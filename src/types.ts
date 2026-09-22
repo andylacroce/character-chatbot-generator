@@ -142,10 +142,26 @@ export interface GenerateAvatarResponse {
   gender?: string | null;
 }
 
+/** Taxonomy assigned to a character at creation time (src/utils/characterCategories.ts). */
+export type CharacterCategory =
+  | "history"
+  | "mythology"
+  | "literature"
+  | "folklore"
+  | "religion"
+  | "other";
+
+/** `sort` query param accepted by GET /api/chars. */
+export type CharsSort = "newest" | "oldest" | "name-asc" | "name-desc";
+
+/** `group` query param accepted by GET /api/chars — "category" makes it the primary ordering key. */
+export type CharsGroup = "none" | "category";
+
 /** One entry in the public /chars gallery (GET /api/chars). */
 export interface CharacterEntry {
   name: string;
   avatarUrl: string;
+  category: CharacterCategory;
 }
 
 /** GET /api/chars response. */
@@ -182,4 +198,126 @@ export interface UserProfile {
 /** GET /api/random-character response. */
 export interface RandomCharacterResponse {
   name: string;
+}
+
+/**
+ * POST /api/auth/mobile-google request/response. Mobile-only bridge — exchanges a Google
+ * `id_token` (obtained client-side via expo-auth-session, since NextAuth's own cookie-based
+ * session doesn't work for a native client) for a bearer JWT encoded the same way NextAuth's
+ * own session cookie is (next-auth/jwt's `encode`), sent back as `Authorization: Bearer
+ * <token>` on every subsequent request. See pages/api/auth/mobile-google.ts.
+ */
+export interface MobileGoogleAuthRequest {
+  idToken: string;
+}
+
+export interface MobileGoogleAuthResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string | null;
+    name: string | null;
+  };
+}
+
+/**
+ * Guessing-game round state, returned by both POST /game/start and POST /game/continue —
+ * they share one pipeline (persona+avatar+voice+reply+TTS) and one response shape. `gameToken`
+ * is an opaque, signed blob the client must echo back on every subsequent /game/* call; never
+ * decode or inspect it client-side, it's meaningless without the server's signing key.
+ */
+export interface GameRoundResult {
+  gameToken: string;
+  currentCharacterName: string;
+  avatarUrl: string;
+  gender?: string | null;
+  reply: string;
+  audioFileUrl?: string;
+  streak: number;
+}
+
+/** POST /game/start request body — `stream` is a web-only SSE progress mode; mobile omits it. */
+export interface GameStartRequest {
+  stream?: boolean;
+}
+
+/** POST /game/continue request body. */
+export interface GameContinueRequest {
+  gameToken: string;
+  stream?: boolean;
+}
+
+/** POST /game/message request body — one turn of chat, or a guess, in the same field. */
+export interface GameMessageRequest {
+  gameToken: string;
+  message: string;
+  conversationHistory?: string[];
+}
+
+/**
+ * POST /game/message response. Which fields are present depends on how the message was
+ * classified server-side (see pages/api/game/message.ts's own doc comment):
+ * - `giveUpRequested`: the player asked to give up via chat — no reply/audio this turn; show
+ *   the give-up confirmation, then call POST /game/give-up if confirmed.
+ * - an ordinary reply: just `reply`/`audioFileUrl`.
+ * - a correct guess: `correct: true`, `revealedName`, `streak`, plus a reaction `reply`; call
+ *   POST /game/continue (with the same `gameToken`) once the player clicks "Continue".
+ * - a wrong-but-tolerated guess: `correct: false`, `gameOver: false`, `wrongGuessesRemaining`,
+ *   and a bumped `gameToken` to echo back next turn.
+ * - a second wrong guess: `correct: false`, `gameOver: true`, `revealedName`, `finalStreak`.
+ */
+export interface GameMessageResponse {
+  giveUpRequested?: boolean;
+  reply?: string;
+  audioFileUrl?: string;
+  correct?: boolean;
+  gameOver?: boolean;
+  revealedName?: string;
+  streak?: number;
+  finalStreak?: number;
+  wrongGuessesRemaining?: number;
+  gameToken?: string;
+}
+
+/** POST /game/give-up request body. */
+export interface GameGiveUpRequest {
+  gameToken: string;
+}
+
+/** POST /game/give-up response. */
+export interface GameGiveUpResponse {
+  revealedName: string;
+  finalStreak: number;
+  gameOver: true;
+}
+
+/** GET /game/high-score response — null for a guest/no-database deployment. */
+export interface GameHighScoreResponse {
+  highScore: number | null;
+}
+
+/** One row of GET /game/leaderboard. */
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  streak: number;
+}
+
+/** GET /game/leaderboard response — top ten opted-in scores. */
+export interface GameLeaderboardResponse {
+  entries: LeaderboardEntry[];
+}
+
+/** GET/POST /game/leaderboard-settings — this account or guest browser's public visibility. */
+export interface LeaderboardSettingsResponse {
+  available: boolean;
+  showOnLeaderboard: boolean;
+  eligible: boolean;
+  name: string | null;
+}
+
+/** POST /game/leaderboard-settings request body. `name` is required when opting in. */
+export interface LeaderboardSettingsRequest {
+  showOnLeaderboard: boolean;
+  name?: string;
 }

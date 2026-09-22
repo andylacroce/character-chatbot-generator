@@ -13,6 +13,12 @@ export const STORAGE_KEYS = {
   sessionDatetime: "bot-session-datetime",
   userName: "chatbot-user-name",
   userNameGateSkipped: "chatbot-user-name-gate-skipped",
+  /** Bearer JWT from POST /api/auth/mobile-google — mobile-only, kept in expo-secure-store, never AsyncStorage. */
+  authToken: "chatbot-auth-token",
+  /** Mobile's own guest game identity — the equivalent of the web's HttpOnly `portrayal-game-guest` cookie, which a native client can't reliably persist. Kept in expo-secure-store. */
+  gameGuestId: "chatbot-game-guest-id",
+  /** One-time "how to play" gate for the guessing game, mirrors the web's own gameInstructionsSeen key. */
+  gameInstructionsSeen: "chatbot-game-instructions-seen",
 } as const;
 
 /** Prefixes for keys that are suffixed per-character by bot name. */
