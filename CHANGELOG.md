@@ -2,13 +2,16 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
-## v0.12.1 — 2026-09-23 — Strict guessing-game identity checks
+## v0.13.0 — 2026-09-23 — Description-aware voice casting
 
-- Fixed the guessing game accepting a mythological counterpart as the hidden character: Aphrodite is now scored as distinct from Venus (as are comparable cross-tradition figures such as Ares/Mars and Zeus/Jupiter), not as an alias. Correctness is settled once by the classifier before response generation; the reaction receives only that confirmed outcome, so the banner and character reply cannot independently disagree.
-- Fixed guessing-game audio replay after a correct-answer handoff: every message now retains its own speaker's voice hint, so regenerating an older message does not use the new current character's voice.
 - Character voice casting now uses the generated personality and speaking style and chooses only from Google Cloud TTS's live v1 Studio, Neural2, WaveNet, Standard, News, Journey, and Polyglot inventory. Casting no longer synthesizes a throwaway validation sample, and all chat response paths now apply the selected prosody consistently.
 - Fixed every character silently getting the same default fallback voice: Google's live `ListVoices` response reports each voice's gender as the enum's string name (e.g. `"FEMALE"`), not a number, so a numeric-only check was misreading the entire catalog as unspecified gender, filtering out every voice, and falling back to `CHARACTER_VOICE_MAP["Default"]` for every character.
 - Fixed a Studio-voice swap that could hand a character a different Studio voice than the one actually cast (e.g. a female British character's selection silently swapped for a male American voice) — the swap is gone, and any real Studio voice from Google's inventory now synthesizes exactly as cast.
+- Fixed guessing-game audio replay after a correct-answer handoff: every message now retains its own speaker's voice hint, so regenerating an older message does not use the new current character's voice.
+
+## v0.12.1 — 2026-09-23 — Strict guessing-game identity checks
+
+- Fixed the guessing game accepting a mythological counterpart as the hidden character: Aphrodite is now scored as distinct from Venus (as are comparable cross-tradition figures such as Ares/Mars and Zeus/Jupiter), not as an alias. Correctness is settled once by the classifier before response generation; the reaction receives only that confirmed outcome, so the banner and character reply cannot independently disagree.
 
 ## v0.12.0 — 2026-09-23 — Guessing game and leaderboard on mobile; one shared codebase for both apps
 
