@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm install              # install deps (also runs scripts/fix-express-tsconfig.cjs via postinstall)
 npm run dev               # next dev --turbopack
 npm run build              # production build
-npm run lint                # eslint . --ext .js,.jsx,.ts,.tsx (includes the jsdoc rules — see "Code documentation standard" below)
+npm run lint                # eslint . --ext .js,.jsx,.ts,.tsx (includes JSDoc, security, and regex-safety rules)
 npm run lint:fix
 npm run lint:md              # markdownlint over **/*.md
 npm run format                # prettier --write . (excludes *.md — markdownlint owns that)
@@ -553,6 +553,14 @@ fully closed.
   keys, Google OAuth secrets, Postgres connection strings, Vercel Blob tokens), not just
   PEM private-key blocks. `.env.example` is excluded from scanning since its
   placeholder-shaped values look like credentials by design.
+- `.github/workflows/semgrep.yml` runs the JavaScript, TypeScript, React, and Node.js
+  community rulesets on pushes to `main` and pull requests. It uses the token-free
+  `semgrep scan` command with metrics disabled, and reviewed false positives carry
+  narrow, rule-specific `nosemgrep` annotations with reasons at the affected lines.
+- `eslint-plugin-regexp` runs `regexp/no-super-linear-backtracking` and
+  `regexp/no-super-linear-move` as errors in the ordinary root `npm run lint` command.
+  Together they catch exponential or polynomial backtracking and unanchored polynomial
+  searches locally, while the existing `npm run ci` composite remains the local gate.
 - `.github/workflows/ci.yml` uses `npm ci`, not `npm install`/`npm update`, for
   reproducible builds against the committed lockfile.
 - `API_SECRET` was rotated as a precaution. Any external integration outside this repo

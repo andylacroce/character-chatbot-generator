@@ -176,8 +176,10 @@ async function handler(
   }
   // Only allow filename, not path
   const sanitizedFile = path.basename(file);
-  const audioFilePath = path.join(os.tmpdir(), sanitizedFile);
-  const localFilePath = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", sanitizedFile);
+  // path.basename() removes native path components before joining to the fixed temp root.
+  const audioFilePath = path.join(os.tmpdir(), sanitizedFile); // nosemgrep: javascript.express.security.audit.express-path-join-resolve-traversal.express-path-join-resolve-traversal
+  // The basename is joined to a fixed public root and later checked with realpath().
+  const localFilePath = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", sanitizedFile); // nosemgrep: javascript.express.security.audit.express-path-join-resolve-traversal.express-path-join-resolve-traversal
   const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
   const checkFileExists = (filePath: string) =>
     fs.existsSync(filePath) ? fs.realpathSync(filePath) : "";

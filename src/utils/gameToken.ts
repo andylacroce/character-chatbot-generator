@@ -108,7 +108,9 @@ function isValidPayload(value: unknown): value is GameStatePayload {
 /** Encrypts a round's game state into an opaque, base64url token for the client to hold. */
 export function signGameState(payload: GameStatePayload): string {
   const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv(ALGORITHM, getKey(), iv);
+  const cipher = crypto.createCipheriv(ALGORITHM, getKey(), iv, {
+    authTagLength: AUTH_TAG_LENGTH,
+  });
   const plaintext = Buffer.from(JSON.stringify(payload), "utf8");
   const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   const authTag = cipher.getAuthTag();
@@ -130,7 +132,9 @@ export function verifyGameState(token: string): GameStatePayload | null {
     const iv = raw.subarray(1, 1 + IV_LENGTH);
     const authTag = raw.subarray(1 + IV_LENGTH, 1 + IV_LENGTH + AUTH_TAG_LENGTH);
     const encrypted = raw.subarray(1 + IV_LENGTH + AUTH_TAG_LENGTH);
-    const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), iv, {
+      authTagLength: AUTH_TAG_LENGTH,
+    });
     decipher.setAuthTag(authTag);
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
     const parsed = JSON.parse(decrypted.toString("utf8"));

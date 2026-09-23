@@ -39,7 +39,9 @@ export function getRedisRestConfig(
   const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
   const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) return null;
-  return { url: url.replace(/\/+$/, ""), token };
+  let urlEnd = url.length;
+  while (urlEnd > 0 && url.charCodeAt(urlEnd - 1) === 47) urlEnd -= 1;
+  return { url: url.slice(0, urlEnd), token };
 }
 
 /**
