@@ -18,8 +18,82 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: CI
+  # Split into independent parallel jobs (public repo - Actions minutes are free)
+  # instead of one long sequential job, so a PR's overall CI wall-clock time is
+  # roughly the slowest single job, not the sum of all of them.
+  lint-and-typecheck:
+    name: Lint & type-check
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint (fail on warnings)
+        run: npm run lint -- --max-warnings=0
+
+      - name: Lint markdown
+        run: npm run lint:md
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Build code reference (TypeDoc)
+        run: npm run docs:code
+
+  test:
+    name: Test with coverage
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Jest cache
+        uses: actions/cache@v4
+        with:
+          path: .jest-cache
+          key: jest-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            jest-${{ runner.os }}-
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage report (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+
+  build:
+    name: Production build
     runs-on: ubuntu-latest
     env:
       CI: true
@@ -48,30 +122,5 @@ jobs:
           restore-keys: |
             nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
 
-      - name: Check formatting
-        run: npm run format:check
-
-      - name: Lint (fail on warnings)
-        run: npm run lint -- --max-warnings=0
-
-      - name: Lint markdown
-        run: npm run lint:md
-
-      - name: Type check
-        run: npm run type-check
-
-      - name: Build code reference (TypeDoc)
-        run: npm run docs:code
-
-      - name: Run tests with coverage
-        run: npm run test:coverage
-
       - name: Build production bundle
         run: npm run build
-
-      - name: Upload coverage report (artifact)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage
