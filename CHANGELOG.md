@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.7.1 — 2026-09-22 — Fix mobile dev bundling broken by a dependabot bump
+
+- `apps/mobile` failed to bundle at all in dev (`Cannot find module 'react-native/rn-get-polyfills'`) — a recent dependabot bump had pushed `react-native` to 0.87.1, which removed a file `@expo/metro-config` (Expo SDK 57's bundler integration) still requires directly. Not just an outdated-version nag: SDK 57 is built against RN ~0.86.x, and 0.87.x has a real, breaking incompatibility at that integration point. Fixed via `npx expo install --fix`, realigning `react-native` and its SDK-57-compatible companions (`react`/`react-dom`, `@types/react`, `react-native-safe-area-context`, `react-native-screens`, `@react-native-async-storage/async-storage`, `typescript`) back to the versions Expo actually supports.
+- Discovered while wiring up and testing v0.7.0's mobile sign-in — confirmed working end-to-end against production after this fix.
+
 ## v0.7.0 — 2026-09-22 — Mobile Google sign-in and account persistence
 
 - Wired up the mobile app's Google sign-in bridge (`pages/api/auth/mobile-google-start.ts`/`-callback.ts`), added in v0.6.1 but never reachable from the mobile side until now. `apps/mobile/src/auth.ts` opens the bridge in a browser tab (`expo-web-browser`'s `openAuthSessionAsync`) and persists the resulting bearer token via `expo-secure-store`; a new `GET /api/auth/mobile-session` endpoint resolves that token to a display identity, since next-auth v4's JWT session token is encrypted and has no client-side decode path.

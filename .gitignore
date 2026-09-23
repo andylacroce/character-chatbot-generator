@@ -39,6 +39,10 @@ Thumbs.db
 .swc/
 .eslintcache
 
+# Expo dev cache (stray if `expo start` is ever run from the repo root instead of
+# apps/mobile, which has its own .gitignore entry for its own .expo/)
+/.expo/
+
 # Temporary & local artifacts
 tmp/
 *.tmp
