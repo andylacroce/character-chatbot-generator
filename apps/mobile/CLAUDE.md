@@ -310,21 +310,36 @@ repo should never reimplement that logic — only call it.
 
 ## Testing
 
-Proportional to a hobby project: React Native Testing Library for a few critical
-components (chat send/receive, name gate) once they exist. Don't chase the web repo's
-80% coverage gate — that's calibrated for the production app, not this new client.
-Manual device testing is the practical way to verify audio playback and any future
-native sign-in module.
+Jest (`jest-expo` preset) + React Native Testing Library, tests under `tests/`
+mirroring `src/`. `npm run test:coverage` enforces the same 80% global threshold as the
+web app (`jest.config.js`), covering every critical path: creation (validation, copyright
+and description modals, name gate, cancel), resume, chat, the Character Wall, and sign-in.
+Things worth knowing before writing a new test:
+
+- **RNTL v14's `render` and `fireEvent` are async** — always `await` both, or queries run
+  against a Promise and state updates land after the assertion.
+- **Screen tests render `navigation.setOptions`'s header in the same tree** via a small
+  harness with a memoized `navigation` object (see `ChatScreen.test.tsx`) — a second
+  `render` replaces the first, and an unmemoized object loops the screen's effect forever.
+- **Workspace hoisting cuts both ways**, handled in `jest.config.js`: `moduleNameMapper`
+  forces one `react` copy, and `moduleDirectories` lets root-hoisted `@react-navigation/*`
+  find native deps installed only here (`react-native-screens`, `react-native-safe-area-context`).
+- **`jest.setup.js` owns the native/global mocks** (AsyncStorage, SecureStore, expo-audio,
+  vector icons — the last replaced wholesale because its async font check corrupted later
+  tests). A dependency bump can move a mock's path (async-storage 3.x did); check there first.
+
+Manual device testing is still the only way to verify audio playback, keyboard/scroll
+layout, and the real sign-in browser handoff.
 
 ## Linting, formatting & CI
 
 `npm run ci` is the single composite command (`lint --max-warnings=0` → `lint:md` →
-`format:check` → `type-check`) — same one the root repo's `.github/workflows/ci-mobile.yml`
-runs (path-filtered to `apps/mobile/**`/`packages/shared/**`; moved here from this repo's
-own `.github/workflows/` during the monorepo migration - GitHub only reads workflows at
-the repo root, so a copy living under `apps/mobile/.github` would be silently dead). No
-test/build step yet, deliberately — matches Testing above; add them to both places
-together once real tests exist.
+`format:check` → `type-check` → `test:coverage`) — same one the root repo's
+`.github/workflows/ci-mobile.yml` runs on every push/PR to `main` (moved there from this
+repo's own `.github/workflows/` during the monorepo migration - GitHub only reads workflows
+at the repo root, so a copy living under `apps/mobile/.github` would be silently dead). The
+root `npm run ci` also runs it, plus `packages/shared`'s tests, so one local command gates
+web, mobile, and shared code together.
 
 - **ESLint**: `eslint.config.js`, scaffolded via `npx expo lint` (`eslint-config-expo`).
   Two of its bundled rules are disabled repo-wide, both false positives for this

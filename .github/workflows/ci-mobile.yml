@@ -1,16 +1,10 @@
-name: Mobile CI — lint, format, type-check & shared-package tests
+name: Mobile CI — lint, format, type-check, tests & coverage
 
 on:
   push:
     branches: [main]
-    paths:
-      - "apps/mobile/**"
-      - "packages/shared/**"
   pull_request:
     branches: [main]
-    paths:
-      - "apps/mobile/**"
-      - "packages/shared/**"
 
 permissions:
   contents: read
@@ -54,6 +48,17 @@ jobs:
       - name: Type check
         working-directory: apps/mobile
         run: npm run type-check
+
+      - name: Run tests with coverage
+        working-directory: apps/mobile
+        run: npm run test:coverage
+
+      - name: Upload coverage report (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-coverage-report
+          path: apps/mobile/coverage
 
       - name: Test shared package
         working-directory: packages/shared

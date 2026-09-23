@@ -315,6 +315,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         <Pressable
           style={styles.iconButton}
           onPress={toggleAudio}
+          accessibilityLabel={audioEnabled ? "Mute audio" : "Unmute audio"}
           android_ripple={{ color: colors.secondaryContainer, borderless: true, radius: 20 }}
           hitSlop={4}
         >
@@ -328,6 +329,7 @@ export default function ChatScreen({ route, navigation }: Props) {
           <Pressable
             style={[styles.iconButton, styles.stopButton]}
             onPress={() => player.pause()}
+            accessibilityLabel="Stop audio"
             android_ripple={{ color: colors.errorContainer, borderless: true, radius: 20 }}
             hitSlop={4}
           >
@@ -352,6 +354,7 @@ export default function ChatScreen({ route, navigation }: Props) {
         <Pressable
           style={[styles.sendButton, (sending || !input.trim()) && styles.sendButtonInactive]}
           onPress={handleSend}
+          accessibilityLabel="Send"
           disabled={sending || !input.trim()}
           android_ripple={{ color: "rgba(255,255,255,0.3)", borderless: true, radius: 21 }}
         >

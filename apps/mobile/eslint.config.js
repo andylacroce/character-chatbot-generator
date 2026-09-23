@@ -1,6 +1,7 @@
 // https://docs.expo.dev/guides/using-eslint/
 const { defineConfig } = require("eslint/config");
 const expoConfig = require("eslint-config-expo/flat");
+const globals = require("globals");
 
 module.exports = defineConfig([
   expoConfig,
@@ -34,6 +35,17 @@ module.exports = defineConfig([
       // positive on every Animated.Value in the app. Off rather than rewritten,
       // since there's no compiler-safe equivalent RN itself recommends instead.
       "react-hooks/refs": "off",
+    },
+  },
+  {
+    files: ["jest.setup.js", "tests/**/*.{ts,tsx}"],
+    languageOptions: { globals: globals.jest },
+    rules: {
+      // jest.mock factories are hoisted above imports, so they must require()
+      // their dependencies, and imports of mocked modules deliberately follow
+      // the jest.mock calls that replace them.
+      "@typescript-eslint/no-require-imports": "off",
+      "import/first": "off",
     },
   },
 ]);

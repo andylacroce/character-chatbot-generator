@@ -32,6 +32,7 @@ export default function Avatar({ name, avatarUrl, size = 40, onPress }: Props) {
     </View>
   ) : (
     <Image
+      testID="avatar-image"
       source={{ uri: resolveApiUrl(avatarUrl) }}
       style={dimStyle}
       contentFit="cover"

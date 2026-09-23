@@ -328,6 +328,7 @@ export default function CreatorScreen({ navigation }: Props) {
           <Pressable
             onPress={handleRandom}
             disabled={busy || randomizing}
+            accessibilityLabel="Random character"
             android_ripple={{ color: colors.secondaryContainer, borderless: true, radius: 24 }}
             style={styles.diceButton}
             hitSlop={8}

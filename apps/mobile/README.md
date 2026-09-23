@@ -50,7 +50,9 @@ Scan the QR code with Expo Go (or press `a`/`i` for an emulator/simulator).
 | `npm run lint:md` | markdownlint |
 | `npm run format` / `npm run format:check` | Prettier |
 | `npm run type-check` | `tsc --noEmit` |
-| `npm run ci` | The composite check CI runs: lint → lint:md → format:check → type-check |
+| `npm test` / `npm run test:watch` | Jest + React Native Testing Library |
+| `npm run test:coverage` | Jest with the 80% global coverage gate |
+| `npm run ci` | The composite check CI runs: lint → lint:md → format:check → type-check → test:coverage |
 
 ## Project structure
 

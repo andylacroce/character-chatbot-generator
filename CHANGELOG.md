@@ -2,6 +2,12 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.10.1 — 2026-09-23 — Mobile test suite; screen-reader labels
+
+- The mobile app now has a real test suite (Jest + React Native Testing Library, 181 tests across 20 suites) covering every critical path (character creation with its validation, copyright, description and name-gate flows; resuming; chat; the Character Wall; sign-in), gated at the same 80% coverage threshold as the web app. It runs as part of both the mobile `npm run ci` and the root one, and in GitHub Actions.
+- Mobile's icon-only buttons (mute/unmute, stop audio, send, random character) now carry accessibility labels, so screen readers announce them instead of an unlabeled button.
+- Both CI workflows now run on every push/PR to `main` instead of being path-filtered, since the root `npm run ci` gates web, mobile, and shared code together.
+
 ## v0.10.0 — 2026-09-22 — Default to dark mode; mobile guessing-game plan documented
 
 - The app (web and mobile) now defaults to dark mode for a visitor/device with no stored preference yet — an explicit toggle choice still wins on every return visit, only the no-preference-yet default changed. Centralized as a single named constant per platform instead of a hardcoded `true`/`"dark"` scattered across files: `packages/shared/src/theme.ts`'s new `DEFAULT_DARK_MODE` (mobile's `ThemeContext.tsx` imports it directly) and a mirrored local constant in `app/components/DarkModeContext.tsx` (web hasn't migrated onto the shared package yet, per existing precedent). `app/layout.tsx` derives its server-rendered `<html>` class from that same constant rather than a separately hardcoded string, so a first-time web visitor's initial paint already matches with no flash of the other palette.
