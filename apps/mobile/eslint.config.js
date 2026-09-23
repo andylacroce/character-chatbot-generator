@@ -8,6 +8,15 @@ module.exports = defineConfig([
     ignores: ["dist/*"],
   },
   {
+    settings: {
+      // Explicit version skips eslint-plugin-react's auto-detection code
+      // path, which crashes under ESLint 10 (it still calls the removed
+      // legacy context.getFilename() API - see git history for the full
+      // TypeError this works around).
+      react: {
+        version: "19.3.0",
+      },
+    },
     rules: {
       // eslint-config-expo bundles web-oriented React/JSX rules (via
       // eslint-plugin-react) that don't fit React Native's Text rendering:

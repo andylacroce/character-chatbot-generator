@@ -147,7 +147,9 @@ export default function CharWallScreen({ navigation }: Props) {
             </Pressable>
           )}
           ListFooterComponent={
-            loadingMore ? <ActivityIndicator style={styles.footer} color={colors.primary} /> : null
+            loadingMore ? (
+              <ActivityIndicator style={styles.footer} color={colors.primary} />
+            ) : undefined
           }
         />
       )}

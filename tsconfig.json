@@ -33,5 +33,12 @@
     ".next/dev/types/**/*.ts",
     "src/types/**/*.d.ts"
   ],
-  "exclude": ["node_modules", "node_modules/**/*", "coverage", "docs", "public/audio"]
+  "exclude": [
+    "node_modules",
+    "node_modules/**/*",
+    "coverage",
+    "docs",
+    "public/audio",
+    "apps/mobile"
+  ]
 }
