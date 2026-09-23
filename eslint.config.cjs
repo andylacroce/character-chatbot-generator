@@ -6,6 +6,7 @@
 const nextConfig = require("eslint-config-next");
 const tsPlugin = require("@typescript-eslint/eslint-plugin");
 const jsdocPlugin = require("eslint-plugin-jsdoc");
+const securityPlugin = require("eslint-plugin-security");
 
 module.exports = [
   {
@@ -146,6 +147,37 @@ module.exports = [
       // Fires on legitimate prose mentioning things like package scopes
       // (`@anthropic-ai/sdk`) as false positives.
       "jsdoc/escape-inline-tags": "off",
+    },
+  },
+  // Local static-analysis security scan (see CLAUDE.md's "Security posture" section) —
+  // catches unsafe patterns (eval, child_process with dynamic input, non-literal
+  // fs/require paths, unsafe regex, etc.) at edit time and in this repo's existing
+  // `npm run lint` gate, well before GitHub's own CodeQL scan ever runs (which only
+  // fires after a push). Scoped to the same app/src/API layers as the jsdoc/logging
+  // rules above — scripts/tests/config files are excluded, matching this file's
+  // existing convention.
+  {
+    files: ["app/**/*.{ts,tsx}", "src/**/*.ts", "pages/**/*.ts"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    plugins: { security: securityPlugin },
+    rules: {
+      ...securityPlugin.configs.recommended.rules,
+      // Flags almost any dynamic property/array access (`obj[key]`) as a potential
+      // prototype-pollution vector — the plugin's own docs note this rule is prone to
+      // false positives, and this codebase's actual dynamic-key lookups (config maps,
+      // parsed API responses) are all against known-shape objects, not
+      // attacker-controlled keys. Disabled rather than warned-and-ignored, so a real
+      // future finding from the other rules isn't lost in noise from this one.
+      "security/detect-object-injection": "off",
+      // Flagged 47 pre-existing, already-reviewed call sites in the TTS/audio-cache
+      // subsystem (pages/api/audio.ts, chat.ts, src/utils/tts.ts, ttsReply.ts) — every
+      // one builds its path from a hashed cache key run through sanitizeFilename()
+      // (or, in audio.ts, an explicit escapesRoot()/realpathSync() traversal guard),
+      // inside a fixed root (os.tmpdir()/public), never from raw request input. The
+      // rule can't see past sanitizeFilename() to know that, so it flags the pattern
+      // unconditionally. A real future case (an fs call built directly from
+      // unsanitized user input) would still need the same manual review this one got.
+      "security/detect-non-literal-fs-filename": "off",
     },
   },
 ];

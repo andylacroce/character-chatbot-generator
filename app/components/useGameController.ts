@@ -378,6 +378,10 @@ export function useGameController() {
     const lastMsg = messages[messages.length - 1];
     if (lastMsg.sender === "User" || typeof lastMsg.audioFileUrl !== "string") return;
     const hash = `${lastMsg.sender}__${lastMsg.text}__${lastMsg.audioFileUrl}`;
+    // Not a security-sensitive comparison — this is a client-side dedupe key, not a
+    // secret/token, so a timing side-channel doesn't apply here. eslint-plugin-security
+    // flags it purely because the variable is named "hash".
+    // eslint-disable-next-line security/detect-possible-timing-attacks
     if (hash === lastPlayedHashRef.current) return;
     lastPlayedHashRef.current = hash;
     const abortController = new AbortController();
