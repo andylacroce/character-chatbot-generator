@@ -12,6 +12,8 @@ type Props = {
   onSelect: (name: string) => void;
   /** Disable taps while a creation is already in flight (CreatorScreen's own busy state). */
   disabled?: boolean;
+  /** Halo diameter; CreatorScreen shrinks it so the whole landing screen fits without scrolling. */
+  size?: number;
 };
 
 // /api/chars orders newest-first, not randomly — pulling its max page size (rather than a
@@ -21,9 +23,10 @@ type Props = {
 const POOL_LIMIT = 100;
 const ROTATE_COUNT = 20;
 const ROTATE_MS = 4000;
-const RING_SIZE = 168;
-const HALO_SIZE = 210;
-const PORTRAIT_SIZE = 160;
+/** Default (and maximum) halo diameter; the ring and portrait scale with it. */
+export const CAROUSEL_MAX_SIZE = 210;
+const RING_RATIO = 168 / 210;
+const PORTRAIT_RATIO = 160 / 210;
 
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
 
@@ -48,9 +51,9 @@ function shuffled<T>(items: T[]): T[] {
  * between rotations), a pseudo-3D card-flip transition between characters instead of a
  * flat cross-fade, and haptic ticks synced to the flip and to selection.
  */
-export default function CharacterCarousel({ onSelect, disabled }: Props) {
+export default function CharacterCarousel({ onSelect, disabled, size = CAROUSEL_MAX_SIZE }: Props) {
   const { colors } = useTheme();
-  const styles = makeStyles(colors);
+  const styles = makeStyles(colors, size);
   const [characters, setCharacters] = useState<CharacterEntry[]>([]);
   const [index, setIndex] = useState(0);
   const [displayIndex, setDisplayIndex] = useState(0);
@@ -194,7 +197,11 @@ export default function CharacterCarousel({ onSelect, disabled }: Props) {
         <Animated.View pointerEvents="none" style={[styles.pulseRing, pulseStyle]} />
         <Animated.View style={cardStyle}>
           <View style={styles.portraitRing}>
-            <Avatar name={current.name} avatarUrl={current.avatarUrl} size={PORTRAIT_SIZE} />
+            <Avatar
+              name={current.name}
+              avatarUrl={current.avatarUrl}
+              size={Math.round(size * PORTRAIT_RATIO)}
+            />
           </View>
         </Animated.View>
       </View>
@@ -205,37 +212,38 @@ export default function CharacterCarousel({ onSelect, disabled }: Props) {
   );
 }
 
-function makeStyles(colors: ThemeColors) {
+function makeStyles(colors: ThemeColors, haloSize: number) {
+  const ringSize = Math.round(haloSize * RING_RATIO);
   return StyleSheet.create({
     carousel: { alignItems: "center", marginBottom: 12 },
     stage: {
-      width: HALO_SIZE,
-      height: HALO_SIZE,
+      width: haloSize,
+      height: haloSize,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 8,
     },
     halo: {
       position: "absolute",
-      width: HALO_SIZE,
-      height: HALO_SIZE,
-      borderRadius: HALO_SIZE / 2,
+      width: haloSize,
+      height: haloSize,
+      borderRadius: haloSize / 2,
       overflow: "hidden",
       opacity: 0.55,
     },
     haloGradient: { flex: 1 },
     pulseRing: {
       position: "absolute",
-      width: RING_SIZE,
-      height: RING_SIZE,
-      borderRadius: RING_SIZE / 2,
+      width: ringSize,
+      height: ringSize,
+      borderRadius: ringSize / 2,
       borderWidth: 2,
       borderColor: colors.primary,
     },
     portraitRing: {
-      width: RING_SIZE,
-      height: RING_SIZE,
-      borderRadius: RING_SIZE / 2,
+      width: ringSize,
+      height: ringSize,
+      borderRadius: ringSize / 2,
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 3,

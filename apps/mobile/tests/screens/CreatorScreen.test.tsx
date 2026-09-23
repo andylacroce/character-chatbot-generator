@@ -1,12 +1,11 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { useMemo, useState, type ReactElement } from "react";
-import type { Bot, PersistedBot } from "character-chatbot-shared";
+import type { Bot } from "character-chatbot-shared";
 import CreatorScreen from "../../src/screens/CreatorScreen";
 import { ThemeProvider } from "../../src/ThemeContext";
 
 jest.mock("../../src/api", () => ({
   ...jest.requireActual("../../src/api"),
-  getPersistedBots: jest.fn(),
   getRandomCharacter: jest.fn(),
   validateCharacter: jest.fn(),
 }));
@@ -43,7 +42,7 @@ jest.mock("../../src/components/AccountModal", () => {
   };
 });
 
-import { getPersistedBots, getRandomCharacter, validateCharacter } from "../../src/api";
+import { getRandomCharacter, validateCharacter } from "../../src/api";
 import { createBot, persistBotIfSignedIn } from "../../src/botCreation";
 import { loadBot, saveBot } from "../../src/storage";
 import { useAuth } from "../../src/AuthContext";
@@ -67,19 +66,6 @@ const okValidation = {
   recognized: true,
   blocked: false,
 };
-
-function persisted(name: string, id = name): PersistedBot {
-  return {
-    id,
-    name,
-    personality: "p",
-    avatarUrl: null,
-    voiceConfig: null,
-    gender: null,
-    createdAt: "2026-09-01T00:00:00.000Z",
-    updatedAt: "2026-09-01T00:00:00.000Z",
-  } as unknown as PersistedBot;
-}
 
 let nameCtx: {
   name: string;
@@ -388,40 +374,16 @@ describe("CreatorScreen", () => {
     expect(utils.navigate).toHaveBeenCalledWith("Chat", { bot: createdBot });
   });
 
-  it("lists previously saved characters for a signed-in user, collapsed past three", async () => {
+  it("links a signed-in user to Past chats", async () => {
     (useAuth as jest.Mock).mockReturnValue({ status: "signedIn" });
-    (loadBot as jest.Mock).mockResolvedValue(createdBot);
-    (getPersistedBots as jest.Mock).mockResolvedValue([
-      persisted("sherlock holmes"), // same as the local resume card: hidden from "Previously"
-      persisted("Ada Lovelace"),
-      persisted("Beowulf"),
-      persisted("Cleopatra"),
-      persisted("Dracula"),
-    ]);
-
     const utils = await renderScreen();
-    expect(await utils.findByText("Previously")).toBeTruthy();
-    expect(utils.queryByText("Dracula")).toBeNull();
-
-    await fireEvent.press(utils.getByText("Show 1 more"));
-    expect(utils.getByText("Dracula")).toBeTruthy();
-    await fireEvent.press(utils.getByText("Show less"));
-    expect(utils.queryByText("Dracula")).toBeNull();
-
-    await fireEvent.press(utils.getByText("Ada Lovelace"));
-    expect(utils.navigate).toHaveBeenCalledWith(
-      "Chat",
-      expect.objectContaining({ bot: expect.objectContaining({ name: "Ada Lovelace" }) }),
-    );
+    await fireEvent.press(await utils.findByText("Past chats"));
+    expect(utils.navigate).toHaveBeenCalledWith("History");
   });
 
-  it("hides the Previously section if the saved-characters fetch fails", async () => {
-    (useAuth as jest.Mock).mockReturnValue({ status: "signedIn" });
-    (getPersistedBots as jest.Mock).mockRejectedValue(new Error("down"));
-
+  it("hides the Past chats link from guests", async () => {
     const utils = await renderScreen();
-    await waitFor(() => expect(getPersistedBots).toHaveBeenCalled());
-    expect(utils.queryByText("Previously")).toBeNull();
+    expect(utils.queryByText("Past chats")).toBeNull();
   });
 
   it("opens the account modal from the header, labeled by sign-in state", async () => {
@@ -432,14 +394,13 @@ describe("CreatorScreen", () => {
 
   it("labels the header button Account when signed in", async () => {
     (useAuth as jest.Mock).mockReturnValue({ status: "signedIn" });
-    (getPersistedBots as jest.Mock).mockResolvedValue([]);
     const utils = await renderScreen();
     expect(await utils.findByLabelText("Account")).toBeTruthy();
   });
 
   it("links to the Character Wall", async () => {
     const utils = await renderScreen();
-    await fireEvent.press(utils.getByText("Browse the Character Wall"));
+    await fireEvent.press(utils.getByText("Character Wall"));
     expect(utils.navigate).toHaveBeenCalledWith("CharWall");
   });
 });

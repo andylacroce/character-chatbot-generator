@@ -344,93 +344,12 @@
   padding: 0.7rem 1rem;
   /* Flex children don't collapse adjacent margins, so both sides are needed:
      top for the space below whatever precedes it (input row, progress), bottom
-     for the space above whatever follows (ResumeBotDropdown, footer links) —
-     without this, a signed-in user's "Previously" list butts right up against it. */
+     for the space above whatever follows (footer links). */
   margin: 1rem 0;
   font-size: 0.92rem;
   line-height: 1.5;
   text-align: center;
   font-family: var(--font-primary), sans-serif;
-}
-
-/* ===== Resume ("Previously") list ===== */
-
-.tocSection {
-  width: 100%;
-  margin-bottom: 1.6rem;
-}
-
-.tocLabel {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-accent);
-  margin: 0 0 0.7rem;
-}
-
-.tocRow {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  width: 100%;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-primary), sans-serif;
-  padding: 0.45rem 0;
-  text-align: left;
-}
-
-.tocRow:focus {
-  outline: none;
-}
-
-.tocRow:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.tocName {
-  font-size: 0.94rem;
-  font-weight: 500;
-  color: var(--color-text);
-  transition: color 0.15s ease;
-}
-
-.tocRow:hover .tocName,
-.tocRow:focus .tocName {
-  color: var(--color-primary);
-}
-
-.tocDots {
-  flex: 1;
-  border-bottom: 1px dotted var(--color-outline);
-  margin-bottom: 0.3rem;
-}
-
-.tocTime {
-  color: var(--color-text-secondary);
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.tocToggle {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-primary), sans-serif;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-accent);
-  padding: 0.5rem 0 0.2rem;
-}
-
-.tocToggle:hover,
-.tocToggle:focus {
-  color: var(--color-primary);
-  outline: none;
 }
 
 /* ===== Footer links ===== */

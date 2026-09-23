@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.11.0 — 2026-09-23 — Past chats page; mobile landing fits one screen
+
+- A signed-in user's saved characters now live on their own "Past chats" page instead of in a list on the landing page, where they had grown to take up too much room. On web it's `/history`, linked from the landing page's footer and the account menu. On mobile it's a new `HistoryScreen`, linked from the Creator screen and the account modal. Both show how long ago each chat was last active; mobile gets that from a `formatRelativeTime` now in the shared package, which web mirrors until it migrates onto that package. Web rows resume through the same `/?name=` launch the Character Wall already uses. Cancelling that launch now goes back to whichever page started it, not always to the Character Wall.
+- The mobile landing screen now fits on one screen with no scrolling on modern Android phones (checked at 360x740 through 412x915, even with a 3-button nav bar). The character carousel shrinks to fill whatever room is left. The Character Wall and Past chats links now share one row, and the header's "New Character" title is gone.
+
 ## v0.10.1 — 2026-09-23 — Mobile test suite; screen-reader labels
 
 - The mobile app now has a real test suite (Jest + React Native Testing Library, 181 tests across 20 suites) covering every critical path (character creation with its validation, copyright, description and name-gate flows; resuming; chat; the Character Wall; sign-in), gated at the same 80% coverage threshold as the web app. It runs as part of both the mobile `npm run ci` and the root one, and in GitHub Actions.

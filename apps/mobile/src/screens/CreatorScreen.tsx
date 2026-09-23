@@ -13,14 +13,12 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import {
-  persistedBotToBot,
   sanitizeCharacterName,
   type Bot,
   type CharacterValidationResult,
-  type PersistedBot,
   type ThemeColors,
 } from "character-chatbot-shared";
-import { getPersistedBots, getRandomCharacter, validateCharacter } from "../api";
+import { getRandomCharacter, validateCharacter } from "../api";
 import { createBot, persistBotIfSignedIn, type CreateBotOptions } from "../botCreation";
 import { loadBot, saveBot } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
@@ -29,7 +27,7 @@ import { useAuth } from "../AuthContext";
 import { useUserName } from "../useUserName";
 import { BRAND } from "../theme";
 import Avatar from "../components/Avatar";
-import CharacterCarousel from "../components/CharacterCarousel";
+import CharacterCarousel, { CAROUSEL_MAX_SIZE } from "../components/CharacterCarousel";
 import Wordmark from "../components/Wordmark";
 import CopyrightWarningModal from "../components/CopyrightWarningModal";
 import CharacterDescriptionModal from "../components/CharacterDescriptionModal";
@@ -39,16 +37,17 @@ import NameCaptureModal from "../components/NameCaptureModal";
 type Props = NativeStackScreenProps<RootStackParamList, "Creator">;
 
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
-/** Rows shown before collapsing behind a "Show N more" toggle — mirrors ResumeBotDropdown.tsx. */
-const PREVIOUS_VISIBLE_LIMIT = 3;
+/** Smallest the carousel halo shrinks to before the screen falls back to scrolling. */
+const CAROUSEL_MIN_SIZE = 110;
+/** Carousel height beyond its halo: stage margin + name label minHeight + bottom margin. */
+const CAROUSEL_CHROME = 66;
 
 /**
  * Character creation: name in → validate-character → personality → avatar → voice.
  * Mirrors the web app's useBotCreation pipeline, including the copyright/caution
  * modal and the "unrecognized name" description flow. Signed-in users additionally
- * get a server-backed "Previously" list (GET /api/bots) alongside the local resume
- * card, and a newly created character is persisted to their account (see
- * persistBotIfSignedIn in botCreation.ts).
+ * get a link to HistoryScreen (their server-saved characters), and a newly created
+ * character is persisted to their account (see persistBotIfSignedIn in botCreation.ts).
  */
 export default function CreatorScreen({ navigation }: Props) {
   const { colors } = useTheme();
@@ -60,8 +59,6 @@ export default function CreatorScreen({ navigation }: Props) {
   const [randomizing, setRandomizing] = useState(false);
   const [error, setError] = useState("");
   const [savedBot, setSavedBot] = useState<Bot | null>(null);
-  const [persistedBots, setPersistedBots] = useState<PersistedBot[]>([]);
-  const [previousExpanded, setPreviousExpanded] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [showNameGateModal, setShowNameGateModal] = useState(false);
   const [validationResult, setValidationResult] = useState<CharacterValidationResult | null>(null);
@@ -75,13 +72,6 @@ export default function CreatorScreen({ navigation }: Props) {
   useEffect(() => {
     loadBot().then(setSavedBot);
   }, []);
-
-  useEffect(() => {
-    if (auth.status !== "signedIn") return;
-    getPersistedBots()
-      .then(setPersistedBots)
-      .catch(() => setPersistedBots([]));
-  }, [auth.status]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -105,10 +95,6 @@ export default function CreatorScreen({ navigation }: Props) {
 
   const handleResume = () => {
     if (savedBot) navigation.navigate("Chat", { bot: savedBot });
-  };
-
-  const handleResumePersisted = (bot: PersistedBot) => {
-    navigation.navigate("Chat", { bot: persistedBotToBot(bot) });
   };
 
   const finishCreate = async (name: string, options?: CreateBotOptions) => {
@@ -248,19 +234,36 @@ export default function CreatorScreen({ navigation }: Props) {
   };
 
   const busy = loadingMessage !== null;
-  const otherPersistedBots = persistedBots.filter(
-    (b) => !savedBot || b.name.toLowerCase() !== savedBot.name.toLowerCase(),
-  );
-  const visiblePersistedBots = previousExpanded
-    ? otherPersistedBots
-    : otherPersistedBots.slice(0, PREVIOUS_VISIBLE_LIMIT);
+  // The carousel is the one flexible element: it shrinks so the whole screen fits
+  // without scrolling on short Android displays. viewportH keeps the tallest height
+  // seen, so the Android keyboard (which shrinks this view) doesn't also shrink the
+  // carousel. Everything but the carousel is measured, not estimated, so this holds
+  // for any screen height or system font scale; scrolling remains as a last resort.
+  const [viewportH, setViewportH] = useState(0);
+  const [contentH, setContentH] = useState(0);
+  const [carouselH, setCarouselH] = useState(0);
+  const carouselSize =
+    viewportH && contentH
+      ? Math.max(
+          CAROUSEL_MIN_SIZE,
+          Math.min(CAROUSEL_MAX_SIZE, viewportH - (contentH - carouselH) - CAROUSEL_CHROME),
+        )
+      : CAROUSEL_MAX_SIZE;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          setViewportH((prev) => Math.max(prev, h));
+        }}
+        onContentSizeChange={(_w, h) => setContentH(h)}
+      >
         <Wordmark text={BRAND.name} />
         <Text style={styles.kicker}>{BRAND.kicker}</Text>
 
@@ -279,36 +282,9 @@ export default function CreatorScreen({ navigation }: Props) {
           </Pressable>
         ) : null}
 
-        {!busy && auth.status === "signedIn" && otherPersistedBots.length > 0 ? (
-          <View style={styles.previousSection}>
-            <Text style={styles.previousLabel}>Previously</Text>
-            {visiblePersistedBots.map((b) => (
-              <Pressable
-                key={b.id}
-                style={styles.resumeCard}
-                onPress={() => handleResumePersisted(b)}
-                android_ripple={{ color: colors.secondaryContainer }}
-              >
-                <Avatar name={b.name} avatarUrl={b.avatarUrl} size={36} />
-                <View style={styles.resumeTextWrap}>
-                  <Text style={styles.resumeName}>{b.name}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-              </Pressable>
-            ))}
-            {otherPersistedBots.length > PREVIOUS_VISIBLE_LIMIT ? (
-              <Pressable onPress={() => setPreviousExpanded((e) => !e)} style={styles.showMore}>
-                <Text style={styles.showMoreText}>
-                  {previousExpanded
-                    ? "Show less"
-                    : `Show ${otherPersistedBots.length - PREVIOUS_VISIBLE_LIMIT} more`}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ) : null}
-
-        <CharacterCarousel onSelect={handleCarouselSelect} disabled={busy} />
+        <View onLayout={(e) => setCarouselH(e.nativeEvent.layout.height)}>
+          <CharacterCarousel onSelect={handleCarouselSelect} disabled={busy} size={carouselSize} />
+        </View>
 
         <Text style={styles.headline}>{BRAND.headline}</Text>
 
@@ -378,14 +354,26 @@ export default function CreatorScreen({ navigation }: Props) {
           </Pressable>
         ) : null}
 
-        <Pressable
-          onPress={() => navigation.navigate("CharWall")}
-          style={styles.wallLink}
-          android_ripple={{ color: colors.secondaryContainer, borderless: true }}
-        >
-          <Ionicons name="grid-outline" size={16} color={colors.secondary} />
-          <Text style={styles.wallLinkText}>Browse the Character Wall</Text>
-        </Pressable>
+        <View style={styles.links}>
+          <Pressable
+            onPress={() => navigation.navigate("CharWall")}
+            style={styles.link}
+            android_ripple={{ color: colors.secondaryContainer, borderless: true }}
+          >
+            <Ionicons name="grid-outline" size={16} color={colors.secondary} />
+            <Text style={styles.linkText}>Character Wall</Text>
+          </Pressable>
+          {auth.status === "signedIn" ? (
+            <Pressable
+              onPress={() => navigation.navigate("History")}
+              style={styles.link}
+              android_ripple={{ color: colors.secondaryContainer, borderless: true }}
+            >
+              <Ionicons name="time-outline" size={16} color={colors.secondary} />
+              <Text style={styles.linkText}>Past chats</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </ScrollView>
 
       {validationResult ? (
@@ -407,6 +395,10 @@ export default function CreatorScreen({ navigation }: Props) {
         visible={showAccountModal}
         onClose={() => setShowAccountModal(false)}
         userNameCtx={userNameCtx}
+        onOpenHistory={() => {
+          setShowAccountModal(false);
+          navigation.navigate("History");
+        }}
       />
       <NameCaptureModal
         visible={showNameGateModal}
@@ -423,11 +415,9 @@ export default function CreatorScreen({ navigation }: Props) {
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    // Trimmed from earlier sizes (kicker margin 20, headline 24/24) so the wordmark
-    // and carousel — now the screen's two major visual focal points, per the web
-    // app's own hero treatment — have room without pushing the form too far below
-    // the fold. Scrolling to reach Create is fine; it's the top content that matters.
-    scroll: { flexGrow: 1, padding: 24, paddingTop: 28, alignItems: "center" },
+    // No flexGrow: the content container must report its natural height, which the
+    // carousel-fit calculation above depends on.
+    scroll: { padding: 24, paddingTop: 20, alignItems: "center" },
     kicker: {
       fontSize: 11,
       fontWeight: "600",
@@ -452,17 +442,6 @@ function makeStyles(colors: ThemeColors) {
     resumeTextWrap: { flex: 1 },
     resumeLabel: { color: colors.textSecondary, fontSize: 11 },
     resumeName: { color: colors.text, fontSize: 16, fontWeight: "600", fontFamily: serif },
-    previousSection: { alignSelf: "stretch", marginBottom: 4 },
-    previousLabel: {
-      color: colors.textSecondary,
-      fontSize: 11,
-      fontWeight: "600",
-      letterSpacing: 1,
-      textTransform: "uppercase",
-      marginBottom: 8,
-    },
-    showMore: { alignSelf: "center", padding: 6, marginBottom: 10 },
-    showMoreText: { color: colors.secondary, fontSize: 13, fontWeight: "600" },
     headerAccountButton: { padding: 6, marginLeft: 4 },
     headline: {
       fontFamily: serif,
@@ -530,13 +509,14 @@ function makeStyles(colors: ThemeColors) {
     createButtonText: { color: colors.onPrimary, fontSize: 16, fontWeight: "600" },
     cancelButton: { marginTop: 16, alignItems: "center", alignSelf: "center", padding: 8 },
     cancelText: { color: colors.textSecondary, fontSize: 14 },
-    wallLink: {
+    links: {
       flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      marginTop: 32,
-      padding: 8,
+      flexWrap: "wrap",
+      justifyContent: "center",
+      columnGap: 16,
+      marginTop: 12,
     },
-    wallLinkText: { color: colors.secondary, fontSize: 14, fontWeight: "600" },
+    link: { flexDirection: "row", alignItems: "center", gap: 8, padding: 8 },
+    linkText: { color: colors.secondary, fontSize: 14, fontWeight: "600" },
   });
 }

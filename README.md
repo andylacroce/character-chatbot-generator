@@ -215,8 +215,8 @@ Drizzle ORM), so both survive across devices and browser sessions:
   see `.env.example`. Unlike Google, it has no OAuth redirect restriction, so it's
   offered on preview deployments too whenever configured.
 - **Characters**: Created or resumed characters are saved to a `bots` table
-  (`POST`/`GET /api/bots`) once signed in. `ResumeBotDropdown` on the landing page lists a
-  signed-in user's saved characters, most recently updated first.
+  (`POST`/`GET /api/bots`) once signed in. The "Past chats" page (`/history`, linked from
+  the landing page and the account menu) lists them, most recently updated first.
 - **Chat history**: Once a character is saved, `/api/chat` becomes the source of truth for
   its personality and message history instead of trusting the client on every request, and
   persists each turn to a `messages` table. A rolling summarization checkpoint keeps long

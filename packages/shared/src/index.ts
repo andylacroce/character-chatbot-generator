@@ -3,3 +3,4 @@ export * from "./validation";
 export * from "./storageKeys";
 export * from "./theme";
 export * from "./gameCopy";
+export * from "./formatRelativeTime";

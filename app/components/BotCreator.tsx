@@ -17,7 +17,7 @@ import { authenticatedFetch } from "../../src/utils/api";
 import styles from "./styles/BotCreator.module.css";
 import AppHeader from "./AppHeader";
 import LandingCharacterCarousel from "./LandingCharacterCarousel";
-import ResumeBotDropdown, { type PersistedBot, persistedBotToBot } from "./ResumeBotDropdown";
+import { hasNavigatedWithinSession } from "../../src/utils/clientNavigationState";
 import DisclaimerModal from "./DisclaimerModal";
 import CharacterInfoModal from "./CharacterInfoModal";
 import { useBotCreation } from "./useBotCreation";
@@ -37,6 +37,28 @@ interface Bot {
   // Never persisted server-side (shared avatar cache, Blob, or this user's own bots
   // row) — see useBotCreation.ts and app/index.tsx's handleBotCreated.
   skipPersistence?: boolean;
+}
+
+/** A `GET /api/bots` row — a signed-in user's saved character. */
+export interface PersistedBot {
+  id: string;
+  name: string;
+  personality: string;
+  avatarUrl: string | null;
+  gender: string | null;
+  voiceConfig: import("../../src/utils/characterVoices").CharacterVoiceConfig | null;
+  updatedAt: string;
+}
+
+/** Maps a `GET /api/bots` row onto the Bot shape onBotCreated expects. */
+export function persistedBotToBot(bot: PersistedBot): Bot {
+  return {
+    name: bot.name,
+    personality: bot.personality,
+    avatarUrl: bot.avatarUrl || "/silhouette.svg",
+    voiceConfig: bot.voiceConfig,
+    gender: bot.gender,
+  };
 }
 
 interface BotCreatorProps {
@@ -144,7 +166,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     active: index === activeStepIndex,
   }));
   // Deliberately excludes `randomizing`: that request is near-instant, and gating the
-  // input row / dropdown visibility on it caused a jarring flash and layout shift for a
+  // input row visibility on it caused a jarring flash and layout shift for a
   // loading state nobody actually perceives as "loading". `randomizing` still disables
   // the Random button itself, below, as lightweight double-click protection.
   const isBusy = loading || validating;
@@ -181,17 +203,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     return () => window.clearTimeout(timer);
   }, [interstitial]);
 
-  // Wraps ResumeBotDropdown's onSelect so picking a "Previously" character shows
-  // the same brief "Resuming..." interstitial as the ?name=X match branch below,
-  // instead of jumping straight into chat with no visible confirmation.
-  const handleResumeSelect = (bot: Bot) => {
-    setInterstitial({
-      name: bot.name,
-      kind: "resume",
-      dispatch: () => onBotCreatedRef.current(bot),
-    });
-  };
-
   // Backs all the way out of the current launch — whichever step it's clicked
   // from — and returns to wherever that launch actually started. Shared by the
   // interstitial's Cancel button, the validating-step Cancel button, and the
@@ -201,15 +212,14 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // generation run if one exists; it's a harmless no-op when cancelling
   // straight out of the interstitial before generation ever started.
   //
-  // A launch with no nameFromUrl started on this same landing-page form (typed
-  // name, or the "Previously" dropdown) — clearing `interstitial` is enough,
-  // since the ordinary form is already what re-appears once isBusy/interstitial
-  // are both false, no navigation needed. A launch WITH nameFromUrl only ever
-  // starts from the Character Wall's "Chat with this character" link (see
-  // CharsGallery.tsx / CLAUDE.md), so cancelling it goes back there — not to
-  // the plain landing page, which the user never actually visited this trip.
+  // A launch with no nameFromUrl started on this same landing-page form —
+  // clearing `interstitial` is enough, since the ordinary form is already what
+  // re-appears once isBusy/interstitial are both false, no navigation needed. A
+  // launch WITH nameFromUrl came from another page (the Character Wall, Past
+  // Chats, or the header carousel), so cancelling goes Back to it; a direct
+  // hard-load of /?name=X has no in-app Back target and falls back to /chars.
   // Setting launchCancelled makes isLaunchingFromUrl false immediately, for
-  // this mounted instance, regardless of how long router.push('/chars') takes
+  // this mounted instance, regardless of how long the navigation takes
   // to actually complete its navigation — it doesn't rely on that navigation
   // having unmounted the component yet to stop the launch from resuming.
   const handleCancelLaunch = () => {
@@ -217,7 +227,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     setInterstitial(null);
     if (nameFromUrl) {
       setLaunchCancelled(true);
-      router.push("/chars");
+      if (hasNavigatedWithinSession()) router.back();
+      else router.push("/chars");
     }
   };
 
@@ -234,9 +245,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   }, [returningToCreator, setInput]);
 
   // Launching /?name=X (e.g. from the /chars "Chat with this character" link) should
-  // resume a signed-in user's own saved character by that name if one exists — same
-  // as picking it from ResumeBotDropdown's "Previously" list — rather than always
-  // generating a fresh (and likely different) personality for a name that's already
+  // resume a signed-in user's own saved character by that name if one exists (this is
+  // also how /history's rows resume) — rather than always generating a fresh (and likely different) personality for a name that's already
   // been created. Falls back to a fresh handleCreate() for guests, or when no saved
   // match exists. Waits out sessionStatus === 'loading' so guests aren't misjudged
   // as signed-in before the session resolves.
@@ -510,12 +520,13 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           />
           {error && <div className={styles.error}>{error}</div>}
 
-          {!isBusy && !isLaunchingFromUrl && !interstitial && (
-            <ResumeBotDropdown onSelect={handleResumeSelect} />
-          )}
-
           {!isLaunchingFromUrl && !interstitial && (
             <div className={styles.footerLinks}>
+              {sessionStatus === "authenticated" && (
+                <Link href="/history" className={styles.footerLink}>
+                  Past chats
+                </Link>
+              )}
               <button
                 type="button"
                 aria-label="Which characters can I create?"

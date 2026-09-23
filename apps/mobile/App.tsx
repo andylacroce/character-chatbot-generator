@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import CreatorScreen from "./src/screens/CreatorScreen";
 import ChatScreen from "./src/screens/ChatScreen";
 import CharWallScreen from "./src/screens/CharWallScreen";
+import HistoryScreen from "./src/screens/HistoryScreen";
 import type { RootStackParamList } from "./src/navigation/types";
 import { ThemeProvider, useTheme } from "./src/ThemeContext";
 import { AuthProvider } from "./src/AuthContext";
@@ -50,16 +51,13 @@ function AppNavigator() {
         initialRouteName="Creator"
         screenOptions={{ headerTitleAlign: "center", headerRight: () => <DarkModeButton /> }}
       >
-        <Stack.Screen
-          name="Creator"
-          component={CreatorScreen}
-          options={{ title: "New Character" }}
-        />
+        <Stack.Screen name="Creator" component={CreatorScreen} options={{ title: "" }} />
         <Stack.Screen
           name="CharWall"
           component={CharWallScreen}
           options={{ title: "Character Wall" }}
         />
+        <Stack.Screen name="History" component={HistoryScreen} options={{ title: "Past Chats" }} />
         <Stack.Screen
           name="Chat"
           component={ChatScreen}

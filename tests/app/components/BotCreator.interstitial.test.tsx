@@ -1,10 +1,14 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import BotCreator from "../../../app/components/BotCreator";
+import {
+  markClientNavigation,
+  __resetClientNavigationStateForTest,
+} from "../../../src/utils/clientNavigationState";
 
 // Mock next/navigation
 const mockSearchParams = new URLSearchParams();
-const mockRouter = { push: jest.fn() };
+const mockRouter = { push: jest.fn(), back: jest.fn() };
 jest.mock("next/navigation", () => ({
   useSearchParams: () => mockSearchParams,
   useRouter: () => mockRouter,
@@ -34,6 +38,8 @@ describe("BotCreator resume/new-chat interstitial", () => {
   beforeEach(() => {
     mockSearchParams.delete("name");
     mockRouter.push.mockClear();
+    mockRouter.back.mockClear();
+    __resetClientNavigationStateForTest();
     // These tests exercise the resume/interstitial flow, not the post-creation name
     // gate — pre-skip it so handleCreate() proceeds straight through, same as before
     // that gate existed.
@@ -117,42 +123,6 @@ describe("BotCreator resume/new-chat interstitial", () => {
     expect(screen.queryByTestId("bot-creator-interstitial")).not.toBeInTheDocument();
   });
 
-  it('shows a "Resuming..." interstitial when picking a character from the "Previously" dropdown, hiding the rest of the form meanwhile', async () => {
-    mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, status: "authenticated" });
-    const savedBot = {
-      id: "b1",
-      name: "Dracula",
-      personality: "A vampire.",
-      avatarUrl: null,
-      gender: "male",
-      voiceConfig: null,
-      updatedAt: new Date().toISOString(),
-    };
-    mockFetchRouter({
-      "/api/config": () =>
-        Promise.resolve({ json: () => Promise.resolve({ avatarTimeoutSeconds: 3 }) }),
-      "/api/bots": () => Promise.resolve({ json: () => Promise.resolve({ bots: [savedBot] }) }),
-    });
-    const onBotCreated = jest.fn();
-
-    render(<BotCreator onBotCreated={onBotCreated} />);
-
-    fireEvent.click(await screen.findByText("Dracula"));
-
-    expect(await screen.findByTestId("bot-creator-interstitial")).toHaveTextContent(
-      "Resuming your chat with Dracula",
-    );
-    // The ordinary hero/input form is hidden while the interstitial is up.
-    expect(screen.queryByLabelText("Character name")).not.toBeInTheDocument();
-    expect(onBotCreated).not.toHaveBeenCalled();
-
-    await waitFor(
-      () => expect(onBotCreated).toHaveBeenCalledWith(expect.objectContaining({ name: "Dracula" })),
-      { timeout: 3000 },
-    );
-    expect(screen.queryByTestId("bot-creator-interstitial")).not.toBeInTheDocument();
-  });
-
   it("Cancel on a URL-driven interstitial navigates back to /chars without dispatching, and lets the same link work again later", async () => {
     mockSearchParams.set("name", "Sherlock Holmes");
     mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, status: "authenticated" });
@@ -186,37 +156,39 @@ describe("BotCreator resume/new-chat interstitial", () => {
     expect(onBotCreated).not.toHaveBeenCalled();
   });
 
-  it("Cancel on a dropdown-driven interstitial returns to the ordinary form without navigating or dispatching", async () => {
+  it("Cancel on a URL-driven interstitial goes Back to the launching page (e.g. /history) after in-app navigation", async () => {
+    markClientNavigation();
+    mockSearchParams.set("name", "Sherlock Holmes");
     mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, status: "authenticated" });
-    const savedBot = {
-      id: "b1",
-      name: "Dracula",
-      personality: "A vampire.",
-      avatarUrl: null,
-      gender: "male",
-      voiceConfig: null,
-      updatedAt: new Date().toISOString(),
-    };
     mockFetchRouter({
       "/api/config": () =>
         Promise.resolve({ json: () => Promise.resolve({ avatarTimeoutSeconds: 3 }) }),
-      "/api/bots": () => Promise.resolve({ json: () => Promise.resolve({ bots: [savedBot] }) }),
+      "/api/bots": () =>
+        Promise.resolve({
+          json: () =>
+            Promise.resolve({
+              bots: [
+                {
+                  id: "b1",
+                  name: "Sherlock Holmes",
+                  personality: "p",
+                  avatarUrl: null,
+                  gender: null,
+                  voiceConfig: null,
+                  updatedAt: new Date().toISOString(),
+                },
+              ],
+            }),
+        }),
     });
-    const onBotCreated = jest.fn();
 
-    render(<BotCreator onBotCreated={onBotCreated} />);
+    render(<BotCreator onBotCreated={jest.fn()} />);
 
-    fireEvent.click(await screen.findByText("Dracula"));
     await screen.findByTestId("bot-creator-interstitial");
     fireEvent.click(screen.getByLabelText("Cancel"));
 
-    expect(screen.queryByTestId("bot-creator-interstitial")).not.toBeInTheDocument();
+    expect(mockRouter.back).toHaveBeenCalled();
     expect(mockRouter.push).not.toHaveBeenCalled();
-    // Back to the ordinary form, not stuck on a loading state.
-    expect(await screen.findByLabelText("Character name")).toBeInTheDocument();
-
-    await new Promise((r) => setTimeout(r, 50));
-    expect(onBotCreated).not.toHaveBeenCalled();
   });
 
   it("Cancel clicked further downstream (validating step, reached via ?name=X with no saved match) still kicks all the way back to /chars", async () => {

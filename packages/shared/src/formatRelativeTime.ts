@@ -1,8 +1,7 @@
 /**
  * Formats an ISO timestamp as a friendly relative time (e.g. "a few minutes ago", "yesterday").
- * Mirrored in packages/shared (used by mobile) until web migrates onto that package; change both
- * together. Used here by HistoryPage (last-updated on a saved character) and the /admin stats page
- * (when the aggregate stats were generated).
+ * Canonical copy for mobile's HistoryScreen. The web app keeps a mirrored copy in
+ * src/utils/formatRelativeTime.ts until it migrates onto this package; change both together.
  */
 export function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();

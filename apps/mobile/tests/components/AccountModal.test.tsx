@@ -25,7 +25,13 @@ function userNameCtx(overrides: Partial<UserNameContext> = {}): UserNameContext 
 function renderModal(props: Partial<React.ComponentProps<typeof AccountModal>> = {}) {
   return render(
     <ThemeProvider>
-      <AccountModal visible onClose={jest.fn()} userNameCtx={userNameCtx()} {...props} />
+      <AccountModal
+        visible
+        onClose={jest.fn()}
+        userNameCtx={userNameCtx()}
+        onOpenHistory={jest.fn()}
+        {...props}
+      />
     </ThemeProvider>,
   );
 }
@@ -45,6 +51,26 @@ describe("AccountModal", () => {
     const { findAllByText } = await renderModal();
     // "Sign in" appears twice: the modal's title and the button label.
     expect(await findAllByText("Sign in")).toHaveLength(2);
+  });
+
+  it("hides Past chats when signed out", async () => {
+    const { findAllByText, queryByText } = await renderModal();
+    await findAllByText("Sign in");
+    expect(queryByText("Past chats")).toBeNull();
+  });
+
+  it("offers Past chats when signed in", async () => {
+    mockedUseAuth.mockReturnValue({
+      status: "signedIn",
+      email: "andy@example.com",
+      name: "Andy",
+      signIn: jest.fn(),
+      signOut: jest.fn(),
+    });
+    const onOpenHistory = jest.fn();
+    const { findByText } = await renderModal({ onOpenHistory });
+    await fireEvent.press(await findByText("Past chats"));
+    expect(onOpenHistory).toHaveBeenCalled();
   });
 
   it("shows the signed-in identity (name over email) and a sign-out button", async () => {

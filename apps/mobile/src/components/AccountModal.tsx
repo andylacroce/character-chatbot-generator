@@ -20,6 +20,8 @@ type Props = {
   onClose: () => void;
   /** Shared instance from the caller (CreatorScreen) so an edit here stays in sync there. */
   userNameCtx: UserNameContext;
+  /** Opens HistoryScreen (signed-in only); the caller closes this modal and navigates. */
+  onOpenHistory: () => void;
 };
 
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
@@ -36,7 +38,7 @@ const SIGN_IN_ERROR_MESSAGES: Record<string, string> = {
  * CharacterDescriptionModal. Reachable from CreatorScreen's header only for this
  * pass (mobile has no shared header/menu component the way the web app does).
  */
-export default function AccountModal({ visible, onClose, userNameCtx }: Props) {
+export default function AccountModal({ visible, onClose, userNameCtx, onOpenHistory }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const { status, email, name, signIn, signOut } = useAuth();
@@ -115,6 +117,13 @@ export default function AccountModal({ visible, onClose, userNameCtx }: Props) {
               <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
             </View>
           </Pressable>
+
+          {status === "signedIn" ? (
+            <Pressable style={styles.nameRow} onPress={onOpenHistory}>
+              <Text style={styles.nameRowLabel}>Past chats</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+            </Pressable>
+          ) : null}
 
           <Pressable style={styles.closeButton} onPress={handleClose}>
             <Text style={styles.closeButtonText}>Close</Text>

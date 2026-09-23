@@ -189,10 +189,22 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
   `status`/`email`/`name`/`signIn`/`signOut`, reachable via the account icon in
   `CreatorScreen`'s header (`AccountModal.tsx`). A created character persists to
   `POST /api/bots` when signed in (`persistBotIfSignedIn` in `botCreation.ts`,
-  fire-and-forget); `CreatorScreen` lists them back via `GET /api/bots` as a
-  "Previously" section (`persistedBotToBot` from the shared package); `ChatScreen`
+  fire-and-forget); `HistoryScreen` ("Past chats", linked from `CreatorScreen` and
+  `AccountModal` when signed in) lists them back via `GET /api/bots`
+  (`persistedBotToBot` from the shared package), mirroring the web app's `/history`
+  page; `ChatScreen`
   reconciles local chat history against `GET /api/messages?botName=` on open, adopting
   the server list only if it's longer (mirrors the web app's own reconciliation rule).
+- **`CreatorScreen` must fit on one screen with no scrolling on any modern Android phone**
+  (checked 2026-09-23 at 360x740 through 412x915, with a 3-button nav bar and a resume card
+  showing, the tallest layout). The carousel is the one flexible element: `CreatorScreen`
+  measures the viewport and everything else on screen, then passes `CharacterCarousel` a
+  `size` (110 to 210) that fills whatever room is left. The viewport keeps the tallest
+  height it has seen, so the Android keyboard doesn't also shrink the carousel. Don't give
+  the scroll container `flexGrow: 1`, since the measurement needs its natural height.
+  Adding anything tall to this screen means checking it still fits: Expo web plus
+  Playwright at those sizes, with `/api/chars` stubbed (the web build can't reach the API
+  because of CORS, and the carousel renders nothing without data).
 - **`proxy.ts` on the backend requires `x-api-key` on every POST from this app** —
   React Native's `fetch` sends no `Origin`/`Referer` header, so every mutating request
   falls into proxy.ts's "external origin" branch. `src/api.ts` sends
