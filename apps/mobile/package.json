@@ -20,20 +20,20 @@
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
-    "react": "19.2.3",
+    "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-native": "0.86.3",
+    "react-native": "0.87.1",
     "react-native-safe-area-context": "~5.10.0",
-    "react-native-screens": "~4.26.0",
+    "react-native-screens": "~4.28.0",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
-    "@types/react": "~19.2.2",
-    "eslint": "^9.0.0",
+    "@types/react": "~19.3.0",
+    "eslint": "^10.11.0",
     "eslint-config-expo": "~57.0.2",
     "markdownlint-cli": "^0.49.1",
     "prettier": "^3.9.6",
-    "typescript": "~6.0.3"
+    "typescript": "~7.0.2"
   },
   "scripts": {
     "start": "expo start",
