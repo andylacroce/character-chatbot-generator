@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.9.2 — 2026-09-22 — Fix "Back to Home" trapping mobile users in the sign-in tab
+
+- `AuthSignInPage.tsx`'s "Back to Home" link only ever navigates within the current page — harmless on web, but on mobile this page runs inside `expo-web-browser`'s in-app browser tab, where a page-level link can't close that tab and hand control back to the native app (only the browser's own native close/"Done" button, or a matching redirect, can do that). Tapping it just showed the web app's landing page trapped inside the same tab. Detected via the mobile bridge's `callbackUrl` (always points at `mobile-auth-complete`) and swapped for a plain hint ("Close this tab to return to the app") in that context; unchanged for an ordinary web visitor.
+
 ## v0.9.1 — 2026-09-22 — Custom-styled sign-in page for the mobile bridge
 
 - `authOptions.ts` now configures a custom `pages.signIn: "/auth/signin"` (`app/auth/signin/page.tsx` → `AuthSignInPage.tsx`), styled to match the rest of the app — same colors/fonts/button and form treatment as `SignInModal.tsx` — instead of NextAuth's generic, unstyled default picker page. Web's own sign-in (`SignInModal.tsx`, an in-app lightbox) never navigates here; this exists because the mobile sign-in bridge (`pages/api/auth/mobile-auth-start.ts`, shipped in v0.9.0) opens a bare browser tab with no in-app lightbox context to render into, and was landing on NextAuth's stock page until now.

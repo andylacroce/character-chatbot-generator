@@ -39,6 +39,14 @@ export default function AuthSignInPage() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams?.get("callbackUrl") ?? "/";
   const errorCode = searchParams?.get("error") ?? null;
+  // The mobile sign-in bridge (pages/api/auth/mobile-auth-start.ts) always sets
+  // callbackUrl to its own mobile-auth-complete route — a reliable signal that this
+  // page is running inside expo-web-browser's in-app browser tab, not an ordinary
+  // browser. "Back to Home" would just navigate within that same tab (there's no way
+  // for a page-level link to close it and hand control back to the native app — only
+  // the browser's own native close/"Done" button, or a matching redirect, can do that),
+  // so it's actively misleading there and gets swapped for guidance instead.
+  const isMobileBridge = callbackUrl.includes("/api/auth/mobile-auth-complete");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<MagicLinkStatus>("idle");
   const [providerIds, setProviderIds] = useState<string[] | null>(null);
@@ -71,7 +79,11 @@ export default function AuthSignInPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <BackHomeLink label="Back to Home" />
+        {isMobileBridge ? (
+          <p className={styles.mobileBridgeHint}>Close this tab to return to the app</p>
+        ) : (
+          <BackHomeLink label="Back to Home" />
+        )}
         <DarkModeToggle />
       </header>
       <main className={styles.main}>
