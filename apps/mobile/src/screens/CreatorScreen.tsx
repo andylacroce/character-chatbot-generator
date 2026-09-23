@@ -26,6 +26,7 @@ import { loadBot, saveBot } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
 import { useAuth } from "../AuthContext";
+import { useUserName } from "../useUserName";
 import { BRAND } from "../theme";
 import Avatar from "../components/Avatar";
 import CharacterCarousel from "../components/CharacterCarousel";
@@ -33,6 +34,7 @@ import Wordmark from "../components/Wordmark";
 import CopyrightWarningModal from "../components/CopyrightWarningModal";
 import CharacterDescriptionModal from "../components/CharacterDescriptionModal";
 import AccountModal from "../components/AccountModal";
+import NameCaptureModal from "../components/NameCaptureModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Creator">;
 
@@ -52,6 +54,7 @@ export default function CreatorScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const auth = useAuth();
+  const userNameCtx = useUserName();
   const [input, setInput] = useState("");
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [randomizing, setRandomizing] = useState(false);
@@ -60,10 +63,14 @@ export default function CreatorScreen({ navigation }: Props) {
   const [persistedBots, setPersistedBots] = useState<PersistedBot[]>([]);
   const [previousExpanded, setPreviousExpanded] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showNameGateModal, setShowNameGateModal] = useState(false);
   const [validationResult, setValidationResult] = useState<CharacterValidationResult | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const cancelledRef = useRef(false);
+  // Holds whichever creation entry point (typed name or carousel tap) triggered the
+  // name gate, so it can resume exactly where it left off once the gate closes.
+  const pendingAfterGateRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     loadBot().then(setSavedBot);
@@ -125,7 +132,38 @@ export default function CreatorScreen({ navigation }: Props) {
     }
   };
 
-  const handleCreate = async () => {
+  // Pauses `proceed` behind a one-time "what should we call you" gate the first time
+  // this device doesn't yet know the visitor's own preferred name (and hasn't already
+  // skipped being asked) — resolved only once we authoritatively know there's no name
+  // (isResolved), so an already-named signed-in user isn't asked again just because
+  // GET /api/user-profile hadn't returned yet. Mirrors useBotCreation.ts's own gate,
+  // generalized to cover both of this screen's creation entry points (typed name and
+  // carousel tap) via a pending-callback ref instead of a re-entrant handleCreate call.
+  const maybeGateOnName = (proceed: () => void) => {
+    if (userNameCtx.isResolved && !userNameCtx.name && !userNameCtx.hasSkippedGate) {
+      pendingAfterGateRef.current = proceed;
+      setShowNameGateModal(true);
+      return;
+    }
+    proceed();
+  };
+
+  const handleNameGateSave = (name: string) => {
+    if (name.trim()) userNameCtx.setName(name.trim());
+    else userNameCtx.markGateSkipped();
+    setShowNameGateModal(false);
+    pendingAfterGateRef.current?.();
+    pendingAfterGateRef.current = null;
+  };
+
+  const handleNameGateSkip = () => {
+    userNameCtx.markGateSkipped();
+    setShowNameGateModal(false);
+    pendingAfterGateRef.current?.();
+    pendingAfterGateRef.current = null;
+  };
+
+  const runCreate = async () => {
     const name = sanitizeCharacterName(input);
     if (!name) {
       setError("Please enter a name or character.");
@@ -158,6 +196,8 @@ export default function CreatorScreen({ navigation }: Props) {
     await finishCreate(name, { recognized: true });
   };
 
+  const handleCreate = () => maybeGateOnName(runCreate);
+
   const handleCancel = () => {
     cancelledRef.current = true;
     setLoadingMessage(null);
@@ -188,7 +228,7 @@ export default function CreatorScreen({ navigation }: Props) {
   // Tapping a carousel portrait is a known-recognized name already (it came from the
   // shared cache) — skip straight to generation, same as CharWallScreen's tiles.
   const handleCarouselSelect = (name: string) => {
-    finishCreate(name, { recognized: true });
+    maybeGateOnName(() => finishCreate(name, { recognized: true }));
   };
 
   const handleValidationSuggestion = (suggestion: string) => {
@@ -362,7 +402,19 @@ export default function CreatorScreen({ navigation }: Props) {
         onSubmit={handleDescriptionSubmit}
         onCancel={() => setShowDescriptionModal(false)}
       />
-      <AccountModal visible={showAccountModal} onClose={() => setShowAccountModal(false)} />
+      <AccountModal
+        visible={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
+        userNameCtx={userNameCtx}
+      />
+      <NameCaptureModal
+        visible={showNameGateModal}
+        mode="gate"
+        currentName=""
+        onSave={handleNameGateSave}
+        onSkip={handleNameGateSkip}
+        onClose={handleNameGateSkip}
+      />
     </KeyboardAvoidingView>
   );
 }

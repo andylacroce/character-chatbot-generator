@@ -1,13 +1,25 @@
 import { useState } from "react";
-import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Text } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ThemeColors } from "character-chatbot-shared";
 import { useTheme } from "../ThemeContext";
 import { useAuth } from "../AuthContext";
+import type { UserNameContext } from "../useUserName";
+import NameCaptureModal from "./NameCaptureModal";
 
 type Props = {
   visible: boolean;
   onClose: () => void;
+  /** Shared instance from the caller (CreatorScreen) so an edit here stays in sync there. */
+  userNameCtx: UserNameContext;
 };
 
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
@@ -24,12 +36,13 @@ const SIGN_IN_ERROR_MESSAGES: Record<string, string> = {
  * CharacterDescriptionModal. Reachable from CreatorScreen's header only for this
  * pass (mobile has no shared header/menu component the way the web app does).
  */
-export default function AccountModal({ visible, onClose }: Props) {
+export default function AccountModal({ visible, onClose, userNameCtx }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const { status, email, name, signIn, signOut } = useAuth();
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState("");
+  const [showEditName, setShowEditName] = useState(false);
 
   const handleSignIn = async () => {
     setSigningIn(true);
@@ -93,11 +106,29 @@ export default function AccountModal({ visible, onClose }: Props) {
             </>
           )}
 
+          <View style={styles.divider} />
+          <Pressable style={styles.nameRow} onPress={() => setShowEditName(true)}>
+            <Text style={styles.nameRowLabel}>
+              {userNameCtx.name ? `Called: ${userNameCtx.name}` : "Add your name"}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+          </Pressable>
+
           <Pressable style={styles.closeButton} onPress={handleClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </Pressable>
         </Pressable>
       </Pressable>
+      <NameCaptureModal
+        visible={showEditName}
+        mode="edit"
+        currentName={userNameCtx.name}
+        onSave={(value) => {
+          userNameCtx.setName(value);
+          setShowEditName(false);
+        }}
+        onClose={() => setShowEditName(false)}
+      />
     </Modal>
   );
 }
@@ -143,5 +174,14 @@ function makeStyles(colors: ThemeColors) {
     primaryButtonText: { color: colors.onPrimary, fontSize: 15, fontWeight: "600" },
     closeButton: { marginTop: 16, padding: 8 },
     closeButtonText: { color: colors.textSecondary, fontSize: 14 },
+    divider: { height: 1, backgroundColor: colors.outline, alignSelf: "stretch", marginTop: 20 },
+    nameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      alignSelf: "stretch",
+      paddingVertical: 14,
+    },
+    nameRowLabel: { color: colors.text, fontSize: 14 },
   });
 }

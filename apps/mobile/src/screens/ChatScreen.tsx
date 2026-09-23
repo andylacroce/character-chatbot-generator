@@ -24,16 +24,11 @@ import {
   resolveApiUrl,
   sendChatMessage,
 } from "../api";
-import {
-  appendChatMessage,
-  loadAudioEnabled,
-  loadChatHistory,
-  loadUserName,
-  saveAudioEnabled,
-} from "../storage";
+import { appendChatMessage, loadAudioEnabled, loadChatHistory, saveAudioEnabled } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
 import { useAuth } from "../AuthContext";
+import { useUserName } from "../useUserName";
 import Avatar from "../components/Avatar";
 import PortraitLightbox from "../components/PortraitLightbox";
 
@@ -58,6 +53,8 @@ export default function ChatScreen({ route, navigation }: Props) {
   const { bot } = route.params;
   const { colors } = useTheme();
   const auth = useAuth();
+  const userNameCtx = useUserName();
+  const userName = userNameCtx.name || "Me";
   // Memoized: this screen re-renders on every keystroke (input state), and recreating
   // a fresh StyleSheet each time was the actual cause of the send button intermittently
   // failing to paint its background on real Android devices while typing — not
@@ -67,7 +64,6 @@ export default function ChatScreen({ route, navigation }: Props) {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
-  const [userName, setUserName] = useState("Me");
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   // `inverted` FlatList was tried to get robust bottom-anchoring, but RN's per-item
@@ -149,7 +145,6 @@ export default function ChatScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
-    loadUserName().then((name) => name && setUserName(name));
     loadAudioEnabled().then(setAudioEnabled);
 
     loadChatHistory(bot.name).then(async (localHistory) => {

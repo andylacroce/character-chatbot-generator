@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.8.0 — 2026-09-22 — Mobile personalized greeting
+
+- Mobile now supports the visitor's own preferred name — what a character should call them, distinct from any character's own name. `apps/mobile/src/useUserName.ts` mirrors the web app's `useUserName.ts` exactly: AsyncStorage for guests, `GET`/`POST /api/user-profile` for signed-in users (seeded once from a guest-entered value on first sign-in). The read/send/display plumbing already existed in `ChatScreen.tsx` (it already sent `userName` on every chat request and showed it in the transcript) — this ships the missing piece: an actual way to type it in.
+- `NameCaptureModal.tsx` (new) gates `CreatorScreen`'s two creation entry points — typed name and carousel tap — the first time a device doesn't know the visitor's name yet, and doubles as an anytime "Add your name"/"Called: X" edit row in `AccountModal.tsx`, sharing one `useUserName()` instance so an edit there stays in sync with the gate.
+
 ## v0.7.2 — 2026-09-22 — Local static-analysis security scanning
 
 - Added `eslint-plugin-security` to the app/src/API layers' ESLint config, gated on the same `--max-warnings=0` this repo's `npm run ci`/CI already enforce for every other lint rule, so a real finding fails the build the same way a missing JSDoc comment or a stray `console.log` already does. Runs on every commit/PR, ahead of GitHub's own CodeQL scan (which only fires after a push).

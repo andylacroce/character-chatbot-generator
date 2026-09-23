@@ -18,6 +18,7 @@ import type {
   PersistedBot,
   PersistedMessage,
   RandomCharacterResponse,
+  UserProfile,
   ValidateCharacterRequest,
 } from "character-chatbot-shared";
 import { getCachedAuthToken } from "./authToken";
@@ -151,4 +152,14 @@ export async function getPersistedMessages(botName: string): Promise<PersistedMe
     `/api/messages?botName=${encodeURIComponent(botName)}`,
   );
   return messages;
+}
+
+/** Gets the signed-in user's preferred name. Guests/signed-out get `{ name: null }`. */
+export function getUserProfile(): Promise<UserProfile> {
+  return apiFetch("/api/user-profile");
+}
+
+/** Sets the signed-in user's preferred name. No-ops server-side for guests. */
+export function saveUserProfile(name: string): Promise<{ persisted: boolean }> {
+  return post("/api/user-profile", { name });
 }

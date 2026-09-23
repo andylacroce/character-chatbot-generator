@@ -210,11 +210,18 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
    (`CharacterDescriptionModal.tsx`), resume-saved-bot (Creator screen's "Continue
    chatting with X" card, backed by local storage for guests and `GET /api/bots` for
    signed-in users), the landing carousel (`CharacterCarousel.tsx`, in the Creator
-   screen body rather than a header slot), and Google sign-in + account persistence
-   (see "Key architectural decisions" above) — reachable via the account icon in
-   `CreatorScreen`'s header only, for now; every other screen still has no
-   sign-in/account entry point (mobile has no shared header/menu component the way
-   the web app does).
+   screen body rather than a header slot), Google sign-in + account persistence
+   (see "Key architectural decisions" above), and the personalized greeting (the
+   visitor's own preferred name — `src/useUserName.ts` mirrors the web app's
+   `useUserName.ts` exactly: AsyncStorage for guests, `GET`/`POST /api/user-profile`
+   for signed-in users, seeded once from a guest value on first sign-in.
+   `NameCaptureModal.tsx` gates `CreatorScreen`'s two creation entry points — typed
+   name and carousel tap — the first time no name is known yet, and doubles as
+   `AccountModal.tsx`'s "Add your name"/"Called: X" edit row; `ChatScreen.tsx` already
+   sent/displayed it once storage.ts's `saveUserName` finally had a caller). All of
+   this is reachable via the account icon in `CreatorScreen`'s header only, for now;
+   every other screen still has no sign-in/account/name entry point (mobile has no
+   shared header/menu component the way the web app does).
 3. **Store-ready:** icon/splash now reuse the web app's real brand mark (see Status
    above) — still need a privacy policy (can point at the existing Next.js site), Play
    Console listing, EAS Build signing config, internal testing track.

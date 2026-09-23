@@ -42,6 +42,16 @@ export async function saveUserName(name: string): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEYS.userName, name);
 }
 
+/** Whether the visitor has dismissed the one-time name-capture gate without naming themselves. */
+export async function loadUserNameGateSkipped(): Promise<boolean> {
+  return (await AsyncStorage.getItem(STORAGE_KEYS.userNameGateSkipped)) === "1";
+}
+
+/** Marks the name-capture gate as dismissed, so it won't reappear on this device. */
+export async function saveUserNameGateSkipped(): Promise<void> {
+  await AsyncStorage.setItem(STORAGE_KEYS.userNameGateSkipped, "1");
+}
+
 /** Whether TTS playback is on. Defaults true (unset) to match the web app. */
 export async function loadAudioEnabled(): Promise<boolean> {
   const raw = await AsyncStorage.getItem(STORAGE_KEYS.audioEnabled);
