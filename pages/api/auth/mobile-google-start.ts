@@ -23,6 +23,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { signMobileAuthState } from "../../../src/utils/mobileAuthState";
+import { getRequestBaseUrl } from "../../../src/utils/requestBaseUrl";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
 
@@ -56,12 +57,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const nextAuthUrl = process.env.NEXTAUTH_URL;
-  if (!clientId || !nextAuthUrl) {
-    logEvent("error", "mobile_google_start_misconfigured", "Missing Google/NextAuth env vars", {});
+  if (!clientId) {
+    logEvent("error", "mobile_google_start_misconfigured", "Missing GOOGLE_CLIENT_ID", {});
     res.status(500).send("Sign-in is not configured");
     return;
   }
+
+  // NEXTAUTH_URL isn't set in this app's production deployment (web's own sign-in
+  // already relies on NextAuth's own host-header inference) — fall back to the same
+  // inference here rather than requiring a new env var just for this bridge.
+  const nextAuthUrl = process.env.NEXTAUTH_URL || getRequestBaseUrl(req);
 
   const state = await signMobileAuthState(redirectUri);
   const callbackUrl = `${nextAuthUrl}/api/auth/mobile-google-callback`;

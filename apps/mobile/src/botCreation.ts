@@ -1,5 +1,6 @@
 import type { Bot } from "character-chatbot-shared";
-import { generateAvatar, generatePersonality, getVoiceConfig } from "./api";
+import { generateAvatar, generatePersonality, getVoiceConfig, persistBot } from "./api";
+import { getCachedAuthToken } from "./authToken";
 
 export interface CreateBotOptions {
   /** Free-form concept, collected when validate-character reports `recognized: false`. */
@@ -48,4 +49,22 @@ export async function createBot(
   if (isCancelled()) return null;
 
   return { name: correctedName, personality, avatarUrl, voiceConfig, gender, skipPersistence };
+}
+
+/**
+ * Persists a created character to the signed-in user's account (`POST /api/bots`,
+ * which itself no-ops server-side for guests) — fire-and-forget, matching the web
+ * app's handleBotCreated exactly, so a persistence failure never blocks or fails an
+ * otherwise-successful bot creation. Never called for a `skipPersistence` bot (a
+ * copyright-warning override or original character), same as the web app.
+ */
+export function persistBotIfSignedIn(bot: Bot): void {
+  if (bot.skipPersistence || !getCachedAuthToken()) return;
+  persistBot({
+    name: bot.name,
+    personality: bot.personality,
+    avatarUrl: bot.avatarUrl || null,
+    gender: bot.gender ?? null,
+    voiceConfig: bot.voiceConfig,
+  }).catch(() => {});
 }

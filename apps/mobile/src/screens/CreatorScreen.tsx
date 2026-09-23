@@ -13,42 +13,53 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  persistedBotToBot,
   sanitizeCharacterName,
   type Bot,
   type CharacterValidationResult,
+  type PersistedBot,
   type ThemeColors,
 } from "character-chatbot-shared";
-import { getRandomCharacter, validateCharacter } from "../api";
-import { createBot, type CreateBotOptions } from "../botCreation";
+import { getPersistedBots, getRandomCharacter, validateCharacter } from "../api";
+import { createBot, persistBotIfSignedIn, type CreateBotOptions } from "../botCreation";
 import { loadBot, saveBot } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
+import { useAuth } from "../AuthContext";
 import { BRAND } from "../theme";
 import Avatar from "../components/Avatar";
 import CharacterCarousel from "../components/CharacterCarousel";
 import Wordmark from "../components/Wordmark";
 import CopyrightWarningModal from "../components/CopyrightWarningModal";
 import CharacterDescriptionModal from "../components/CharacterDescriptionModal";
+import AccountModal from "../components/AccountModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Creator">;
 
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
+/** Rows shown before collapsing behind a "Show N more" toggle — mirrors ResumeBotDropdown.tsx. */
+const PREVIOUS_VISIBLE_LIMIT = 3;
 
 /**
  * Character creation: name in → validate-character → personality → avatar → voice.
  * Mirrors the web app's useBotCreation pipeline, including the copyright/caution
- * modal and the "unrecognized name" description flow. No Google sign-in / server-side
- * "Previously" list — phase 1 is guest-only, so "resume" here means the one bot
- * saved locally (src/storage.ts), not an auth-gated multi-bot list.
+ * modal and the "unrecognized name" description flow. Signed-in users additionally
+ * get a server-backed "Previously" list (GET /api/bots) alongside the local resume
+ * card, and a newly created character is persisted to their account (see
+ * persistBotIfSignedIn in botCreation.ts).
  */
 export default function CreatorScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const auth = useAuth();
   const [input, setInput] = useState("");
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [randomizing, setRandomizing] = useState(false);
   const [error, setError] = useState("");
   const [savedBot, setSavedBot] = useState<Bot | null>(null);
+  const [persistedBots, setPersistedBots] = useState<PersistedBot[]>([]);
+  const [previousExpanded, setPreviousExpanded] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
   const [validationResult, setValidationResult] = useState<CharacterValidationResult | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
@@ -58,8 +69,39 @@ export default function CreatorScreen({ navigation }: Props) {
     loadBot().then(setSavedBot);
   }, []);
 
+  useEffect(() => {
+    if (auth.status !== "signedIn") return;
+    getPersistedBots()
+      .then(setPersistedBots)
+      .catch(() => setPersistedBots([]));
+  }, [auth.status]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <Pressable
+          onPress={() => setShowAccountModal(true)}
+          hitSlop={8}
+          android_ripple={{ color: colors.secondaryContainer, borderless: true, radius: 18 }}
+          style={styles.headerAccountButton}
+          accessibilityLabel={auth.status === "signedIn" ? "Account" : "Sign in"}
+        >
+          <Ionicons
+            name={auth.status === "signedIn" ? "person-circle" : "person-circle-outline"}
+            size={22}
+            color={colors.text}
+          />
+        </Pressable>
+      ),
+    });
+  }, [navigation, colors, auth.status, styles.headerAccountButton]);
+
   const handleResume = () => {
     if (savedBot) navigation.navigate("Chat", { bot: savedBot });
+  };
+
+  const handleResumePersisted = (bot: PersistedBot) => {
+    navigation.navigate("Chat", { bot: persistedBotToBot(bot) });
   };
 
   const finishCreate = async (name: string, options?: CreateBotOptions) => {
@@ -69,6 +111,7 @@ export default function CreatorScreen({ navigation }: Props) {
       const bot = await createBot(name, setLoadingMessage, () => cancelledRef.current, options);
       if (!bot) return;
       await saveBot(bot);
+      persistBotIfSignedIn(bot);
       setLoadingMessage(null);
       // navigate, not replace: keeps Creator in the stack so Chat gets a working
       // back button instead of leaving the user with no way out of the chat.
@@ -165,6 +208,12 @@ export default function CreatorScreen({ navigation }: Props) {
   };
 
   const busy = loadingMessage !== null;
+  const otherPersistedBots = persistedBots.filter(
+    (b) => !savedBot || b.name.toLowerCase() !== savedBot.name.toLowerCase(),
+  );
+  const visiblePersistedBots = previousExpanded
+    ? otherPersistedBots
+    : otherPersistedBots.slice(0, PREVIOUS_VISIBLE_LIMIT);
 
   return (
     <KeyboardAvoidingView
@@ -188,6 +237,35 @@ export default function CreatorScreen({ navigation }: Props) {
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
+        ) : null}
+
+        {!busy && auth.status === "signedIn" && otherPersistedBots.length > 0 ? (
+          <View style={styles.previousSection}>
+            <Text style={styles.previousLabel}>Previously</Text>
+            {visiblePersistedBots.map((b) => (
+              <Pressable
+                key={b.id}
+                style={styles.resumeCard}
+                onPress={() => handleResumePersisted(b)}
+                android_ripple={{ color: colors.secondaryContainer }}
+              >
+                <Avatar name={b.name} avatarUrl={b.avatarUrl} size={36} />
+                <View style={styles.resumeTextWrap}>
+                  <Text style={styles.resumeName}>{b.name}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </Pressable>
+            ))}
+            {otherPersistedBots.length > PREVIOUS_VISIBLE_LIMIT ? (
+              <Pressable onPress={() => setPreviousExpanded((e) => !e)} style={styles.showMore}>
+                <Text style={styles.showMoreText}>
+                  {previousExpanded
+                    ? "Show less"
+                    : `Show ${otherPersistedBots.length - PREVIOUS_VISIBLE_LIMIT} more`}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
 
         <CharacterCarousel onSelect={handleCarouselSelect} disabled={busy} />
@@ -284,6 +362,7 @@ export default function CreatorScreen({ navigation }: Props) {
         onSubmit={handleDescriptionSubmit}
         onCancel={() => setShowDescriptionModal(false)}
       />
+      <AccountModal visible={showAccountModal} onClose={() => setShowAccountModal(false)} />
     </KeyboardAvoidingView>
   );
 }
@@ -320,6 +399,18 @@ function makeStyles(colors: ThemeColors) {
     resumeTextWrap: { flex: 1 },
     resumeLabel: { color: colors.textSecondary, fontSize: 11 },
     resumeName: { color: colors.text, fontSize: 16, fontWeight: "600", fontFamily: serif },
+    previousSection: { alignSelf: "stretch", marginBottom: 4 },
+    previousLabel: {
+      color: colors.textSecondary,
+      fontSize: 11,
+      fontWeight: "600",
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 8,
+    },
+    showMore: { alignSelf: "center", padding: 6, marginBottom: 10 },
+    showMoreText: { color: colors.secondary, fontSize: 13, fontWeight: "600" },
+    headerAccountButton: { padding: 6, marginLeft: 4 },
     headline: {
       fontFamily: serif,
       fontSize: 20,

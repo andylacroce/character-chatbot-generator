@@ -2,6 +2,13 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.7.0 — 2026-09-22 — Mobile Google sign-in and account persistence
+
+- Wired up the mobile app's Google sign-in bridge (`pages/api/auth/mobile-google-start.ts`/`-callback.ts`), added in v0.6.1 but never reachable from the mobile side until now. `apps/mobile/src/auth.ts` opens the bridge in a browser tab (`expo-web-browser`'s `openAuthSessionAsync`) and persists the resulting bearer token via `expo-secure-store`; a new `GET /api/auth/mobile-session` endpoint resolves that token to a display identity, since next-auth v4's JWT session token is encrypted and has no client-side decode path.
+- Signed-in mobile users now get real account persistence: a created character saves to `POST /api/bots` (`persistBotIfSignedIn`), `CreatorScreen` lists them back as a "Previously" section via `GET /api/bots`, and `ChatScreen` reconciles local chat history against `GET /api/messages` on open — the same server-authoritative behavior web already has for signed-in users. Reachable via a new account icon in `CreatorScreen`'s header (`AccountModal.tsx`); no other mobile screen has a sign-in entry point yet.
+- Fixed a latent bug in the mobile sign-in bridge: it hard-required `NEXTAUTH_URL`, which isn't actually set on this app's production deployment (web's own sign-in already relies on NextAuth's host-header inference instead). `src/utils/requestBaseUrl.ts` replicates that same inference (`x-forwarded-host`/`x-forwarded-proto`, matching `next-auth`'s own `detectOrigin()`) so the bridge needs no new env var.
+- Folded the former standalone `character-chatbot-mobile` and `character-chatbot-shared` repos' remaining traces away: both were deleted (local clones and GitHub remotes) now that everything lives in this monorepo with history preserved from the v0.6.1 subtree fold.
+
 ## v0.6.2 — 2026-09-22 — All-rights-reserved license, npm cleanup, parallel CI
 
 - Replaced the MIT `LICENSE` with an all-rights-reserved notice: the source stays publicly viewable for portfolio purposes, but no permission is granted to use, copy, modify, or redistribute it. `package.json`'s `license` field changed to `UNLICENSED` (root, `apps/mobile`, `packages/shared`), and the README's badge/License section updated to match.

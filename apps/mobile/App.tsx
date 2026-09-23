@@ -9,6 +9,7 @@ import ChatScreen from "./src/screens/ChatScreen";
 import CharWallScreen from "./src/screens/CharWallScreen";
 import type { RootStackParamList } from "./src/navigation/types";
 import { ThemeProvider, useTheme } from "./src/ThemeContext";
+import { AuthProvider } from "./src/AuthContext";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -75,7 +76,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppNavigator />
+        <AuthProvider>
+          <AppNavigator />
+        </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

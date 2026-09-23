@@ -2,12 +2,13 @@
 
 # CLAUDE.md
 
-Android/iOS client for **character-chatbot-generator** (Next.js, deployed on Vercel —
-sibling repo at `../character-chatbot-generator`). This app is a pure API client: no
-server code lives here. All chat/personality/avatar/validation logic stays in the
-existing backend; this repo only renders it natively and calls it over HTTPS.
+Android/iOS client for **character-chatbot-generator** (Next.js, deployed on Vercel).
+Lives in this same monorepo as `apps/mobile` (folded in from a former standalone repo
+in v0.6.1 — see "Key architectural decisions" below). This app is a pure API client:
+no server code lives here. All chat/personality/avatar/validation logic stays in the
+backend at the repo root; this app only renders it natively and calls it over HTTPS.
 
-## Status (updated 2026-09-13)
+## Status (updated 2026-09-22)
 
 MVP flow (phase 1) is wired end-to-end: `App.tsx` sets up a
 `@react-navigation/native-stack` with `Creator` → `Chat`, plus `CharWall` (a phase-2
@@ -125,15 +126,17 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
 
 ## Key architectural decisions already made (don't re-litigate without reason)
 
-- **Separate repo from the web app, on purpose** ("fork is the right call") — not a
-  monorepo merge. Deploys independently, doesn't touch the production Next.js app's
-  build/CI.
-- **Shared code lives in a third repo**, `../character-chatbot-shared` (sibling
-  folder, private on GitHub at `andylacroce/character-chatbot-shared` — consumed via
-  `"character-chatbot-shared": "git+https://github.com/andylacroce/character-chatbot-shared.git"`
-  in `package.json`, tracking its default branch rather than a pinned commit, since
-  both repos are still evolving together; re-run `npm install` after pushing a shared
-  change to pick it up here). It holds:
+- **Lives in the same monorepo as the backend, as of v0.6.1** — originally a separate
+  repo ("fork is the right call"), folded in via `git subtree` (full history preserved)
+  once that separation stopped paying for itself. The old standalone
+  `character-chatbot-mobile`/`character-chatbot-shared` repos (local and on GitHub)
+  were deleted once the fold was confirmed safe — this monorepo is the only copy now.
+  Still deploys independently of the web app (Expo/EAS, not Vercel) and doesn't touch
+  the Next.js app's own build/CI beyond the path-filtered root workflow.
+- **Shared code lives in `packages/shared`** (an npm workspace, `"character-chatbot-shared": "*"`
+  in this app's `package.json` — resolved locally, no git dependency, no separate
+  install step to pick up a shared-code change; just edit it and re-run type-check).
+  It holds:
   - `src/types.ts` — API request/response contracts mirroring the web repo's
     `@swagger` JSDoc blocks (chat, validate-character, generate-personality,
     generate-avatar, chars, bots, messages, user-profile, random-character).
@@ -148,14 +151,30 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
     repo import from here; they're still independent copies for now.
 - **UI/components are NOT shared** — no common rendering layer between Next.js/React
   DOM and React Native. Every screen here is written fresh.
-- **Auth is deferred to phase 2.** Phase 1 is guest-only, matching the web app's
-  guest experience (AsyncStorage-only persistence, no sign-in). When phase 2 starts:
-  Auth.js's cookie-based JWT session doesn't work for a mobile client, so the plan is
-  a new backend endpoint (`POST /api/auth/mobile-google`, not built yet) that verifies
-  a Google `id_token` from `expo-auth-session`/`@react-native-google-signin` and
-  returns a bearer JWT (reusing `next-auth/jwt`'s `encode`) for
-  `Authorization: Bearer <token>` — plus a small branch in `getSessionUserId` to accept
-  either a cookie session or that bearer token. Don't build this until asked.
+- **Google sign-in and account persistence are done.** Auth.js's cookie-based JWT
+  session doesn't work for a mobile client, and plain Expo Go has no supported native
+  Google Sign-In path (no custom dev client), so this isn't an `expo-auth-session`/
+  `@react-native-google-signin` id_token exchange — it's a backend-mediated
+  browser-redirect bridge instead: `src/auth.ts`'s `signInWithGoogle()` opens
+  `GET /api/auth/mobile-google-start?redirect_uri=...` in a browser tab
+  (`expo-web-browser`'s `openAuthSessionAsync`, redirect URI from `expo-linking`'s
+  `createURL`, matching `app.json`'s `"scheme": "character-chatbot-mobile"`); the
+  backend runs the real Google OAuth code exchange server-side
+  (`pages/api/auth/mobile-google-callback.ts`) and redirects back into the app with a
+  bearer JWT (`next-auth/jwt`'s `encode`, same shape as the web session cookie —
+  `getSessionUserId` already reads either). The token is cached in-memory and
+  persisted via `expo-secure-store` (`src/authToken.ts`, split out from `src/auth.ts`
+  to avoid a circular import with `src/api.ts`, which reads it synchronously to attach
+  `Authorization: Bearer <token>`). `GET /api/auth/mobile-session` (new, since next-auth
+  v4's JWT is encrypted — no client-side decode path) resolves the token to
+  `{ email, name }` for display; `src/AuthContext.tsx`'s `useAuth()` exposes
+  `status`/`email`/`name`/`signIn`/`signOut`, reachable via the account icon in
+  `CreatorScreen`'s header (`AccountModal.tsx`). A created character persists to
+  `POST /api/bots` when signed in (`persistBotIfSignedIn` in `botCreation.ts`,
+  fire-and-forget); `CreatorScreen` lists them back via `GET /api/bots` as a
+  "Previously" section (`persistedBotToBot` from the shared package); `ChatScreen`
+  reconciles local chat history against `GET /api/messages?botName=` on open, adopting
+  the server list only if it's longer (mirrors the web app's own reconciliation rule).
 - **`proxy.ts` on the backend requires `x-api-key` on every POST from this app** —
   React Native's `fetch` sends no `Origin`/`Referer` header, so every mutating request
   falls into proxy.ts's "external origin" branch. `src/api.ts` sends
@@ -189,10 +208,13 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
 2. **Parity pass:** Done — `validate-character` + copyright/caution/blocked handling
    (`CopyrightWarningModal.tsx`), the original-character description flow
    (`CharacterDescriptionModal.tsx`), resume-saved-bot (Creator screen's "Continue
-   chatting with X" card, using the one bot saved locally — not an auth-gated
-   multi-bot list, since phase 1 has no accounts), and the landing carousel
-   (`CharacterCarousel.tsx`, in the Creator screen body rather than a header slot).
-   Still open: Google sign-in — needs a new backend endpoint, a bigger cross-repo lift.
+   chatting with X" card, backed by local storage for guests and `GET /api/bots` for
+   signed-in users), the landing carousel (`CharacterCarousel.tsx`, in the Creator
+   screen body rather than a header slot), and Google sign-in + account persistence
+   (see "Key architectural decisions" above) — reachable via the account icon in
+   `CreatorScreen`'s header only, for now; every other screen still has no
+   sign-in/account entry point (mobile has no shared header/menu component the way
+   the web app does).
 3. **Store-ready:** icon/splash now reuse the web app's real brand mark (see Status
    above) — still need a privacy policy (can point at the existing Next.js site), Play
    Console listing, EAS Build signing config, internal testing track.

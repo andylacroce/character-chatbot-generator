@@ -12,7 +12,7 @@ import { Image } from "expo-image";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { CharacterEntry, ThemeColors } from "character-chatbot-shared";
 import { getChars, resolveApiUrl } from "../api";
-import { createBot } from "../botCreation";
+import { createBot, persistBotIfSignedIn } from "../botCreation";
 import { saveBot } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
@@ -75,6 +75,7 @@ export default function CharWallScreen({ navigation }: Props) {
       );
       if (!bot) return;
       await saveBot(bot);
+      persistBotIfSignedIn(bot);
       setSelected(null);
       // navigate, not replace: keeps the wall in the stack so Chat's back button
       // returns here instead of leaving the user with no way out of the chat.

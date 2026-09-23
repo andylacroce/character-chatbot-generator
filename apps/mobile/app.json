@@ -3,6 +3,7 @@
     "name": "character-chatbot-mobile",
     "slug": "character-chatbot-mobile",
     "version": "1.0.0",
+    "scheme": "character-chatbot-mobile",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -45,7 +46,8 @@
             "backgroundColor": "#151209"
           }
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

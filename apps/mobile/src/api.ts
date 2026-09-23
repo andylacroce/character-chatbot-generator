@@ -15,9 +15,12 @@ import type {
   GeneratePersonalityRequest,
   GeneratePersonalityResponse,
   GetVoiceConfigRequest,
+  PersistedBot,
+  PersistedMessage,
   RandomCharacterResponse,
   ValidateCharacterRequest,
 } from "character-chatbot-shared";
+import { getCachedAuthToken } from "./authToken";
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
 const API_SECRET = process.env.EXPO_PUBLIC_API_SECRET ?? "";
@@ -44,6 +47,10 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   };
   if (method !== "GET" && method !== "HEAD") {
     headers["x-api-key"] = API_SECRET;
+  }
+  const authToken = getCachedAuthToken();
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
@@ -119,4 +126,29 @@ export function getRandomCharacter(): Promise<RandomCharacterResponse> {
 
 export function getChars(limit: number, offset: number): Promise<CharsResponse> {
   return apiFetch(`/api/chars?limit=${limit}&offset=${offset}`);
+}
+
+/** Lists the signed-in user's persisted characters. Guests/signed-out get an empty list. */
+export async function getPersistedBots(): Promise<PersistedBot[]> {
+  const { bots } = await apiFetch<{ bots: PersistedBot[] }>("/api/bots");
+  return bots;
+}
+
+/** Persists a created character for the signed-in user. No-ops server-side for guests. */
+export function persistBot(bot: {
+  name: string;
+  personality: string;
+  avatarUrl: string | null;
+  gender: string | null;
+  voiceConfig: CharacterVoiceConfig | null;
+}): Promise<{ persisted: boolean }> {
+  return post("/api/bots", bot);
+}
+
+/** Lists a signed-in user's persisted chat history for one saved character. */
+export async function getPersistedMessages(botName: string): Promise<PersistedMessage[]> {
+  const { messages } = await apiFetch<{ messages: PersistedMessage[] }>(
+    `/api/messages?botName=${encodeURIComponent(botName)}`,
+  );
+  return messages;
 }

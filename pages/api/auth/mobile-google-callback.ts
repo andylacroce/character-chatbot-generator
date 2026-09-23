@@ -21,6 +21,7 @@ import { getDb } from "../../../src/db/client";
 import { users } from "../../../src/db/schema";
 import { verifyMobileAuthState } from "../../../src/utils/mobileAuthState";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
+import { getRequestBaseUrl } from "../../../src/utils/requestBaseUrl";
 import { logEvent, sanitizeLogMeta } from "../../../src/utils/logger";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
 
@@ -95,15 +96,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const nextAuthUrl = process.env.NEXTAUTH_URL;
   const nextAuthSecret = process.env.NEXTAUTH_SECRET;
-  if (!clientId || !clientSecret || !nextAuthUrl || !nextAuthSecret) {
+  if (!clientId || !clientSecret || !nextAuthSecret) {
     logEvent("error", "mobile_google_callback_misconfigured", "Missing required env vars", {});
     redirectWithError(res, redirectUri, "server_misconfigured");
     return;
   }
 
   try {
+    // Must match mobile-google-start.ts's callbackUrl exactly (Google validates the
+    // redirect_uri identically across the auth request and this token exchange) — same
+    // NEXTAUTH_URL-or-host-header fallback as that leg.
+    const nextAuthUrl = process.env.NEXTAUTH_URL || getRequestBaseUrl(req);
     const callbackUrl = `${nextAuthUrl}/api/auth/mobile-google-callback`;
     const client = new OAuth2Client(clientId, clientSecret, callbackUrl);
     const { tokens } = await client.getToken(code);

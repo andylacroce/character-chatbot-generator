@@ -17,7 +17,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import type { ChatMessage, ThemeColors } from "character-chatbot-shared";
-import { ApiError, type ChatRequestBody, resolveApiUrl, sendChatMessage } from "../api";
+import {
+  ApiError,
+  type ChatRequestBody,
+  getPersistedMessages,
+  resolveApiUrl,
+  sendChatMessage,
+} from "../api";
 import {
   appendChatMessage,
   loadAudioEnabled,
@@ -27,6 +33,7 @@ import {
 } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
+import { useAuth } from "../AuthContext";
 import Avatar from "../components/Avatar";
 import PortraitLightbox from "../components/PortraitLightbox";
 
@@ -50,6 +57,7 @@ function logChatError(label: string, err: unknown) {
 export default function ChatScreen({ route, navigation }: Props) {
   const { bot } = route.params;
   const { colors } = useTheme();
+  const auth = useAuth();
   // Memoized: this screen re-renders on every keystroke (input state), and recreating
   // a fresh StyleSheet each time was the actual cause of the send button intermittently
   // failing to paint its background on real Android devices while typing — not
@@ -144,8 +152,26 @@ export default function ChatScreen({ route, navigation }: Props) {
     loadUserName().then((name) => name && setUserName(name));
     loadAudioEnabled().then(setAudioEnabled);
 
-    loadChatHistory(bot.name).then(async (history) => {
-      setMessages(history);
+    loadChatHistory(bot.name).then(async (localHistory) => {
+      setMessages(localHistory);
+      let history = localHistory;
+
+      // Signed-in users: reconcile with the server's copy before deciding whether this
+      // is a "fresh chat" — a new device with no local history but real server history
+      // must not fire the intro turn. Mirrors useChatController.ts's exact rule: adopt
+      // the server list only if it's longer than what's already loaded.
+      if (auth.status === "signedIn") {
+        try {
+          const serverMessages = await getPersistedMessages(bot.name);
+          if (serverMessages.length > history.length) {
+            history = serverMessages.map((m) => ({ sender: m.sender, text: m.text }));
+            setMessages(history);
+          }
+        } catch {
+          // Best effort — local history already rendered above.
+        }
+      }
+
       // Fresh chat, no saved turns yet — get the character to open with a line of its
       // own instead of dropping the user into a blank screen (mirrors the web app's
       // hidden "introduce yourself" turn in useChatController.ts).

@@ -176,6 +176,22 @@ export interface PersistedBot {
   updatedAt: string;
 }
 
+/**
+ * Maps a `GET /api/bots` row onto the Bot shape a client's "resume this character"
+ * flow expects — mirrors the web app's own local copy in
+ * app/components/ResumeBotDropdown.tsx (not yet migrated to import this one; see this
+ * package's other not-yet-adopted-by-web exports).
+ */
+export function persistedBotToBot(bot: PersistedBot): Bot {
+  return {
+    name: bot.name,
+    personality: bot.personality,
+    avatarUrl: bot.avatarUrl || "/silhouette.svg",
+    voiceConfig: bot.voiceConfig,
+    gender: bot.gender,
+  };
+}
+
 /** One row of GET /api/messages?botName=<name>. */
 export interface PersistedMessage {
   id: number;
@@ -195,23 +211,26 @@ export interface RandomCharacterResponse {
 }
 
 /**
- * POST /api/auth/mobile-google request/response. Mobile-only bridge — exchanges a Google
- * `id_token` (obtained client-side via expo-auth-session, since NextAuth's own cookie-based
- * session doesn't work for a native client) for a bearer JWT encoded the same way NextAuth's
- * own session cookie is (next-auth/jwt's `encode`), sent back as `Authorization: Bearer
- * <token>` on every subsequent request. See pages/api/auth/mobile-google.ts.
+ * Mobile-only Google sign-in bridge. Plain Expo Go has no supported native Google
+ * Sign-In path, so the mobile app opens `GET /api/auth/mobile-google-start` in a
+ * browser tab (expo-web-browser's `openAuthSessionAsync`) rather than exchanging an
+ * `id_token` itself; the backend runs the real OAuth code exchange and redirects back
+ * into the app's own `exp://`/custom-scheme redirect URI with a `?token=` query param
+ * — a bearer JWT encoded the same way NextAuth's own session cookie is (next-auth/jwt's
+ * `encode`). See pages/api/auth/mobile-google-start.ts and -callback.ts. There's no
+ * request/response JSON shape to type for that leg (it's a pair of GET redirects, not
+ * a POST); `MobileSessionResponse` below is the one JSON contract mobile actually calls.
  */
-export interface MobileGoogleAuthRequest {
-  idToken: string;
-}
 
-export interface MobileGoogleAuthResponse {
-  token: string;
-  user: {
-    id: string;
-    email: string | null;
-    name: string | null;
-  };
+/**
+ * GET /api/auth/mobile-session response — resolves the caller's bearer token to a
+ * display identity (all fields null if not signed in). See
+ * pages/api/auth/mobile-session.ts.
+ */
+export interface MobileSessionResponse {
+  userId: string | null;
+  email: string | null;
+  name: string | null;
 }
 
 /**
