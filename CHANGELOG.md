@@ -4,6 +4,7 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 
 ## v0.12.0 — 2026-09-23 — Guessing game and leaderboard on mobile; one shared codebase for both apps
 
+- Web and mobile now resolve one React version across the monorepo: React 19.3.0, the current stable release. Root npm overrides prevent transitive dependencies from installing a second React or React DOM copy in future installs.
 - The mobile app now has the guessing game (the streak, the correct/wrong banners, give-up, and the personal best) and the public leaderboard, including claiming a top-ten spot. Correct and wrong guesses buzz the phone. A guest's streaks count toward the leaderboard through a random per-device secret kept in secure storage, which plays the role of the web app's guest cookie.
 - Web and mobile now run the same code for the guessing game, the leaderboard, character creation (validation, the copyright and description prompts, the name gate, cancelling), the landing carousel, and the visitor's own name. It lives once in `packages/shared`, and each app adds only its own requests, storage, and logging. A fix to any of these now lands on both apps at once, and the per-app copies of that logic are gone.
 - Behavior changes that come from sharing: tapping a mobile carousel portrait now runs the same name validation a typed name does, and a failed random pick on mobile quietly falls back to a default name the way web already did.
