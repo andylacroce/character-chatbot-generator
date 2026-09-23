@@ -4,6 +4,7 @@ import {
   mapGenderToSsml,
   detectVoiceType,
   CHARACTER_VOICE_MAP,
+  __resetVoiceCatalogForTest,
 } from "../../src/utils/characterVoices";
 
 const createMock = jest.fn();
@@ -23,12 +24,15 @@ jest.mock("../../src/utils/tts", () => ({ getTTSClient: () => mockGetTTSClient()
 describe("characterVoices - helpers and Claude/TTS interactions", () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    __resetVoiceCatalogForTest();
     mockGetTTSClient.mockReturnValue({
+      // String gender values, matching the real Google ListVoices response shape (see
+      // characterVoices.ts's parseGoogleSsmlGender doc comment).
       listVoices: jest.fn().mockResolvedValue([
         {
           voices: [
-            { name: "en-US-Wavenet-A", languageCodes: ["en-US"], ssmlGender: 1 },
-            { name: "en-US-Wavenet-D", languageCodes: ["en-US"], ssmlGender: 1 },
+            { name: "en-US-Wavenet-A", languageCodes: ["en-US"], ssmlGender: "MALE" },
+            { name: "en-US-Wavenet-D", languageCodes: ["en-US"], ssmlGender: "MALE" },
           ],
         },
       ]),

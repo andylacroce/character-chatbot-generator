@@ -16,7 +16,7 @@ import path from "path";
 import crypto from "crypto";
 import sanitizeFilename from "sanitize-filename";
 import { synthesizeSpeechToFile } from "./tts";
-import { normalizeStudioVoice, buildSsml } from "./voiceHelpers";
+import { buildSsml } from "./voiceHelpers";
 import { setReplyCache } from "./cache";
 import { logEvent, sanitizeLogMeta } from "./logger";
 import type { CharacterVoiceConfig } from "./characterVoices";
@@ -29,7 +29,7 @@ export async function synthesizeReplyAudio(
   voiceConfig: CharacterVoiceConfig,
 ): Promise<string | undefined> {
   try {
-    const selectedVoice = normalizeStudioVoice(voiceConfig);
+    const selectedVoice = voiceConfig;
     const ssmlText = buildSsml(text, selectedVoice);
     const tmpDir = os.tmpdir();
     if (!fs.existsSync(tmpDir)) {

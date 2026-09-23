@@ -7,6 +7,7 @@ import {
   getVoiceConfigForCharacter,
   CHARACTER_VOICE_MAP,
   SSML_GENDER,
+  __resetVoiceCatalogForTest,
 } from "../../src/utils/characterVoices";
 import type { VoiceConfig } from "../../src/utils/characterVoices";
 
@@ -52,6 +53,7 @@ jest.mock("../../src/utils/claudeModelSelector", () => ({
 describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetVoiceCatalogForTest();
     const tts = require("../../src/utils/tts");
     (tts.getTTSClient as jest.Mock).mockImplementation(() => ({
       synthesizeSpeech: mockSynthesizeSpeech,
@@ -74,24 +76,28 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
       ],
     });
 
+    // Google's real ListVoices response reports ssmlGender as the enum's own string key
+    // ("MALE"/"FEMALE"), not the underlying integer — a numeric mock here previously hid
+    // the bug where every voice was misread as unspecified gender and filtered out of the
+    // catalog entirely (see parseGoogleSsmlGender's doc comment in characterVoices.ts).
     mockListVoices.mockResolvedValue([
       {
         voices: [
-          ["en-US-Wavenet-A", "en-US", 2],
-          ["en-US-Wavenet-B", "en-US", 1],
-          ["en-US-Wavenet-C", "en-US", 2],
-          ["en-US-Wavenet-D", "en-US", 1],
-          ["en-US-Wavenet-F", "en-US", 2],
-          ["en-US-Wavenet-G", "en-US", 1],
-          ["en-US-Wavenet-H", "en-US", 1],
-          ["en-US-Neural2-F", "en-US", 2],
-          ["en-US-Studio-M", "en-US", 1],
-          ["en-US-Standard-E", "en-US", 1],
-          ["en-GB-Wavenet-B", "en-GB", 1],
-          ["de-DE-Wavenet-B", "de-DE", 1],
-          ["fr-FR-Wavenet-A", "fr-FR", 2],
-          ["ja-JP-Wavenet-A", "ja-JP", 2],
-          ["zh-CN-Wavenet-C", "zh-CN", 1],
+          ["en-US-Wavenet-A", "en-US", "FEMALE"],
+          ["en-US-Wavenet-B", "en-US", "MALE"],
+          ["en-US-Wavenet-C", "en-US", "FEMALE"],
+          ["en-US-Wavenet-D", "en-US", "MALE"],
+          ["en-US-Wavenet-F", "en-US", "FEMALE"],
+          ["en-US-Wavenet-G", "en-US", "MALE"],
+          ["en-US-Wavenet-H", "en-US", "MALE"],
+          ["en-US-Neural2-F", "en-US", "FEMALE"],
+          ["en-US-Studio-M", "en-US", "MALE"],
+          ["en-US-Standard-E", "en-US", "MALE"],
+          ["en-GB-Wavenet-B", "en-GB", "MALE"],
+          ["de-DE-Wavenet-B", "de-DE", "MALE"],
+          ["fr-FR-Wavenet-A", "fr-FR", "FEMALE"],
+          ["ja-JP-Wavenet-A", "ja-JP", "FEMALE"],
+          ["zh-CN-Wavenet-C", "zh-CN", "MALE"],
         ].map(([name, languageCode, ssmlGender]) => ({
           name,
           languageCodes: [languageCode],
@@ -139,6 +145,56 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
 
       expect(config.name).toBe(CHARACTER_VOICE_MAP["Default"].name);
       expect(config.ssmlGender).toBe(SSML_GENDER.MALE);
+    });
+
+    it("fetches Google's voice catalog only once per warm process across different characters", async () => {
+      mockClaudeCreate.mockResolvedValueOnce({
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              gender: "male",
+              languageCode: "en-US",
+              voiceName: "en-US-Wavenet-D",
+              pitch: 0,
+              rate: 1.0,
+            }),
+          },
+        ],
+      });
+      mockClaudeCreate.mockResolvedValueOnce({
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              gender: "female",
+              languageCode: "en-US",
+              voiceName: "en-US-Wavenet-C",
+              pitch: 0,
+              rate: 1.0,
+            }),
+          },
+        ],
+      });
+
+      await getVoiceConfigForCharacter("First Character");
+      await getVoiceConfigForCharacter("Second Character");
+
+      // Two distinct characters cast two separate Claude calls, but share one catalog
+      // fetch — that's the whole point of caching the inventory per warm process.
+      expect(mockClaudeCreate).toHaveBeenCalledTimes(2);
+      expect(mockListVoices).toHaveBeenCalledTimes(1);
+    });
+
+    it("re-fetches the catalog after a transient listVoices failure instead of staying poisoned", async () => {
+      mockListVoices.mockRejectedValueOnce(new Error("listVoices unavailable"));
+
+      const failed = await getVoiceConfigForCharacter("Transient Failure Character");
+      expect(failed.name).toBe(CHARACTER_VOICE_MAP["Default"].name);
+
+      const recovered = await getVoiceConfigForCharacter("Retry After Failure Character");
+      expect(recovered.name).toBe("en-US-Wavenet-D");
+      expect(mockListVoices).toHaveBeenCalledTimes(2);
     });
   });
 

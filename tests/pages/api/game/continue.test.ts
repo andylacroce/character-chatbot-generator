@@ -178,6 +178,16 @@ describe("game/continue API", () => {
       ["Sherlock Holmes", "Irene Adler"],
       gameCharacterNames,
     );
+
+    // Voice casting uses the full clue persona prompt (which steers toward the new,
+    // still-hidden target) rather than just Irene Adler's bare name, so the cache key
+    // varies per hidden figure instead of reusing whatever voice was last cast for her.
+    const { getVoiceConfigForCharacter } = require("../../../../src/utils/characterVoices");
+    expect(getVoiceConfigForCharacter).toHaveBeenCalledWith(
+      "Irene Adler",
+      "female",
+      "Irene's persona prompt",
+    );
   });
 
   it("streams real progress frames as each round-generation step completes when stream: true", async () => {
