@@ -4,7 +4,13 @@ import ChatMessage from "./ChatMessage";
 import { Bot } from "./BotCreator";
 import styles from "./styles/VirtualizedMessagesList.module.css";
 
-type VisibleMessage = { text: string; sender: string; audioFileUrl?: string };
+type VisibleMessage = {
+  text: string;
+  sender: string;
+  audioFileUrl?: string;
+  avatarUrl?: string;
+  gender?: string | null;
+};
 
 interface VirtualizedMessagesListProps {
   messages: VisibleMessage[];

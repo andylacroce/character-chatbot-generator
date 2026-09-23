@@ -5,6 +5,7 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 ## v0.12.1 — 2026-09-23 — Strict guessing-game identity checks
 
 - Fixed the guessing game accepting a mythological counterpart as the hidden character: Aphrodite is now scored as distinct from Venus (as are comparable cross-tradition figures such as Ares/Mars and Zeus/Jupiter), not as an alias. Correctness is settled once by the classifier before response generation; the reaction receives only that confirmed outcome, so the banner and character reply cannot independently disagree.
+- Fixed guessing-game audio replay after a correct-answer handoff: every message now retains its own speaker's voice hint, so regenerating an older message does not use the new current character's voice.
 
 ## v0.12.0 — 2026-09-23 — Guessing game and leaderboard on mobile; one shared codebase for both apps
 

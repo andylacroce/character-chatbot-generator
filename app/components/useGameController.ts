@@ -244,7 +244,10 @@ export function useGameController() {
             audioFileUrl: message.audioFileUrl,
             text: message.text,
             botName: message.sender,
-            gender: message.sender === currentCharacterName ? gender : null,
+            // New messages carry their own round's hint. The live round fallback keeps
+            // older persisted transcripts compatible without assigning a later
+            // character's voice to an earlier speaker.
+            gender: message.gender ?? (message.sender === currentCharacterName ? gender : null),
           }),
         );
       } catch (err) {

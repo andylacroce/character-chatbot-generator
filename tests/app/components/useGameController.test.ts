@@ -104,6 +104,36 @@ describe("useGameController", () => {
     expect(mockPlayAudio).toHaveBeenCalledWith(message.audioFileUrl);
   });
 
+  it("regenerates a past round's audio with that speaker's voice after a handoff", async () => {
+    mockStorage.getItem.mockImplementation((key: string) =>
+      key === "chatbot-game-token" ? "persisted-token" : null,
+    );
+    mockStorage.getJSON.mockReturnValue({
+      currentCharacterName: "Irene Adler",
+      avatarUrl: "https://example.com/irene.png",
+      gender: "female",
+      streak: 1,
+      messages: [],
+      roundStartIndex: 0,
+      lastEvent: null,
+    });
+    const { result } = renderHook(() => useGameController());
+
+    mockPlayAudio.mockClear();
+    await act(async () => {
+      await result.current.replayMessageAudio({
+        sender: "Sherlock Holmes",
+        text: "The game is still afoot.",
+        gender: "male",
+      });
+    });
+
+    const replayUrl = mockPlayAudio.mock.calls[0][0] as string;
+    const parsed = new URL(replayUrl, "https://example.com");
+    expect(parsed.searchParams.get("botName")).toBe("Sherlock Holmes");
+    expect(parsed.searchParams.get("gender")).toBe("male");
+  });
+
   it("hydrates an in-progress run from localStorage on mount", () => {
     mockStorage.getItem.mockImplementation((key: string) =>
       key === "chatbot-game-token" ? "persisted-token" : null,

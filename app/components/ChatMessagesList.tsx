@@ -19,6 +19,8 @@ interface ChatMessagesListProps {
     text: string;
     sender: string;
     audioFileUrl?: string;
+    avatarUrl?: string;
+    gender?: string | null;
   }>;
   bot: Bot;
   onAvatarClick?: () => void;

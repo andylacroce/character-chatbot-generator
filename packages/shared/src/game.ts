@@ -21,6 +21,8 @@ export interface GameMessage {
   text: string;
   audioFileUrl?: string;
   avatarUrl?: string;
+  /** Pins replay voice selection to the speaker's round after another character takes over. */
+  gender?: string | null;
 }
 
 /** Everything persisted between visits so an in-progress run resumes where it left off. */
@@ -85,6 +87,7 @@ export function roundGreeting(round: GameRoundResult): GameMessage {
     text: round.reply,
     audioFileUrl: round.audioFileUrl,
     avatarUrl: round.avatarUrl,
+    gender: round.gender ?? null,
   };
 }
 
@@ -108,7 +111,7 @@ export interface GameTurnOutcome {
  */
 export function applyGameMessageResponse(
   data: GameMessageResponse,
-  speaker: { name: string; avatarUrl: string },
+  speaker: { name: string; avatarUrl: string; gender: string | null },
 ): GameTurnOutcome {
   if (data.giveUpRequested) {
     return { giveUpRequested: true, reply: null, lastEvent: null };
@@ -121,6 +124,7 @@ export function applyGameMessageResponse(
     text: data.reply,
     audioFileUrl: data.audioFileUrl,
     avatarUrl: speaker.avatarUrl,
+    gender: speaker.gender,
   };
 
   if (data.correct) {

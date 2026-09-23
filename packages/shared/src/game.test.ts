@@ -6,7 +6,11 @@ import {
   toGameConversationHistory,
 } from "./game";
 
-const speaker = { name: "Sherlock Holmes", avatarUrl: "https://example.com/s.png" };
+const speaker = {
+  name: "Sherlock Holmes",
+  avatarUrl: "https://example.com/s.png",
+  gender: "male",
+};
 
 describe("applyGameMessageResponse", () => {
   it("flags a give-up request with no reply", () => {
@@ -28,6 +32,7 @@ describe("applyGameMessageResponse", () => {
       text: "Elementary.",
       audioFileUrl: "/a",
       avatarUrl: speaker.avatarUrl,
+      gender: "male",
     });
     expect(outcome.lastEvent).toBeNull();
     expect(outcome.gameToken).toBeUndefined();
@@ -78,6 +83,7 @@ describe("parseGameRoundResult", () => {
       text: "Hail.",
       audioFileUrl: undefined,
       avatarUrl: "/silhouette.svg",
+      gender: null,
     });
   });
 

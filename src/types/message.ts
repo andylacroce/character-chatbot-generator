@@ -17,4 +17,6 @@ export interface Message {
    * switch. Ordinary chat never sets this since its single bot's avatar never changes.
    */
   avatarUrl?: string;
+  /** The speaker's round-specific gender hint, used when replay audio must be regenerated. */
+  gender?: string | null;
 }

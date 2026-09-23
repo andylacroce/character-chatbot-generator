@@ -250,7 +250,7 @@ export function useGameSession({
     if (!input.trim() || !gameToken || loading || lastEvent?.type === "correct" || continuing)
       return;
     const userMessage: GameMessage = { sender: "User", text: input };
-    const speaker = { name: currentCharacterName, avatarUrl };
+    const speaker = { name: currentCharacterName, avatarUrl, gender };
     const history = toGameConversationHistory(messages.slice(roundStartIndex));
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
@@ -293,6 +293,7 @@ export function useGameSession({
     roundStartIndex,
     currentCharacterName,
     avatarUrl,
+    gender,
   ]);
 
   /**

@@ -24,6 +24,8 @@ export interface Message {
   audioFileUrl?: string;
   /** The sender's avatar at the time this message was created — see src/types/message.ts. */
   avatarUrl?: string;
+  /** The sender's round-specific gender hint for audio replay. */
+  gender?: string | null;
 }
 
 interface ChatMessageProps {
