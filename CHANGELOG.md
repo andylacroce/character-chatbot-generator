@@ -2,6 +2,13 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.6.2 — 2026-09-22 — All-rights-reserved license, npm cleanup, parallel CI
+
+- Replaced the MIT `LICENSE` with an all-rights-reserved notice: the source stays publicly viewable for portfolio purposes, but no permission is granted to use, copy, modify, or redistribute it. `package.json`'s `license` field changed to `UNLICENSED` (root, `apps/mobile`, `packages/shared`), and the README's badge/License section updated to match.
+- Removed `apps/mobile/LICENSE`, which was an unedited leftover from the `create-expo-app` template (copyright 650 Industries/Expo, not this project) — one root `LICENSE` now governs the whole monorepo.
+- npm cleanup: `apps/mobile` now explicitly declares `@react-navigation/elements` (it was only ever resolving by accident via hoisting from `@react-navigation/native-stack`); `npm dedupe` trimmed 7 redundant nested packages. Investigated all 15 moderate `npm audit` findings (all dev/build-tooling only — `drizzle-kit`'s CLI and Expo's iOS project-file tooling, nothing shipped to users); a real fix would require dropping this repo's required `legacy-peer-deps=true` (itself load-bearing for an intentional `nodemailer` major bump past `next-auth`'s stale peer range, and for web's React 19.3.0 coexisting with `apps/mobile`'s Expo-pinned React 19.2.3), so left as accepted, documented findings rather than forcing a fix that breaks install.
+- `ci.yml` (web) split from one sequential job into three parallel jobs (lint/type-check, test, build) — free on this public repo, cuts CI wall-clock time to roughly the slowest job instead of the sum of all steps. Added a Jest cache alongside the existing Next.js build cache.
+
 ## v0.6.1 — 2026-09-22 — Monorepo migration: fold in the mobile app and shared package
 
 - Folded the separate `character-chatbot-mobile` and `character-chatbot-shared` repos into this one as `apps/mobile` and `packages/shared` (via `git subtree`, full history preserved), wired up as a real npm workspace. Web stays at the repo root to avoid touching Vercel's working deploy config.
