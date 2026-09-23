@@ -249,6 +249,11 @@ describe("game/message API", () => {
     expect(json.currentCharacterName).toBeUndefined();
     expect(typeof json.gameToken).toBe("string");
     expect(verifyGameState(json.gameToken)?.canContinue).toBe(true);
+    expect(mockGetGuessReactionReply).toHaveBeenCalledWith(
+      "persona prompt here",
+      "correct",
+      "Irene Adler",
+    );
 
     // The original token is untouched, still decodes the same hidden target, and stays
     // usable for /game/continue.
@@ -344,6 +349,26 @@ describe("game/message API", () => {
 
     const state = verifyGameState(json.gameToken);
     expect(state?.wrongGuessCount).toBe(1);
+  });
+
+  it("treats mythological counterparts such as Aphrodite and Venus as distinct characters", async () => {
+    token = signGameState(makeGameState({ nextCharacterName: "Venus" }));
+    mockClassification("clear", false);
+    mockGetGuessReactionReply.mockResolvedValueOnce("A close counterpart, but not my answer.");
+
+    const handler = require("../../../../pages/api/game/message").default;
+    const res = makeRes();
+    await handler(makeReq({ gameToken: token, message: "Aphrodite" }), res);
+
+    const json = (res.json as jest.Mock).mock.calls[0][0];
+    expect(json.correct).toBe(false);
+    expect(json.gameOver).toBe(false);
+    expect(mockGetGuessReactionReply).toHaveBeenCalledWith("persona prompt here", "wrong", "Venus");
+
+    const classifierRequest = mockCreate.mock.calls[0][0];
+    expect(classifierRequest.system).toMatch(/Name leniency is never identity leniency/);
+    expect(classifierRequest.system).toMatch(/Aphrodite is not Venus/);
+    expect(classifierRequest.system).toMatch(/counterpart or analogue[\s\S]*not a match/);
   });
 
   it("ends the run on a second wrong guess and reveals the hidden name", async () => {

@@ -23,7 +23,11 @@ jest.mock("../../../src/utils/logger", () => ({
 // CommonJS transform, causing a "Cannot access before initialization" TDZ error. Every
 // other Anthropic-mocking test file in this repo (e.g. validate-character.test.ts,
 // generate-avatar.test.ts) avoids this the same way.
-const { getGameReply, getOpeningReply } = require("../../../src/utils/gameReply");
+const {
+  getGameReply,
+  getOpeningReply,
+  getGuessReactionReply,
+} = require("../../../src/utils/gameReply");
 
 describe("gameReply", () => {
   beforeEach(() => {
@@ -98,6 +102,46 @@ describe("gameReply", () => {
         "game_opening_reply_fallback",
         expect.any(String),
         expect.any(Object),
+      );
+    });
+  });
+
+  describe("getGuessReactionReply", () => {
+    it("generates a correct reaction from the confirmed verdict without receiving the raw guess", async () => {
+      mockCreate.mockResolvedValueOnce({
+        content: [{ type: "text", text: "Indeed, Venus was the one!" }],
+      });
+
+      const reply = await getGuessReactionReply("You are Athena.", "correct", "Venus");
+
+      expect(reply).toBe("Indeed, Venus was the one!");
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          system: expect.stringMatching(
+            /verdict is authoritative[\s\S]*same individual[\s\S]*Venus/i,
+          ),
+          messages: [
+            {
+              role: "user",
+              content: expect.stringMatching(/confirmed game outcome[\s\S]*not revisit/i),
+            },
+          ],
+        }),
+      );
+      expect(JSON.stringify(mockCreate.mock.calls[0][0])).not.toContain("Aphrodite");
+    });
+
+    it("falls back to an unambiguous correct reaction when generation fails", async () => {
+      mockCreate.mockRejectedValueOnce(new Error("network blip"));
+
+      const reply = await getGuessReactionReply("You are Athena.", "correct", "Venus");
+
+      expect(reply).toBe("You got it, it was Venus!");
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "warn",
+        "game_guess_reaction_fallback",
+        expect.any(String),
+        expect.objectContaining({ outcome: "correct" }),
       );
     });
   });

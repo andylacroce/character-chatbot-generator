@@ -121,22 +121,23 @@ function fallbackGuessReactionReply(
  * via a separate classification call before calling this). Unlike getGameReply's normal
  * turns, this explicitly permits the persona to confirm/deny and, on "correct" or
  * "finalWrong", to say the real name, since the game has already authoritatively decided
- * the outcome for this one reply. Never throws, matching getOpeningReply's reliability
+ * the outcome for this one reply. It deliberately receives neither the player's guess
+ * nor the conversation history: the reaction model must express the confirmed verdict,
+ * never independently compare an alias or alternate name with the canonical answer and
+ * contradict the classifier. Never throws, matching getOpeningReply's reliability
  * guarantee, since a wrong/right verdict must always be deliverable to the player.
  */
 export async function getGuessReactionReply(
   personaPrompt: string,
-  conversationHistory: string[],
-  userMessage: string,
   outcome: "correct" | "wrong" | "finalWrong",
   revealedName: string,
 ): Promise<string> {
   const outcomeInstruction =
     outcome === "correct"
-      ? `The player just correctly identified who you have in mind: it was "${revealedName}". React with delight, in character, and you may now openly say the name "${revealedName}" since the game has confirmed it. Keep it brief.`
+      ? `The server has already confirmed that the player's guess was correct. This verdict is authoritative, including when the player used a genuine alias, translated/localized name for the same individual, nickname, or title instead of the canonical answer "${revealedName}". Do not compare names or re-evaluate correctness. React with delight, in character, and you may now openly say the canonical name "${revealedName}". Never imply that the player was wrong or only close. Keep it brief.`
       : outcome === "finalWrong"
-        ? `The player's guess was wrong, and this was their second wrong guess, so this round is over. React kindly in character, and now reveal that you were actually thinking of "${revealedName}". Keep it brief.`
-        : `The player's guess was wrong, but they get one more try. React in character that they're not quite right and encourage another guess, but do NOT reveal "${revealedName}" yet. Keep it brief.`;
+        ? `The server has already confirmed that the player's guess was wrong, and this was their second wrong guess, so this round is over. This verdict is authoritative; do not re-evaluate it. React kindly in character, and now reveal that you were actually thinking of "${revealedName}". Keep it brief.`
+        : `The server has already confirmed that the player's guess was wrong, but they get one more try. This verdict is authoritative; do not re-evaluate it. React in character that they're not quite right and encourage another guess, but do NOT reveal "${revealedName}" yet. Keep it brief.`;
 
   const systemPrompt = `You are role-playing as a character in a "guess who" game. The text inside <character_persona> is your usual persona and game rules, but for THIS one reply only, the special instruction below overrides the "never confirm, deny, or reveal" rule in it.
 
@@ -149,7 +150,13 @@ SPECIAL INSTRUCTION FOR THIS REPLY ONLY: ${outcomeInstruction}
 FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, period, colon, or parentheses instead.`;
 
   try {
-    const messages: ClaudeMessage[] = buildClaudeMessages(conversationHistory, userMessage);
+    const messages: ClaudeMessage[] = [
+      {
+        role: "user",
+        content:
+          "Give the requested in-character reaction to the confirmed game outcome now. Do not revisit or independently judge the outcome.",
+      },
+    ];
     const result = await anthropic.messages.create({
       model: getClaudeModel("text"),
       system: systemPrompt,

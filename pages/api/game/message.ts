@@ -79,9 +79,10 @@ You'll receive the hidden character's real name (trusted, for judging correctnes
 </status_definitions>
 
 <correctness_rule>
-Only when status is "clear", also decide "correct". Accept nicknames, aliases, translations, and epithets/titles of the hidden character — not just an exact name match. But require literal identity: the guess must name that exact individual, never someone merely similar. Two failure modes to watch for:
+Only when status is "clear", also decide "correct". Leniency applies only to the surface form of the name: accept shortened/full forms, common nicknames, genuine aliases, spelling/transliteration/localization variants, and established epithets or title-names only when they still name the literal same individual. Name leniency is never identity leniency. Do not accept a different person or character because they are analogous, closely associated, commonly confused, or fit the clues. Mythological or religious counterparts from different traditions are distinct characters for this game, even when later cultures equated or syncretized them, or when they govern the same domain (for example, Aphrodite is not Venus, Ares is not Mars, and Zeus is not Jupiter). Require literal identity: the guess must name that exact individual, never someone merely similar. Three failure modes to watch for:
 1. A different, related character (family, rival, foil, same story) is not a match.
 2. A guess that fits a trait/role/epithet used to hint at the hidden character (e.g. both are "a king", both are "a great beauty") is not a match unless it is that same individual.
+3. A counterpart or analogue from another culture, mythology, or religion is not a match, even if the figures are commonly equated.
 When genuinely unsure whether the guess is the same individual or a different one who merely fits the same description, decide "correct": false — a real right answer can just be told to try rephrasing, but a wrong answer scored as a win ends the round with no way back.
 </correctness_rule>
 
@@ -110,6 +111,11 @@ Player's message: "Cleopatra"
 Hidden character: "William Shakespeare"
 Player's message: "The Bard of Avon"
 {"reasoning": "A well-known epithet for the exact same individual counts as a match.", "status": "clear", "correct": true}
+</example>
+<example>
+Hidden character: "Venus"
+Player's message: "Aphrodite"
+{"reasoning": "Aphrodite is Venus's Greek counterpart, but they are distinct mythological characters in different traditions for this game.", "status": "clear", "correct": false}
 </example>
 <example>
 Hidden character: "Napoleon Bonaparte"
@@ -351,8 +357,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       ]);
       const reactionReply = await getGuessReactionReply(
         state.personaPrompt,
-        history,
-        message,
         "correct",
         revealedName,
       );
@@ -392,8 +396,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const revealedName = state.nextCharacterName;
       const reactionReply = await getGuessReactionReply(
         state.personaPrompt,
-        history,
-        message,
         "finalWrong",
         revealedName,
       );
@@ -428,8 +430,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const reactionReply = await getGuessReactionReply(
       state.personaPrompt,
-      history,
-      message,
       "wrong",
       state.nextCharacterName,
     );

@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.12.1 — 2026-09-23 — Strict guessing-game identity checks
+
+- Fixed the guessing game accepting a mythological counterpart as the hidden character: Aphrodite is now scored as distinct from Venus (as are comparable cross-tradition figures such as Ares/Mars and Zeus/Jupiter), not as an alias. Correctness is settled once by the classifier before response generation; the reaction receives only that confirmed outcome, so the banner and character reply cannot independently disagree.
+
 ## v0.12.0 — 2026-09-23 — Guessing game and leaderboard on mobile; one shared codebase for both apps
 
 - Web and mobile now resolve one React version across the monorepo: React 19.3.0, the current stable release. Root npm overrides prevent transitive dependencies from installing a second React or React DOM copy in future installs.
