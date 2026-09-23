@@ -240,7 +240,63 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
    this is reachable via the account icon in `CreatorScreen`'s header only, for now;
    every other screen still has no sign-in/account/name entry point (mobile has no
    shared header/menu component the way the web app does).
-3. **Store-ready:** icon/splash now reuse the web app's real brand mark (see Status
+3. **Guessing game port — not started, paused 2026-09-22 pending a fresh session.**
+   Biggest remaining parity gap: the web app's whole second mode (hidden-character
+   guessing, streak, leaderboard) doesn't exist on mobile at all. Full architecture
+   research is already done (see the web app's own CLAUDE.md "Guessing game" section
+   for the authoritative spec) — this is a concrete implementation plan, not a
+   from-scratch investigation, for whoever picks it up next:
+
+   - **All four core endpoints already work as plain non-streaming JSON** —
+     `POST /api/game/start`, `/message`, `/continue`, `/give-up` (shapes already in
+     `packages/shared/src/types.ts`: `GameStartRequest`, `GameContinueRequest`,
+     `GameMessageRequest`/`Response`, `GameGiveUpRequest`/`Response`, `GameRoundResult`).
+     `GameStartRequest`'s own doc comment already anticipates mobile omitting `stream`.
+   - **Do NOT port `readSseFrames`/`fetchRoundWithProgress` from
+     `app/components/useGameController.ts` verbatim.** It hard-depends on
+     `response.body.getReader()` (a `ReadableStream` on `fetch`'s `Response.body`),
+     which plain Expo Go / stock React Native `fetch` does not reliably support —
+     confirmed by tracing the web implementation, not assumed. Call `/api/game/start`
+     and `/api/game/continue` with `stream` omitted (both already return the full JSON
+     result synchronously) and show a plain spinner/"Loading…" state instead of the
+     staged personality→avatar→reply→voice checklist — matches this file's existing
+     "Streaming is out of scope for v1" decision for ordinary chat above, same reasoning.
+   - **`gameToken` must stay a completely opaque string end-to-end** — store it (likely
+     `expo-secure-store`, matching `authToken.ts`'s treatment, though it's not a
+     credential the same way — plain AsyncStorage would also be defensible since the
+     web app keeps its equivalent in localStorage), echo it back on every call, never
+     decode/parse it. The web client never does either; this is enforced by the
+     server's encryption, not a client-side convention that could be safely skipped.
+   - **Port `useGameController.ts`'s state machine near-verbatim** — it's UI-framework-
+     agnostic. Needs: `gameToken`, `currentCharacterName`, `avatarUrl`, `gender`,
+     `streak`, `highScore`, `messages`, `roundStartIndex` (slice point for
+     `conversationHistory` sent to `/message` — only the current round, not prior
+     rounds' messages), `lastEvent` (`{type:"correct"|"wrong"|"gameover", ...}`),
+     `giveUpRequested`. The 5-branch `/message` response handling (giveUpRequested /
+     ordinary reply / ambiguous / correct-but-defer-next-round / wrong-tolerated /
+     wrong-game-over) is exact business logic to copy, not redesign.
+   - **New screens needed:** a `GameScreen.tsx` (start/instructions screen, mirrors
+     `GamePage.tsx`'s "not started" branch) and reusing `ChatScreen.tsx`'s general shape
+     for the "started" branch (same chat UI, plus a streak badge, a correct-guess
+     banner + Continue button, a wrong-guess banner, and a give-up confirmation) —
+     `ChatScreen.tsx` may be worth factoring into a shared shell first (mirrors web's
+     own `ChatShell.tsx` extraction) rather than duplicating its ~300 lines wholesale.
+   - **Copy gaps in `packages/shared/src/gameCopy.ts`** (already has the instructions
+     modal text, give-up confirm dialog, correct-banner template, streak label) — still
+     missing and needs adding: start-screen headline/subhead (fresh vs. game-over
+     variants), button labels ("Start Game"/"Play Again"/"Continue"/"View leaderboard"),
+     the wrong-guess banner text, the give-up dialog's "Cancel" label, menu item labels.
+   - **Personal high score is small and independent — worth doing even without the
+     full leaderboard UI.** `GET /api/game/high-score` → `{ highScore: number | null }`,
+     already usable via the existing `apiFetch` pattern in `src/api.ts`, no new backend
+     work. The public leaderboard (`GET /api/game/leaderboard`,
+     `GET`/`POST /api/game/leaderboard-settings`) is a reasonable thing to defer to a
+     later pass — it's genuinely independent of the core loop.
+   - **Scope suggestion for a first mobile pass:** core loop + personal high score only
+     (skip the public leaderboard UI, skip real staged-progress, skip anything
+     preview-environment-specific) — matches this app's own "MVP first, parity pass
+     second" phasing pattern already used for every other feature above.
+4. **Store-ready:** icon/splash now reuse the web app's real brand mark (see Status
    above) — still need a privacy policy (can point at the existing Next.js site), Play
    Console listing, EAS Build signing config, internal testing track.
 

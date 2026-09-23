@@ -7,7 +7,7 @@ import React from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
-import { DarkModeProvider } from "./components/DarkModeContext";
+import { DarkModeProvider, DEFAULT_DARK_MODE } from "./components/DarkModeContext";
 import Providers from "./components/Providers";
 
 /**
@@ -22,10 +22,15 @@ import Providers from "./components/Providers";
  */
 const RootLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    // suppressHydrationWarning avoids noisy hydration-mismatch errors when
-    // browser extensions (e.g. Dark Reader) inject attributes into the
-    // server-rendered HTML that don't exist on the client.
-    <html lang="en" className="" suppressHydrationWarning>
+    // className derives from DarkModeContext's DEFAULT_DARK_MODE so a first-time
+    // visitor's server-rendered HTML already has the right theme applied — otherwise
+    // they'd see a flash of the other palette before DarkModeProvider mounts and adds
+    // the class itself; deriving it here (rather than a separate hardcoded "dark")
+    // means changing the default is a one-line edit in exactly one place.
+    // suppressHydrationWarning avoids noisy hydration-mismatch errors when browser
+    // extensions (e.g. Dark Reader) inject attributes into the server-rendered HTML
+    // that don't exist on the client.
+    <html lang="en" className={DEFAULT_DARK_MODE ? "dark" : ""} suppressHydrationWarning>
       <head>
         <title>Portrayal</title>
         <meta

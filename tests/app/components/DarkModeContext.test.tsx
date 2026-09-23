@@ -8,7 +8,7 @@ describe("DarkModeContext", () => {
     document.documentElement.classList.remove("dark");
   });
 
-  it("provides default value (light mode)", () => {
+  it("provides default value (dark mode)", () => {
     let contextValue: { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
     function Consumer() {
       contextValue = useContext(DarkModeContext) as unknown as
@@ -20,7 +20,7 @@ describe("DarkModeContext", () => {
         <Consumer />
       </DarkModeProvider>,
     );
-    expect(contextValue && contextValue.darkMode).toBe(false);
+    expect(contextValue && contextValue.darkMode).toBe(true);
     expect(contextValue && typeof contextValue.setDarkMode).toBe("function");
   });
 
@@ -35,11 +35,11 @@ describe("DarkModeContext", () => {
         <Consumer />
       </DarkModeProvider>,
     );
-    expect(contextValue && contextValue.darkMode).toBe(false);
-    act(() => contextValue && contextValue.setDarkMode(true));
     expect(contextValue && contextValue.darkMode).toBe(true);
     act(() => contextValue && contextValue.setDarkMode(false));
     expect(contextValue && contextValue.darkMode).toBe(false);
+    act(() => contextValue && contextValue.setDarkMode(true));
+    expect(contextValue && contextValue.darkMode).toBe(true);
   });
 
   it("loads darkMode=false from localStorage", () => {
@@ -80,9 +80,9 @@ describe("DarkModeContext", () => {
     expect(localStorage.getItem("darkMode")).toBe("true");
   });
 
-  it("covers else branch: defaults to light mode when localStorage returns null", () => {
-    // Set localStorage to true first, then remove it to trigger the else branch
-    localStorage.setItem("darkMode", "true");
+  it("covers else branch: defaults to dark mode when localStorage returns null", () => {
+    // Set localStorage to false first, then remove it to trigger the else branch
+    localStorage.setItem("darkMode", "false");
     localStorage.removeItem("darkMode");
     let contextValue: { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
     function Consumer() {
@@ -96,10 +96,10 @@ describe("DarkModeContext", () => {
         </DarkModeProvider>,
       );
     });
-    // The else branch should leave darkMode at its initial (light) value when stored is null
-    expect(contextValue && contextValue.darkMode).toBe(false);
+    // The else branch should leave darkMode at its initial (dark) value when stored is null
+    expect(contextValue && contextValue.darkMode).toBe(true);
     // Also check that DOM is updated
-    expect(document.documentElement.classList.contains("dark")).toBe(false);
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 
   it("toggles dark mode and updates DOM/localStorage", () => {
@@ -113,16 +113,16 @@ describe("DarkModeContext", () => {
         <Consumer />
       </DarkModeProvider>,
     );
-    expect(document.documentElement.classList.contains("dark")).toBe(false);
-    act(() => contextValue && contextValue.setDarkMode(true));
     expect(document.documentElement.classList.contains("dark")).toBe(true);
-    expect(localStorage.getItem("darkMode")).toBe("true");
     act(() => contextValue && contextValue.setDarkMode(false));
     expect(document.documentElement.classList.contains("dark")).toBe(false);
     expect(localStorage.getItem("darkMode")).toBe("false");
+    act(() => contextValue && contextValue.setDarkMode(true));
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(localStorage.getItem("darkMode")).toBe("true");
   });
 
-  it("does not throw and defaults to light mode if window is undefined (SSR)", () => {
+  it("does not throw and defaults to dark mode if window is undefined (SSR)", () => {
     const originalWindow = global.window;
     (global as unknown as { window?: Window }).window = undefined;
     let contextValue: { darkMode: boolean; setDarkMode: (v: boolean) => void } | undefined;
@@ -139,8 +139,8 @@ describe("DarkModeContext", () => {
         );
       });
     }).not.toThrow();
-    // Should default to light mode
-    expect(contextValue && contextValue.darkMode).toBe(false);
+    // Should default to dark mode
+    expect(contextValue && contextValue.darkMode).toBe(true);
     // Restore window
     global.window = originalWindow;
   });

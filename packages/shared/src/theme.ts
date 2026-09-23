@@ -50,6 +50,16 @@ export const darkColors = {
 
 export type ThemeColors = Record<keyof typeof lightColors, string>;
 
+/**
+ * Whether the app defaults to dark mode for a visitor/device with no stored
+ * preference yet (an explicit toggle choice always overrides this on return visits).
+ * The one place to change this going forward — mobile's ThemeContext.tsx imports it
+ * directly; the web app keeps its own local equivalent in DarkModeContext.tsx (see
+ * that file's own doc comment for why it isn't imported from here too) but both
+ * should be kept in sync by eye if this value ever changes.
+ */
+export const DEFAULT_DARK_MODE = true;
+
 /** In-app wordmark/hero copy — mirrors BotCreator.tsx's hero section exactly. */
 export const BRAND = {
   name: "Portrayal",

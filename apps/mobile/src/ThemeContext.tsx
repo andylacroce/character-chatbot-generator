@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { STORAGE_KEYS, darkColors, lightColors, type ThemeColors } from "character-chatbot-shared";
+import {
+  STORAGE_KEYS,
+  DEFAULT_DARK_MODE,
+  darkColors,
+  lightColors,
+  type ThemeColors,
+} from "character-chatbot-shared";
 
 interface ThemeContextValue {
   colors: ThemeColors;
@@ -9,18 +15,20 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
-  colors: lightColors,
-  darkMode: false,
+  colors: DEFAULT_DARK_MODE ? darkColors : lightColors,
+  darkMode: DEFAULT_DARK_MODE,
   toggleDarkMode: () => {},
 });
 
 /**
- * Mirrors the web app's DarkModeContext exactly: defaults to light, manual
- * toggle only (no OS `prefers-color-scheme` following), persisted under the
- * same STORAGE_KEYS.darkMode key the web app uses for localStorage.
+ * Mirrors the web app's DarkModeContext exactly: defaults to
+ * `character-chatbot-shared`'s `DEFAULT_DARK_MODE` (one place to change the app's
+ * default theme going forward), manual toggle only (no OS `prefers-color-scheme`
+ * following), persisted under the same STORAGE_KEYS.darkMode key the web app uses
+ * for localStorage.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(DEFAULT_DARK_MODE);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEYS.darkMode).then((stored) => {
