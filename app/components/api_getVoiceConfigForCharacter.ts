@@ -10,11 +10,15 @@ import { authenticatedFetch } from "../../src/utils/api";
 export async function api_getVoiceConfigForCharacter(
   name: string,
   gender?: string | null,
+  voiceContext?: string,
 ): Promise<import("../../src/utils/characterVoices").CharacterVoiceConfig> {
+  const body: { name: string; gender?: string; voiceContext?: string } = { name };
+  if (gender) body.gender = gender;
+  if (voiceContext?.trim()) body.voiceContext = voiceContext;
   const res = await authenticatedFetch("/api/get-voice-config", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(gender ? { name, gender } : { name }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error("Failed to fetch voice config");
   return await res.json();

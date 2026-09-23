@@ -747,6 +747,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
 
         const voiceConfigToUse = voiceConfig;
         const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
+        const ssmlText = buildSsml(botReply, selectedVoice);
 
         const audioFileName = sanitizeFilename(`${botName}_${Date.now()}.mp3`);
         const audioDir = process.env.TTS_TMP_DIR || os.tmpdir();
@@ -763,9 +764,9 @@ CRITICAL CONTEXT INSTRUCTIONS:
         let audioFileUrl: string | undefined;
         try {
           await synthesizeSpeechToFile({
-            text: botReply,
+            text: ssmlText,
             filePath: audioFilePath,
-            ssml: false,
+            ssml: true,
             voice: selectedVoice,
           });
           audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;

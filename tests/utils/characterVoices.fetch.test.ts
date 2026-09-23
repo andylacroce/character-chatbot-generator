@@ -23,6 +23,16 @@ jest.mock("../../src/utils/tts", () => ({ getTTSClient: () => mockGetTTSClient()
 describe("characterVoices - helpers and Claude/TTS interactions", () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    mockGetTTSClient.mockReturnValue({
+      listVoices: jest.fn().mockResolvedValue([
+        {
+          voices: [
+            { name: "en-US-Wavenet-A", languageCodes: ["en-US"], ssmlGender: 1 },
+            { name: "en-US-Wavenet-D", languageCodes: ["en-US"], ssmlGender: 1 },
+          ],
+        },
+      ]),
+    });
   });
 
   it("normalizeClaudeConfig clamps pitch and rate to allowed ranges", () => {
@@ -59,10 +69,6 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
         ],
       });
 
-    // mock tts client to succeed
-    const ttsClient = { synthesizeSpeech: jest.fn().mockResolvedValue([{ audioContent: "abc" }]) };
-    mockGetTTSClient.mockReturnValue(ttsClient);
-
     const result = await fetchVoiceConfigFromClaude("Test Name");
     expect(result.voiceName).toBe("en-US-Wavenet-D");
     expect(result.languageCode).toBe("en-US");
@@ -70,7 +76,7 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
     expect(result.rate).toBe(1.2);
   });
 
-  it("fetchVoiceConfigFromClaude throws when TTS validation fails after retries", async () => {
+  it("fetchVoiceConfigFromClaude rejects a name absent from Google's inventory", async () => {
     // make Claude return a valid sounding response
     createMock.mockResolvedValue({
       content: [
@@ -81,12 +87,16 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
       ],
     });
 
-    // mock tts client to fail
-    const ttsClient = { synthesizeSpeech: jest.fn().mockRejectedValue(new Error("voice missing")) };
-    mockGetTTSClient.mockReturnValue(ttsClient);
+    mockGetTTSClient.mockReturnValue({
+      listVoices: jest.fn().mockResolvedValue([
+        {
+          voices: [{ name: "en-US-Wavenet-A", languageCodes: ["en-US"], ssmlGender: 1 }],
+        },
+      ]),
+    });
 
     await expect(fetchVoiceConfigFromClaude("Someone", 2)).rejects.toThrow(
-      /No valid voice found|failed/i,
+      /No available voice selected/i,
     );
   });
 
@@ -144,24 +154,13 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
     createMock.mockResolvedValue({
       content: [{ type: "image" }],
     });
-    const ttsClient = { synthesizeSpeech: jest.fn().mockRejectedValue(new Error("voice missing")) };
-    mockGetTTSClient.mockReturnValue(ttsClient);
     await expect(fetchVoiceConfigFromClaude("Test", 1)).rejects.toThrow();
   });
 
-  it("isValidGoogleTTSVoice covers non-Error in catch (L93 cond-expr[1])", async () => {
-    // TTS throws a non-Error (string) to trigger String(err) branch in isValidGoogleTTSVoice
-    const ttsClient = { synthesizeSpeech: jest.fn().mockRejectedValue("plain tts failure") };
-    mockGetTTSClient.mockReturnValue(ttsClient);
-    createMock.mockResolvedValue({
-      content: [
-        {
-          type: "text",
-          text: '{"voiceName":"en-US-Wavenet-D","languageCode":"en-US","gender":"male","pitch":0,"rate":1}',
-        },
-      ],
+  it("propagates a non-Error inventory failure", async () => {
+    mockGetTTSClient.mockReturnValue({
+      listVoices: jest.fn().mockRejectedValue("plain inventory failure"),
     });
-    // All retries will fail validation (TTS throws) → eventually rejects
-    await expect(fetchVoiceConfigFromClaude("Test", 1)).rejects.toThrow();
+    await expect(fetchVoiceConfigFromClaude("Test", 1)).rejects.toBe("plain inventory failure");
   });
 });

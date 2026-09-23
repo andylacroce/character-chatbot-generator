@@ -6,6 +6,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
+import { sanitizeCharacterName, sanitizeVoiceContext } from "../../src/utils/security";
 import { withRequestLog } from "../../src/utils/withRequestLog";
 
 /**
@@ -36,6 +37,10 @@ import { withRequestLog } from "../../src/utils/withRequestLog";
  *                 type: string
  *                 nullable: true
  *                 example: male
+ *               voiceContext:
+ *                 type: string
+ *                 maxLength: 4000
+ *                 description: Generated personality and speaking-style context used for casting.
  *     responses:
  *       200:
  *         description: Voice configuration for the character
@@ -55,13 +60,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(405).end();
     return;
   }
-  const { name, gender } = req.body;
-  if (!name) {
+  const { name, gender, voiceContext } = req.body;
+  const sanitizedName = typeof name === "string" ? sanitizeCharacterName(name) : "";
+  if (!sanitizedName) {
     res.status(400).json({ error: "Name required" });
     return;
   }
+  const sanitizedVoiceContext =
+    typeof voiceContext === "string" ? sanitizeVoiceContext(voiceContext) : undefined;
   try {
-    const config = await getVoiceConfigForCharacter(name, gender);
+    const config = await getVoiceConfigForCharacter(
+      sanitizedName,
+      typeof gender === "string" ? gender : null,
+      sanitizedVoiceContext,
+    );
     res.status(200).json(config);
     return;
   } catch {

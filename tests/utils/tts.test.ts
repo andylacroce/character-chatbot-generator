@@ -227,7 +227,7 @@ describe("tts", () => {
       expect(mockSynthesizeSpeech).toHaveBeenCalledTimes(1);
     });
 
-    it("keeps a non-neutral ssmlGender alongside a specific voice name", async () => {
+    it("omits redundant ssmlGender alongside a specific voice name", async () => {
       audioReturned();
       await tts.synthesizeSpeechToFile({
         text: "hello",
@@ -235,7 +235,7 @@ describe("tts", () => {
         voice: { languageCodes: ["en-US"], name: "en-US-Neural2-C", ssmlGender: 2 },
       });
 
-      expect(mockSynthesizeSpeech.mock.calls[0][0].voice.ssmlGender).toBe(2);
+      expect(mockSynthesizeSpeech.mock.calls[0][0].voice.ssmlGender).toBeUndefined();
     });
 
     describe("output path safety", () => {

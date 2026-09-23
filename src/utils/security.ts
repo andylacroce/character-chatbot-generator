@@ -163,6 +163,13 @@ export function sanitizeDescription(description: string): string {
   return sanitized.length > 500 ? sanitized.substring(0, 500) : sanitized;
 }
 
+/** Sanitizes generated character context before it is used as voice-casting data. */
+export function sanitizeVoiceContext(context: string): string {
+  if (typeof context !== "string") return "";
+  const sanitized = context.replace(/[<>`]/g, "").trim();
+  return sanitized.length > 4000 ? sanitized.substring(0, 4000) : sanitized;
+}
+
 /**
  * Validates and sanitizes the human user's own preferred name (used to personalize a
  * character's greeting). Unlike sanitizeCharacterName, apostrophes and hyphens are

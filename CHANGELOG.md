@@ -6,6 +6,7 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 
 - Fixed the guessing game accepting a mythological counterpart as the hidden character: Aphrodite is now scored as distinct from Venus (as are comparable cross-tradition figures such as Ares/Mars and Zeus/Jupiter), not as an alias. Correctness is settled once by the classifier before response generation; the reaction receives only that confirmed outcome, so the banner and character reply cannot independently disagree.
 - Fixed guessing-game audio replay after a correct-answer handoff: every message now retains its own speaker's voice hint, so regenerating an older message does not use the new current character's voice.
+- Character voice casting now uses the generated personality and speaking style and chooses only from Google Cloud TTS's live v1 Studio, Neural2, WaveNet, and Standard inventory. Casting no longer synthesizes a throwaway validation sample, and all chat response paths now apply the selected prosody consistently.
 
 ## v0.12.0 — 2026-09-23 — Guessing game and leaderboard on mobile; one shared codebase for both apps
 

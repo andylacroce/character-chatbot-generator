@@ -39,7 +39,7 @@ export const mobileTransport: CreationTransport = {
   },
   generatePersonality: (req) => generatePersonality(req).catch(() => null),
   generateAvatar: (req) => generateAvatar(req).catch(() => null),
-  getVoiceConfig: (name, gender) => getVoiceConfig(name, gender),
+  getVoiceConfig: (name, gender, voiceContext) => getVoiceConfig(name, gender, voiceContext),
 };
 
 /**

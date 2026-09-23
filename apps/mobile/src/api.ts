@@ -108,8 +108,11 @@ export async function validateCharacter(name: string): Promise<CharacterValidati
 export function getVoiceConfig(
   name: string,
   gender?: string | null,
+  voiceContext?: string,
 ): Promise<CharacterVoiceConfig> {
-  const body: GetVoiceConfigRequest = gender ? { name, gender } : { name };
+  const body: GetVoiceConfigRequest = { name };
+  if (gender) body.gender = gender;
+  if (voiceContext?.trim()) body.voiceContext = voiceContext;
   return post("/api/get-voice-config", body);
 }
 

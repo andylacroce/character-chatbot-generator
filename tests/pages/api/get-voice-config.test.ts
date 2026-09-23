@@ -42,9 +42,20 @@ describe("get-voice-config API", () => {
     const config = { languageCode: "en-US", name: "en-US-Studio-O", ssmlGender: "FEMALE" };
     mockGetVoiceConfig.mockResolvedValueOnce(config);
     const res = makeRes();
-    await handler(makeReq({ name: "Ada Lovelace", gender: "female" }), res);
+    await handler(
+      makeReq({
+        name: "Ada Lovelace",
+        gender: "female",
+        voiceContext: "Formal, analytical, and quietly enthusiastic.",
+      }),
+      res,
+    );
 
-    expect(mockGetVoiceConfig).toHaveBeenCalledWith("Ada Lovelace", "female");
+    expect(mockGetVoiceConfig).toHaveBeenCalledWith(
+      "Ada Lovelace",
+      "female",
+      "Formal, analytical, and quietly enthusiastic.",
+    );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(config);
   });

@@ -65,7 +65,8 @@ const transport: CreationTransport = {
   },
   generatePersonality: (request) => postJsonOrNull("/api/generate-personality", request),
   generateAvatar: (request) => postJsonOrNull("/api/generate-avatar", request),
-  getVoiceConfig: (name, gender) => api_getVoiceConfigForCharacter(name, gender),
+  getVoiceConfig: (name, gender, voiceContext) =>
+    api_getVoiceConfigForCharacter(name, gender, voiceContext),
 };
 
 /** Structured logging for creation events; `debug` events only outside production. */

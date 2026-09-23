@@ -36,7 +36,11 @@ export interface CreationTransport {
     recognized: boolean;
     appearanceDescription?: string;
   }): Promise<{ avatarUrl?: string; gender?: string | null } | null>;
-  getVoiceConfig(name: string, gender: string | null): Promise<CharacterVoiceConfig>;
+  getVoiceConfig(
+    name: string,
+    gender: string | null,
+    voiceContext?: string,
+  ): Promise<CharacterVoiceConfig>;
 }
 
 export interface GenerateCharacterOptions {
@@ -149,7 +153,7 @@ export async function generateCharacter(
   let voiceConfig: CharacterVoiceConfig | null = null;
   checkCancelled();
   try {
-    voiceConfig = await transport.getVoiceConfig(correctedName, gender);
+    voiceConfig = await transport.getVoiceConfig(correctedName, gender, personality);
     log("debug", "bot_voice_config_generated", "Voice config generated", {
       characterName: correctedName,
       voiceName: voiceConfig?.name,

@@ -21,11 +21,13 @@ jest.mock("../../src/utils/logger", () => ({
   sanitizeLogMeta: (meta: unknown) => meta,
 }));
 
-// Mock TTS client for voice validation testing
+// Mock Google's live voice inventory used for selection.
 const mockSynthesizeSpeech = jest.fn();
+const mockListVoices = jest.fn();
 jest.mock("../../src/utils/tts", () => ({
   getTTSClient: jest.fn(() => ({
     synthesizeSpeech: mockSynthesizeSpeech,
+    listVoices: mockListVoices,
   })),
   synthesizeSpeechToFile: jest.fn(),
 }));
@@ -50,6 +52,11 @@ jest.mock("../../src/utils/claudeModelSelector", () => ({
 describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    const tts = require("../../src/utils/tts");
+    (tts.getTTSClient as jest.Mock).mockImplementation(() => ({
+      synthesizeSpeech: mockSynthesizeSpeech,
+      listVoices: mockListVoices,
+    }));
 
     // Returns valid American male voice by default
     mockClaudeCreate.mockResolvedValue({
@@ -67,7 +74,33 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
       ],
     });
 
-    // Accepts all voices as valid by default
+    mockListVoices.mockResolvedValue([
+      {
+        voices: [
+          ["en-US-Wavenet-A", "en-US", 2],
+          ["en-US-Wavenet-B", "en-US", 1],
+          ["en-US-Wavenet-C", "en-US", 2],
+          ["en-US-Wavenet-D", "en-US", 1],
+          ["en-US-Wavenet-F", "en-US", 2],
+          ["en-US-Wavenet-G", "en-US", 1],
+          ["en-US-Wavenet-H", "en-US", 1],
+          ["en-US-Neural2-F", "en-US", 2],
+          ["en-US-Studio-M", "en-US", 1],
+          ["en-US-Standard-E", "en-US", 1],
+          ["en-GB-Wavenet-B", "en-GB", 1],
+          ["de-DE-Wavenet-B", "de-DE", 1],
+          ["fr-FR-Wavenet-A", "fr-FR", 2],
+          ["ja-JP-Wavenet-A", "ja-JP", 2],
+          ["zh-CN-Wavenet-C", "zh-CN", 1],
+        ].map(([name, languageCode, ssmlGender]) => ({
+          name,
+          languageCodes: [languageCode],
+          ssmlGender,
+        })),
+      },
+    ]);
+
+    // Kept to assert voice casting no longer performs validation synthesis.
     mockSynthesizeSpeech.mockResolvedValue([{ audioContent: Buffer.from("test") }]);
   });
 
@@ -88,6 +121,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
       expect(config.ssmlGender).toBe(SSML_GENDER.MALE);
       expect(config.pitch).toBe(0);
       expect(config.rate).toBe(1.0);
+      expect(mockSynthesizeSpeech).not.toHaveBeenCalled();
     });
 
     it("should cache voice config to avoid duplicate Claude calls", async () => {
@@ -660,8 +694,8 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
       const config = await getVoiceConfigForCharacter("TTS Failure Character");
       // With TTS client failing validation across all attempts, we should fall back to default
       expect(config.name).toBe(CHARACTER_VOICE_MAP["Default"].name);
-      // And Claude was asked multiple times while trying to find a valid voice
-      expect(mockClaudeCreate).toHaveBeenCalledTimes(3);
+      // Inventory failure happens before Claude, avoiding futile casting retries.
+      expect(mockClaudeCreate).not.toHaveBeenCalled();
     });
   });
 
@@ -678,32 +712,42 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
       expect(mod.mapGenderToSsml("neutral")).toBe(SSML_GENDER.NEUTRAL);
     });
 
-    it("logs info when voice validation fails once then succeeds", async () => {
-      // First validation attempt fails with an error
-      mockSynthesizeSpeech.mockRejectedValueOnce(new Error("synth failure"));
-      // Then it succeeds
-      mockSynthesizeSpeech.mockResolvedValueOnce([{ audioContent: Buffer.from("ok") }]);
-
-      mockClaudeCreate.mockResolvedValueOnce({
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              gender: "male",
-              languageCode: "en-US",
-              voiceName: "en-US-Wavenet-G",
-              pitch: 0,
-              rate: 1.0,
-            }),
-          },
-        ],
-      });
+    it("logs a warning when an unavailable catalog choice is retried", async () => {
+      mockClaudeCreate
+        .mockResolvedValueOnce({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                gender: "male",
+                languageCode: "en-US",
+                voiceName: "en-US-Wavenet-Z",
+                pitch: 0,
+                rate: 1.0,
+              }),
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                gender: "male",
+                languageCode: "en-US",
+                voiceName: "en-US-Wavenet-G",
+                pitch: 0,
+                rate: 1.0,
+              }),
+            },
+          ],
+        });
 
       const logger = require("../../src/utils/logger");
       await getVoiceConfigForCharacter("Log Validation Failure");
 
-      expect(logger.default.info).toHaveBeenCalledWith(
-        "Voice validation failed",
+      expect(logger.default.warn).toHaveBeenCalledWith(
+        "Voice name unavailable on attempt 1, retrying",
         expect.any(Object),
       );
     });
@@ -753,8 +797,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
       expect(normalized.rate).toBe(1.0);
     });
 
-    it("handles non-Error thrown in isValidGoogleTTSVoice and logs string error", async () => {
-      // Make synthesizeSpeech reject with a non-Error value
+    it("does not synthesize a validation sample while casting", async () => {
       mockSynthesizeSpeech.mockRejectedValueOnce("synth-plain-error");
 
       mockClaudeCreate.mockResolvedValueOnce({
@@ -772,19 +815,14 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
         ],
       });
 
-      const logger = require("../../src/utils/logger");
-      await getVoiceConfigForCharacter("NonErrorSynth");
-
-      // The logger should have been called with the stringified error message
-      expect(logger.default.info).toHaveBeenCalledWith(
-        "Voice validation failed",
-        expect.any(Object),
-      );
+      const config = await getVoiceConfigForCharacter("NonErrorSynth");
+      expect(config.name).toBe("en-US-Wavenet-H");
+      expect(mockSynthesizeSpeech).not.toHaveBeenCalled();
     });
 
     it("falls back to Default when Claude rejects with non-Error value", async () => {
       // Simulate Claude rejecting with a plain string
-      mockClaudeCreate.mockRejectedValueOnce("claude-boom");
+      mockClaudeCreate.mockRejectedValue("claude-boom");
 
       const logger = require("../../src/utils/logger");
       const config = await getVoiceConfigForCharacter("ClaudeFailString");

@@ -715,7 +715,7 @@ describe("chat API", () => {
       expect(mockSynthesizeSpeechToFile).toHaveBeenCalledWith(
         expect.objectContaining({
           filePath: expect.stringContaining(path.normalize("/tmp/custom-tts") + path.sep),
-          ssml: false,
+          ssml: true,
         }),
       );
     });
