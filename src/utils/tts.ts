@@ -192,24 +192,19 @@ export async function synthesizeSpeechToFile({
   // Prevent directory traversal by using only the filename component
   // Sanitize filename to remove unsafe characters
   const safeFile = path.join(outDir, sanitizeFilename(path.basename(resolvedPath)));
-  // Note: Google TTS API expects 'languageCode' (singular), not 'languageCodes'
-  const apiVoice = {
-    ...voice,
+  // `voice` is persisted in Google's ListVoices response shape (`languageCodes`, plus
+  // app-only pitch/rate/type fields), while v1 SynthesizeSpeech requires the distinct
+  // VoiceSelectionParams request shape. Construct it explicitly so response/app fields
+  // never leak into the protobuf. An exact `name` already identifies gender; sending
+  // ssmlGender too is redundant and can make v1 reject an otherwise valid named voice
+  // when old persisted metadata disagrees. Keep gender only for the unnamed fallback.
+  const apiVoice: protos.google.cloud.texttospeech.v1.IVoiceSelectionParams = {
     languageCode: (voice.languageCodes && voice.languageCodes[0]) || "en-GB",
   };
-  delete apiVoice.languageCodes;
-  if (
-    apiVoice.name &&
-    apiVoice.ssmlGender === protos.google.cloud.texttospeech.v1.SsmlVoiceGender.NEUTRAL
-  ) {
-    // Google's synthesizeSpeech API rejects ssmlGender: NEUTRAL outright
-    // ("3 INVALID_ARGUMENT: Gender neutral voices are not supported.") whenever a
-    // specific voice `name` is also given — discovered live via a character
-    // (Nefertem) whose Claude-generated voiceConfig legitimately came back
-    // "neutral". The name alone already identifies the voice unambiguously, so
-    // ssmlGender is redundant in that case; drop it rather than fail every
-    // request for any character with a neutral-gendered voiceConfig.
-    delete apiVoice.ssmlGender;
+  if (voice.name) {
+    apiVoice.name = voice.name;
+  } else if (voice.ssmlGender !== undefined) {
+    apiVoice.ssmlGender = voice.ssmlGender;
   }
   const request: protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
     input,

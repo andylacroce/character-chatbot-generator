@@ -135,6 +135,25 @@ describe("game/start API", () => {
     expect(mockRecordEvent).toHaveBeenCalledWith("game_started", { guest: true }, null);
   });
 
+  it("casts the current character's voice using the full clue persona prompt, not just the base persona", async () => {
+    // generateGameCluePersonaPrompt's output already steers toward the hidden
+    // nextCharacterName without naming them (see CLAUDE.md's "Guessing game" section) —
+    // that's the correct casting input, since it reflects the actual character being
+    // synthesized. Asserting the exact string also pins the voice cache key to it, so a
+    // different hidden target naturally gets its own cache entry instead of silently
+    // sharing a cast voice with the last round for the same currentCharacterName.
+    const handler = require("../../../../pages/api/game/start").default;
+    const req = { method: "POST" } as Partial<NextApiRequest> as NextApiRequest;
+    const res = makeRes();
+    await handler(req, res);
+    const { getVoiceConfigForCharacter } = require("../../../../src/utils/characterVoices");
+    expect(getVoiceConfigForCharacter).toHaveBeenCalledWith(
+      "Sherlock Holmes",
+      "male",
+      "persona prompt here",
+    );
+  });
+
   it("calls pickRandomCharacterName twice with exclusion, drawing from the game's curated pool", async () => {
     const handler = require("../../../../pages/api/game/start").default;
     const req = { method: "POST" } as Partial<NextApiRequest> as NextApiRequest;

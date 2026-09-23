@@ -57,10 +57,12 @@ describe("mobileTransport", () => {
 
   it("forwards voice config requests", async () => {
     (getVoiceConfig as jest.Mock).mockResolvedValue({ name: "en-GB-Standard-B" });
-    await expect(mobileTransport.getVoiceConfig("Zeus", "male")).resolves.toEqual({
+    await expect(
+      mobileTransport.getVoiceConfig("Zeus", "male", "Regal and resonant"),
+    ).resolves.toEqual({
       name: "en-GB-Standard-B",
     });
-    expect(getVoiceConfig).toHaveBeenCalledWith("Zeus", "male");
+    expect(getVoiceConfig).toHaveBeenCalledWith("Zeus", "male", "Regal and resonant");
   });
 });
 

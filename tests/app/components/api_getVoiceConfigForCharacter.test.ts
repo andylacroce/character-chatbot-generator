@@ -39,6 +39,28 @@ describe("api_getVoiceConfigForCharacter", () => {
     });
   });
 
+  it("includes descriptive casting context when provided", async () => {
+    (authenticatedFetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ name: "en-US-Studio-O" }),
+    });
+    await api_getVoiceConfigForCharacter(
+      "Alice",
+      "female",
+      "An older, measured speaker with dry wit.",
+    );
+
+    expect(authenticatedFetch).toHaveBeenCalledWith("/api/get-voice-config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Alice",
+        gender: "female",
+        voiceContext: "An older, measured speaker with dry wit.",
+      }),
+    });
+  });
+
   it("excludes gender from request body when gender is null", async () => {
     (authenticatedFetch as jest.Mock).mockResolvedValueOnce({
       ok: true,

@@ -20,7 +20,7 @@ import { setReplyCache, getReplyCache } from "../../src/utils/cache";
 import crypto from "crypto";
 import { getClaudeModel } from "../../src/utils/claudeModelSelector";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
-import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
+import { buildSsml } from "../../src/utils/voiceHelpers";
 import {
   summarizeConversation,
   buildClaudeMessages,
@@ -606,13 +606,12 @@ CRITICAL CONTEXT INSTRUCTIONS:
         "TTS voice config selected",
         sanitizeLogMeta({ requestId, botName, voiceConfig: voiceConfigToUse }),
       );
-      const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
-      const ssmlText = buildSsml(cachedReply, selectedVoice);
+      const ssmlText = buildSsml(cachedReply, voiceConfigToUse);
       const tmpDir = os.tmpdir();
       if (!fs.existsSync(tmpDir)) {
         fs.mkdirSync(tmpDir, { recursive: true });
       }
-      const audioCacheKey = getAudioCacheKey(cachedReply, selectedVoice);
+      const audioCacheKey = getAudioCacheKey(cachedReply, voiceConfigToUse);
       const audioFileName = sanitizeFilename(`${audioCacheKey}.mp3`);
       const audioFilePath = path.join(tmpDir, audioFileName);
       if (!fs.existsSync(audioFilePath)) {
@@ -621,7 +620,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
             text: ssmlText,
             filePath: audioFilePath,
             ssml: true,
-            voice: selectedVoice,
+            voice: voiceConfigToUse,
           });
           const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
           fs.writeFileSync(txtFilePath, cachedReply, "utf8");
@@ -746,7 +745,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
         botReply = stripActionEmotes(gracefullyWrapResponse(botReply));
 
         const voiceConfigToUse = voiceConfig;
-        const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
+        const ssmlText = buildSsml(botReply, voiceConfigToUse);
 
         const audioFileName = sanitizeFilename(`${botName}_${Date.now()}.mp3`);
         const audioDir = process.env.TTS_TMP_DIR || os.tmpdir();
@@ -763,10 +762,10 @@ CRITICAL CONTEXT INSTRUCTIONS:
         let audioFileUrl: string | undefined;
         try {
           await synthesizeSpeechToFile({
-            text: botReply,
+            text: ssmlText,
             filePath: audioFilePath,
-            ssml: false,
-            voice: selectedVoice,
+            ssml: true,
+            voice: voiceConfigToUse,
           });
           audioFileUrl = `/api/audio?file=${audioFileName}&text=${encodeURIComponent(botReply)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfigToUse))}`;
         } catch (ttsError) {
@@ -883,13 +882,12 @@ CRITICAL CONTEXT INSTRUCTIONS:
       "TTS voice config selected",
       sanitizeLogMeta({ requestId, botName, voiceConfig: voiceConfigToUse }),
     );
-    const selectedVoice = normalizeStudioVoice(voiceConfigToUse);
-    const ssmlText = buildSsml(botReply, selectedVoice);
+    const ssmlText = buildSsml(botReply, voiceConfigToUse);
     const tmpDir = os.tmpdir();
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
     }
-    const audioCacheKey = getAudioCacheKey(botReply, selectedVoice);
+    const audioCacheKey = getAudioCacheKey(botReply, voiceConfigToUse);
     const audioFileName = sanitizeFilename(`${audioCacheKey}.mp3`);
     const audioFilePath = path.join(tmpDir, audioFileName);
     if (!fs.existsSync(audioFilePath)) {
@@ -898,7 +896,7 @@ CRITICAL CONTEXT INSTRUCTIONS:
           text: ssmlText,
           filePath: audioFilePath,
           ssml: true,
-          voice: selectedVoice,
+          voice: voiceConfigToUse,
         });
         const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
         fs.writeFileSync(txtFilePath, botReply, "utf8");

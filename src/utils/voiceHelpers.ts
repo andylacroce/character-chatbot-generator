@@ -1,19 +1,9 @@
 /**
  * Shared voice utilities used by the chat and audio API routes.
- * Centralises Studio voice normalisation and SSML generation so the logic
- * lives in one place.
+ * Centralises SSML generation so the logic lives in one place.
  */
 
 import type { CharacterVoiceConfig } from "./characterVoices";
-
-const VALID_STUDIO_VOICES = ["en-US-Studio-M", "en-US-Studio-O"] as const;
-
-const FALLBACK_STUDIO_VOICE: CharacterVoiceConfig = {
-  languageCodes: ["en-US"],
-  name: "en-US-Studio-M",
-  ssmlGender: 1,
-  type: "Studio",
-};
 
 /**
  * Returns true when the voice config refers to a Google Studio voice.
@@ -24,19 +14,6 @@ function isStudioVoice(voiceConfig: CharacterVoiceConfig): boolean {
   return (
     voiceConfig.type === "Studio" || (!!voiceConfig.name && voiceConfig.name.includes("Studio"))
   );
-}
-
-/**
- * Ensures a Studio voice config uses a valid Studio voice name.
- * Non-Studio configs are returned unchanged.
- * Invalid Studio voice names are replaced with the default fallback.
- */
-export function normalizeStudioVoice(voiceConfig: CharacterVoiceConfig): CharacterVoiceConfig {
-  if (!isStudioVoice(voiceConfig)) return voiceConfig;
-  if (VALID_STUDIO_VOICES.includes(voiceConfig.name as (typeof VALID_STUDIO_VOICES)[number])) {
-    return voiceConfig;
-  }
-  return FALLBACK_STUDIO_VOICE;
 }
 
 /**

@@ -23,6 +23,8 @@ export interface CharacterVoiceConfig {
 export interface GetVoiceConfigRequest {
   name: string;
   gender?: string | null;
+  /** Generated personality/speaking-style context used only to cast a fitting voice. */
+  voiceContext?: string;
 }
 
 /** One turn in a chat transcript, as sent in `conversationHistory` / rendered in the UI. */

@@ -1,4 +1,4 @@
-import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
+import { buildSsml } from "../../src/utils/voiceHelpers";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 
 function makeVoice(overrides: Partial<CharacterVoiceConfig> = {}): CharacterVoiceConfig {
@@ -9,48 +9,6 @@ function makeVoice(overrides: Partial<CharacterVoiceConfig> = {}): CharacterVoic
     ...overrides,
   };
 }
-
-// ---------------------------------------------------------------------------
-// normalizeStudioVoice
-// ---------------------------------------------------------------------------
-
-describe("normalizeStudioVoice", () => {
-  it("returns a non-Studio voice unchanged", () => {
-    const voice = makeVoice({ name: "en-GB-Wavenet-D" });
-    expect(normalizeStudioVoice(voice)).toBe(voice);
-  });
-
-  it("returns a valid en-US-Studio-M voice unchanged", () => {
-    const voice = makeVoice({ name: "en-US-Studio-M", type: "Studio" });
-    expect(normalizeStudioVoice(voice)).toBe(voice);
-  });
-
-  it("returns a valid en-US-Studio-O voice unchanged", () => {
-    const voice = makeVoice({ name: "en-US-Studio-O", type: "Studio" });
-    expect(normalizeStudioVoice(voice)).toBe(voice);
-  });
-
-  it("replaces an invalid Studio voice name with the fallback", () => {
-    const voice = makeVoice({ name: "en-US-Studio-X", type: "Studio" });
-    const result = normalizeStudioVoice(voice);
-    expect(result.name).toBe("en-US-Studio-M");
-    expect(result.languageCodes).toEqual(["en-US"]);
-    expect(result.type).toBe("Studio");
-  });
-
-  it("detects Studio via name when type field is absent", () => {
-    const voice = makeVoice({ name: "en-US-Studio-X" });
-    const result = normalizeStudioVoice(voice);
-    expect(result.name).toBe("en-US-Studio-M");
-  });
-
-  it('detects Studio via type field even if name does not contain "Studio"', () => {
-    const voice = makeVoice({ name: "en-US-Wavenet-Z", type: "Studio" });
-    // name doesn't match valid Studio voices → fallback
-    const result = normalizeStudioVoice(voice);
-    expect(result.name).toBe("en-US-Studio-M");
-  });
-});
 
 // ---------------------------------------------------------------------------
 // buildSsml

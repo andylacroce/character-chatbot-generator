@@ -143,7 +143,7 @@ export function useChatController(
         return setAndPersistVoiceConfig(bot.voiceConfig as CharacterVoiceConfig);
       }
       try {
-        const fetched = await api_getVoiceConfigForCharacter(bot.name, bot.gender);
+        const fetched = await api_getVoiceConfigForCharacter(bot.name, bot.gender, bot.personality);
         return setAndPersistVoiceConfig(fetched);
       } catch (err) {
         if (typeof window !== "undefined") {
@@ -164,7 +164,7 @@ export function useChatController(
     const result = await promise;
     voiceConfigPromiseRef.current = null;
     return result;
-  }, [bot.name, bot.gender, bot.voiceConfig, setAndPersistVoiceConfig]);
+  }, [bot.name, bot.gender, bot.personality, bot.voiceConfig, setAndPersistVoiceConfig]);
 
   const [input, setInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);

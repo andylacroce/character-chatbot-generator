@@ -1356,7 +1356,7 @@ describe("useBotCreation tests", () => {
 
     expect(onBotCreated).toHaveBeenCalled();
     // voice config was called with correctedName and gender 'female'
-    expect(mockGetVoiceConfig).toHaveBeenCalledWith("Gen", "female");
+    expect(mockGetVoiceConfig).toHaveBeenCalledWith("Gen", "female", "p");
     const bot = onBotCreated.mock.calls[0][0];
     expect(bot.avatarUrl).toBe("/silhouette.svg");
   });

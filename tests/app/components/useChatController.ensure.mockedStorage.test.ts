@@ -65,7 +65,7 @@ describe("ensureVoiceConfig branches (mocked storage)", () => {
     const { result } = renderHook(() => useChatController(bot));
 
     await waitFor(() => expect(result.current.messages.length).toBeGreaterThanOrEqual(1));
-    expect(mockGetVoice).toHaveBeenCalledWith("ParseBot", null);
+    expect(mockGetVoice).toHaveBeenCalledWith("ParseBot", null, "p");
   });
 
   it("falls through when saved bot name does not match", async () => {

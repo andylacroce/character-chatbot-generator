@@ -12,7 +12,7 @@ import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
 import { getVoiceConfigForCharacter } from "../../src/utils/characterVoices";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
-import { normalizeStudioVoice, buildSsml } from "../../src/utils/voiceHelpers";
+import { buildSsml } from "../../src/utils/voiceHelpers";
 import anthropic from "../../src/utils/anthropicClient";
 import { withRequestLog } from "../../src/utils/withRequestLog";
 
@@ -214,7 +214,7 @@ async function handler(
             voiceConfig,
           }),
         );
-        const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
+        const selectedVoice = voiceConfig as CharacterVoiceConfig;
         const ssmlText = buildSsml(expectedText, selectedVoice);
         await synthesizeSpeechToFile({
           text: ssmlText,
@@ -273,7 +273,7 @@ async function handler(
           }),
         );
         try {
-          const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
+          const selectedVoice = voiceConfig as CharacterVoiceConfig;
           const ssmlText = buildSsml(expectedText as string, selectedVoice);
           await synthesizeSpeechToFile({
             text: ssmlText,
@@ -314,7 +314,7 @@ async function handler(
         if (originalText) {
           try {
             const fetchedVoiceConfig = await getVoiceConfigForCharacter(botName, gender);
-            const selectedVoice = normalizeStudioVoice(fetchedVoiceConfig);
+            const selectedVoice = fetchedVoiceConfig;
             const ssmlText = buildSsml(originalText, selectedVoice);
             await synthesizeSpeechToFile({
               text: ssmlText,
@@ -367,7 +367,7 @@ async function handler(
               const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
               fs.writeFileSync(txtFilePath, aiReply, "utf8");
               // Now TTS
-              const selectedVoice = normalizeStudioVoice(voiceConfig as CharacterVoiceConfig);
+              const selectedVoice = voiceConfig as CharacterVoiceConfig;
               const ssmlText = buildSsml(aiReply, selectedVoice);
               await synthesizeSpeechToFile({
                 text: ssmlText,

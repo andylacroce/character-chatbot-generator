@@ -68,7 +68,7 @@ export async function generateGameRound(
       onProgress?.("reply");
       return result;
     }),
-    getVoiceConfigForCharacter(currentCharacterName, gender).then((result) => {
+    getVoiceConfigForCharacter(currentCharacterName, gender, personaPrompt).then((result) => {
       onProgress?.("voice");
       return result;
     }),
