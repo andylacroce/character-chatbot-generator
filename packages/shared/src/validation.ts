@@ -45,5 +45,11 @@ export function sanitizeUserName(name: string): string {
  * strip it only at render time.
  */
 export function displayCharacterName(name: string): string {
-  return name.replace(/\s*\([^()]*\)\s*$/, "") || name;
+  // String scanning, not a regex: `\s*\(...\)\s*$` backtracks polynomially on long runs
+  // of spaces, and the server runs this on client-supplied names (transcript.ts).
+  const trimmed = name.trimEnd();
+  if (!trimmed.endsWith(")")) return name;
+  const open = trimmed.lastIndexOf("(");
+  if (open <= 0 || trimmed.slice(open + 1, -1).includes(")")) return name;
+  return trimmed.slice(0, open).trimEnd() || name;
 }

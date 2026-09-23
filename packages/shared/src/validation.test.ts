@@ -54,6 +54,14 @@ describe("displayCharacterName", () => {
     expect(displayCharacterName("Mr. (Bob) Smith")).toBe("Mr. (Bob) Smith");
   });
 
+  it("stays fast on long runs of spaces", () => {
+    const hostile = "a" + " ".repeat(100_000) + "(";
+    const start = Date.now();
+    expect(displayCharacterName(hostile)).toBe(hostile);
+    expect(displayCharacterName(" ".repeat(100_000) + "(x)")).toBe(" ".repeat(100_000) + "(x)");
+    expect(Date.now() - start).toBeLessThan(200);
+  });
+
   it("never returns an empty name", () => {
     expect(displayCharacterName("(Anonymous)")).toBe("(Anonymous)");
   });
