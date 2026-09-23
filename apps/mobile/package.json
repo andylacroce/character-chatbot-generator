@@ -1,10 +1,12 @@
 {
   "name": "character-chatbot-mobile",
   "version": "1.0.0",
+  "license": "UNLICENSED",
   "main": "index.ts",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "3.1.1",
+    "@react-navigation/elements": "^2.9.43",
     "@react-navigation/native": "^7.3.18",
     "@react-navigation/native-stack": "^7.18.10",
     "character-chatbot-shared": "*",

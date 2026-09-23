@@ -1,8 +1,8 @@
 {
   "name": "portrayal",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
-  "license": "MIT",
+  "license": "UNLICENSED",
   "repository": {
     "type": "git",
     "url": "https://github.com/andylacroce/character-chatbot-generator.git"

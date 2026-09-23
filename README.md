@@ -1,6 +1,6 @@
 # Portrayal
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: Proprietary](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)](LICENSE)
 [![CI](https://github.com/andylacroce/character-chatbot-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/andylacroce/character-chatbot-generator/actions/workflows/ci.yml)
 
 A Next.js 16 + TypeScript app for chatting with history's greatest minds, legendary heroes, and literary icons, with Claude-powered responses, factually-grounded personalities, and Google Text-to-Speech audio replies.
@@ -438,7 +438,7 @@ PRs welcome! Please include:
 
 ## License & Disclaimer
 
-Licensed under the [MIT License](LICENSE). Educational/portfolio project, not affiliated with Anthropic or Google.
+All rights reserved — see [LICENSE](LICENSE). Source is publicly viewable for portfolio purposes only; no permission is granted to use, copy, modify, or redistribute it. Not affiliated with Anthropic or Google.
 
 **Copyright Notice**: This app includes AI-powered copyright/trademark validation to help users avoid creating chatbots based on copyrighted or trademarked characters. When a potentially copyrighted character is detected, users receive warnings and suggestions for public domain alternatives. Users are solely responsible for ensuring their use complies with applicable copyright and trademark laws. The validation system provides guidance but does not constitute legal advice.
 
