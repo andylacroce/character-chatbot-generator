@@ -6,6 +6,7 @@
 const nextConfig = require("eslint-config-next");
 const tsPlugin = require("@typescript-eslint/eslint-plugin");
 const jsdocPlugin = require("eslint-plugin-jsdoc");
+const regexpPlugin = require("eslint-plugin-regexp");
 const securityPlugin = require("eslint-plugin-security");
 
 module.exports = [
@@ -15,6 +16,7 @@ module.exports = [
       "dist/**",
       ".next/**",
       "coverage/**",
+      "docs-generated/**",
       "tmp/**",
       "jest.setup.js",
       "scripts/**",
@@ -27,6 +29,19 @@ module.exports = [
     ],
   },
   ...nextConfig,
+  {
+    plugins: { regexp: regexpPlugin },
+    rules: {
+      // CodeQL caught a polynomial ReDoS in displayCharacterName() only after the
+      // vulnerable code reached a PR. Keep this focused rule in the ordinary local
+      // lint command so unsafe regex backtracking fails before code is pushed.
+      "regexp/no-super-linear-backtracking": "error",
+      // Unanchored regex searches can also become polynomial by retrying a linear
+      // match at every input position. This is how the displayCharacterName() regex
+      // was classified, so both protections are required to cover that regression.
+      "regexp/no-super-linear-move": "error",
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     rules: {

@@ -39,4 +39,13 @@ describe("extractJson", () => {
     const input = "some `inline` code without fences";
     expect(extractJson(input)).toBe(input.trim());
   });
+
+  it("handles a long unterminated fence in linear time", () => {
+    const input = `\`\`\`json${" ".repeat(100_000)}`;
+    const startedAt = performance.now();
+    const result = extractJson(input);
+    const elapsed = performance.now() - startedAt;
+    expect(result).toBe("```json");
+    expect(elapsed).toBeLessThan(200);
+  });
 });

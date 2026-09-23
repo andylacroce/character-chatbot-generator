@@ -358,14 +358,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     <body>
       <h1>Portrayal Transcript</h1>
       <div class="header-info">
-        <p><strong>Exported:</strong> ${escapeHtml(displayTimestamp)}</p>
+        <p><strong>Exported:</strong> ${escapeHtml(displayTimestamp) /* nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- escaped before HTML interpolation */}</p>
       </div>
       ${
         bot
           ? `
         <div class="bot-header">
           ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${escapeHtml(bot.avatarUrl)}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ""}
-          <h2>${escapeHtml(displayCharacterName(bot.name))}</h2>
+          <h2>${escapeHtml(displayCharacterName(bot.name)) /* nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- escaped before HTML interpolation */}</h2>
         </div>
       `
           : ""
@@ -376,8 +376,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             const isUser = msg.sender === "User";
             return `
               <div class="message ${isUser ? "user-message" : "bot-message"}">
-                <strong class="${isUser ? "user-sender" : "bot-sender"}">${isUser ? escapeHtml(senderName) : escapeHtml(displayCharacterName(bot ? bot.name : msg.sender))}:</strong>
-                <span class="message-text">${sanitizeForDisplay(msg.text)}</span>
+                <strong class="${isUser ? "user-sender" : "bot-sender"}">${isUser ? escapeHtml(senderName) : escapeHtml(displayCharacterName(bot ? bot.name : msg.sender)) /* nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- both branches are escaped before HTML interpolation */}:</strong>
+                <span class="message-text">${sanitizeForDisplay(msg.text) /* nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- sanitizer returns HTML-escaped text */}</span>
               </div>
             `;
           })
