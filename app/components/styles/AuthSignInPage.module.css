@@ -1,0 +1,176 @@
+/* =============================
+   AuthSignInPage.module.css
+   NextAuth's configured `pages.signIn` page (authOptions.ts) — reached directly, not
+   through a modal, so unlike SignInModal it needs its own header/page chrome. Button/
+   input/divider treatments intentionally mirror BotCreator.module.css's
+   .googleSignInButton/.magicLinkForm/.signInDivider exactly (same tokens, values) so
+   this reads as the same design system rather than a one-off page — not imported
+   directly, per this repo's "no shared CSS modules" convention.
+   ============================= */
+
+.page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-background);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.wordmark {
+  font-family: var(--font-secondary), var(--font-primary), sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 1.75rem;
+  text-align: center;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--card-body-bg);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  padding: 2rem 1.75rem;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.6rem 0;
+  color: var(--color-primary);
+  font-family: var(--font-secondary), var(--font-primary), sans-serif;
+}
+
+.subtitle {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.errorBanner {
+  margin-top: 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  background: var(--color-error-container);
+  color: var(--color-on-error-container);
+  font-size: 0.88rem;
+}
+
+.googleSignInButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 0.75rem 1.25rem;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--card-body-bg);
+  border: 1px solid var(--color-text-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.googleSignInButton:hover,
+.googleSignInButton:focus {
+  background: var(--color-primary-container);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1.1rem 0;
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-outline);
+}
+
+.magicLinkForm {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.magicLinkInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.65rem 0.9rem;
+  font-family: var(--font-primary), sans-serif;
+  /* 16px, not 0.95rem/~15.2px — anything smaller triggers Safari's auto-zoom-on-focus
+     on iOS. */
+  font-size: 16px;
+  color: var(--color-text);
+  background: var(--color-background);
+  border: 1px solid var(--color-text-secondary);
+  border-radius: 8px;
+}
+
+.magicLinkSubmit {
+  padding: 0.65rem 1.1rem;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.magicLinkSubmit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.magicLinkStatus {
+  margin-top: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.magicLinkStatus[data-tone="error"] {
+  color: var(--color-error);
+}
+
+@media (max-width: 480px) {
+  .magicLinkForm {
+    flex-direction: column;
+  }
+
+  .magicLinkSubmit {
+    width: 100%;
+  }
+}

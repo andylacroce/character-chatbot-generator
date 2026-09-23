@@ -161,9 +161,11 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
   `GET /api/auth/mobile-auth-start?redirect_uri=...` in a browser tab
   (`expo-web-browser`'s `openAuthSessionAsync`, redirect URI from `expo-linking`'s
   `createURL`, matching `app.json`'s `"scheme": "character-chatbot-mobile"`), which
-  redirects straight to the backend's own real NextAuth sign-in page — the exact same
-  page/form a web visitor already uses, offering both Google and email. Whichever
-  provider completes, NextAuth's own callback routes (`/api/auth/callback/google` /
+  redirects straight to the backend's own sign-in page (`app/auth/signin/`,
+  `authOptions.ts`'s custom `pages.signIn` — styled to match the app instead of
+  NextAuth's generic default picker, since web's own sign-in is an in-app lightbox
+  that never navigates here), offering both Google and email. Whichever provider
+  completes, NextAuth's own callback routes (`/api/auth/callback/google` /
   `/api/auth/callback/email`, both completely unchanged) handle it, then redirect to
   `pages/api/auth/mobile-auth-complete.ts`, which reads the resulting session cookie and
   mints a bearer JWT (`next-auth/jwt`'s `encode`, same shape as the web session cookie —

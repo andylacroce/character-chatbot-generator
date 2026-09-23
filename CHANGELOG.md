@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.9.1 — 2026-09-22 — Custom-styled sign-in page for the mobile bridge
+
+- `authOptions.ts` now configures a custom `pages.signIn: "/auth/signin"` (`app/auth/signin/page.tsx` → `AuthSignInPage.tsx`), styled to match the rest of the app — same colors/fonts/button and form treatment as `SignInModal.tsx` — instead of NextAuth's generic, unstyled default picker page. Web's own sign-in (`SignInModal.tsx`, an in-app lightbox) never navigates here; this exists because the mobile sign-in bridge (`pages/api/auth/mobile-auth-start.ts`, shipped in v0.9.0) opens a bare browser tab with no in-app lightbox context to render into, and was landing on NextAuth's stock page until now.
+- Conditionally hides either the Google button or the email form via `getProviders()` if that provider isn't actually configured on the current environment (mirrors `SignInModal.tsx`'s own `hasEmailProvider` guard), and surfaces `?error=` codes from a failed attempt with a plain-language message (no separate `pages.error` is configured, so failures redirect back to this same page).
+
 ## v0.9.0 — 2026-09-22 — Mobile email sign-in, unified auth bridge
 
 - Mobile now supports magic-link email sign-in alongside Google. Rather than adding a second provider-specific bridge, the entire mobile sign-in mechanism was unified: `pages/api/auth/mobile-auth-start.ts` now redirects straight to the backend's own real NextAuth sign-in page — the exact same page/form a web visitor already uses, offering both providers — instead of talking to Google directly. Whichever provider the visitor completes, NextAuth's own unmodified callback routes (`/api/auth/callback/google`, `/api/auth/callback/email`) handle it, then redirect to the new `pages/api/auth/mobile-auth-complete.ts`, which reads the resulting session and mints the mobile bearer token.

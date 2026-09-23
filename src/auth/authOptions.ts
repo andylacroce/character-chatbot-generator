@@ -120,6 +120,16 @@ export const authOptions: NextAuthOptions = {
   providers,
   session: { strategy: "jwt" },
   secret: process.env.NEXTAUTH_SECRET,
+  // Custom sign-in page (app/auth/signin/), styled to match the rest of the app instead
+  // of NextAuth's generic default-rendered picker. Web's own sign-in entry point
+  // (SignInModal.tsx, an in-app lightbox) never navigates here — this exists for the
+  // mobile sign-in bridge (pages/api/auth/mobile-auth-start.ts), which has no in-app
+  // lightbox context to render into and must send the browser tab it opens somewhere.
+  // No separate `pages.error` is configured, so a failed attempt also redirects back
+  // here with `?error=<code>`, which AuthSignInPage.tsx reads and displays.
+  pages: {
+    signIn: "/auth/signin",
+  },
   // NextAuth's default logger writes straight to console, bypassing this app's
   // structured logEvent format — that would make adapter/DB failures (a failed
   // users/accounts write on sign-in, a bad verification token) invisible to the
