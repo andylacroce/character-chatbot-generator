@@ -3,6 +3,7 @@ import { useSession } from "next-auth/react";
 import {
   parseGameRoundResult,
   getReplayAudioUrl,
+  findSpeakerVoiceConfig,
   useGameSession,
   type GameLogger,
   type GameRoundResult,
@@ -248,13 +249,21 @@ export function useGameController() {
             // older persisted transcripts compatible without assigning a later
             // character's voice to an earlier speaker.
             gender: message.gender ?? (message.sender === currentCharacterName ? gender : null),
+            // message.audioFileUrl already carries the speaker's real voiceConfig when
+            // present (getReplayAudioUrl reuses that URL as-is). This only matters when
+            // it's absent (e.g. TTS failed for this specific turn) — without it, the
+            // on-demand /api/audio URL built below would carry no voiceConfig at all,
+            // forcing the server into a fresh, context-free re-cast that can silently
+            // hand the speaker a different, even differently-gendered, voice than every
+            // other line they've spoken this run.
+            voiceConfig: findSpeakerVoiceConfig(messages, message.sender),
           }),
         );
       } catch (err) {
         logGameEvent("error", "game_audio_replay_error", "Failed to replay message audio", err);
       }
     },
-    [currentCharacterName, gender, playAudio],
+    [currentCharacterName, gender, messages, playAudio],
   );
 
   useEffect(() => {

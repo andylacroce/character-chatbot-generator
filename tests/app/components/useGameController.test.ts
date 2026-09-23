@@ -134,6 +134,59 @@ describe("useGameController", () => {
     expect(parsed.searchParams.get("gender")).toBe("male");
   });
 
+  it("reuses a speaker's already-cast voiceConfig when replaying a message with no audio of its own", async () => {
+    // Regression test: without this, replaying a message whose own TTS never succeeded
+    // (audioFileUrl undefined) built a /api/audio URL with no voiceConfig at all, forcing
+    // the server into a fresh, context-free re-cast that could silently pick a different —
+    // even differently-gendered — voice than every other line this speaker has said.
+    const sherlockVoiceConfig = {
+      languageCodes: ["en-GB"],
+      name: "en-GB-Standard-B",
+      ssmlGender: 1,
+      pitch: -2,
+      rate: 0.95,
+    };
+    mockStorage.getItem.mockImplementation((key: string) =>
+      key === "chatbot-game-token" ? "persisted-token" : null,
+    );
+    mockStorage.getJSON.mockReturnValue({
+      currentCharacterName: "Sherlock Holmes",
+      avatarUrl: "https://example.com/sherlock.png",
+      gender: "male",
+      streak: 0,
+      messages: [
+        {
+          sender: "Sherlock Holmes",
+          text: "Greetings, detective.",
+          gender: "male",
+          audioFileUrl: `/api/audio?file=intro.mp3&voiceConfig=${encodeURIComponent(
+            JSON.stringify(sherlockVoiceConfig),
+          )}`,
+        },
+        { sender: "User", text: "Who are you?" },
+      ],
+      roundStartIndex: 0,
+      lastEvent: null,
+    });
+    const { result } = renderHook(() => useGameController());
+
+    mockPlayAudio.mockClear();
+    await act(async () => {
+      // This specific message has no audioFileUrl of its own (e.g. its TTS call failed).
+      await result.current.replayMessageAudio({
+        sender: "Sherlock Holmes",
+        text: "Indeed. The game is afoot.",
+        gender: "male",
+      });
+    });
+
+    const replayUrl = mockPlayAudio.mock.calls[0][0] as string;
+    const parsed = new URL(replayUrl, "https://example.com");
+    expect(JSON.parse(parsed.searchParams.get("voiceConfig") ?? "null")).toEqual(
+      sherlockVoiceConfig,
+    );
+  });
+
   it("hydrates an in-progress run from localStorage on mount", () => {
     mockStorage.getItem.mockImplementation((key: string) =>
       key === "chatbot-game-token" ? "persisted-token" : null,

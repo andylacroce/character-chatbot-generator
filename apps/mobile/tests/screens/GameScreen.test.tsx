@@ -241,6 +241,47 @@ describe("GameScreen", () => {
     );
   });
 
+  it("reuses a speaker's already-cast voiceConfig when replaying a message with no audio of its own", async () => {
+    // Regression test: without this, a message whose own TTS never succeeded regenerated
+    // through a context-free server-side re-cast, which can silently pick a different —
+    // even differently-gendered — voice than every other line that speaker has said.
+    const zeusVoiceConfig = { languageCodes: ["en-US"], name: "en-US-Standard-A", ssmlGender: 1 };
+    const player = { play: jest.fn(), pause: jest.fn(), replace: jest.fn(), seekTo: jest.fn() };
+    (useAudioPlayer as jest.Mock).mockReturnValue(player);
+    await AsyncStorage.setItem("chatbot-game-token", "stored-token");
+    await AsyncStorage.setItem(
+      "chatbot-game-transcript",
+      JSON.stringify({
+        currentCharacterName: "Zeus",
+        avatarUrl: "/silhouette.svg",
+        gender: "male",
+        streak: 0,
+        messages: [
+          {
+            sender: "Zeus",
+            text: "Hail, mortal.",
+            gender: "male",
+            audioFileUrl: `/api/audio?file=z.mp3&voiceConfig=${encodeURIComponent(
+              JSON.stringify(zeusVoiceConfig),
+            )}`,
+          },
+          { sender: "User", text: "Who are you?" },
+          // No audioFileUrl of its own (e.g. its TTS call failed).
+          { sender: "Zeus", text: "The king of the gods.", gender: "male" },
+        ],
+        roundStartIndex: 0,
+        lastEvent: null,
+      }),
+    );
+    const utils = await renderScreen();
+    const replayButtons = await utils.findAllByLabelText("Replay audio for Zeus's message");
+    await fireEvent.press(replayButtons[replayButtons.length - 1]);
+    await waitFor(() => expect(player.replace).toHaveBeenCalled());
+
+    const url = player.replace.mock.calls.at(-1)[0] as string;
+    expect(JSON.parse(decodeURIComponent(url.split("voiceConfig=")[1]))).toEqual(zeusVoiceConfig);
+  });
+
   it("resumes a stored run and links to the leaderboard from the start screen", async () => {
     const utils = await renderScreen();
     await fireEvent.press(await utils.findByText("View leaderboard"));
