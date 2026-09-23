@@ -12,7 +12,10 @@ module.exports = defineConfig([
       // Explicit version skips eslint-plugin-react's auto-detection code
       // path, which crashes under ESLint 10 (it still calls the removed
       // legacy context.getFilename() API - see git history for the full
-      // TypeError this works around).
+      // TypeError this works around). TODO: bump this string whenever
+      // package.json's own "react" version changes - it's hand-typed and
+      // won't warn on drift, it'll just silently use a stale version for
+      // eslint-plugin-react's version-gated rules.
       react: {
         version: "19.3.0",
       },

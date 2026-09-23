@@ -216,9 +216,12 @@ native sign-in module.
 ## Linting, formatting & CI
 
 `npm run ci` is the single composite command (`lint --max-warnings=0` → `lint:md` →
-`format:check` → `type-check`) — same one `.github/workflows/ci.yml` runs on push/PR
-to `main`. No test/build step yet, deliberately — matches Testing above; add them to
-both places together once real tests exist.
+`format:check` → `type-check`) — same one the root repo's `.github/workflows/ci-mobile.yml`
+runs (path-filtered to `apps/mobile/**`/`packages/shared/**`; moved here from this repo's
+own `.github/workflows/` during the monorepo migration - GitHub only reads workflows at
+the repo root, so a copy living under `apps/mobile/.github` would be silently dead). No
+test/build step yet, deliberately — matches Testing above; add them to both places
+together once real tests exist.
 
 - **ESLint**: `eslint.config.js`, scaffolded via `npx expo lint` (`eslint-config-expo`).
   Two of its bundled rules are disabled repo-wide, both false positives for this
@@ -227,6 +230,14 @@ both places together once real tests exist.
   `Text` children) and `react-hooks/refs` (flags the standard, RN-documented
   `useRef(new Animated.Value(...)).current` pattern as an illegal render-time ref
   read — it isn't, for `Animated.Value`).
+- **`settings.react.version` is pinned explicitly (not `"detect"`)** — required, not just
+  an optimization. ESLint 10 removed the deprecated `context.getFilename()` API that
+  `eslint-plugin-react@7.37.5` (already latest as of this writing, no newer release fixes
+  it) still calls internally during auto-detection, crashing every lint run with
+  `contextOrFilename.getFilename is not a function`. An explicit version skips that code
+  path entirely. **Must be bumped by hand whenever `package.json`'s own `"react"` version
+  changes** — nothing will warn on drift, it'll just silently apply eslint-plugin-react's
+  version-gated rules against a stale React version.
 - **Prettier**: `.prettierrc.json` deliberately mirrors `character-chatbot-generator`'s
   settings (100-char width, double quotes, trailing commas) for a consistent style
   across the two repos, not because RN/Expo requires it.
