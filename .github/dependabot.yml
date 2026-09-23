@@ -11,7 +11,10 @@ updates:
       - dependency-name: "typescript"
         update-types:
           - "version-update:semver-major"
-      # Must match the installed react-native minor (see the /apps/mobile entry below).
+      # Hoisted for apps/mobile; must stay on the Expo SDK's react-native minor
+      # (see the /apps/mobile entry below).
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "@react-native/*"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: "npm"
