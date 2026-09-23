@@ -107,6 +107,8 @@
     "typescript": "^6"
   },
   "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom",
     "undici": "^6.23.0",
     "postcss": "^8.5.15",
     "js-yaml": "^4.3.0"
