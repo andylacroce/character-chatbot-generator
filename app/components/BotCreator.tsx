@@ -13,6 +13,7 @@ import React, { useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { BRAND } from "character-chatbot-shared";
 import { authenticatedFetch } from "../../src/utils/api";
 import styles from "./styles/BotCreator.module.css";
 import AppHeader from "./AppHeader";
@@ -338,8 +339,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                     </span>
                   ))}
                 </p>
-                <p className={styles.kicker}>Begin a conversation</p>
+                <span className={styles.betaBadge}>{BRAND.betaLabel}</span>
                 <h1 className={styles.headline}>Who will you bring to life?</h1>
+                <p className={styles.kicker}>Begin a conversation</p>
                 <Link href="/game" className={styles.wallCta}>
                   <svg
                     width="16"

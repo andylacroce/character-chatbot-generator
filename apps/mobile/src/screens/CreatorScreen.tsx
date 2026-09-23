@@ -34,6 +34,7 @@ import CopyrightWarningModal from "../components/CopyrightWarningModal";
 import CharacterDescriptionModal from "../components/CharacterDescriptionModal";
 import AccountModal from "../components/AccountModal";
 import NameCaptureModal from "../components/NameCaptureModal";
+import ModalCard from "../components/ModalCard";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Creator">;
 
@@ -56,6 +57,7 @@ export default function CreatorScreen({ navigation }: Props) {
   const userNameCtx = useUserName();
   const [savedBot, setSavedBot] = useState<Bot | null>(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
 
   // Reload on every focus, not just mount: returning from a chat must show that
   // character in the resume card, not whichever one was saved when this screen mounted.
@@ -127,7 +129,7 @@ export default function CreatorScreen({ navigation }: Props) {
         onContentSizeChange={(_w, h) => setContentH(h)}
       >
         <Wordmark text={BRAND.name} />
-        <Text style={styles.kicker}>{BRAND.kicker}</Text>
+        <Text style={styles.betaBadge}>{BRAND.betaLabel}</Text>
 
         {savedBot && !busy ? (
           <Pressable
@@ -153,6 +155,7 @@ export default function CreatorScreen({ navigation }: Props) {
         </View>
 
         <Text style={styles.headline}>{BRAND.headline}</Text>
+        <Text style={styles.kicker}>{BRAND.kicker}</Text>
 
         <View style={styles.inputRow}>
           <TextInput
@@ -247,6 +250,14 @@ export default function CreatorScreen({ navigation }: Props) {
               <Text style={styles.linkText}>Past chats</Text>
             </Pressable>
           ) : null}
+          <Pressable
+            onPress={() => setShowDisclaimerModal(true)}
+            style={styles.link}
+            android_ripple={{ color: colors.secondaryContainer, borderless: true }}
+          >
+            <Ionicons name="information-circle-outline" size={16} color={colors.secondary} />
+            <Text style={styles.linkText}>Disclaimer</Text>
+          </Pressable>
         </View>
       </ScrollView>
 
@@ -282,6 +293,13 @@ export default function CreatorScreen({ navigation }: Props) {
         onSkip={creation.handleNameGateSkip}
         onClose={creation.handleNameGateSkip}
       />
+      <ModalCard
+        visible={showDisclaimerModal}
+        onClose={() => setShowDisclaimerModal(false)}
+        title="Disclaimer"
+      >
+        <Text style={styles.disclaimerText}>{BRAND.disclaimer}</Text>
+      </ModalCard>
     </KeyboardAvoidingView>
   );
 }
@@ -296,8 +314,27 @@ function makeStyles(colors: ThemeColors) {
       letterSpacing: 2,
       textTransform: "uppercase",
       color: colors.textSecondary,
-      marginTop: 4,
-      marginBottom: 14,
+      marginTop: 0,
+      marginBottom: 16,
+    },
+    betaBadge: {
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      color: colors.warning,
+      borderWidth: 1,
+      borderColor: colors.warning,
+      borderRadius: 999,
+      paddingVertical: 2,
+      paddingHorizontal: 8,
+      marginBottom: 10,
+      overflow: "hidden",
+    },
+    disclaimerText: {
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.text,
     },
     resumeCard: {
       flexDirection: "row",
@@ -323,7 +360,7 @@ function makeStyles(colors: ThemeColors) {
       color: colors.text,
       textAlign: "center",
       marginTop: 4,
-      marginBottom: 18,
+      marginBottom: 4,
       alignSelf: "stretch",
     },
     inputRow: {

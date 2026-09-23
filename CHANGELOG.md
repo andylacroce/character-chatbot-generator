@@ -2,6 +2,12 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.14.0 — 2026-09-23 — Beta branding and disclaimer on both apps
+
+- The app is genuinely beta right now, so both web and mobile now show a small "Beta" badge next to the wordmark on the landing/creator screen. The existing web disclaimer now also says so explicitly.
+- Mobile gained a "Disclaimer" link and modal — it had no disclaimer surface at all before this. The wording is now shared between web and mobile so it can't drift.
+- On both apps, "Begin a conversation" moved to read as a subtitle under "Who will you bring to life?" instead of above it.
+
 ## v0.13.1 — 2026-09-23 — Fixed a wrong-gender voice on game audio replay
 
 - Fixed the guessing game replaying a message with no audio of its own (its TTS call failed that turn) through a fresh, context-free voice re-cast that could pick a different, even differently-gendered, voice than every other line that speaker had said. Replay now reuses the speaker's already-cast voice, read back from another message's own audio URL in the same transcript.
