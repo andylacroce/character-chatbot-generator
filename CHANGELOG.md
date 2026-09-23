@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.13.1 — 2026-09-23 — Fixed a wrong-gender voice on game audio replay
+
+- Fixed the guessing game replaying a message with no audio of its own (its TTS call failed that turn) through a fresh, context-free voice re-cast that could pick a different, even differently-gendered, voice than every other line that speaker had said. Replay now reuses the speaker's already-cast voice, read back from another message's own audio URL in the same transcript.
+
 ## v0.13.0 — 2026-09-23 — Description-aware voice casting
 
 - Character voice casting now uses the generated personality and speaking style and chooses only from Google Cloud TTS's live v1 Studio, Neural2, WaveNet, Standard, News, Journey, and Polyglot inventory. Casting no longer synthesizes a throwaway validation sample, and all chat response paths now apply the selected prosody consistently.
