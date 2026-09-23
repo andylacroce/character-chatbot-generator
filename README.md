@@ -51,7 +51,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 
 ## Prerequisites
 
-- Node.js ≥18
+- Node.js ≥24
 - npm or yarn
 - Anthropic API key
 - Google Cloud service account with the Text-to-Speech API enabled
