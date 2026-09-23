@@ -25,6 +25,8 @@ export type ChatViewMessage = {
   text: string;
   avatarUrl?: string;
   audioFileUrl?: string;
+  /** The speaker's round-specific gender hint, for audio replay after a game handoff. */
+  gender?: string | null;
 };
 
 type Props = {

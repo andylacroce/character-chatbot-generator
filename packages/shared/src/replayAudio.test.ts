@@ -1,4 +1,8 @@
-import { getReplayAudioUrl } from "./replayAudio";
+import {
+  getReplayAudioUrl,
+  extractVoiceConfigFromAudioUrl,
+  findSpeakerVoiceConfig,
+} from "./replayAudio";
 
 describe("getReplayAudioUrl", () => {
   it("reuses the audio URL already attached to a message", () => {
@@ -52,5 +56,90 @@ describe("getReplayAudioUrl", () => {
     );
 
     expect(first.searchParams.get("file")).not.toBe(second.searchParams.get("file"));
+  });
+});
+
+describe("extractVoiceConfigFromAudioUrl", () => {
+  const voiceConfig = {
+    languageCodes: ["en-GB"],
+    name: "en-GB-Standard-B",
+    ssmlGender: 1,
+    pitch: -2,
+    rate: 0.95,
+  };
+
+  it("recovers the voiceConfig embedded in a real /api/audio URL", () => {
+    const url = `/api/audio?file=abc.mp3&text=Hi&botName=Oedipus&gender=male&voiceConfig=${encodeURIComponent(
+      JSON.stringify(voiceConfig),
+    )}`;
+    expect(extractVoiceConfigFromAudioUrl(url)).toEqual(voiceConfig);
+  });
+
+  it("returns null for an undefined URL", () => {
+    expect(extractVoiceConfigFromAudioUrl(undefined)).toBeNull();
+  });
+
+  it("returns null when the URL has no voiceConfig param", () => {
+    expect(extractVoiceConfigFromAudioUrl("/api/audio?file=abc.mp3&text=Hi")).toBeNull();
+  });
+
+  it("returns null when the voiceConfig param is not valid JSON", () => {
+    expect(extractVoiceConfigFromAudioUrl("/api/audio?voiceConfig=not-json")).toBeNull();
+  });
+});
+
+describe("findSpeakerVoiceConfig", () => {
+  const oedipusVoiceConfig = {
+    languageCodes: ["en-US"],
+    name: "en-US-Standard-A",
+    ssmlGender: 1,
+  };
+
+  it("finds a speaker's voiceConfig from an earlier message in the transcript", () => {
+    const messages = [
+      {
+        sender: "Oedipus",
+        audioFileUrl: `/api/audio?voiceConfig=${encodeURIComponent(
+          JSON.stringify(oedipusVoiceConfig),
+        )}`,
+      },
+      { sender: "User", audioFileUrl: undefined },
+      // This later message has no audio of its own — this is the one being replayed.
+      { sender: "Oedipus", audioFileUrl: undefined },
+    ];
+    expect(findSpeakerVoiceConfig(messages, "Oedipus")).toEqual(oedipusVoiceConfig);
+  });
+
+  it("prefers the most recent matching message when several carry a voiceConfig", () => {
+    const olderConfig = { languageCodes: ["en-US"], name: "en-US-Wavenet-D", ssmlGender: 1 };
+    const newerConfig = { languageCodes: ["en-US"], name: "en-US-Standard-A", ssmlGender: 1 };
+    const messages = [
+      {
+        sender: "Oedipus",
+        audioFileUrl: `/api/audio?voiceConfig=${encodeURIComponent(JSON.stringify(olderConfig))}`,
+      },
+      {
+        sender: "Oedipus",
+        audioFileUrl: `/api/audio?voiceConfig=${encodeURIComponent(JSON.stringify(newerConfig))}`,
+      },
+    ];
+    expect(findSpeakerVoiceConfig(messages, "Oedipus")).toEqual(newerConfig);
+  });
+
+  it("returns null when no message from that speaker carries a voiceConfig", () => {
+    const messages = [{ sender: "Oedipus", audioFileUrl: undefined }];
+    expect(findSpeakerVoiceConfig(messages, "Oedipus")).toBeNull();
+  });
+
+  it("ignores messages from a different speaker", () => {
+    const messages = [
+      {
+        sender: "Sherlock Holmes",
+        audioFileUrl: `/api/audio?voiceConfig=${encodeURIComponent(
+          JSON.stringify(oedipusVoiceConfig),
+        )}`,
+      },
+    ];
+    expect(findSpeakerVoiceConfig(messages, "Oedipus")).toBeNull();
   });
 });

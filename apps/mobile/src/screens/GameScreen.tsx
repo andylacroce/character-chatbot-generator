@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import {
   displayCharacterName,
   getReplayAudioUrl,
+  findSpeakerVoiceConfig,
   fillTemplate,
   GAME_CORRECT_BANNER,
   GAME_GIVE_UP_CONFIRM,
@@ -246,7 +247,11 @@ export default function GameScreen({ navigation }: Props) {
               audioFileUrl: m.audioFileUrl,
               text: m.text,
               botName: m.sender,
-              gender: m.sender === currentCharacterName ? game.gender : null,
+              gender: m.gender ?? (m.sender === currentCharacterName ? game.gender : null),
+              // See useGameController.ts's replayMessageAudio (web) for why this matters:
+              // without it, a message with no audio of its own would regenerate through a
+              // context-free server-side re-cast that can pick a different voice/gender.
+              voiceConfig: findSpeakerVoiceConfig(game.messages, m.sender),
             }),
           )
         }
