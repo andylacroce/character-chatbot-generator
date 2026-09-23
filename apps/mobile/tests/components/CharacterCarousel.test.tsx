@@ -6,10 +6,10 @@ import { ThemeProvider } from "../../src/ThemeContext";
 
 jest.mock("../../src/api", () => ({
   ...jest.requireActual("../../src/api"),
-  getChars: jest.fn(),
+  getCarouselSample: jest.fn(),
 }));
 
-import { getChars } from "../../src/api";
+import { getCarouselSample } from "../../src/api";
 
 // Animated's real timing/spring never resolve deterministically under this environment's
 // fake timers — replace with synchronous stand-ins so the flip/press callbacks this
@@ -58,25 +58,25 @@ async function renderCarousel(props: Partial<React.ComponentProps<typeof Charact
 
 describe("CharacterCarousel", () => {
   it("renders nothing before the character pool has loaded", async () => {
-    (getChars as jest.Mock).mockReturnValue(new Promise(() => {}));
+    (getCarouselSample as jest.Mock).mockReturnValue(new Promise(() => {}));
     const { toJSON } = await renderCarousel();
     expect(toJSON()).toBeNull();
   });
 
   it("renders nothing when the fetch fails", async () => {
-    (getChars as jest.Mock).mockRejectedValue(new Error("network down"));
+    (getCarouselSample as jest.Mock).mockRejectedValue(new Error("network down"));
     const { toJSON } = await renderCarousel();
     await waitFor(() => expect(toJSON()).toBeNull());
   });
 
   it("renders the character once the pool loads", async () => {
-    (getChars as jest.Mock).mockResolvedValue({ characters: oneCharacter, hasMore: false });
+    (getCarouselSample as jest.Mock).mockResolvedValue(oneCharacter);
     const { findByText } = await renderCarousel();
     expect(await findByText("Sherlock Holmes")).toBeTruthy();
   });
 
   it("calls onSelect with the character's name on tap", async () => {
-    (getChars as jest.Mock).mockResolvedValue({ characters: oneCharacter, hasMore: false });
+    (getCarouselSample as jest.Mock).mockResolvedValue(oneCharacter);
     const onSelect = jest.fn();
     const { findByLabelText } = await renderCarousel({ onSelect });
 
@@ -87,7 +87,7 @@ describe("CharacterCarousel", () => {
   });
 
   it("does not call onSelect while disabled", async () => {
-    (getChars as jest.Mock).mockResolvedValue({ characters: oneCharacter, hasMore: false });
+    (getCarouselSample as jest.Mock).mockResolvedValue(oneCharacter);
     const onSelect = jest.fn();
     const { findByLabelText } = await renderCarousel({ onSelect, disabled: true });
 

@@ -2,9 +2,9 @@
 
 /** Public top-ten guessing-game scores and the signed-in player's claim form. */
 
-import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { LEADERBOARD_COPY, useLeaderboard, type LeaderboardEntry } from "character-chatbot-shared";
 import { authenticatedFetch } from "../../src/utils/api";
 import { hasNavigatedWithinSession } from "../../src/utils/clientNavigationState";
 import AppHeader from "./AppHeader";
@@ -13,40 +13,19 @@ import LeaderboardClaim from "./LeaderboardClaim";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/Leaderboard.module.css";
 
-interface Entry {
-  rank: number;
-  name: string;
-  streak: number;
+/** Loads the public top ten (list state lives in the shared useLeaderboard hook). */
+async function fetchEntries(): Promise<LeaderboardEntry[]> {
+  const res = await authenticatedFetch("/api/game/leaderboard");
+  if (!res.ok) throw new Error("Failed to load leaderboard");
+  const data = await res.json();
+  return Array.isArray(data.entries) ? data.entries : [];
 }
 
 /** Lists public entries without revealing the names or scores of players who did not opt in. */
 export default function LeaderboardPage() {
   const router = useRouter();
   const { menuItems, modals } = useAccountMenu();
-  const [entries, setEntries] = useState<Entry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const load = useCallback(async () => {
-    try {
-      const res = await authenticatedFetch("/api/game/leaderboard");
-      if (!res.ok) throw new Error("Failed to load leaderboard");
-      const data = await res.json();
-      setEntries(Array.isArray(data.entries) ? data.entries : []);
-      setError("");
-    } catch {
-      setError("Could not load the leaderboard. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // The async request updates state only when its response arrives.
-    /* eslint-disable react-hooks/set-state-in-effect */
-    void load();
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [load]);
+  const { entries, loading, error, reload } = useLeaderboard(fetchEntries);
 
   return (
     <div className={styles.page}>
@@ -66,21 +45,21 @@ export default function LeaderboardPage() {
       />
       {modals}
       <main className={styles.main}>
-        <h1>Guessing Game Leaderboard</h1>
+        <h1>{LEADERBOARD_COPY.title}</h1>
         {loading ? (
-          <p role="status">Loading scores…</p>
+          <p role="status">{LEADERBOARD_COPY.loading}</p>
         ) : error ? (
           <p role="alert">{error}</p>
         ) : entries.length === 0 ? (
-          <p>No players have shared a top 10 score yet.</p>
+          <p>{LEADERBOARD_COPY.empty}</p>
         ) : (
           <table className={styles.table}>
-            <caption>Public top 10 scores</caption>
+            <caption>{LEADERBOARD_COPY.tableCaption}</caption>
             <thead>
               <tr>
-                <th scope="col">Rank</th>
-                <th scope="col">Player</th>
-                <th scope="col">Streak</th>
+                <th scope="col">{LEADERBOARD_COPY.rankLabel}</th>
+                <th scope="col">{LEADERBOARD_COPY.playerLabel}</th>
+                <th scope="col">{LEADERBOARD_COPY.streakLabel}</th>
               </tr>
             </thead>
             <tbody>
@@ -94,9 +73,9 @@ export default function LeaderboardPage() {
             </tbody>
           </table>
         )}
-        <LeaderboardClaim onChange={load} />
+        <LeaderboardClaim onChange={reload} />
         <Link href="/game" className={styles.playLink}>
-          Play Guessing Game
+          {LEADERBOARD_COPY.playLabel}
         </Link>
       </main>
     </div>

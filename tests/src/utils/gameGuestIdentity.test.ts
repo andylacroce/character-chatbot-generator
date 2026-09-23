@@ -23,4 +23,21 @@ describe("game guest identity", () => {
       getGuestId({ cookies: { "portrayal-game-guest": "short" } } as unknown as NextApiRequest),
     ).toBeNull();
   });
+
+  it("accepts the mobile app's x-game-guest header, without issuing a cookie", () => {
+    const token = "a".repeat(43);
+    const res = { setHeader: jest.fn() } as unknown as NextApiResponse;
+    const req = { cookies: {}, headers: { "x-game-guest": token } } as unknown as NextApiRequest;
+    const fromCookie = getGuestId({
+      cookies: { "portrayal-game-guest": token },
+    } as unknown as NextApiRequest);
+    expect(ensureGuestId(req, res)).toBe(fromCookie);
+    expect(res.setHeader).not.toHaveBeenCalled();
+    expect(
+      getGuestId({
+        cookies: {},
+        headers: { "x-game-guest": "short" },
+      } as unknown as NextApiRequest),
+    ).toBeNull();
+  });
 });

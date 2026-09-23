@@ -46,6 +46,8 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,100+ passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
+- **Android/iOS App**: An Expo (React Native) client in `apps/mobile` with the same creation flow, chat, Character Wall, guessing game, leaderboard, and Past chats, calling this app's API. Logic, copy, and types live once in `packages/shared` and both clients use them. See [`apps/mobile/README.md`](apps/mobile/README.md)
+- **Audio Replay**: Every character message has a speaker button to hear it again, on web and mobile
 
 ## Prerequisites
 
@@ -382,35 +384,46 @@ signed-in user too (the server is the durable copy; see
   persisted server-side instead — see [Personalized Greeting](#personalized-greeting))
 - `chatbot-user-name-gate-skipped` — Set once a guest dismisses the post-creation name
   prompt, so it doesn't reappear on that browser
+- `chatbot-game-token` / `chatbot-game-transcript`: the guessing game's encrypted round
+  token and its transcript, so a reload resumes the run
+- `chatbot-game-instructions-seen`: the guessing game's one-time "how to play" gate
+- `chatbot-landing-carousel-cache`: the landing carousel's last portrait sample, shown
+  instantly on the next visit
+
+Every key lives once in `packages/shared/src/storageKeys.ts`, which both the web app and
+the mobile app import.
 
 **Important**: Never store secrets or PII in client storage. All data is client-side only.
 
 ## Project Structure
 
 ```text
-app/
-   components/        # React components & hooks
-      CopyrightWarningModal.tsx  # Warning modal for copyrighted characters
-      useBotCreation.ts          # Bot creation with validation flow
-pages/api/           # API routes (chat, audio, health, transcript)
-   chat.ts            # Main chat endpoint with streaming & summarization
-   audio.ts           # TTS audio generation
-   generate-avatar.ts # Avatar generation via Claude + free image providers (Cloudflare Workers AI, Pollinations.ai fallback)
-   validate-character.ts # Copyright/trademark validation
+app/                     # Next.js App Router UI
+   components/           # Client components and hooks (ChatShell, GamePage, useBotCreation, ...)
+   chars/, game/, leaderboard/, history/, admin/, auth/  # Character Wall, guessing game, leaderboard, Past chats, admin, sign-in
+pages/api/               # API routes (Pages Router; server handlers are authoritative)
+   chat.ts               # Main chat endpoint with streaming & summarization
+   audio.ts              # TTS audio generation (also regenerates replay audio on demand)
+   validate-character.ts, generate-personality.ts, generate-avatar.ts, get-voice-config.ts  # Character creation pipeline
+   chars.ts              # Character Wall / carousel data
    random-character.ts   # Public domain character suggestions
-   bots.ts            # List/persist a signed-in user's characters (optional)
-   messages.ts        # List a signed-in user's chat history for one character (optional)
-   admin/stats.ts     # Admin-only aggregate usage stats (optional, see Internal Analytics)
-   admin/allowlist.ts, admin/blocklist.ts, admin/warnings.ts # Admin-only copyright moderation (see Copyright Protection)
-   game/start.ts, game/message.ts, game/give-up.ts, game/continue.ts # Guessing game (see Guessing Game)
+   bots.ts, messages.ts, user-profile.ts  # A signed-in user's characters, chat history, and name (optional)
+   game/                 # Guessing game: start, message, continue, give-up, high-score, leaderboard, leaderboard-settings
+   admin/                # Admin-only stats and copyright moderation
+   auth/                 # Auth.js, plus the mobile sign-in bridge (mobile-auth-start/-complete, mobile-session)
 src/
-   utils/             # Utilities (TTS, logger, cache, security)
-   types/             # TypeScript type definitions
-   config/            # Configuration files
-   db/                # Drizzle schema + client (optional account persistence)
-   auth/              # Auth.js configuration (Google sign-in)
-tests/               # Jest test suite (80%+ branch coverage)
-proxy.ts             # API authentication middleware (Next.js 16)
+   utils/                # Server utilities (TTS, logger, rate limiting, security, game token, ...)
+   config/               # Prompt builders and server configuration
+   data/                 # Curated character-name lists
+   db/                   # Drizzle schema + client (optional account persistence)
+   auth/                 # Auth.js configuration (Google sign-in)
+packages/shared/         # character-chatbot-shared: types, copy, storage keys, validation, and shared
+                         # hooks (useCharacterCreation, useGameSession, useCharacterCarousel, ...)
+apps/mobile/             # Expo (React Native) client; see apps/mobile/README.md
+   src/screens/          # Creator, Chat, CharWall, History, Game, Leaderboard
+   src/components/       # ChatView, modals, carousel, header title, lightbox, ...
+tests/                   # Web Jest suite (80%+ coverage gate); mobile and shared keep their own tests
+proxy.ts                 # API authentication middleware (Next.js 16)
 ```
 
 ## Troubleshooting

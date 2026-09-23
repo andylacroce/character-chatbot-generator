@@ -13,8 +13,12 @@ import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
 import { loadVoiceConfig, persistVoiceConfig } from "../../src/utils/voiceConfigPersistence";
 import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
-import { STORAGE_KEYS, chatHistoryKey, lastPlayedAudioHashKey } from "../../src/utils/storageKeys";
-import { getReplayAudioUrl } from "../../src/utils/replayAudio";
+import {
+  STORAGE_KEYS,
+  chatHistoryKey,
+  getReplayAudioUrl,
+  lastPlayedAudioHashKey,
+} from "character-chatbot-shared";
 
 /**
  * The visitor's own preferred name (see useUserName.ts), read directly from localStorage

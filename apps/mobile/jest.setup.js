@@ -3,11 +3,11 @@ process.env.EXPO_PUBLIC_API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL || "https://test.example.com";
 process.env.EXPO_PUBLIC_API_SECRET = process.env.EXPO_PUBLIC_API_SECRET || "test-secret";
 
-// async-storage 3.x ships its in-memory mock as an ES module under the "/jest" export.
-jest.mock("@react-native-async-storage/async-storage", () => ({
-  __esModule: true,
-  ...require("@react-native-async-storage/async-storage/jest"),
-}));
+// async-storage's own in-memory mock. Pinned to 2.x, the version Expo SDK 57's Expo Go
+// ships natively (3.x's JS needs a native module Expo Go doesn't have).
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+);
 
 // expo-secure-store has no official jest mock — back it with a simple in-memory map so
 // authToken.ts's get/set/delete round-trip like it would on-device.

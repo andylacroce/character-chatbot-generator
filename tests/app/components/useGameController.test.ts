@@ -186,6 +186,9 @@ describe("useGameController", () => {
         lastEvent: { type: "correct", revealedName: "Electra", streak: 1 },
       }),
     );
+    // `streak` itself waits for Continue, but the displayed streak already shows the win.
+    expect(result.current.streak).toBe(0);
+    expect(result.current.displayedStreak).toBe(1);
   });
 
   it("fetches a cookie-bound personal best for a guest", async () => {

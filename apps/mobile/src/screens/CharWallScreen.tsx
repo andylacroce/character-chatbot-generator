@@ -10,9 +10,14 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { CharacterEntry, ThemeColors } from "character-chatbot-shared";
+import {
+  displayCharacterName,
+  generateCharacter,
+  type CharacterEntry,
+  type ThemeColors,
+} from "character-chatbot-shared";
 import { getChars, resolveApiUrl } from "../api";
-import { createBot, persistBotIfSignedIn } from "../botCreation";
+import { mobileTransport, persistBotIfSignedIn } from "../botCreation";
 import { saveBot } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
@@ -68,12 +73,11 @@ export default function CharWallScreen({ navigation }: Props) {
     setCreating(true);
     setCreateError("");
     try {
-      const bot = await createBot(
-        selected.name,
-        () => {},
-        () => false,
-      );
-      if (!bot) return;
+      const bot = await generateCharacter(mobileTransport, selected.name, {
+        onProgress: () => {},
+        setLoadingMessage: () => {},
+        cancelToken: null,
+      });
       await saveBot(bot);
       persistBotIfSignedIn(bot);
       setSelected(null);
@@ -97,7 +101,7 @@ export default function CharWallScreen({ navigation }: Props) {
         avatarUrl={selected?.avatarUrl}
         onClose={() => (creating ? null : setSelected(null))}
         action={{
-          label: creating ? "Loading…" : `Chat with ${selected?.name ?? ""}`,
+          label: creating ? "Loading…" : `Chat with ${displayCharacterName(selected?.name ?? "")}`,
           onPress: handleChatWith,
         }}
       />
@@ -143,7 +147,7 @@ export default function CharWallScreen({ navigation }: Props) {
                 />
               )}
               <Text style={styles.tileCaption} numberOfLines={1}>
-                {item.name}
+                {displayCharacterName(item.name)}
               </Text>
             </Pressable>
           )}

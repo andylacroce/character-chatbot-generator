@@ -10,18 +10,28 @@ import type {
   ChatRequest,
   ChatResponse,
   CharsResponse,
+  GameGiveUpResponse,
+  GameHighScoreResponse,
+  GameLeaderboardResponse,
+  GameMessageRequest,
+  GameMessageResponse,
+  GameRoundResult,
   GenerateAvatarRequest,
   GenerateAvatarResponse,
   GeneratePersonalityRequest,
   GeneratePersonalityResponse,
   GetVoiceConfigRequest,
+  LeaderboardSettingsRequest,
+  LeaderboardSettingsResponse,
   PersistedBot,
   PersistedMessage,
   RandomCharacterResponse,
   UserProfile,
   ValidateCharacterRequest,
 } from "character-chatbot-shared";
+import { CAROUSEL_SAMPLE_PATH, parseGameRoundResult } from "character-chatbot-shared";
 import { getCachedAuthToken } from "./authToken";
+import { getGameGuestId } from "./gameGuest";
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
 const API_SECRET = process.env.EXPO_PUBLIC_API_SECRET ?? "";
@@ -125,6 +135,12 @@ export function getRandomCharacter(): Promise<RandomCharacterResponse> {
   return apiFetch("/api/random-character");
 }
 
+/** The landing carousel's random server-side sample of recent portraits. */
+export async function getCarouselSample(): Promise<CharsResponse["characters"]> {
+  const { characters } = await apiFetch<CharsResponse>(CAROUSEL_SAMPLE_PATH);
+  return characters ?? [];
+}
+
 export function getChars(limit: number, offset: number): Promise<CharsResponse> {
   return apiFetch(`/api/chars?limit=${limit}&offset=${offset}`);
 }
@@ -162,4 +178,76 @@ export function getUserProfile(): Promise<UserProfile> {
 /** Sets the signed-in user's preferred name. No-ops server-side for guests. */
 export function saveUserProfile(name: string): Promise<{ persisted: boolean }> {
   return post("/api/user-profile", { name });
+}
+
+/**
+ * The message from an ApiError whose body is the backend's usual `{ error }` JSON, falling
+ * back to `fallback` for anything else (network failure, HTML error page).
+ */
+export function apiErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    try {
+      const parsed = JSON.parse(err.message) as { error?: unknown };
+      if (typeof parsed.error === "string" && parsed.error) return parsed.error;
+    } catch {
+      // Not JSON — use the fallback.
+    }
+  }
+  return fallback;
+}
+
+/** Calls a guessing-game route with this device's guest identity (see gameGuest.ts). */
+async function gameFetch<T>(path: string, body?: unknown): Promise<T> {
+  const headers = { "x-game-guest": await getGameGuestId() };
+  return body === undefined
+    ? apiFetch<T>(path, { headers })
+    : apiFetch<T>(path, { method: "POST", headers, body: JSON.stringify(body) });
+}
+
+/**
+ * Starts a new guessing-game run. Called without `stream: true`: React Native's fetch can't
+ * read a streamed body, so mobile waits for the plain JSON result instead of SSE progress.
+ */
+export async function startGame(): Promise<GameRoundResult> {
+  return parseGameRoundResult(await gameFetch("/api/game/start", {}), "/api/game/start");
+}
+
+/** Generates the next round after a correct guess (plain JSON, like startGame). */
+export async function continueGame(gameToken: string): Promise<GameRoundResult> {
+  return parseGameRoundResult(
+    await gameFetch("/api/game/continue", { gameToken }),
+    "/api/game/continue",
+  );
+}
+
+/** Sends one game turn; the server decides whether it's a question or a guess. */
+export function sendGameMessage(body: GameMessageRequest): Promise<GameMessageResponse> {
+  return gameFetch("/api/game/message", body);
+}
+
+/** Gives up the current run, revealing the hidden character. */
+export function giveUpGame(gameToken: string): Promise<GameGiveUpResponse> {
+  return gameFetch("/api/game/give-up", { gameToken });
+}
+
+/** This account's or device's best streak (null when none is on record). */
+export function getGameHighScore(): Promise<GameHighScoreResponse> {
+  return gameFetch("/api/game/high-score");
+}
+
+/** The public top-ten leaderboard. */
+export function getLeaderboard(): Promise<GameLeaderboardResponse> {
+  return apiFetch("/api/game/leaderboard");
+}
+
+/** Whether this account or device can (and does) appear on the leaderboard. */
+export function getLeaderboardSettings(): Promise<LeaderboardSettingsResponse> {
+  return gameFetch("/api/game/leaderboard-settings");
+}
+
+/** Joins the leaderboard under a moderated `name`, or leaves it. */
+export function saveLeaderboardSettings(
+  body: LeaderboardSettingsRequest,
+): Promise<LeaderboardSettingsResponse> {
+  return gameFetch("/api/game/leaderboard-settings", body);
 }

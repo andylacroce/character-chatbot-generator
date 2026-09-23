@@ -6,7 +6,15 @@
  * never actually mix.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { STORAGE_KEYS, chatHistoryKey, type Bot, type ChatMessage } from "character-chatbot-shared";
+import {
+  STORAGE_KEYS,
+  chatHistoryKey,
+  type Bot,
+  type CarouselCache,
+  type CharacterEntry,
+  type ChatMessage,
+  type PersistedGameState,
+} from "character-chatbot-shared";
 
 /** Persists the currently active character. */
 export async function saveBot(bot: Bot): Promise<void> {
@@ -62,3 +70,49 @@ export async function loadAudioEnabled(): Promise<boolean> {
 export async function saveAudioEnabled(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEYS.audioEnabled, String(enabled));
 }
+
+/** Loads an in-progress guessing-game run, or null if there isn't one. */
+export async function loadGameState(): Promise<PersistedGameState | null> {
+  const [gameToken, rest] = await Promise.all([
+    AsyncStorage.getItem(STORAGE_KEYS.gameToken),
+    AsyncStorage.getItem(STORAGE_KEYS.gameTranscript),
+  ]);
+  if (!gameToken || !rest) return null;
+  return { gameToken, ...(JSON.parse(rest) as Omit<PersistedGameState, "gameToken">) };
+}
+
+/** Persists the current run, or clears it when `state` is null. */
+export async function saveGameState(state: PersistedGameState | null): Promise<void> {
+  if (!state) {
+    await Promise.all([
+      AsyncStorage.removeItem(STORAGE_KEYS.gameToken),
+      AsyncStorage.removeItem(STORAGE_KEYS.gameTranscript),
+    ]);
+    return;
+  }
+  const { gameToken, ...rest } = state;
+  await Promise.all([
+    AsyncStorage.setItem(STORAGE_KEYS.gameToken, gameToken),
+    AsyncStorage.setItem(STORAGE_KEYS.gameTranscript, JSON.stringify(rest)),
+  ]);
+}
+
+/** Whether the one-time "how to play" explainer has been shown on this device. */
+export async function loadGameInstructionsSeen(): Promise<boolean> {
+  return (await AsyncStorage.getItem(STORAGE_KEYS.gameInstructionsSeen)) === "true";
+}
+
+/** Marks the "how to play" explainer as seen. */
+export async function saveGameInstructionsSeen(): Promise<void> {
+  await AsyncStorage.setItem(STORAGE_KEYS.gameInstructionsSeen, "true");
+}
+
+/** The landing carousel's last portrait sample, repainted instantly on the next launch. */
+export const carouselCache: CarouselCache = {
+  load: async () => {
+    const raw = await AsyncStorage.getItem(STORAGE_KEYS.landingCarouselCache);
+    return raw ? (JSON.parse(raw) as CharacterEntry[]) : null;
+  },
+  save: (characters) =>
+    AsyncStorage.setItem(STORAGE_KEYS.landingCarouselCache, JSON.stringify(characters)),
+};

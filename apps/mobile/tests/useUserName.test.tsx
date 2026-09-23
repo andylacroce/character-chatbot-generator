@@ -47,7 +47,7 @@ describe("useUserName", () => {
 
   it("does not resolve until the signed-in profile fetch settles", async () => {
     mockedUseAuth.mockReturnValue({ status: "signedIn" });
-    let resolveProfile: (value: { preferredName: string | null }) => void = () => {};
+    let resolveProfile: (value: { name: string | null }) => void = () => {};
     (getUserProfile as jest.Mock).mockReturnValue(
       new Promise((resolve) => {
         resolveProfile = resolve;
@@ -58,7 +58,7 @@ describe("useUserName", () => {
     expect(result.current.isResolved).toBe(false);
 
     await act(async () => {
-      resolveProfile({ preferredName: "Jane" });
+      resolveProfile({ name: "Jane" });
     });
 
     await waitFor(() => expect(result.current.isResolved).toBe(true));
@@ -68,7 +68,7 @@ describe("useUserName", () => {
   it("seeds the server once from a guest-entered name on first sign-in with none saved", async () => {
     await saveUserName("Andy");
     mockedUseAuth.mockReturnValue({ status: "signedIn" });
-    (getUserProfile as jest.Mock).mockResolvedValue({ preferredName: null });
+    (getUserProfile as jest.Mock).mockResolvedValue({ name: null });
     (saveUserProfile as jest.Mock).mockResolvedValue({ persisted: true });
 
     await renderHook(() => useUserName());
@@ -78,7 +78,7 @@ describe("useUserName", () => {
 
   it("does not seed the server when signed in with no local guest name either", async () => {
     mockedUseAuth.mockReturnValue({ status: "signedIn" });
-    (getUserProfile as jest.Mock).mockResolvedValue({ preferredName: null });
+    (getUserProfile as jest.Mock).mockResolvedValue({ name: null });
 
     const { result } = await renderHook(() => useUserName());
     await waitFor(() => expect(result.current.isResolved).toBe(true));
@@ -99,7 +99,7 @@ describe("useUserName", () => {
 
   it("setName updates local state, storage, and the server when signed in", async () => {
     mockedUseAuth.mockReturnValue({ status: "signedIn" });
-    (getUserProfile as jest.Mock).mockResolvedValue({ preferredName: "Andy" });
+    (getUserProfile as jest.Mock).mockResolvedValue({ name: "Andy" });
     (saveUserProfile as jest.Mock).mockResolvedValue({ persisted: true });
 
     const { result } = await renderHook(() => useUserName());

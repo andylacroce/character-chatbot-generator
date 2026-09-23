@@ -8,6 +8,7 @@ import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
 import { createRateLimiter, applyRateLimit } from "../../src/utils/rateLimit";
 import { sanitizeForDisplay, escapeHtml } from "../../src/utils/security";
 import { withRequestLog } from "../../src/utils/withRequestLog";
+import { displayCharacterName } from "character-chatbot-shared";
 
 export const config = {
   api: {
@@ -364,7 +365,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           ? `
         <div class="bot-header">
           ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${escapeHtml(bot.avatarUrl)}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ""}
-          <h2>${escapeHtml(bot.name)}</h2>
+          <h2>${escapeHtml(displayCharacterName(bot.name))}</h2>
         </div>
       `
           : ""
@@ -375,7 +376,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             const isUser = msg.sender === "User";
             return `
               <div class="message ${isUser ? "user-message" : "bot-message"}">
-                <strong class="${isUser ? "user-sender" : "bot-sender"}">${isUser ? escapeHtml(senderName) : bot ? escapeHtml(bot.name) : escapeHtml(msg.sender)}:</strong>
+                <strong class="${isUser ? "user-sender" : "bot-sender"}">${isUser ? escapeHtml(senderName) : escapeHtml(displayCharacterName(bot ? bot.name : msg.sender))}:</strong>
                 <span class="message-text">${sanitizeForDisplay(msg.text)}</span>
               </div>
             `;

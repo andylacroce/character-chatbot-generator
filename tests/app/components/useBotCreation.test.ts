@@ -986,8 +986,9 @@ describe("useBotCreation tests", () => {
     expect(result.current.validating).toBe(false);
   });
 
-  it("logs validation failure when validation returns invalid shape (non-SSR)", async () => {
-    // Simulate validate-character returning an unexpected payload (undefined), causing a runtime error
+  it("succeeds silently when validation returns invalid shape (non-SSR)", async () => {
+    // When validate-character returns an unexpected payload (undefined), the transport's
+    // failOpen path is used — no error is thrown or logged, and creation proceeds.
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === "/api/validate-character")
         return Promise.resolve({ ok: true, json: async () => undefined });
@@ -1012,11 +1013,12 @@ describe("useBotCreation tests", () => {
     });
 
     await waitFor(() => expect(onBotCreated).toHaveBeenCalled());
-    // The handler should catch the runtime error and log a warning about validation failure
+    // No validation failure event: the transport's failOpen path swallows the malformed
+    // response without throwing, so the run proceeds without logging a warning.
     const found = mockLogEvent.mock.calls.some(
       (c) => c[0] === "warn" && c[1] === "bot_validation_failed",
     );
-    expect(found).toBe(true);
+    expect(found).toBe(false);
   });
 
   it("handleValidationContinue proceeds with bot creation after warning", async () => {

@@ -11,6 +11,7 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  displayCharacterName,
   formatRelativeTime,
   persistedBotToBot,
   type PersistedBot,
@@ -61,7 +62,7 @@ export default function HistoryScreen({ navigation }: Props) {
       >
         <Avatar name={b.name} avatarUrl={b.avatarUrl} size={36} />
         <View style={styles.nameWrap}>
-          <Text style={styles.name}>{b.name}</Text>
+          <Text style={styles.name}>{displayCharacterName(b.name)}</Text>
           <Text style={styles.time}>{formatRelativeTime(b.updatedAt)}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />

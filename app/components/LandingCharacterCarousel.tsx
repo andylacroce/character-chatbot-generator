@@ -9,72 +9,42 @@
  * auto-launch effect resolves resume-vs-fresh-create — no new logic needed here).
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authenticatedFetch } from "../../src/utils/api";
 import { getJSON, setJSON } from "../../src/utils/storage";
-import { STORAGE_KEYS } from "../../src/utils/storageKeys";
+import {
+  displayCharacterName,
+  CAROUSEL_SAMPLE_PATH,
+  STORAGE_KEYS,
+  useCharacterCarousel,
+  type CarouselCache,
+  type CharacterEntry,
+} from "character-chatbot-shared";
 import styles from "./styles/LandingCharacterCarousel.module.css";
 
-interface CharEntry {
-  name: string;
-  avatarUrl: string;
+const cache: CarouselCache = {
+  load: () =>
+    getJSON<{ characters: CharacterEntry[] }>(STORAGE_KEYS.landingCarouselCache)?.characters ??
+    null,
+  save: (characters) => setJSON(STORAGE_KEYS.landingCarouselCache, { characters }),
+};
+
+/** Fetches a fresh server-side sample of recent portraits. */
+async function fetchSample(): Promise<CharacterEntry[]> {
+  const data = await authenticatedFetch(CAROUSEL_SAMPLE_PATH).then((res) => res.json());
+  return Array.isArray(data?.characters) ? data.characters : [];
 }
 
-// Sample on the server so base64-backed portraits outside the rotation never cross
-// the network. The pool still spans the newest 100 recognized characters.
-const POOL_LIMIT = 100;
-const ROTATE_COUNT = 20;
-const ROTATE_MS = 4000;
-
-/** Rotating, clickable sample of the shared character portrait cache, for the landing header. */
+/**
+ * Rotating, clickable sample of the shared character portrait cache, for the landing
+ * header. Data, caching and rotation come from character-chatbot-shared's
+ * useCharacterCarousel, shared with the mobile app's carousel.
+ */
 const LandingCharacterCarousel: React.FC = () => {
   const router = useRouter();
-  const [characters, setCharacters] = useState<CharEntry[]>([]);
-  const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    // Paint last visit's sample immediately (read post-mount, not as useState's initializer,
-    // so this client-only read never disagrees with the server-rendered placeholder markup
-    // and trips a hydration mismatch) while a fresh sample loads underneath it — avoids the
-    // header sitting on a blank placeholder for a cold /api/chars round trip on every visit.
-    const cached = getJSON<{ characters: CharEntry[] }>(STORAGE_KEYS.landingCarouselCache);
-    // Deliberately synchronous: this primes state from a client-only cache the instant
-    // after mount, not in response to an external event, so the one-render lag this rule
-    // otherwise guards against is the entire point here rather than a mistake.
-    /* eslint-disable-next-line react-hooks/set-state-in-effect */
-    if (cached?.characters?.length) setCharacters(cached.characters);
-    authenticatedFetch(`/api/chars?limit=${POOL_LIMIT}&sample=${ROTATE_COUNT}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled) return;
-        const pool: CharEntry[] = Array.isArray(data?.characters) ? data.characters : [];
-        if (pool.length === 0) return;
-        setCharacters(pool);
-        setIndex(0);
-        setJSON(STORAGE_KEYS.landingCarouselCache, { characters: pool });
-      })
-      .catch(() => {
-        /* Keep whatever's already showing (cached sample, or the reserved header space)
-           if the fresh gallery request fails. */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const intervalRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (paused || characters.length < 2) return;
-    intervalRef.current = window.setInterval(() => {
-      setIndex((i) => (i + 1) % characters.length);
-    }, ROTATE_MS);
-    return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
-    };
-  }, [paused, characters.length]);
+  const { characters, index } = useCharacterCarousel({ fetchSample, cache, paused });
 
   useEffect(() => {
     if (characters.length < 2) return;
@@ -93,7 +63,7 @@ const LandingCharacterCarousel: React.FC = () => {
     );
   }
 
-  const current = characters[index % characters.length];
+  const current = characters[index];
 
   return (
     <button
@@ -104,7 +74,7 @@ const LandingCharacterCarousel: React.FC = () => {
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
       onClick={() => router.push(`/?name=${encodeURIComponent(current.name)}`)}
-      aria-label={`Chat with ${current.name}`}
+      aria-label={`Chat with ${displayCharacterName(current.name)}`}
     >
       <span key={current.name} className={styles.portraitWrap}>
         {/* Plain <img>, not next/image: sources mix Vercel Blob URLs and base64 data
@@ -122,7 +92,7 @@ const LandingCharacterCarousel: React.FC = () => {
         />
       </span>
       <span key={`${current.name}-label`} className={styles.nameLabel}>
-        {current.name}
+        {displayCharacterName(current.name)}
       </span>
     </button>
   );

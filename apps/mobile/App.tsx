@@ -1,33 +1,19 @@
-import { Pressable, StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
-import { Ionicons } from "@expo/vector-icons";
 import CreatorScreen from "./src/screens/CreatorScreen";
 import ChatScreen from "./src/screens/ChatScreen";
 import CharWallScreen from "./src/screens/CharWallScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
+import GameScreen from "./src/screens/GameScreen";
+import LeaderboardScreen from "./src/screens/LeaderboardScreen";
+import DarkModeButton from "./src/components/DarkModeButton";
 import type { RootStackParamList } from "./src/navigation/types";
 import { ThemeProvider, useTheme } from "./src/ThemeContext";
 import { AuthProvider } from "./src/AuthContext";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-
-function DarkModeButton() {
-  const { colors, darkMode, toggleDarkMode } = useTheme();
-  return (
-    <Pressable
-      onPress={toggleDarkMode}
-      hitSlop={8}
-      android_ripple={{ color: colors.secondaryContainer, borderless: true, radius: 18 }}
-      style={styles.headerButton}
-      accessibilityLabel={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      <Ionicons name={darkMode ? "sunny-outline" : "moon-outline"} size={20} color={colors.text} />
-    </Pressable>
-  );
-}
 
 function AppNavigator() {
   const { colors, darkMode } = useTheme();
@@ -58,6 +44,12 @@ function AppNavigator() {
           options={{ title: "Character Wall" }}
         />
         <Stack.Screen name="History" component={HistoryScreen} options={{ title: "Past Chats" }} />
+        <Stack.Screen name="Game" component={GameScreen} options={{ title: "Guessing Game" }} />
+        <Stack.Screen
+          name="Leaderboard"
+          component={LeaderboardScreen}
+          options={{ title: "Leaderboard" }}
+        />
         <Stack.Screen
           name="Chat"
           component={ChatScreen}
@@ -81,7 +73,3 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  headerButton: { padding: 6, marginRight: 4 },
-});

@@ -1,12 +1,24 @@
 jest.mock("../src/authToken", () => ({
   getCachedAuthToken: jest.fn(() => null),
 }));
+jest.mock("../src/gameGuest", () => ({
+  getGameGuestId: jest.fn(() => Promise.resolve("g".repeat(43))),
+}));
 
 import { getCachedAuthToken } from "../src/authToken";
 import {
   ApiError,
   API_BASE_URL,
+  apiErrorMessage,
   apiFetch,
+  continueGame,
+  getGameHighScore,
+  getLeaderboard,
+  getLeaderboardSettings,
+  giveUpGame,
+  saveLeaderboardSettings,
+  sendGameMessage,
+  startGame,
   generateAvatar,
   generatePersonality,
   getChars,
@@ -213,7 +225,7 @@ describe("api", () => {
     });
 
     it("getUserProfile GETs /api/user-profile", async () => {
-      mockFetchOnce({ ok: true, json: async () => ({ preferredName: null }) } as Response);
+      mockFetchOnce({ ok: true, json: async () => ({ name: null }) } as Response);
       await getUserProfile();
       expect((globalThis.fetch as jest.Mock).mock.calls[0][0]).toBe(
         `${API_BASE_URL}/api/user-profile`,
@@ -225,6 +237,76 @@ describe("api", () => {
       await saveUserProfile("Andy");
       const body = JSON.parse((globalThis.fetch as jest.Mock).mock.calls[0][1].body);
       expect(body).toEqual({ name: "Andy" });
+    });
+  });
+
+  describe("guessing game", () => {
+    const round = {
+      gameToken: "t1",
+      currentCharacterName: "Zeus",
+      reply: "Hail.",
+      streak: 0,
+    };
+
+    function lastCall() {
+      const calls = (globalThis.fetch as jest.Mock).mock.calls;
+      const [url, options] = calls[calls.length - 1];
+      return { url, options, headers: options.headers as Record<string, string> };
+    }
+
+    it("starts and continues rounds in plain JSON mode with the guest identity", async () => {
+      mockFetchOnce({ ok: true, json: async () => round } as Response);
+      await expect(startGame()).resolves.toMatchObject({
+        currentCharacterName: "Zeus",
+        avatarUrl: "/silhouette.svg",
+      });
+      let call = lastCall();
+      expect(call.url).toBe(`${API_BASE_URL}/api/game/start`);
+      expect(JSON.parse(call.options.body)).toEqual({});
+      expect(call.headers["x-game-guest"]).toBe("g".repeat(43));
+
+      mockFetchOnce({ ok: true, json: async () => round } as Response);
+      await continueGame("t1");
+      call = lastCall();
+      expect(call.url).toBe(`${API_BASE_URL}/api/game/continue`);
+      expect(JSON.parse(call.options.body)).toEqual({ gameToken: "t1" });
+    });
+
+    it("rejects a malformed round", async () => {
+      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
+      await expect(startGame()).rejects.toThrow("Invalid response from /api/game/start");
+    });
+
+    it("sends turns, give-ups and settings to their routes", async () => {
+      mockFetchOnce({ ok: true, json: async () => ({ reply: "Hi" }) } as Response);
+      await sendGameMessage({ gameToken: "t1", message: "Hi" });
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/game/message`);
+
+      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
+      await giveUpGame("t1");
+      expect(JSON.parse(lastCall().options.body)).toEqual({ gameToken: "t1" });
+
+      mockFetchOnce({ ok: true, json: async () => ({ highScore: 3 }) } as Response);
+      await expect(getGameHighScore()).resolves.toEqual({ highScore: 3 });
+      expect(lastCall().headers["x-game-guest"]).toBe("g".repeat(43));
+
+      mockFetchOnce({ ok: true, json: async () => ({ entries: [] }) } as Response);
+      await getLeaderboard();
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/game/leaderboard`);
+
+      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
+      await getLeaderboardSettings();
+      expect(lastCall().options.method).toBeUndefined();
+
+      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
+      await saveLeaderboardSettings({ showOnLeaderboard: false });
+      expect(lastCall().options.method).toBe("POST");
+    });
+
+    it("apiErrorMessage extracts the server's reason, else falls back", () => {
+      expect(apiErrorMessage(new ApiError(400, '{"error":"Bad name"}'), "x")).toBe("Bad name");
+      expect(apiErrorMessage(new ApiError(500, "<html>"), "fallback")).toBe("fallback");
+      expect(apiErrorMessage(new Error("net"), "fallback")).toBe("fallback");
     });
   });
 });

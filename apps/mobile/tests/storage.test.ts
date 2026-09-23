@@ -5,10 +5,14 @@ import {
   loadAudioEnabled,
   loadBot,
   loadChatHistory,
+  loadGameInstructionsSeen,
+  loadGameState,
   loadUserName,
   loadUserNameGateSkipped,
   saveAudioEnabled,
   saveBot,
+  saveGameInstructionsSeen,
+  saveGameState,
   saveUserName,
   saveUserNameGateSkipped,
 } from "../src/storage";
@@ -85,5 +89,29 @@ describe("storage", () => {
   it("writes the user name under the shared STORAGE_KEYS.userName key", async () => {
     await saveUserName("Jane");
     await expect(AsyncStorage.getItem(STORAGE_KEYS.userName)).resolves.toBe("Jane");
+  });
+
+  it("saves, loads and clears an in-progress game run", async () => {
+    const state = {
+      gameToken: "t1",
+      currentCharacterName: "Zeus",
+      avatarUrl: "/silhouette.svg",
+      gender: null,
+      streak: 2,
+      messages: [{ sender: "Zeus", text: "Hail." }],
+      roundStartIndex: 0,
+      lastEvent: null,
+    };
+    expect(await loadGameState()).toBeNull();
+    await saveGameState(state);
+    expect(await loadGameState()).toEqual(state);
+    await saveGameState(null);
+    expect(await loadGameState()).toBeNull();
+  });
+
+  it("remembers that the game instructions were seen", async () => {
+    expect(await loadGameInstructionsSeen()).toBe(false);
+    await saveGameInstructionsSeen();
+    expect(await loadGameInstructionsSeen()).toBe(true);
   });
 });

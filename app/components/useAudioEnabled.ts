@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import storage from "../../src/utils/storage";
-import { STORAGE_KEYS } from "../../src/utils/storageKeys";
+import { STORAGE_KEYS } from "character-chatbot-shared";
 
 /**
  * Shared "is audio enabled" preference: initial value read from localStorage, a ref kept

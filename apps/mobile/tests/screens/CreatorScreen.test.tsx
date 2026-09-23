@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { useMemo, useState, type ReactElement } from "react";
 import type { Bot } from "character-chatbot-shared";
 import CreatorScreen from "../../src/screens/CreatorScreen";
@@ -8,9 +8,12 @@ jest.mock("../../src/api", () => ({
   ...jest.requireActual("../../src/api"),
   getRandomCharacter: jest.fn(),
   validateCharacter: jest.fn(),
+  generatePersonality: jest.fn(),
+  generateAvatar: jest.fn(),
+  getVoiceConfig: jest.fn(),
 }));
 jest.mock("../../src/botCreation", () => ({
-  createBot: jest.fn(),
+  ...jest.requireActual("../../src/botCreation"),
   persistBotIfSignedIn: jest.fn(),
 }));
 jest.mock("../../src/storage", () => ({
@@ -42,22 +45,32 @@ jest.mock("../../src/components/AccountModal", () => {
   };
 });
 
-import { getRandomCharacter, validateCharacter } from "../../src/api";
-import { createBot, persistBotIfSignedIn } from "../../src/botCreation";
+import {
+  getRandomCharacter,
+  validateCharacter,
+  generatePersonality,
+  generateAvatar,
+  getVoiceConfig,
+} from "../../src/api";
+import { persistBotIfSignedIn } from "../../src/botCreation";
 import { loadBot, saveBot } from "../../src/storage";
 import { useAuth } from "../../src/AuthContext";
 import { useUserName } from "../../src/useUserName";
 
 const mockedValidate = validateCharacter as jest.Mock;
-const mockedCreateBot = createBot as jest.Mock;
+const mockedGeneratePersonality = generatePersonality as jest.Mock;
+const mockedGenerateAvatar = generateAvatar as jest.Mock;
+const mockedGetVoiceConfig = getVoiceConfig as jest.Mock;
 const mockedUseUserName = useUserName as jest.Mock;
 
+const voiceCfg = { name: "en-US-Wavenet-A", languageCodes: ["en-US"], ssmlGender: 1 };
 const createdBot: Bot = {
   name: "Sherlock Holmes",
   personality: "A brilliant detective.",
   avatarUrl: "https://example.com/a.png",
-  voiceConfig: null,
+  voiceConfig: voiceCfg,
   gender: "male",
+  skipPersistence: false,
 };
 
 const okValidation = {
@@ -77,10 +90,14 @@ let nameCtx: {
 
 async function renderScreen() {
   const navigate = jest.fn();
-  // Renders headerLeft in the same tree, the way the navigator would.
+  const focusListeners: (() => void)[] = [];
+  const addListener = (_event: "focus", cb: () => void) => {
+    focusListeners.push(cb);
+    return () => {};
+  };
   function Harness() {
     const [options, setOptions] = useState<{ headerLeft?: () => ReactElement }>({});
-    const navigation = useMemo(() => ({ setOptions, navigate }), []);
+    const navigation = useMemo(() => ({ setOptions, navigate, addListener }), []);
     return (
       <>
         {options.headerLeft?.()}
@@ -93,7 +110,8 @@ async function renderScreen() {
       <Harness />
     </ThemeProvider>,
   );
-  return { ...utils, navigate };
+  const focus = () => act(() => focusListeners.forEach((cb) => cb()));
+  return { ...utils, navigate, focus };
 }
 
 async function typeAndCreate(utils: Awaited<ReturnType<typeof renderScreen>>, name: string) {
@@ -114,7 +132,15 @@ describe("CreatorScreen", () => {
     mockedUseUserName.mockImplementation(() => nameCtx);
     (loadBot as jest.Mock).mockResolvedValue(null);
     mockedValidate.mockResolvedValue(okValidation);
-    mockedCreateBot.mockResolvedValue(createdBot);
+    mockedGeneratePersonality.mockResolvedValue({
+      personality: "A brilliant detective.",
+      correctedName: "Sherlock Holmes",
+    });
+    mockedGenerateAvatar.mockResolvedValue({
+      avatarUrl: "https://example.com/a.png",
+      gender: "male",
+    });
+    mockedGetVoiceConfig.mockResolvedValue(voiceCfg);
   });
 
   it("requires a name before creating", async () => {
@@ -130,42 +156,34 @@ describe("CreatorScreen", () => {
     await typeAndCreate(utils, "Sherlock Holmes");
 
     await waitFor(() => expect(utils.navigate).toHaveBeenCalledWith("Chat", { bot: createdBot }));
-    expect(mockedCreateBot).toHaveBeenCalledWith(
-      "Sherlock Holmes",
-      expect.any(Function),
-      expect.any(Function),
-      { recognized: true },
-    );
     expect(saveBot).toHaveBeenCalledWith(createdBot);
     expect(persistBotIfSignedIn).toHaveBeenCalledWith(createdBot);
   });
 
   it("shows the progress label while creating and lets the user cancel", async () => {
-    let finish!: (bot: Bot) => void;
-    mockedCreateBot.mockImplementation(
-      (_name, onProgress: (msg: string) => void, isCancelled: () => boolean) => {
-        onProgress("Generating personality");
-        return new Promise<Bot | null>((resolve) => {
-          finish = (bot) => resolve(isCancelled() ? null : bot);
-        });
-      },
+    let finishPersonality!: () => void;
+    mockedGeneratePersonality.mockImplementation(
+      () =>
+        new Promise<{ personality: string; correctedName: string }>((resolve) => {
+          finishPersonality = () => resolve({ personality: "test", correctedName: "Test" });
+        }),
     );
 
     const utils = await renderScreen();
     await typeAndCreate(utils, "Sherlock Holmes");
 
-    expect(await utils.findByText("Generating personality")).toBeTruthy();
+    expect(await utils.findByText("Creating personality")).toBeTruthy();
     await fireEvent.press(utils.getByText("Cancel"));
     expect(await utils.findByText("Create")).toBeTruthy();
 
-    finish(createdBot);
-    await waitFor(() => expect(mockedCreateBot).toHaveBeenCalled());
+    finishPersonality();
+    await waitFor(() => expect(mockedGeneratePersonality).toHaveBeenCalled());
     expect(utils.navigate).not.toHaveBeenCalledWith("Chat", expect.anything());
   });
 
   it("stays quiet when creation fails after the user cancelled", async () => {
     let fail!: () => void;
-    mockedCreateBot.mockImplementation(
+    mockedGetVoiceConfig.mockImplementation(
       () => new Promise((_resolve, reject) => (fail = () => reject(new Error("late failure")))),
     );
 
@@ -177,14 +195,10 @@ describe("CreatorScreen", () => {
     await waitFor(() => expect(utils.queryByText("late failure")).toBeNull());
   });
 
-  it("shows the creation error, with a generic fallback for non-Errors", async () => {
-    mockedCreateBot.mockRejectedValueOnce(new Error("avatar failed"));
+  it("shows a voice error when voice config fails", async () => {
+    mockedGetVoiceConfig.mockRejectedValueOnce(new Error("voice failed"));
     const utils = await renderScreen();
     await typeAndCreate(utils, "Sherlock Holmes");
-    expect(await utils.findByText("avatar failed")).toBeTruthy();
-
-    mockedCreateBot.mockRejectedValueOnce("boom");
-    await fireEvent.press(utils.getByText("Create"));
     expect(await utils.findByText("Failed to generate character. Please try again.")).toBeTruthy();
   });
 
@@ -197,7 +211,7 @@ describe("CreatorScreen", () => {
     expect(
       await utils.findByText("That name isn't allowed. Please choose a different name."),
     ).toBeTruthy();
-    expect(mockedCreateBot).not.toHaveBeenCalled();
+    expect(mockedGeneratePersonality).not.toHaveBeenCalled();
   });
 
   it("ignores a validation result that arrives after cancelling", async () => {
@@ -210,7 +224,7 @@ describe("CreatorScreen", () => {
     resolveValidation(okValidation);
 
     await waitFor(() => expect(mockedValidate).toHaveBeenCalled());
-    expect(mockedCreateBot).not.toHaveBeenCalled();
+    expect(mockedGeneratePersonality).not.toHaveBeenCalled();
   });
 
   it("warns on a copyright concern and continues without persistence when overridden", async () => {
@@ -225,13 +239,10 @@ describe("CreatorScreen", () => {
     await typeAndCreate(utils, "Spider-Man");
     await fireEvent.press(await utils.findByText("Continue Anyway"));
 
-    await waitFor(() =>
-      expect(mockedCreateBot).toHaveBeenCalledWith(
-        "Spider-Man",
-        expect.any(Function),
-        expect.any(Function),
-        { skipPersistence: true, recognized: true },
-      ),
+    await waitFor(() => expect(utils.navigate).toHaveBeenCalledWith("Chat", expect.anything()));
+    // persistBotIfSignedIn skips a skipPersistence bot, so it never reaches the account
+    expect(persistBotIfSignedIn).toHaveBeenCalledWith(
+      expect.objectContaining({ skipPersistence: true }),
     );
   });
 
@@ -251,7 +262,7 @@ describe("CreatorScreen", () => {
     await fireEvent.press(utils.getByText("Create"));
     await fireEvent.press(await utils.findByText("Cancel"));
     await waitFor(() => expect(utils.queryByText("Continue Anyway")).toBeNull());
-    expect(mockedCreateBot).not.toHaveBeenCalled();
+    expect(mockedGeneratePersonality).not.toHaveBeenCalled();
   });
 
   it("asks for a description for an unrecognized name, then creates it as an original", async () => {
@@ -265,18 +276,9 @@ describe("CreatorScreen", () => {
     );
     await fireEvent.press(utils.getByText("Create Character"));
 
-    await waitFor(() =>
-      expect(mockedCreateBot).toHaveBeenCalledWith(
-        "Grumbold",
-        expect.any(Function),
-        expect.any(Function),
-        {
-          description: "A baker.",
-          appearanceDescription: undefined,
-          skipPersistence: true,
-          recognized: false,
-        },
-      ),
+    await waitFor(() => expect(utils.navigate).toHaveBeenCalledWith("Chat", expect.anything()));
+    expect(mockedGeneratePersonality).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Grumbold", description: "A baker." }),
     );
   });
 
@@ -289,10 +291,10 @@ describe("CreatorScreen", () => {
     await fireEvent.press(utils.getByText("Cancel"));
 
     await waitFor(() => expect(utils.queryByText("Create Character")).toBeNull());
-    expect(mockedCreateBot).not.toHaveBeenCalled();
+    expect(mockedGeneratePersonality).not.toHaveBeenCalled();
   });
 
-  it("fills the input with a random character, or shows an error on failure", async () => {
+  it("fills the input with a random character, falling back to a default on failure", async () => {
     (getRandomCharacter as jest.Mock).mockResolvedValueOnce({ name: "Beowulf" });
     const utils = await renderScreen();
 
@@ -301,24 +303,16 @@ describe("CreatorScreen", () => {
 
     (getRandomCharacter as jest.Mock).mockRejectedValueOnce(new Error("nope"));
     await fireEvent.press(utils.getByLabelText("Random character"));
-    expect(await utils.findByText("Failed to get a random character.")).toBeTruthy();
+    expect(await utils.findByDisplayValue("Sherlock Holmes")).toBeTruthy();
   });
 
-  it("creates straight from a carousel pick, skipping validation", async () => {
+  it("validates and creates from a carousel tap", async () => {
+    mockedValidate.mockResolvedValue({ ...okValidation, characterName: "Zeus" });
     const utils = await renderScreen();
     await fireEvent.press(utils.getByText("carousel:Zeus"));
 
-    await waitFor(() =>
-      expect(mockedCreateBot).toHaveBeenCalledWith(
-        "Zeus",
-        expect.any(Function),
-        expect.any(Function),
-        {
-          recognized: true,
-        },
-      ),
-    );
-    expect(mockedValidate).not.toHaveBeenCalled();
+    await waitFor(() => expect(utils.navigate).toHaveBeenCalledWith("Chat", expect.anything()));
+    expect(mockedValidate).toHaveBeenCalledWith("Zeus");
   });
 
   describe("name gate", () => {
@@ -338,12 +332,13 @@ describe("CreatorScreen", () => {
     });
 
     it("skipping marks the gate skipped and still resumes (carousel entry point)", async () => {
+      mockedValidate.mockResolvedValue({ ...okValidation, characterName: "Zeus" });
       const utils = await renderScreen();
       await fireEvent.press(utils.getByText("carousel:Zeus"));
       await fireEvent.press(await utils.findByText("Skip for now"));
 
       expect(nameCtx.markGateSkipped).toHaveBeenCalled();
-      await waitFor(() => expect(mockedCreateBot).toHaveBeenCalled());
+      await waitFor(() => expect(mockedGeneratePersonality).toHaveBeenCalled());
     });
 
     it("continuing with a blank name counts as skipping", async () => {
@@ -353,7 +348,7 @@ describe("CreatorScreen", () => {
 
       expect(nameCtx.markGateSkipped).toHaveBeenCalled();
       expect(nameCtx.setName).not.toHaveBeenCalled();
-      await waitFor(() => expect(mockedCreateBot).toHaveBeenCalled());
+      await waitFor(() => expect(mockedGeneratePersonality).toHaveBeenCalled());
     });
 
     it("isn't shown once the gate has been skipped before", async () => {
@@ -361,7 +356,7 @@ describe("CreatorScreen", () => {
       const utils = await renderScreen();
       await typeAndCreate(utils, "Sherlock Holmes");
 
-      await waitFor(() => expect(mockedCreateBot).toHaveBeenCalled());
+      await waitFor(() => expect(mockedGeneratePersonality).toHaveBeenCalled());
       expect(utils.queryByText("Skip for now")).toBeNull();
     });
   });
@@ -372,6 +367,15 @@ describe("CreatorScreen", () => {
 
     await fireEvent.press(await utils.findByText("Continue chatting with"));
     expect(utils.navigate).toHaveBeenCalledWith("Chat", { bot: createdBot });
+  });
+
+  it("refreshes the resume card when the screen regains focus", async () => {
+    const utils = await renderScreen();
+    expect(utils.queryByText("Continue chatting with")).toBeNull();
+
+    (loadBot as jest.Mock).mockResolvedValue(createdBot);
+    await utils.focus();
+    expect(await utils.findByText("Continue chatting with")).toBeTruthy();
   });
 
   it("links a signed-in user to Past chats", async () => {

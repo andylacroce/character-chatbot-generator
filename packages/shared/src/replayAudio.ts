@@ -1,4 +1,4 @@
-import type { CharacterVoiceConfig } from "./characterVoices";
+import type { CharacterVoiceConfig } from "./types";
 
 interface ReplayAudioOptions {
   audioFileUrl?: string;
@@ -30,14 +30,15 @@ export function getReplayAudioUrl({
 
   const serializedVoiceConfig = voiceConfig ? JSON.stringify(voiceConfig) : "";
   const cacheIdentity = `${botName}\u0000${text}\u0000${gender ?? ""}\u0000${serializedVoiceConfig}`;
+  // Built from one object rather than .set(): some React Native URLSearchParams
+  // polyfills only implement the constructor and toString().
   const params = new URLSearchParams({
     file: `replay-${hashReplayAudio(cacheIdentity)}.mp3`,
     text,
     botName,
+    ...(gender ? { gender } : {}),
+    ...(serializedVoiceConfig ? { voiceConfig: serializedVoiceConfig } : {}),
   });
-
-  if (gender) params.set("gender", gender);
-  if (serializedVoiceConfig) params.set("voiceConfig", serializedVoiceConfig);
 
   return `/api/audio?${params.toString()}`;
 }

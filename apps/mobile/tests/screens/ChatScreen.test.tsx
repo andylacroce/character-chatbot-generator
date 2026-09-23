@@ -232,6 +232,31 @@ describe("ChatScreen", () => {
     );
   });
 
+  it("replays a past character message through the TTS endpoint", async () => {
+    (loadChatHistory as jest.Mock).mockResolvedValue(existingHistory);
+    const utils = await renderScreen();
+
+    await fireEvent.press(
+      await utils.findByLabelText("Replay audio for Sherlock Holmes's message"),
+    );
+
+    const url = player.replace.mock.calls.at(-1)[0] as string;
+    expect(url).toContain("/api/audio?");
+    expect(url).toContain("text=hello");
+    expect(url).toContain("gender=male");
+    expect(player.play).toHaveBeenCalled();
+  });
+
+  it("disables replay while audio is muted", async () => {
+    (loadAudioEnabled as jest.Mock).mockResolvedValue(false);
+    (loadChatHistory as jest.Mock).mockResolvedValue(existingHistory);
+    const utils = await renderScreen();
+    await utils.findByLabelText("Unmute audio");
+
+    await fireEvent.press(utils.getByLabelText("Replay audio for Sherlock Holmes's message"));
+    expect(player.play).not.toHaveBeenCalled();
+  });
+
   it("skips playback when audio is disabled, and survives a playback error", async () => {
     (loadAudioEnabled as jest.Mock).mockResolvedValue(false);
     (loadChatHistory as jest.Mock).mockResolvedValue(existingHistory);
