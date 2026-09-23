@@ -1,11 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import {
-  getMobileSession,
-  loadAuthToken,
-  signInWithGoogle,
-  signOut,
-  type SignInResult,
-} from "./auth";
+import { getMobileSession, loadAuthToken, signIn, signOut, type SignInResult } from "./auth";
 
 type AuthStatus = "loading" | "signedIn" | "signedOut";
 
@@ -86,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleSignIn = async (): Promise<SignInResult> => {
-    const result = await signInWithGoogle();
+    const result = await signIn();
     if (result.ok) await refreshIdentity();
     return result;
   };

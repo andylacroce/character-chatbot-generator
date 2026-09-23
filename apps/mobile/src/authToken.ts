@@ -4,8 +4,9 @@
  * — auth.ts imports api.ts's apiFetch, so the reverse import would be circular.
  */
 import * as SecureStore from "expo-secure-store";
+import { STORAGE_KEYS } from "character-chatbot-shared";
 
-const TOKEN_KEY = "authToken";
+const TOKEN_KEY = STORAGE_KEYS.authToken;
 
 // `undefined` means "not hydrated from SecureStore yet" — distinct from `null`
 // ("hydrated, signed out").

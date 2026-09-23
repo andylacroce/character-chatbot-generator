@@ -1,11 +1,12 @@
 /**
- * Short-lived signed state for the mobile Google sign-in bridge (see
- * pages/api/auth/mobile-google-start.ts and mobile-google-callback.ts). Carries the app's
- * own redirect URI through Google's OAuth round trip without any server-side session
- * storage — encrypted+authenticated the same way NextAuth's own session/CSRF tokens are
- * (next-auth/jwt's encode/decode, a JWE), but under a distinct `salt` so a state token can
- * never be confused with (or substituted for) a real bearer session token even if one were
- * replayed in the wrong place.
+ * Short-lived signed state for the generic mobile sign-in bridge (see
+ * pages/api/auth/mobile-auth-start.ts and mobile-auth-complete.ts). Carries the app's own
+ * redirect URI through NextAuth's own sign-in flow — including an OAuth provider's round
+ * trip to Google and back, or a magic-link email's click-days-later round trip — without
+ * any server-side session storage of our own — encrypted+authenticated the same way
+ * NextAuth's own session/CSRF tokens are (next-auth/jwt's encode/decode, a JWE), but under
+ * a distinct `salt` so a state token can never be confused with (or substituted for) a
+ * real bearer session token even if one were replayed in the wrong place.
  */
 
 import { encode, decode } from "next-auth/jwt";

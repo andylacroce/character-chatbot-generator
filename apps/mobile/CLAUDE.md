@@ -151,23 +151,39 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
     repo import from here; they're still independent copies for now.
 - **UI/components are NOT shared** — no common rendering layer between Next.js/React
   DOM and React Native. Every screen here is written fresh.
-- **Google sign-in and account persistence are done.** Auth.js's cookie-based JWT
-  session doesn't work for a mobile client, and plain Expo Go has no supported native
-  Google Sign-In path (no custom dev client), so this isn't an `expo-auth-session`/
-  `@react-native-google-signin` id_token exchange — it's a backend-mediated
-  browser-redirect bridge instead: `src/auth.ts`'s `signInWithGoogle()` opens
-  `GET /api/auth/mobile-google-start?redirect_uri=...` in a browser tab
+- **Sign-in (Google and magic-link email) and account persistence are done.** Auth.js's
+  cookie-based JWT session doesn't work for a mobile client, and plain Expo Go has no
+  supported native Google Sign-In path (no custom dev client) — and a magic-link email
+  flow needs a real browser tab regardless of platform — so this isn't an
+  `expo-auth-session`/`@react-native-google-signin` id_token exchange, and it isn't a
+  hand-rolled OAuth code exchange either. It's a generic backend-mediated
+  browser-redirect bridge: `src/auth.ts`'s `signIn()` opens
+  `GET /api/auth/mobile-auth-start?redirect_uri=...` in a browser tab
   (`expo-web-browser`'s `openAuthSessionAsync`, redirect URI from `expo-linking`'s
-  `createURL`, matching `app.json`'s `"scheme": "character-chatbot-mobile"`); the
-  backend runs the real Google OAuth code exchange server-side
-  (`pages/api/auth/mobile-google-callback.ts`) and redirects back into the app with a
-  bearer JWT (`next-auth/jwt`'s `encode`, same shape as the web session cookie —
-  `getSessionUserId` already reads either). The token is cached in-memory and
-  persisted via `expo-secure-store` (`src/authToken.ts`, split out from `src/auth.ts`
-  to avoid a circular import with `src/api.ts`, which reads it synchronously to attach
-  `Authorization: Bearer <token>`). `GET /api/auth/mobile-session` (new, since next-auth
-  v4's JWT is encrypted — no client-side decode path) resolves the token to
-  `{ email, name }` for display; `src/AuthContext.tsx`'s `useAuth()` exposes
+  `createURL`, matching `app.json`'s `"scheme": "character-chatbot-mobile"`), which
+  redirects straight to the backend's own real NextAuth sign-in page — the exact same
+  page/form a web visitor already uses, offering both Google and email. Whichever
+  provider completes, NextAuth's own callback routes (`/api/auth/callback/google` /
+  `/api/auth/callback/email`, both completely unchanged) handle it, then redirect to
+  `pages/api/auth/mobile-auth-complete.ts`, which reads the resulting session cookie and
+  mints a bearer JWT (`next-auth/jwt`'s `encode`, same shape as the web session cookie —
+  `getSessionUserId` already reads either) back into the app. This replaced an earlier
+  Google-only version (`mobile-google-start.ts`/`-callback.ts`) that hand-rolled the
+  OAuth code exchange itself (`google-auth-library`) — duplicating logic NextAuth's own
+  configured Google provider already does for web; the generic version has zero
+  provider-specific code and needs no separate mobile redirect URI registered in Google
+  Cloud Console (it piggybacks on the same `/api/auth/callback/google` URI web already
+  uses). **Known limitation of the email path specifically:** it only auto-completes
+  back into the app if the magic-link email is opened and tapped on the same device
+  running the app — tapping it on a different device still signs that browser in, but
+  there's no way to hand the resulting token back to the phone's waiting in-app browser
+  tab, which will just sit until the user gives up and closes it. The token is cached
+  in-memory and persisted via `expo-secure-store` (`src/authToken.ts`, split out from
+  `src/auth.ts` to avoid a circular import with `src/api.ts`, which reads it
+  synchronously to attach `Authorization: Bearer <token>`; keyed on shared
+  `STORAGE_KEYS.authToken`, not a locally hardcoded string). `GET /api/auth/mobile-session`
+  (since next-auth v4's JWT is encrypted — no client-side decode path) resolves the
+  token to `{ email, name }` for display; `src/AuthContext.tsx`'s `useAuth()` exposes
   `status`/`email`/`name`/`signIn`/`signOut`, reachable via the account icon in
   `CreatorScreen`'s header (`AccountModal.tsx`). A created character persists to
   `POST /api/bots` when signed in (`persistBotIfSignedIn` in `botCreation.ts`,

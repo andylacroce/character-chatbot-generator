@@ -1,9 +1,11 @@
 /**
- * Google sign-in via the backend's browser-redirect bridge (pages/api/auth/
- * mobile-google-start.ts / -callback.ts in the backend repo) — not expo-auth-session or
+ * Sign-in via the backend's browser-redirect bridge (pages/api/auth/mobile-auth-start.ts
+ * / -complete.ts in the backend repo) — not expo-auth-session or
  * @react-native-google-signin, since plain Expo Go has no supported native Google
- * Sign-In path and the backend already runs the real OAuth code exchange server-side.
- * This module only opens a browser tab and reads the resulting bearer token back.
+ * Sign-In path and a magic-link email flow needs a real browser tab regardless of
+ * platform. This opens the backend's own NextAuth sign-in page (the same page/form a
+ * web visitor uses, offering both Google and email) in a browser tab and reads the
+ * resulting bearer token back — the backend runs both providers' real flows itself.
  */
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
@@ -16,13 +18,13 @@ export { loadAuthToken, getCachedAuthToken } from "./authToken";
 export type SignInResult = { ok: true } | { ok: false; error: string };
 
 /**
- * Opens the backend's Google sign-in bridge in a browser tab and persists the bearer
- * token it redirects back with. `error: "cancelled"` means the user closed the tab
- * without completing sign-in — not a real failure.
+ * Opens the backend's sign-in bridge in a browser tab and persists the bearer token it
+ * redirects back with. `error: "cancelled"` means the user closed the tab without
+ * completing sign-in — not a real failure.
  */
-export async function signInWithGoogle(): Promise<SignInResult> {
+export async function signIn(): Promise<SignInResult> {
   const redirectUri = Linking.createURL("auth");
-  const startUrl = `${API_BASE_URL}/api/auth/mobile-google-start?redirect_uri=${encodeURIComponent(redirectUri)}`;
+  const startUrl = `${API_BASE_URL}/api/auth/mobile-auth-start?redirect_uri=${encodeURIComponent(redirectUri)}`;
 
   const result = await WebBrowser.openAuthSessionAsync(startUrl, redirectUri);
   if (result.type === "cancel" || result.type === "dismiss") {

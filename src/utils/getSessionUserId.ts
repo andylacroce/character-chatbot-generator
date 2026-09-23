@@ -8,7 +8,7 @@
  * user id from either the session cookie (web) or an `Authorization: Bearer <token>` header
  * (mobile, which can't use a cookie-based session) with no extra code needed for the second
  * case: `getToken` already checks both. The bearer token mobile sends is minted by
- * pages/api/auth/mobile-google-callback.ts using the exact same `encode()` (same secret, no
+ * pages/api/auth/mobile-auth-complete.ts using the exact same `encode()` (same secret, no
  * salt — "session token" by convention, see mobileAuthState.ts's own distinct-salt contrast)
  * that produces the web's session cookie, so both decode identically here.
  */

@@ -2,7 +2,7 @@
  * Lets the mobile app resolve who a bearer token belongs to, for display purposes only
  * (e.g. "Signed in as jane@example.com"). next-auth v4's JWT session tokens are
  * encrypted (a JWE), not just signed, so there's no client-side decode path for the
- * token minted by mobile-google-callback.ts — this route is the one place that can
+ * token minted by mobile-auth-complete.ts — this route is the one place that can
  * read it. Deliberately not folded into getSessionUserId.ts: that helper only ever
  * returns `sub`, which is all every other route needs, while this one also needs
  * `email`/`name` off the same token for the mobile client to render.
@@ -17,7 +17,7 @@ import { getToken } from "next-auth/jwt";
 import { createRateLimiter, applyRateLimit } from "../../../src/utils/rateLimit";
 import { withRequestLog } from "../../../src/utils/withRequestLog";
 
-/** Rate limiter: 10 requests per minute per IP, matching the other mobile-google-* routes. */
+/** Rate limiter: 10 requests per minute per IP, matching the other mobile-auth-* routes. */
 const mobileSessionRateLimit = createRateLimiter({
   name: "mobile-session",
   max: 10,

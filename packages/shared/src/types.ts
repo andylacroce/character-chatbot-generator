@@ -211,15 +211,19 @@ export interface RandomCharacterResponse {
 }
 
 /**
- * Mobile-only Google sign-in bridge. Plain Expo Go has no supported native Google
- * Sign-In path, so the mobile app opens `GET /api/auth/mobile-google-start` in a
- * browser tab (expo-web-browser's `openAuthSessionAsync`) rather than exchanging an
- * `id_token` itself; the backend runs the real OAuth code exchange and redirects back
- * into the app's own `exp://`/custom-scheme redirect URI with a `?token=` query param
- * — a bearer JWT encoded the same way NextAuth's own session cookie is (next-auth/jwt's
- * `encode`). See pages/api/auth/mobile-google-start.ts and -callback.ts. There's no
- * request/response JSON shape to type for that leg (it's a pair of GET redirects, not
- * a POST); `MobileSessionResponse` below is the one JSON contract mobile actually calls.
+ * Generic mobile sign-in bridge (both Google and magic-link email). Plain Expo Go has no
+ * supported native Google Sign-In path, and email magic links need a real browser tab
+ * regardless of platform, so the mobile app opens `GET /api/auth/mobile-auth-start` in a
+ * browser tab (expo-web-browser's `openAuthSessionAsync`) — landing on NextAuth's own
+ * sign-in page, the exact same one a web visitor uses for either provider — rather than
+ * reimplementing either provider's flow itself. Once NextAuth's own callback route
+ * completes (`/api/auth/callback/google` or `/api/auth/callback/email`, both unchanged),
+ * the backend redirects back into the app's own `exp://`/custom-scheme redirect URI with
+ * a `?token=` query param — a bearer JWT encoded the same way NextAuth's own session
+ * cookie is (next-auth/jwt's `encode`). See pages/api/auth/mobile-auth-start.ts and
+ * -complete.ts. There's no request/response JSON shape to type for that leg (it's a
+ * chain of GET redirects, not a POST); `MobileSessionResponse` below is the one JSON
+ * contract mobile actually calls.
  */
 
 /**

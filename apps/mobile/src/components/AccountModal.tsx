@@ -89,7 +89,8 @@ export default function AccountModal({ visible, onClose, userNameCtx }: Props) {
             <>
               <Text style={styles.title}>Sign in</Text>
               <Text style={styles.reason}>
-                Sign in with Google to save your characters and chat history to your account.
+                Sign in with Google or email to save your characters and chat history to your
+                account.
               </Text>
               {error ? <Text style={styles.error}>{error}</Text> : null}
               <Pressable
@@ -100,7 +101,7 @@ export default function AccountModal({ visible, onClose, userNameCtx }: Props) {
                 {signingIn ? (
                   <ActivityIndicator color={colors.onPrimary} />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Sign in with Google</Text>
+                  <Text style={styles.primaryButtonText}>Sign in</Text>
                 )}
               </Pressable>
             </>
@@ -108,10 +109,11 @@ export default function AccountModal({ visible, onClose, userNameCtx }: Props) {
 
           <View style={styles.divider} />
           <Pressable style={styles.nameRow} onPress={() => setShowEditName(true)}>
-            <Text style={styles.nameRowLabel}>
-              {userNameCtx.name ? `Called: ${userNameCtx.name}` : "Add your name"}
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+            <Text style={styles.nameRowLabel}>Your name</Text>
+            <View style={styles.nameRowRight}>
+              <Text style={styles.nameRowValue}>{userNameCtx.name || "Add"}</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+            </View>
           </Pressable>
 
           <Pressable style={styles.closeButton} onPress={handleClose}>
@@ -183,5 +185,7 @@ function makeStyles(colors: ThemeColors) {
       paddingVertical: 14,
     },
     nameRowLabel: { color: colors.text, fontSize: 14 },
+    nameRowRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+    nameRowValue: { color: colors.textSecondary, fontSize: 14 },
   });
 }

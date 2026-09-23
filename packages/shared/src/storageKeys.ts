@@ -13,7 +13,7 @@ export const STORAGE_KEYS = {
   sessionDatetime: "bot-session-datetime",
   userName: "chatbot-user-name",
   userNameGateSkipped: "chatbot-user-name-gate-skipped",
-  /** Bearer JWT from POST /api/auth/mobile-google — mobile-only, kept in expo-secure-store, never AsyncStorage. */
+  /** Bearer JWT from the mobile-auth-start/-complete sign-in bridge — mobile-only, kept in expo-secure-store, never AsyncStorage. */
   authToken: "chatbot-auth-token",
   /** Mobile's own guest game identity — the equivalent of the web's HttpOnly `portrayal-game-guest` cookie, which a native client can't reliably persist. Kept in expo-secure-store. */
   gameGuestId: "chatbot-game-guest-id",
