@@ -7,7 +7,7 @@
 "use client";
 
 import React from "react";
-import { STORAGE_KEYS } from "../../src/utils/storageKeys";
+import { STORAGE_KEYS } from "character-chatbot-shared";
 
 interface DarkModeContextType {
   darkMode: boolean;

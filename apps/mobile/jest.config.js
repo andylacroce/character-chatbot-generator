@@ -20,6 +20,10 @@ module.exports = {
   // Falling back to this app's own node_modules lets them resolve.
   moduleDirectories: ["node_modules", "<rootDir>/node_modules"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+  // The first test in each screen suite pays the cold module-load and coverage
+  // instrumentation cost. On GitHub's runners that alone can pass Jest's 5s default
+  // (ChatScreen/CreatorScreen failed there at ~14s per suite), so allow more headroom.
+  testTimeout: 15000,
   collectCoverage: true,
   // Enumerate the real source (not just what a test happens to import) so an
   // entirely untested file costs against the threshold below — same rationale

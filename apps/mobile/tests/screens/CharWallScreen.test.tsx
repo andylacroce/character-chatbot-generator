@@ -7,8 +7,12 @@ jest.mock("../../src/api", () => ({
   ...jest.requireActual("../../src/api"),
   getChars: jest.fn(),
 }));
+jest.mock("character-chatbot-shared", () => ({
+  ...jest.requireActual("character-chatbot-shared"),
+  generateCharacter: jest.fn(),
+}));
 jest.mock("../../src/botCreation", () => ({
-  createBot: jest.fn(),
+  mobileTransport: {},
   persistBotIfSignedIn: jest.fn(),
 }));
 jest.mock("../../src/storage", () => ({
@@ -60,7 +64,8 @@ jest.mock("react-native", () => {
 });
 
 import { getChars } from "../../src/api";
-import { createBot, persistBotIfSignedIn } from "../../src/botCreation";
+import { generateCharacter } from "character-chatbot-shared";
+import { persistBotIfSignedIn } from "../../src/botCreation";
 import { saveBot } from "../../src/storage";
 
 const oneChar: CharacterEntry = {
@@ -121,7 +126,7 @@ describe("CharWallScreen", () => {
   it("creates, saves, persists, and navigates to Chat on successful chat-with", async () => {
     (getChars as jest.Mock).mockResolvedValue({ characters: [oneChar], hasMore: false });
     const bot = { name: "Sherlock Holmes", personality: "p" } as never;
-    (createBot as jest.Mock).mockResolvedValue(bot);
+    (generateCharacter as jest.Mock).mockResolvedValue(bot);
 
     const { findByText, navigation } = await renderScreen();
     fireEvent.press(await findByText("Sherlock Holmes"));
@@ -132,21 +137,9 @@ describe("CharWallScreen", () => {
     expect(persistBotIfSignedIn).toHaveBeenCalledWith(bot);
   });
 
-  it("does nothing (no navigation) when creation is cancelled (createBot resolves null)", async () => {
-    (getChars as jest.Mock).mockResolvedValue({ characters: [oneChar], hasMore: false });
-    (createBot as jest.Mock).mockResolvedValue(null);
-
-    const { findByText, navigation } = await renderScreen();
-    fireEvent.press(await findByText("Sherlock Holmes"));
-    fireEvent.press(await findByText("Chat with Sherlock Holmes"));
-
-    await waitFor(() => expect(createBot).toHaveBeenCalled());
-    expect(navigation.navigate).not.toHaveBeenCalled();
-  });
-
   it("shows an error message when chat-with creation throws", async () => {
     (getChars as jest.Mock).mockResolvedValue({ characters: [oneChar], hasMore: false });
-    (createBot as jest.Mock).mockRejectedValue(new Error("personality service down"));
+    (generateCharacter as jest.Mock).mockRejectedValue(new Error("personality service down"));
 
     const { findByText } = await renderScreen();
     fireEvent.press(await findByText("Sherlock Holmes"));

@@ -1,7 +1,7 @@
 {
   "name": "character-chatbot-shared",
   "version": "0.1.0",
-  "description": "Shared types, validation, and storage-key constants for the character-chatbot-generator web app and its mobile client.",
+  "description": "Shared types, validation, copy, storage-key constants, and guessing-game logic for the character-chatbot-generator web app and its mobile client.",
   "license": "UNLICENSED",
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -14,5 +14,8 @@
     "ts-jest": "^29.2.5",
     "typescript": "^5.7.3"
   },
-  "private": true
+  "private": true,
+  "peerDependencies": {
+    "react": "*"
+  }
 }

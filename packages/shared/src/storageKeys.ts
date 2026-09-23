@@ -1,8 +1,7 @@
 /**
- * Single source of truth for client-storage key names, shared between the web
- * app's localStorage and the mobile app's AsyncStorage. Keeping the strings
- * identical isn't load-bearing today (the two storages never mix), but it
- * avoids two copies of the same key list silently drifting apart.
+ * Single source of truth for client-storage key names, used by the web app's
+ * localStorage and the mobile app's AsyncStorage alike, so a read site and a write
+ * site can never drift apart on the literal string.
  */
 export const STORAGE_KEYS = {
   bot: "chatbot-bot",
@@ -19,6 +18,12 @@ export const STORAGE_KEYS = {
   gameGuestId: "chatbot-game-guest-id",
   /** One-time "how to play" gate for the guessing game, mirrors the web's own gameInstructionsSeen key. */
   gameInstructionsSeen: "chatbot-game-instructions-seen",
+  /** The guessing game's opaque round token (never decoded client-side), mirrors the web's own key. */
+  gameToken: "chatbot-game-token",
+  /** The guessing game's transcript and round state, stored alongside `gameToken`. */
+  gameTranscript: "chatbot-game-transcript",
+  /** The web landing carousel's last portrait sample, repainted instantly on the next visit. */
+  landingCarouselCache: "chatbot-landing-carousel-cache",
 } as const;
 
 /** Prefixes for keys that are suffixed per-character by bot name. */

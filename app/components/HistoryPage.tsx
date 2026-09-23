@@ -19,6 +19,7 @@ import BackHomeLink from "./BackHomeLink";
 import type { PersistedBot } from "./BotCreator";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/History.module.css";
+import { displayCharacterName } from "character-chatbot-shared";
 
 /** Full-page list of the signed-in user's saved characters. */
 export default function HistoryPage() {
@@ -69,7 +70,7 @@ export default function HistoryPage() {
             <Link href={`/?name=${encodeURIComponent(b.name)}`} className={styles.row}>
               {/* eslint-disable-next-line @next/next/no-img-element -- avatars may be data URLs */}
               <img src={b.avatarUrl || "/silhouette.svg"} alt="" className={styles.avatar} />
-              <span className={styles.name}>{b.name}</span>
+              <span className={styles.name}>{displayCharacterName(b.name)}</span>
               <span className={styles.time}>{formatRelativeTime(b.updatedAt)}</span>
             </Link>
           </li>

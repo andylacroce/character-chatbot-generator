@@ -17,13 +17,21 @@ import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FaFlag, FaHome, FaQuestionCircle, FaTrophy } from "react-icons/fa";
+import {
+  displayCharacterName,
+  fillTemplate,
+  GAME_CORRECT_BANNER,
+  GAME_GIVE_UP_CONFIRM,
+  GAME_SCREEN_COPY,
+  GAME_STREAK_LABEL,
+  STORAGE_KEYS,
+} from "character-chatbot-shared";
 import ChatShell from "./ChatShell";
 import BackHomeLink from "./BackHomeLink";
 import GameInstructionsModal from "./GameInstructionsModal";
 import LeaderboardClaim from "./LeaderboardClaim";
 import CharacterLoadingOverlay from "./CharacterLoadingOverlay";
 import storage from "../../src/utils/storage";
-import { STORAGE_KEYS } from "../../src/utils/storageKeys";
 import { useGameController } from "./useGameController";
 import { useAccountMenu } from "./useAccountMenu";
 import type { Bot } from "./BotCreator";
@@ -38,7 +46,7 @@ function GamePage() {
     currentCharacterName,
     avatarUrl,
     gender,
-    streak,
+    displayedStreak,
     highScore,
     messages,
     input,
@@ -128,20 +136,18 @@ function GamePage() {
       <div className={styles.standaloneScreen} data-testid="game-layout">
         <GameInstructionsModal show={showInstructions} onClose={closeInstructions} />
         <div className={styles.startScreen}>
-          <h1 className={styles.startHeadline}>{gameOver ? "Game Over" : "Guess Who's Next?"}</h1>
+          <h1 className={styles.startHeadline}>
+            {gameOver ? GAME_SCREEN_COPY.gameOverHeadline : GAME_SCREEN_COPY.headline}
+          </h1>
           {gameOver && lastEvent?.type === "gameover" ? (
             <p className={styles.startSubhead}>
-              They were describing <strong>{lastEvent.revealedName}</strong>. Final streak:{" "}
-              <strong>{lastEvent.finalStreak}</strong>.
+              {fillTemplate(GAME_SCREEN_COPY.gameOverSubhead, {
+                name: displayCharacterName(lastEvent.revealedName),
+                streak: lastEvent.finalStreak,
+              })}
             </p>
           ) : (
-            <p className={styles.startSubhead}>
-              You&apos;ll start out chatting with a named character, no mystery there. As you talk,
-              they&apos;ll start steering the conversation toward someone else entirely, and your
-              job is to figure out who. Type your guess right in the chat. Guess right and that
-              person joins the chat next, continuing the chain. One wrong guess is forgiven per
-              person, but a second ends the run.
-            </p>
+            <p className={styles.startSubhead}>{GAME_SCREEN_COPY.subhead}</p>
           )}
           <button
             type="button"
@@ -150,11 +156,11 @@ function GamePage() {
             disabled={starting}
             data-testid={gameOver ? "game-play-again-button" : "game-start-button"}
           >
-            {gameOver ? "Play Again" : "Start Game"}
+            {gameOver ? GAME_SCREEN_COPY.playAgainLabel : GAME_SCREEN_COPY.startLabel}
           </button>
           <CharacterLoadingOverlay
             show={starting}
-            title="Starting new game…"
+            title={GAME_SCREEN_COPY.startingLabel}
             message={startProgressMessage}
             stages={startProgressStages}
             testId="game-start-progress"
@@ -168,7 +174,7 @@ function GamePage() {
                 onClick={() => router.push("/leaderboard")}
               >
                 <FaTrophy aria-hidden="true" />
-                View leaderboard
+                {GAME_SCREEN_COPY.leaderboardLabel}
               </button>
             </>
           )}
@@ -212,17 +218,14 @@ function GamePage() {
   const giveUpConfirmation = (
     <div className={styles.modalBackdrop} onClick={handleGiveUpCancel}>
       <div className={styles.modalBox} onClick={(event) => event.stopPropagation()}>
-        <h2 className={styles.modalTitle}>Give up this run?</h2>
-        <p className={styles.modalText}>
-          The hidden character will be revealed and the run will end. Your streak will stay as it
-          is.
-        </p>
+        <h2 className={styles.modalTitle}>{GAME_GIVE_UP_CONFIRM.title}</h2>
+        <p className={styles.modalText}>{GAME_GIVE_UP_CONFIRM.body}</p>
         <div className={styles.modalActions}>
           <button type="button" className={styles.modalCancelButton} onClick={handleGiveUpCancel}>
-            Cancel
+            {GAME_GIVE_UP_CONFIRM.cancelLabel}
           </button>
           <button type="button" className={styles.modalConfirmButton} onClick={handleGiveUpConfirm}>
-            Yes, give up
+            {GAME_GIVE_UP_CONFIRM.confirmLabel}
           </button>
         </div>
       </div>
@@ -230,21 +233,12 @@ function GamePage() {
   );
 
   // "Best" only appears once the player actually has a personal best on record — a
-  // guest (never fetched, always null) or a freshly signed-in player with no streak
-  // beaten yet both show just the plain streak badge, no empty/zero "Best" clutter.
-  //
-  // While the correct-guess overlay is up, `streak` state itself is still the pre-round
-  // value — it's deliberately held back until Continue (see useGameController.ts's
-  // continueRound), same as identity/avatar. But the streak *number* the overlay already
-  // displays isn't a spoiler the way the next character's name/avatar would be, so
-  // showing it here too avoids the header visibly disagreeing with the overlay open
-  // right in front of it (e.g. header "Streak: 0" behind an overlay that already says
-  // "Streak: 1").
-  const displayedStreak =
-    awaitingContinue && lastEvent?.type === "correct" ? lastEvent.streak : streak;
+  // guest with no scored run yet shows just the plain streak badge. `displayedStreak`
+  // already reflects a just-won streak while the Continue banner is up, so the header
+  // never disagrees with the banner in front of it.
   const belowName = (
     <div className={styles.streakBadge} data-testid="game-streak-badge">
-      Streak: {displayedStreak}
+      {GAME_STREAK_LABEL}: {displayedStreak}
       {typeof highScore === "number" && highScore > 0 && (
         <span className={styles.highScoreBadge} data-testid="game-high-score-badge">
           {" "}
@@ -259,7 +253,10 @@ function GamePage() {
       {awaitingContinue && lastEvent?.type === "correct" && (
         <div className={styles.correctGuessBanner} data-testid="game-event-correct">
           <span className={styles.correctGuessText}>
-            🎉 Correct! It was {lastEvent.revealedName}! Streak: {lastEvent.streak}.
+            {fillTemplate(GAME_CORRECT_BANNER, {
+              revealedName: displayCharacterName(lastEvent.revealedName),
+              streak: lastEvent.streak,
+            })}
           </span>
           <button
             type="button"
@@ -267,7 +264,7 @@ function GamePage() {
             onClick={continueRound}
             data-testid="game-continue-button"
           >
-            Continue
+            {GAME_SCREEN_COPY.continueLabel}
           </button>
         </div>
       )}
@@ -277,14 +274,14 @@ function GamePage() {
           rather than a silent/generic loading state. */}
       <CharacterLoadingOverlay
         show={continuing}
-        title="Loading next character…"
+        title={GAME_SCREEN_COPY.continuingLabel}
         message={continueProgressMessage}
         stages={continueProgressStages}
         testId="game-continue-progress"
       />
       {lastEvent?.type === "wrong" && (
         <div className={styles.eventBanner} data-testid="game-event-wrong">
-          Not quite. You have one more guess before this run ends.
+          {GAME_SCREEN_COPY.wrongBanner}
         </div>
       )}
     </>

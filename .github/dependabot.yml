@@ -15,3 +15,17 @@ updates:
     directory: "/apps/mobile"
     schedule:
       interval: "daily"
+    # Native packages must match the versions Expo Go ships for the current SDK (see
+    # `npx expo install --check`); a newer minor/major builds fine but fails on-device.
+    # Upgrade these with `npx expo install --fix` as part of an Expo SDK upgrade instead.
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-native-*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@react-native-async-storage/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "expo*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]

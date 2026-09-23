@@ -9,7 +9,8 @@ import Image from "next/image";
 import { Bot } from "./BotCreator";
 import { sanitizeForReact } from "../../src/utils/security";
 import { logEvent, sanitizeLogMeta } from "../../src/utils/logger";
-import { FaRedoAlt } from "react-icons/fa";
+import { FaVolumeUp } from "react-icons/fa";
+import { displayCharacterName } from "character-chatbot-shared";
 
 /**
  * Interface representing a chat message's structure.
@@ -88,7 +89,7 @@ const ChatMessage = React.memo(
     // chat these are always the same bot, so this renders identically; in the guessing
     // game, where the chat partner changes mid-transcript, using `bot` for every message
     // silently relabeled every past round's lines to whoever the partner is now.
-    const senderName = isUser ? userName || "Me" : message.sender;
+    const senderName = isUser ? userName || "Me" : displayCharacterName(message.sender);
     const senderAvatarUrl = message.avatarUrl ?? bot.avatarUrl;
 
     return (
@@ -125,10 +126,10 @@ const ChatMessage = React.memo(
               className={styles.replayButton}
               onClick={() => onReplayAudio(message)}
               disabled={replayDisabled}
-              aria-label={`Replay audio for ${message.sender}'s message`}
+              aria-label={`Replay audio for ${senderName}'s message`}
               title={replayDisabled ? "Turn audio on to replay this message" : "Replay audio"}
             >
-              <FaRedoAlt aria-hidden="true" focusable="false" />
+              <FaVolumeUp aria-hidden="true" focusable="false" />
             </button>
           )}
         </div>

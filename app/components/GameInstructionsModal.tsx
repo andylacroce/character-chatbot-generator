@@ -6,6 +6,7 @@
  * uninvited in that browser), and reopenable anytime from GamePage's menu. Reuses
  * DisclaimerStyleModal and BotCreator.module.css's disclaimer* classes, the same shared
  * small-lightbox shell NameCaptureModal uses, rather than a bespoke modal + CSS module.
+ * The copy itself lives in character-chatbot-shared's GAME_INSTRUCTIONS, shared with mobile.
  *
  * Copy here must accurately describe the actual mechanic: the player's chat partner is
  * always a real, named character, not a mystery — what's hidden is a *different* figure
@@ -15,6 +16,7 @@
  */
 
 import React from "react";
+import { GAME_INSTRUCTIONS } from "character-chatbot-shared";
 import styles from "./styles/BotCreator.module.css";
 import DisclaimerStyleModal from "./DisclaimerStyleModal";
 
@@ -29,31 +31,18 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({ show, onC
     <DisclaimerStyleModal
       show={show}
       onClose={onClose}
-      title="How to play"
+      title={GAME_INSTRUCTIONS.title}
       closeLabel="Close"
       testId="game-instructions-modal-backdrop"
     >
-      <p className={styles.disclaimerText}>
-        You&apos;re chatting with a real, named character, no mystery there. But as the conversation
-        goes on, they&apos;ll start steering it toward someone else entirely: a different person
-        they have in mind, dropping hints without ever saying the name.
-      </p>
-      <p className={styles.disclaimerText}>
-        Ask questions to pull out more clues. When you think you know who they mean, type your guess
-        right into the same chat box, there&apos;s no separate guess button, just keep talking. You
-        don&apos;t need the exact full name; a nickname or good description works too. If it&apos;s
-        unclear whether you&apos;re asking a question or guessing, they&apos;ll check with you
-        before deciding.
-      </p>
-      <p className={styles.disclaimerText}>
-        Guess right and that person becomes your new chat partner, hinting at someone else in turn,
-        so keep the streak going as long as you can. You get one wrong guess per person: a second
-        wrong guess ends the run and reveals the answer. You can also give up anytime to see who it
-        was.
-      </p>
+      {GAME_INSTRUCTIONS.paragraphs.map((paragraph) => (
+        <p key={paragraph} className={styles.disclaimerText}>
+          {paragraph}
+        </p>
+      ))}
       <div className={styles.nameCaptureActions}>
         <button type="button" className={styles.nameCaptureSaveButton} onClick={onClose}>
-          Got it, let&apos;s play
+          {GAME_INSTRUCTIONS.closeLabel}
         </button>
       </div>
     </DisclaimerStyleModal>

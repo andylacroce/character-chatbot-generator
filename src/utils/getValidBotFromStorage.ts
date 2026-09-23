@@ -1,6 +1,6 @@
 import type { Bot } from "../../app/components/BotCreator";
 import storage from "./storage";
-import { STORAGE_KEYS } from "./storageKeys";
+import { STORAGE_KEYS } from "character-chatbot-shared";
 
 /**
  * Utility to retrieve a valid bot from localStorage with 6-hour expiration.

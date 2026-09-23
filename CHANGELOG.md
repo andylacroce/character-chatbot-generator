@@ -2,6 +2,16 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.12.0 — 2026-09-23 — Guessing game and leaderboard on mobile; one shared codebase for both apps
+
+- The mobile app now has the guessing game (the streak, the correct/wrong banners, give-up, and the personal best) and the public leaderboard, including claiming a top-ten spot. Correct and wrong guesses buzz the phone. A guest's streaks count toward the leaderboard through a random per-device secret kept in secure storage, which plays the role of the web app's guest cookie.
+- Web and mobile now run the same code for the guessing game, the leaderboard, character creation (validation, the copyright and description prompts, the name gate, cancelling), the landing carousel, and the visitor's own name. It lives once in `packages/shared`, and each app adds only its own requests, storage, and logging. A fix to any of these now lands on both apps at once, and the per-app copies of that logic are gone.
+- Behavior changes that come from sharing: tapping a mobile carousel portrait now runs the same name validation a typed name does, and a failed random pick on mobile quietly falls back to a default name the way web already did.
+- Fixed: a web validation reply with an empty body could skip the "proceed anyway" fallback and log a false validation failure.
+- Mobile can now replay any past character message, like web already could. On both apps the replay button is now a speaker icon instead of a circular arrow, so it reads as "hear this again".
+- Character names no longer show their disambiguation note, e.g. "David Copperfield" instead of "David Copperfield (Charles Dickens novel)", in chat headers, message labels, the Character Wall, the carousels, Past chats, the game's reveal lines, and downloaded transcripts. The full name is still what the app sends to Claude and uses as the cache key, so the right character is still picked.
+- Fixed on mobile: the "Continue chatting with" card showed the previous character after you came back from a new chat, and a long character name in a chat header ran under the header's buttons.
+
 ## v0.11.0 — 2026-09-23 — Past chats page; mobile landing fits one screen
 
 - A signed-in user's saved characters now live on their own "Past chats" page instead of in a list on the landing page, where they had grown to take up too much room. On web it's `/history`, linked from the landing page's footer and the account menu. On mobile it's a new `HistoryScreen`, linked from the Creator screen and the account modal. Both show how long ago each chat was last active; mobile gets that from a `formatRelativeTime` now in the shared package, which web mirrors until it migrates onto that package. Web rows resume through the same `/?name=` launch the Character Wall already uses. Cancelling that launch now goes back to whichever page started it, not always to the Character Wall.

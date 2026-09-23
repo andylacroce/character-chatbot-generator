@@ -107,8 +107,12 @@ export interface CharacterValidationResult {
   warningLevel: "none" | "caution" | "warning";
   reason?: string;
   suggestions?: string[];
+  /** Hard, non-overridable block (abusive name, or a seriously criminal living person). */
   blocked?: boolean;
+  /** False for an original character the model doesn't recognize: ask for a description. */
   recognized?: boolean;
+  /** Already blocklisted or just removed from the public cache: hard stop, no override. */
+  scrubbed?: boolean;
 }
 
 /** POST /api/generate-personality request body. */
@@ -202,7 +206,7 @@ export interface PersistedMessage {
 
 /** GET/POST /api/user-profile — the human visitor's own preferred name. */
 export interface UserProfile {
-  preferredName: string | null;
+  name: string | null;
 }
 
 /** GET /api/random-character response. */

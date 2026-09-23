@@ -3,6 +3,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { resolveApiUrl } from "../api";
 import { useTheme } from "../ThemeContext";
+import { displayCharacterName } from "character-chatbot-shared";
 
 type Props = {
   visible: boolean;
@@ -43,7 +44,7 @@ export default function PortraitLightbox({ visible, name, avatarUrl, onClose, ac
               </Text>
             </View>
           )}
-          <Text style={[styles.name, { color: "#fff" }]}>{name}</Text>
+          <Text style={[styles.name, { color: "#fff" }]}>{displayCharacterName(name)}</Text>
           {action ? (
             <Pressable onPress={action.onPress} style={styles.actionButton}>
               <Text style={[styles.actionText, { color: colors.primary }]}>{action.label}</Text>

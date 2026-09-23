@@ -35,7 +35,7 @@ jest.mock("../../../app/components/useGameController", () => ({
 }));
 
 function baseController(overrides: Record<string, unknown> = {}) {
-  return {
+  const state = {
     started: false,
     starting: false,
     currentCharacterName: "",
@@ -67,6 +67,12 @@ function baseController(overrides: Record<string, unknown> = {}) {
     sendMessage: mockSendMessage,
     handleKeyDown: mockHandleKeyDown,
     ...overrides,
+  };
+  // Mirrors useGameSession: a just-won streak shows while awaiting Continue.
+  const lastEvent = state.lastEvent as { type: string; streak?: number } | null;
+  return {
+    ...state,
+    displayedStreak: lastEvent?.type === "correct" ? lastEvent.streak : state.streak,
   };
 }
 
@@ -106,8 +112,9 @@ describe("GamePage", () => {
     });
     render(<GamePage />);
     expect(screen.getByText("Game Over")).toBeInTheDocument();
-    expect(screen.getByText("Edmund Ironside")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(
+      screen.getByText("They were describing Edmund Ironside. Final streak: 3."),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("game-play-again-button")).toBeInTheDocument();
     const leaderboardButton = screen.getByRole("button", { name: "View leaderboard" });
     fireEvent.click(leaderboardButton);

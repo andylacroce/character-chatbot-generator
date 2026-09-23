@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import storage from "../../src/utils/storage";
-import { STORAGE_KEYS } from "../../src/utils/storageKeys";
+import { STORAGE_KEYS } from "character-chatbot-shared";
 
 /** Test hook: override via setIsBrowserForTests to simulate SSR/browser. */
 export let _isBrowser = () => typeof window !== "undefined";

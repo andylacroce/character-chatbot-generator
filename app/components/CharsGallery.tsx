@@ -21,6 +21,7 @@ import AppHeader from "./AppHeader";
 import BackHomeLink from "./BackHomeLink";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/CharsPage.module.css";
+import { displayCharacterName } from "character-chatbot-shared";
 
 interface CharEntry {
   name: string;
@@ -80,8 +81,8 @@ const CharTile: React.FC<{
       className={`${styles.tile} ${sizeClass(entry.name)}`}
       style={{ "--rot": `${rotationDeg(entry.name)}deg` } as React.CSSProperties}
       onClick={() => onOpen(entry)}
-      title={entry.name}
-      aria-label={`Open portrait of ${entry.name}`}
+      title={displayCharacterName(entry.name)}
+      aria-label={`Open portrait of ${displayCharacterName(entry.name)}`}
     >
       <div className={styles.photoFrame}>
         {!loaded && <div className={styles.skeleton} aria-hidden="true" />}
@@ -100,7 +101,7 @@ const CharTile: React.FC<{
           onLoad={() => setLoaded(true)}
         />
       </div>
-      <div className={styles.caption}>{entry.name}</div>
+      <div className={styles.caption}>{displayCharacterName(entry.name)}</div>
     </button>
   );
 };
@@ -464,7 +465,7 @@ const CharsGallery: React.FC = () => {
                 className={styles.lightboxImage}
                 onClick={closeLightbox}
               />
-              <p className={styles.lightboxName}>{selected.name}</p>
+              <p className={styles.lightboxName}>{displayCharacterName(selected.name)}</p>
               {/* Same launch point the landing page itself uses for a name typed
                 into the creator (BotCreator's ?name= auto-submit effect) — it
                 resumes this signed-in user's own saved character by that exact
@@ -473,7 +474,7 @@ const CharsGallery: React.FC = () => {
                 href={`/?name=${encodeURIComponent(selected.name)}`}
                 className={styles.lightboxChat}
               >
-                Chat with {selected.name} &rarr;
+                Chat with {displayCharacterName(selected.name)} &rarr;
               </Link>
               <button
                 type="button"

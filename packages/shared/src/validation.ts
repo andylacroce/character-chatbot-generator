@@ -36,3 +36,20 @@ export function sanitizeUserName(name: string): string {
   const sanitized = name.replace(/[<>`]/g, "").trim();
   return sanitized.length > 50 ? sanitized.substring(0, 50) : sanitized;
 }
+
+/**
+ * A character name as people should see it: without a trailing disambiguation
+ * qualifier. The curated name lists spell ambiguous names with one, e.g. "David
+ * Copperfield (Charles Dickens novel)", so Claude, the game token, and the avatar cache
+ * key all resolve the right person. Keep the full name as the identity everywhere;
+ * strip it only at render time.
+ */
+export function displayCharacterName(name: string): string {
+  // String scanning, not a regex: `\s*\(...\)\s*$` backtracks polynomially on long runs
+  // of spaces, and the server runs this on client-supplied names (transcript.ts).
+  const trimmed = name.trimEnd();
+  if (!trimmed.endsWith(")")) return name;
+  const open = trimmed.lastIndexOf("(");
+  if (open <= 0 || trimmed.slice(open + 1, -1).includes(")")) return name;
+  return trimmed.slice(0, open).trimEnd() || name;
+}

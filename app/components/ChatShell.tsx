@@ -21,6 +21,7 @@ import AppHeader from "./AppHeader";
 import type { Bot } from "./BotCreator";
 import type { Message } from "../../src/types/message";
 import styles from "./styles/ChatPage.module.css";
+import { displayCharacterName } from "character-chatbot-shared";
 
 // Dynamically imported for code splitting, shared by the avatar button here and every
 // per-message bot avatar in ChatMessage — one instance/state, not one per message.
@@ -108,7 +109,7 @@ function ChatShell({
                 className={styles.avatarImage}
               />
             </button>
-            <div className={styles.botNameLabel}>{bot.name}</div>
+            <div className={styles.botNameLabel}>{displayCharacterName(bot.name)}</div>
             {belowName}
           </>
         }

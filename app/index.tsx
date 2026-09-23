@@ -14,7 +14,7 @@ import { Bot } from "./components/BotCreator";
 import { getValidBotFromStorage, clearStoredBot } from "../src/utils/getValidBotFromStorage";
 import storage from "../src/utils/storage";
 import { authenticatedFetch } from "../src/utils/api";
-import { STORAGE_KEYS, STORAGE_KEY_PREFIXES, voiceConfigKey } from "../src/utils/storageKeys";
+import { STORAGE_KEYS, STORAGE_KEY_PREFIXES, voiceConfigKey } from "character-chatbot-shared";
 
 // Known storage key patterns to attempt migration on startup
 const KNOWN_KEYS_TO_MIGRATE = [

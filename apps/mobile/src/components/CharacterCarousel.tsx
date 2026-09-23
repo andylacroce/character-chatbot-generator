@@ -2,8 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import type { CharacterEntry, ThemeColors } from "character-chatbot-shared";
-import { getChars } from "../api";
+import {
+  displayCharacterName,
+  useCharacterCarousel,
+  type ThemeColors,
+} from "character-chatbot-shared";
+import { getCarouselSample } from "../api";
+import { carouselCache } from "../storage";
 import { useTheme } from "../ThemeContext";
 import Avatar from "./Avatar";
 
@@ -16,13 +21,6 @@ type Props = {
   size?: number;
 };
 
-// /api/chars orders newest-first, not randomly — pulling its max page size (rather than a
-// small fixed sample) gives a genuinely large pool, then this component shuffles client-side
-// so the rotation isn't always the same dozen most-recently-created characters, and looks
-// different on every visit. Mirrors LandingCharacterCarousel.tsx exactly.
-const POOL_LIMIT = 100;
-const ROTATE_COUNT = 20;
-const ROTATE_MS = 4000;
 /** Default (and maximum) halo diameter; the ring and portrait scale with it. */
 export const CAROUSEL_MAX_SIZE = 210;
 const RING_RATIO = 168 / 210;
@@ -30,21 +28,11 @@ const PORTRAIT_RATIO = 160 / 210;
 
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
 
-/** Fisher-Yates shuffle, returning a new array (never mutates its input). */
-function shuffled<T>(items: T[]): T[] {
-  const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
 /**
- * Rotating, tappable sample of the shared character portrait cache — mirrors the web
- * app's LandingCharacterCarousel.tsx (same data, same 4s rotation, same shuffle-a-pool
- * approach), placed in the Creator screen's body instead of a header slot since the
- * native-stack header here is already occupied by the dark-mode toggle.
+ * Rotating, tappable sample of the shared character portrait cache. Its data, local cache
+ * and 4s rotation come from character-chatbot-shared's useCharacterCarousel, the same hook
+ * the web app's LandingCharacterCarousel.tsx uses. Placed in the Creator screen's body
+ * instead of a header slot since the native-stack header here is already occupied.
  *
  * Goes further than the web version with effects only a native client can do cheaply:
  * a continuously slow-spinning gradient halo behind the portrait (ambient life even
@@ -54,29 +42,17 @@ function shuffled<T>(items: T[]): T[] {
 export default function CharacterCarousel({ onSelect, disabled, size = CAROUSEL_MAX_SIZE }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors, size);
-  const [characters, setCharacters] = useState<CharacterEntry[]>([]);
-  const [index, setIndex] = useState(0);
   const [displayIndex, setDisplayIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const { characters, index } = useCharacterCarousel({
+    fetchSample: getCarouselSample,
+    cache: carouselCache,
+    paused: paused || Boolean(disabled),
+  });
   const flip = useRef(new Animated.Value(0)).current;
   const haloSpin = useRef(new Animated.Value(0)).current;
   const pressScale = useRef(new Animated.Value(1)).current;
   const pulse = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    let cancelled = false;
-    getChars(POOL_LIMIT, 0)
-      .then((data) => {
-        if (cancelled) return;
-        setCharacters(shuffled(data.characters).slice(0, ROTATE_COUNT));
-      })
-      .catch(() => {
-        // No carousel on failure — the rest of the Creator screen still works fine.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   // Continuous ambient rotation, independent of character switching — gives the halo
   // life even while the same portrait sits still for the full 4s.
@@ -92,14 +68,6 @@ export default function CharacterCarousel({ onSelect, disabled, size = CAROUSEL_
     loop.start();
     return () => loop.stop();
   }, [haloSpin]);
-
-  useEffect(() => {
-    if (paused || disabled || characters.length < 2) return;
-    const id = setInterval(() => {
-      setIndex((i) => (i + 1) % characters.length);
-    }, ROTATE_MS);
-    return () => clearInterval(id);
-  }, [paused, disabled, characters.length]);
 
   // Pseudo-3D flip: rotate the card edge-on (with a slight squeeze + fade to sell the
   // perspective), swap the portrait while it's invisible at the edge, then rotate the
@@ -183,7 +151,7 @@ export default function CharacterCarousel({ onSelect, disabled, size = CAROUSEL_
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}
-      accessibilityLabel={`Chat with ${current.name}`}
+      accessibilityLabel={`Chat with ${displayCharacterName(current.name)}`}
     >
       <View style={styles.stage}>
         <Animated.View style={[styles.halo, { transform: [{ rotate: haloRotate }] }]}>
@@ -206,7 +174,7 @@ export default function CharacterCarousel({ onSelect, disabled, size = CAROUSEL_
         </Animated.View>
       </View>
       <Text style={styles.nameLabel} numberOfLines={2} ellipsizeMode="tail">
-        {current.name}
+        {displayCharacterName(current.name)}
       </Text>
     </Pressable>
   );

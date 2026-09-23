@@ -1,4 +1,4 @@
-import { getReplayAudioUrl } from "../../../src/utils/replayAudio";
+import { getReplayAudioUrl } from "./replayAudio";
 
 describe("getReplayAudioUrl", () => {
   it("reuses the audio URL already attached to a message", () => {

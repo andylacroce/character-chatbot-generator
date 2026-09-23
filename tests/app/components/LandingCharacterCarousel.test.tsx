@@ -1,7 +1,7 @@
 import React from "react";
 import { act, render, screen, fireEvent } from "@testing-library/react";
 import LandingCharacterCarousel from "../../../app/components/LandingCharacterCarousel";
-import { STORAGE_KEYS } from "../../../src/utils/storageKeys";
+import { STORAGE_KEYS } from "character-chatbot-shared";
 
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({

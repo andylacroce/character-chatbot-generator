@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { STORAGE_KEYS } from "../../../src/utils/storageKeys";
+import { STORAGE_KEYS } from "character-chatbot-shared";
 
 const mockUseSession = jest.fn();
 jest.mock("next-auth/react", () => ({

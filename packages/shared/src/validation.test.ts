@@ -1,4 +1,9 @@
-import { sanitizeCharacterName, sanitizeDescription, sanitizeUserName } from "./validation";
+import {
+  displayCharacterName,
+  sanitizeCharacterName,
+  sanitizeDescription,
+  sanitizeUserName,
+} from "./validation";
 
 describe("sanitizeCharacterName", () => {
   it("strips HTML/script injection characters and trims", () => {
@@ -33,5 +38,31 @@ describe("sanitizeUserName", () => {
 
   it("caps length at 50", () => {
     expect(sanitizeUserName("a".repeat(60))).toHaveLength(50);
+  });
+});
+
+describe("displayCharacterName", () => {
+  it("drops a trailing disambiguation qualifier", () => {
+    expect(displayCharacterName("David Copperfield (Charles Dickens novel)")).toBe(
+      "David Copperfield",
+    );
+    expect(displayCharacterName("The Emperor (The Emperor's New Clothes)")).toBe("The Emperor");
+  });
+
+  it("leaves names without a trailing qualifier alone", () => {
+    expect(displayCharacterName("Sherlock Holmes")).toBe("Sherlock Holmes");
+    expect(displayCharacterName("Mr. (Bob) Smith")).toBe("Mr. (Bob) Smith");
+  });
+
+  it("stays fast on long runs of spaces", () => {
+    const hostile = "a" + " ".repeat(100_000) + "(";
+    const start = Date.now();
+    expect(displayCharacterName(hostile)).toBe(hostile);
+    expect(displayCharacterName(" ".repeat(100_000) + "(x)")).toBe(" ".repeat(100_000) + "(x)");
+    expect(Date.now() - start).toBeLessThan(200);
+  });
+
+  it("never returns an empty name", () => {
+    expect(displayCharacterName("(Anonymous)")).toBe("(Anonymous)");
   });
 });

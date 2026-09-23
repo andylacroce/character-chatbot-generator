@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,13 +13,14 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import {
+  displayCharacterName,
+  GAME_CTA_LABEL,
   sanitizeCharacterName,
+  useCharacterCreation,
   type Bot,
-  type CharacterValidationResult,
   type ThemeColors,
 } from "character-chatbot-shared";
-import { getRandomCharacter, validateCharacter } from "../api";
-import { createBot, persistBotIfSignedIn, type CreateBotOptions } from "../botCreation";
+import { mobileTransport, persistBotIfSignedIn } from "../botCreation";
 import { loadBot, saveBot } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
@@ -44,34 +45,35 @@ const CAROUSEL_CHROME = 66;
 
 /**
  * Character creation: name in → validate-character → personality → avatar → voice.
- * Mirrors the web app's useBotCreation pipeline, including the copyright/caution
- * modal and the "unrecognized name" description flow. Signed-in users additionally
- * get a link to HistoryScreen (their server-saved characters), and a newly created
- * character is persisted to their account (see persistBotIfSignedIn in botCreation.ts).
+ * Uses character-chatbot-shared's useCharacterCreation, mirroring the web app's
+ * useBotCreation. Signed-in users additionally get a link to HistoryScreen, and a
+ * newly created character is persisted to their account.
  */
 export default function CreatorScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const auth = useAuth();
   const userNameCtx = useUserName();
-  const [input, setInput] = useState("");
-  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
-  const [randomizing, setRandomizing] = useState(false);
-  const [error, setError] = useState("");
   const [savedBot, setSavedBot] = useState<Bot | null>(null);
   const [showAccountModal, setShowAccountModal] = useState(false);
-  const [showNameGateModal, setShowNameGateModal] = useState(false);
-  const [validationResult, setValidationResult] = useState<CharacterValidationResult | null>(null);
-  const [showValidationModal, setShowValidationModal] = useState(false);
-  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
-  const cancelledRef = useRef(false);
-  // Holds whichever creation entry point (typed name or carousel tap) triggered the
-  // name gate, so it can resume exactly where it left off once the gate closes.
-  const pendingAfterGateRef = useRef<(() => void) | null>(null);
 
+  // Reload on every focus, not just mount: returning from a chat must show that
+  // character in the resume card, not whichever one was saved when this screen mounted.
   useEffect(() => {
-    loadBot().then(setSavedBot);
-  }, []);
+    const reload = () => void loadBot().then(setSavedBot);
+    reload();
+    return navigation.addListener("focus", reload);
+  }, [navigation]);
+
+  const creation = useCharacterCreation({
+    transport: mobileTransport,
+    onCreated: (bot) => {
+      navigation.navigate("Chat", { bot });
+      void saveBot(bot).then(() => persistBotIfSignedIn(bot));
+    },
+    userNameCtx,
+    log: () => {},
+  });
 
   useEffect(() => {
     navigation.setOptions({
@@ -93,152 +95,9 @@ export default function CreatorScreen({ navigation }: Props) {
     });
   }, [navigation, colors, auth.status, styles.headerAccountButton]);
 
-  const handleResume = () => {
-    if (savedBot) navigation.navigate("Chat", { bot: savedBot });
-  };
-
-  const finishCreate = async (name: string, options?: CreateBotOptions) => {
-    cancelledRef.current = false;
-    setError("");
-    try {
-      const bot = await createBot(name, setLoadingMessage, () => cancelledRef.current, options);
-      if (!bot) return;
-      await saveBot(bot);
-      persistBotIfSignedIn(bot);
-      setLoadingMessage(null);
-      // navigate, not replace: keeps Creator in the stack so Chat gets a working
-      // back button instead of leaving the user with no way out of the chat.
-      navigation.navigate("Chat", { bot });
-    } catch (err) {
-      if (cancelledRef.current) return;
-      setLoadingMessage(null);
-      setError(
-        err instanceof Error ? err.message : "Failed to generate character. Please try again.",
-      );
-    }
-  };
-
-  // Pauses `proceed` behind a one-time "what should we call you" gate the first time
-  // this device doesn't yet know the visitor's own preferred name (and hasn't already
-  // skipped being asked) — resolved only once we authoritatively know there's no name
-  // (isResolved), so an already-named signed-in user isn't asked again just because
-  // GET /api/user-profile hadn't returned yet. Mirrors useBotCreation.ts's own gate,
-  // generalized to cover both of this screen's creation entry points (typed name and
-  // carousel tap) via a pending-callback ref instead of a re-entrant handleCreate call.
-  const maybeGateOnName = (proceed: () => void) => {
-    if (userNameCtx.isResolved && !userNameCtx.name && !userNameCtx.hasSkippedGate) {
-      pendingAfterGateRef.current = proceed;
-      setShowNameGateModal(true);
-      return;
-    }
-    proceed();
-  };
-
-  const handleNameGateSave = (name: string) => {
-    if (name.trim()) userNameCtx.setName(name.trim());
-    else userNameCtx.markGateSkipped();
-    setShowNameGateModal(false);
-    pendingAfterGateRef.current?.();
-    pendingAfterGateRef.current = null;
-  };
-
-  const handleNameGateSkip = () => {
-    userNameCtx.markGateSkipped();
-    setShowNameGateModal(false);
-    pendingAfterGateRef.current?.();
-    pendingAfterGateRef.current = null;
-  };
-
-  const runCreate = async () => {
-    const name = sanitizeCharacterName(input);
-    if (!name) {
-      setError("Please enter a name or character.");
-      return;
-    }
-
-    setError("");
-    cancelledRef.current = false;
-    setLoadingMessage("Validating character");
-    const validation = await validateCharacter(name);
-    if (cancelledRef.current) return;
-
-    if (validation.blocked) {
-      setLoadingMessage(null);
-      setError("That name isn't allowed. Please choose a different name.");
-      return;
-    }
-    if (validation.warningLevel === "warning" || validation.warningLevel === "caution") {
-      setLoadingMessage(null);
-      setValidationResult(validation);
-      setShowValidationModal(true);
-      return;
-    }
-    if (validation.recognized === false) {
-      setLoadingMessage(null);
-      setShowDescriptionModal(true);
-      return;
-    }
-
-    await finishCreate(name, { recognized: true });
-  };
-
-  const handleCreate = () => maybeGateOnName(runCreate);
-
-  const handleCancel = () => {
-    cancelledRef.current = true;
-    setLoadingMessage(null);
-  };
-
-  const handleRandom = async () => {
-    setRandomizing(true);
-    setError("");
-    try {
-      const { name } = await getRandomCharacter();
-      setInput(name);
-    } catch {
-      setError("Failed to get a random character.");
-    } finally {
-      setRandomizing(false);
-    }
-  };
-
-  const handleValidationContinue = () => {
-    setShowValidationModal(false);
-    const name = sanitizeCharacterName(input);
-    finishCreate(name, {
-      skipPersistence: true,
-      recognized: validationResult?.recognized !== false,
-    });
-  };
-
-  // Tapping a carousel portrait is a known-recognized name already (it came from the
-  // shared cache) — skip straight to generation, same as CharWallScreen's tiles.
-  const handleCarouselSelect = (name: string) => {
-    maybeGateOnName(() => finishCreate(name, { recognized: true }));
-  };
-
-  const handleValidationSuggestion = (suggestion: string) => {
-    setInput(suggestion);
-    setShowValidationModal(false);
-  };
-
-  const handleDescriptionSubmit = (description: string, appearance: string) => {
-    setShowDescriptionModal(false);
-    const name = sanitizeCharacterName(input);
-    finishCreate(name, {
-      description,
-      appearanceDescription: appearance || undefined,
-      skipPersistence: true,
-      recognized: false,
-    });
-  };
-
-  const busy = loadingMessage !== null;
   // The carousel is the one flexible element: it shrinks so the whole screen fits
   // without scrolling on short Android displays. viewportH keeps the tallest height
-  // seen, so the Android keyboard (which shrinks this view) doesn't also shrink the
-  // carousel. Everything but the carousel is measured, not estimated, so this holds
-  // for any screen height or system font scale; scrolling remains as a last resort.
+  // seen, so the Android keyboard doesn't also shrink the carousel.
   const [viewportH, setViewportH] = useState(0);
   const [contentH, setContentH] = useState(0);
   const [carouselH, setCarouselH] = useState(0);
@@ -249,6 +108,9 @@ export default function CreatorScreen({ navigation }: Props) {
           Math.min(CAROUSEL_MAX_SIZE, viewportH - (contentH - carouselH) - CAROUSEL_CHROME),
         )
       : CAROUSEL_MAX_SIZE;
+
+  const busy = creation.loading || creation.validating;
+  const busyMessage = creation.validating ? "Validating character" : creation.loadingMessage;
 
   return (
     <KeyboardAvoidingView
@@ -270,20 +132,24 @@ export default function CreatorScreen({ navigation }: Props) {
         {savedBot && !busy ? (
           <Pressable
             style={styles.resumeCard}
-            onPress={handleResume}
+            onPress={() => navigation.navigate("Chat", { bot: savedBot })}
             android_ripple={{ color: colors.secondaryContainer }}
           >
             <Avatar name={savedBot.name} avatarUrl={savedBot.avatarUrl} size={36} />
             <View style={styles.resumeTextWrap}>
               <Text style={styles.resumeLabel}>Continue chatting with</Text>
-              <Text style={styles.resumeName}>{savedBot.name}</Text>
+              <Text style={styles.resumeName}>{displayCharacterName(savedBot.name)}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>
         ) : null}
 
         <View onLayout={(e) => setCarouselH(e.nativeEvent.layout.height)}>
-          <CharacterCarousel onSelect={handleCarouselSelect} disabled={busy} size={carouselSize} />
+          <CharacterCarousel
+            onSelect={(name) => creation.createNamed(name)}
+            disabled={busy}
+            size={carouselSize}
+          />
         </View>
 
         <Text style={styles.headline}>{BRAND.headline}</Text>
@@ -293,23 +159,23 @@ export default function CreatorScreen({ navigation }: Props) {
             style={styles.input}
             placeholder="e.g. Sherlock Holmes"
             placeholderTextColor={colors.textSecondary}
-            value={input}
-            onChangeText={setInput}
-            editable={!busy && !randomizing}
+            value={creation.input}
+            onChangeText={creation.setInput}
+            editable={!busy && !creation.randomizing}
             autoCapitalize="words"
             autoCorrect={false}
             returnKeyType="go"
-            onSubmitEditing={handleCreate}
+            onSubmitEditing={() => void creation.handleCreate()}
           />
           <Pressable
-            onPress={handleRandom}
-            disabled={busy || randomizing}
+            onPress={() => void creation.handleRandomCharacter()}
+            disabled={busy || creation.randomizing}
             accessibilityLabel="Random character"
             android_ripple={{ color: colors.secondaryContainer, borderless: true, radius: 24 }}
             style={styles.diceButton}
             hitSlop={8}
           >
-            {randomizing ? (
+            {creation.randomizing ? (
               <ActivityIndicator size="small" color={colors.secondary} />
             ) : (
               <Ionicons name="shuffle-outline" size={20} color={colors.secondary} />
@@ -317,14 +183,14 @@ export default function CreatorScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
-        {error ? (
+        {creation.error ? (
           <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.errorText}>{creation.error}</Text>
           </View>
         ) : null}
 
         <Pressable
-          onPress={handleCreate}
+          onPress={() => void creation.handleCreate()}
           disabled={busy}
           android_ripple={{ color: "rgba(255,255,255,0.25)" }}
           style={({ pressed }) => [
@@ -336,7 +202,7 @@ export default function CreatorScreen({ navigation }: Props) {
           {busy ? (
             <View style={styles.createButtonRow}>
               <ActivityIndicator color={colors.onPrimary} />
-              <Text style={styles.createButtonText}>{loadingMessage}</Text>
+              <Text style={styles.createButtonText}>{busyMessage}</Text>
             </View>
           ) : (
             <Text style={styles.createButtonText}>Create</Text>
@@ -345,7 +211,7 @@ export default function CreatorScreen({ navigation }: Props) {
 
         {busy ? (
           <Pressable
-            onPress={handleCancel}
+            onPress={creation.handleCancel}
             style={styles.cancelButton}
             android_ripple={{ color: colors.outline, borderless: true }}
             hitSlop={8}
@@ -363,6 +229,14 @@ export default function CreatorScreen({ navigation }: Props) {
             <Ionicons name="grid-outline" size={16} color={colors.secondary} />
             <Text style={styles.linkText}>Character Wall</Text>
           </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate("Game")}
+            style={styles.link}
+            android_ripple={{ color: colors.secondaryContainer, borderless: true }}
+          >
+            <Ionicons name="help-circle-outline" size={16} color={colors.secondary} />
+            <Text style={styles.linkText}>{GAME_CTA_LABEL}</Text>
+          </Pressable>
           {auth.status === "signedIn" ? (
             <Pressable
               onPress={() => navigation.navigate("History")}
@@ -376,20 +250,20 @@ export default function CreatorScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
-      {validationResult ? (
+      {creation.validationResult ? (
         <CopyrightWarningModal
-          visible={showValidationModal}
-          validation={validationResult}
-          onContinue={handleValidationContinue}
-          onCancel={() => setShowValidationModal(false)}
-          onSelectSuggestion={handleValidationSuggestion}
+          visible={creation.showValidationModal}
+          validation={creation.validationResult}
+          onContinue={creation.handleValidationContinue}
+          onCancel={creation.handleValidationCancel}
+          onSelectSuggestion={creation.handleValidationSuggestion}
         />
       ) : null}
       <CharacterDescriptionModal
-        visible={showDescriptionModal}
-        characterName={sanitizeCharacterName(input)}
-        onSubmit={handleDescriptionSubmit}
-        onCancel={() => setShowDescriptionModal(false)}
+        visible={creation.showDescriptionModal}
+        characterName={sanitizeCharacterName(creation.input)}
+        onSubmit={creation.handleDescriptionSubmit}
+        onCancel={creation.handleDescriptionCancel}
       />
       <AccountModal
         visible={showAccountModal}
@@ -401,12 +275,12 @@ export default function CreatorScreen({ navigation }: Props) {
         }}
       />
       <NameCaptureModal
-        visible={showNameGateModal}
+        visible={creation.showNameGateModal}
         mode="gate"
         currentName=""
-        onSave={handleNameGateSave}
-        onSkip={handleNameGateSkip}
-        onClose={handleNameGateSkip}
+        onSave={creation.handleNameGateSave}
+        onSkip={creation.handleNameGateSkip}
+        onClose={creation.handleNameGateSkip}
       />
     </KeyboardAvoidingView>
   );
@@ -415,8 +289,6 @@ export default function CreatorScreen({ navigation }: Props) {
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    // No flexGrow: the content container must report its natural height, which the
-    // carousel-fit calculation above depends on.
     scroll: { padding: 24, paddingTop: 20, alignItems: "center" },
     kicker: {
       fontSize: 11,
@@ -488,10 +360,6 @@ function makeStyles(colors: ThemeColors) {
     },
     errorText: { color: colors.error, textAlign: "center" },
     createButton: {
-      // No `elevation` here: combined with `overflow: "hidden"` (needed to clip the
-      // ripple to the rounded corners), Android's shadow compositing washes out the
-      // button's own background color once pressed — see ChatScreen's send button
-      // for the same fix. shadow* (iOS-only) is unaffected.
       backgroundColor: colors.primary,
       borderRadius: 24,
       paddingVertical: 15,

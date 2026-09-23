@@ -4,7 +4,7 @@
  */
 import storage from "./storage";
 import type { CharacterVoiceConfig } from "./characterVoices";
-import { voiceConfigKey } from "./storageKeys";
+import { voiceConfigKey } from "character-chatbot-shared";
 
 const VOICE_CONFIG_VERSION = 1;
 
