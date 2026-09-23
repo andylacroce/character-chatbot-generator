@@ -5,9 +5,6 @@
    - Uses CSS variables from globals.css for theme consistency
    ============================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap");
-
 /* --- Main Chat Layout --- */
 /*
   Sets up the main grid layout for the chat page.
@@ -227,7 +224,7 @@
   font-weight: 500;
   margin-bottom: 0.5rem;
   color: var(--color-primary);
-  font-family: "Lora", var(--font-secondary), var(--font-primary), serif;
+  font-family: var(--font-primary), serif;
 }
 
 /* --- API Error Description --- */
@@ -307,7 +304,7 @@
 
 /* Bot name label styling for legibility */
 .botNameLabel {
-  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-family: var(--font-secondary), serif;
   font-weight: 500;
   font-size: 1.65rem;
   color: var(--color-text);

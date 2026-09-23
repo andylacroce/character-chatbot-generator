@@ -1,17 +1,15 @@
 /* =============================
    ChatMessage.module.css
    - "Immersive stage" transcript style: no bubbles. Bot replies render as large
-     serif pull-quotes with a teal accent rule; user turns stay small and quiet,
-     right-aligned. Lora, not Playfair Display, for the actual reply text —
-     Playfair's thin, high-contrast Didone strokes read great as a short display
-     headline but poorly across a full paragraph; Lora is a serif built
-     specifically for on-screen body reading and pairs with Playfair Display
-     (used for the landing page's display/branding text) the same way most
-     editorial sites split a dramatic headline face from a readable body face.
-   - Uses CSS variables from globals.css/darkmode.css for theme consistency.
+     serif pull-quotes with a patina accent rule; user turns stay small and quiet,
+     right-aligned. Bot reply text uses --font-primary (Source Serif 4, the app's
+     body reading face) at a larger size rather than --font-secondary (Spectral,
+     the display face) — Spectral's more mannered strokes read well as a short
+     name/heading but not across a full paragraph.
+   - Uses CSS variables generated from packages/shared/src/theme-tokens.json (see
+     globals.css) for theme consistency; that file is the single source for both
+     light and dark values, no separate darkmode.css involved.
    ============================= */
-
-@import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap");
 
 .message {
   padding: 1rem 0;
@@ -139,7 +137,7 @@
 }
 
 .botMessage .messageText {
-  font-family: "Lora", var(--font-secondary), var(--font-primary), serif;
+  font-family: var(--font-primary), serif;
   font-size: calc(var(--chat-message-font-size) * 1.15);
   line-height: 1.5;
   color: var(--color-text);

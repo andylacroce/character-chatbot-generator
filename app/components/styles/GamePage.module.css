@@ -8,8 +8,6 @@
      no-shared-CSS-modules rule.
    ============================= */
 
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap");
-
 /* --- Standalone start / game-over screen (shown before ChatShell renders) --- */
 
 /* No explicit width here — same scrollbar-gutter reasoning as ChatPage.module.css's
@@ -39,7 +37,7 @@
 }
 
 .startHeadline {
-  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-family: var(--font-secondary), serif;
   font-size: 2rem;
   margin: 0;
 }

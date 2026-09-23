@@ -1,54 +1,55 @@
 /**
- * Brand color tokens and copy shared between the web app (app/globals.css,
- * app/darkmode.css) and the mobile client (which has no CSS custom-properties
- * mechanism, so these need to exist as plain JS values somewhere both can read).
- * The web app still hand-maintains its own CSS copies of these — see
- * character-chatbot-mobile/CLAUDE.md's "production web app has NOT been migrated"
- * note — so keep the two in sync by eye until/unless the web app migrates to
- * import from here directly.
+ * Brand color/font tokens and copy shared between the web app and the mobile
+ * client. The colors are authored once, in Style Dictionary token format, under
+ * `src/tokens/{light,dark}.json` — the same files `scripts/generate-theme-css.cjs`
+ * (repo root) feeds to Style Dictionary to produce
+ * `app/theme-tokens.generated.css` for the web app. This file just flattens those
+ * same token files into the plain objects the mobile app (which has no CSS
+ * custom-properties mechanism) can read directly. Fonts live in `src/tokens/fonts.json`
+ * instead — see that file's own description for why they aren't Style Dictionary
+ * tokens too. Edit color/font values only in `src/tokens/`, never here.
  */
+import lightTokens from "./tokens/light.json";
+import darkTokens from "./tokens/dark.json";
+import fontTokens from "./tokens/fonts.json";
 
-/** Light-mode palette — mirrors app/globals.css's `:root` block. */
-export const lightColors = {
-  background: "#f7f4ef",
-  surface: "#ffffff",
-  surfaceVariant: "#f1ddd3",
-  outline: "#9c8f7d",
-  text: "#18160f",
-  textSecondary: "#5c5245",
-  primary: "#af5a3f",
-  onPrimary: "#ffffff",
-  primaryContainer: "#f1ddd3",
-  secondary: "#33595e",
-  onSecondary: "#ffffff",
-  secondaryContainer: "#dbe7e6",
-  accent: "#3d6e73",
-  error: "#8b3a3a",
-  errorContainer: "#f2ddd8",
-  warning: "#b8863f",
-} as const;
+type TokenLeaf = { value: string };
+type TokenTree = Record<string, Record<string, TokenLeaf>>;
 
-/** Dark-mode palette — mirrors app/darkmode.css's `.dark` block. */
-export const darkColors = {
-  background: "#151209",
-  surface: "#211d15",
-  surfaceVariant: "#2c2620",
-  outline: "#9c8f7d",
-  text: "#f5f1ea",
-  textSecondary: "#bcae9a",
-  primary: "#d68a6c",
-  onPrimary: "#18160f",
-  primaryContainer: "#8a4630",
-  secondary: "#7bb0b5",
-  onSecondary: "#12211f",
-  secondaryContainer: "#2c5257",
-  accent: "#8fc4c8",
-  error: "#c97a72",
-  errorContainer: "#6b2f2f",
-  warning: "#dab06a",
-} as const;
+/** Flattens a Style Dictionary token file (`{color: {background: {value}}, disabled: {bg: {value}}, ...}`)
+ * into the single flat color object both apps consume. Builds the result with explicit
+ * assignment rather than an object spread of `Object.fromEntries(...)` — TypeScript drops
+ * that call's index signature when it's spread into an object literal, which silently
+ * narrowed the inferred return type to just the four disabled/scrollbar keys. */
+function flatten(tree: TokenTree): Record<string, string> {
+  const { color, disabled, scrollbar } = tree;
+  const result: Record<string, string> = {};
+  for (const [key, { value }] of Object.entries(color)) {
+    result[key] = value;
+  }
+  result.disabledBg = disabled.bg.value;
+  result.disabledText = disabled.text.value;
+  result.scrollbarBg = scrollbar.bg.value;
+  result.scrollbarThumb = scrollbar.thumb.value;
+  return result;
+}
 
-export type ThemeColors = Record<keyof typeof lightColors, string>;
+/** Light-mode palette — "Museum Placard": sepia ink and patina-green on parchment. */
+export const lightColors = flatten(lightTokens as TokenTree);
+
+/** Dark-mode palette — the same archive, lit from a darkroom rather than a window. */
+export const darkColors = flatten(darkTokens as TokenTree);
+
+export type ThemeColors = typeof lightColors;
+
+/**
+ * Font family tokens shared with the web app's generated CSS. Mobile has no bundled
+ * Google Fonts loader yet, so `apps/mobile`'s own components still fall back to the
+ * platform serif (see Wordmark.tsx) rather than loading `fonts.primary.family`
+ * itself — these values exist so that adding real font loading later is a
+ * mobile-side change only, not another round of picking fonts.
+ */
+export const fonts = fontTokens;
 
 /**
  * Whether the app defaults to dark mode for a visitor/device with no stored

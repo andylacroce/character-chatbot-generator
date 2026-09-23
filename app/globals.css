@@ -14,52 +14,21 @@
   Update these to change the app's look and feel globally.
 */
 
-/* --- Google Fonts Import --- */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap");
-@import "./darkmode.css";
+/* --- Design tokens ---
+   Color and font custom properties (--color-*, --font-*, --disabled-*,
+   --scrollbar-*) are generated from packages/shared/src/theme-tokens.json — the
+   "Museum Placard" archival theme, the same restrained sepia-and-patina palette
+   as the Character Wall (/chars), extended app-wide — via
+   scripts/generate-theme-css.cjs (npm run theme:generate, wired into predev/build).
+   That JSON file is the single source shared with the mobile app; edit values
+   there, never in the generated file below or by hand-copying a hex code here. */
+@import "./theme-tokens.generated.css";
 
 :root {
-  /* Earthy, true-complementary light palette: Clay (terracotta, primary) and Deep
-     Teal (secondary/accent) sit opposite each other on the color wheel, pulled from
-     natural materials rather than synthetic/neon tones. Moss/Rust (success/error)
-     are hue-separated from both so status states never read as "just another
-     accent". Warm sandy neutrals throughout, not cool gray. */
-  --color-background: #f7f4ef;
-  /* Cloud */
-  --color-surface: #ffffff;
-  --color-surface-variant: #efe6de;
-  /* pale sand surface */
-  --color-outline: #9c8f7d;
-  /* muted warm-neutral outline */
-  --color-text: #18160f;
-  /* Ink */
-  --color-text-secondary: #5c5245;
-  /* muted warm-brown-gray */
-  --color-primary: #af5a3f;
-  /* Clay */
-  --color-on-primary: #ffffff;
-  --color-primary-container: #f1ddd3;
-  /* light clay container */
-  --color-on-primary-container: #18160f;
-  --color-secondary: #33595e;
-  /* deeper Teal for on-white contrast */
-  --color-on-secondary: #ffffff;
-  --color-secondary-container: #dbe7e6;
-  /* light teal container */
-  --color-on-secondary-container: #18160f;
-  --color-accent: #3d6e73;
-  /* Deep Teal */
-  --color-error: #8b3a3a;
-  /* Rust */
-  --color-on-error: #ffffff;
-  --color-error-container: #f2ddd8;
-  /* pale rust container, mirrors primary/secondary-container */
-  --color-on-error-container: #18160f;
-  --color-success: #5a7d4a;
-  /* Moss */
-  --color-on-success: #ffffff;
-  --color-warning: #b8863f;
-  --color-on-warning: #18160f;
+  /* Everything below is a semantic alias built from the generated base tokens
+     above, or a plain derivation (color-mix) of one — not a second place that
+     authors color values. Only these alias *names* (not their values) are
+     app-specific enough to live here rather than in the shared token file. */
   --color-sender: var(--color-primary);
   --card-body-bg: var(--color-surface);
   --chatbox-background: var(--color-background);
@@ -67,27 +36,27 @@
   --bot-message-bg: var(--color-secondary-container);
   --bot-sender: var(--color-secondary);
   --button-bg: var(--color-primary);
-  --button-hover-bg: #8a4630;
-  /* Clay, deeper */
-  --disabled-bg: #e9e2d8;
-  --disabled-text: #a89a87;
+  --button-hover-bg: color-mix(in srgb, var(--color-primary) 82%, black);
   --send-button-bg: var(--color-accent);
-  --send-button-hover-bg: #2c5257;
-  /* Deep Teal, deeper */
-  --send-button-text: #ffffff;
+  --send-button-hover-bg: color-mix(in srgb, var(--color-accent) 82%, black);
+  --send-button-text: var(--color-on-secondary);
   --input-bg: var(--color-surface-variant);
   --input-text: var(--color-text);
-  --input-placeholder: #a89a87;
-  --scrollbar-bg: #efe6de;
-  --scrollbar-thumb: #33595e;
-  --button-shadow: rgba(175, 90, 63, 0.15);
-  /* clay-tinted shadow */
-  --button-shadow-hover: rgba(175, 90, 63, 0.25);
+  --input-placeholder: var(--color-text-secondary);
+  --button-shadow: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  --button-shadow-hover: color-mix(in srgb, var(--color-primary) 25%, transparent);
   --chat-message-font-size: 1.2rem;
-  --font-primary:
-    "Inter", "Segoe UI", "Helvetica Neue", Arial, "Liberation Sans", "Nimbus Sans", "sans-serif";
-  --font-secondary:
-    "Inter", "Segoe UI", "Helvetica Neue", Arial, "Liberation Sans", "Nimbus Sans", "sans-serif";
+}
+
+.dark {
+  /* Hover derivations lighten instead of darken in dark mode. Shadows stay
+     black-based rather than tinted by (now light-colored) --color-primary — a
+     shadow simulates depth/occlusion, which reads correctly in either theme,
+     unlike a hover fill. */
+  --button-hover-bg: color-mix(in srgb, var(--color-primary) 85%, white) !important;
+  --send-button-hover-bg: color-mix(in srgb, var(--color-accent) 85%, white) !important;
+  --button-shadow: rgba(0, 0, 0, 0.3) !important;
+  --button-shadow-hover: color-mix(in srgb, var(--color-primary) 25%, black) !important;
 }
 
 /*

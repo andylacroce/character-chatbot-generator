@@ -24,11 +24,16 @@ which triggers an automatic `tsc` build (via the `prepare` script) on install:
   server never trusts the client's sanitized value.
 - **Storage key constants** (`src/storageKeys.ts`) — key name strings shared
   between the web app's `localStorage` and the mobile app's `AsyncStorage`.
-- **Brand tokens** (`src/theme.ts`) — light/dark color palettes (mirrors the web
-  app's `app/globals.css`/`app/darkmode.css`) and wordmark/copy strings (mirrors
-  `BotCreator.tsx`'s hero section). The web app doesn't consume these yet — it
-  still hand-maintains its own CSS copies; keep both in sync by eye until/unless
-  it migrates to generate its CSS from here.
+- **Design tokens** (`src/tokens/{light,dark,fonts}.json`) — the single authored
+  source for color and font values on both platforms. `src/theme.ts` flattens
+  `light.json`/`dark.json` (Style Dictionary token format) and re-exports
+  `fonts.json` for the mobile app to read directly; the web app's
+  `scripts/generate-theme-css.cjs` (repo root) feeds the same two color files to
+  Style Dictionary to produce `app/theme-tokens.generated.css`, imported by
+  `app/globals.css`. Edit a color or font value only in `src/tokens/` — never in
+  `theme.ts`, the generated CSS, or by hand-copying a hex code into either app.
+  `src/theme.ts` also holds wordmark/copy strings (mirrors `BotCreator.tsx`'s
+  hero section).
 
 **Tried and reverted:** a `src/icons.ts` with hand-drawn icon path data (extracted
 from the web app's `ChatInput.tsx` inline SVGs), meant to be rendered via

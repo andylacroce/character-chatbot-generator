@@ -2,6 +2,7 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "resolveJsonModule": true,
     // TypeScript 6 no longer auto-includes every @types package; the tests need Jest's globals.
     "types": ["jest"]
   }

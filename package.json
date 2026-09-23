@@ -1,6 +1,6 @@
 {
   "name": "portrayal",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -14,10 +14,11 @@
   ],
   "scripts": {
     "dev": "next dev --turbopack",
-    "predev": "npm run docs:api && npm run db:check",
-    "build": "npm run docs:api && next build",
+    "predev": "npm run theme:generate && npm run docs:api && npm run db:check",
+    "build": "npm run theme:generate && npm run docs:api && next build",
     "ci": "npm run format && npm run lint -- --max-warnings=0 && npm run lint:md && npm run type-check && npm run ci --workspace=apps/mobile && npm test --workspace=packages/shared && npm run db:check && npm run docs:code && npm run test:coverage && npm run build",
-    "vercel-build": "npm run docs:api && next build",
+    "vercel-build": "npm run theme:generate && npm run docs:api && next build",
+    "theme:generate": "node scripts/generate-theme-css.cjs",
     "docs:api": "node scripts/generate-openapi.cjs",
     "docs:code": "typedoc",
     "start": "next start",
@@ -102,6 +103,7 @@
     "postcss": "^8.5.15",
     "prettier": "^3.9.8",
     "react-native": "^0.86.3",
+    "style-dictionary": "^5.5.5",
     "swagger-jsdoc": "^6.3.0",
     "typedoc": "^0.28.20",
     "typescript": "^6"

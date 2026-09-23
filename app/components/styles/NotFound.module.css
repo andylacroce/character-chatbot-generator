@@ -1,11 +1,9 @@
 /* =============================
    NotFound.module.css
-   - 404 page styled to match the landing page's editorial theme (Playfair Display
+   - 404 page styled to match the landing page's editorial theme (--font-secondary
      headline, warm palette tokens from globals.css) instead of the previous unstyled
      default. Its own module per this repo's no-shared-CSS-modules convention.
    ============================= */
-
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap");
 
 .container {
   min-height: 100vh;
@@ -34,7 +32,7 @@
 
 .headline {
   margin: 0;
-  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-family: var(--font-secondary), serif;
   font-weight: 700;
   font-size: 5.5rem;
   line-height: 1;
@@ -61,7 +59,7 @@
   font-weight: 700;
   letter-spacing: 0.01em;
   text-decoration: none;
-  box-shadow: 0 3px 10px rgba(51, 89, 94, 0.25);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--color-secondary) 45%, transparent);
   transition: all 0.2s ease;
 }
 
@@ -69,13 +67,13 @@
 .homeCta:focus-visible {
   background: var(--send-button-hover-bg);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(51, 89, 94, 0.35);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-secondary) 55%, transparent);
   outline: none;
 }
 
 .homeCta:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(51, 89, 94, 0.25);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-secondary) 45%, transparent);
 }
 
 @media (max-width: 600px) {

@@ -1,0 +1,19 @@
+{
+  "description": "Font tokens for the 'Museum Placard' theme — read directly by scripts/generate-theme-css.cjs (web) and packages/shared/src/theme.ts (mobile). Not run through Style Dictionary: fonts don't vary by light/dark theme, so the per-theme build machinery that colors need doesn't buy anything here.",
+  "primary": {
+    "family": "Source Serif 4",
+    "fallback": "Georgia, 'Times New Roman', serif",
+    "note": "Body/dialogue text. Replaces the app's former sans-serif body font (Inter) and the ad hoc 'Lora' override several components applied on top of it."
+  },
+  "secondary": {
+    "family": "Spectral",
+    "fallback": "Georgia, 'Times New Roman', serif",
+    "note": "Character names, headings, buttons — a quiet, understated serif rather than a showy one, like the type on a museum placard. Replaces the former per-component 'Playfair Display' overrides."
+  },
+  "mono": {
+    "family": "Courier Prime",
+    "fallback": "'Courier New', monospace",
+    "note": "Tags, timestamps, eyebrow labels — a typewriter face, like a typed accession card."
+  },
+  "googleFontsUrl": "https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400;1,8..60,500&family=Courier+Prime:wght@400;700&display=swap"
+}

@@ -1,0 +1,35 @@
+{
+  "color": {
+    "background": { "value": "#ece5d6" },
+    "surface": { "value": "#faf7f0" },
+    "surfaceVariant": { "value": "#e2dac6" },
+    "outline": { "value": "#a89a83" },
+    "text": { "value": "#2a2620" },
+    "textSecondary": { "value": "#6e6558" },
+    "primary": { "value": "#55483a" },
+    "onPrimary": { "value": "#faf7f0" },
+    "primaryContainer": { "value": "#ddd3bf" },
+    "onPrimaryContainer": { "value": "#2a2620" },
+    "secondary": { "value": "#5c7268" },
+    "onSecondary": { "value": "#f4f7f5" },
+    "secondaryContainer": { "value": "#d6e0da" },
+    "onSecondaryContainer": { "value": "#1c2b25" },
+    "accent": { "value": "#5c7268" },
+    "error": { "value": "#7a3b32" },
+    "onError": { "value": "#faf7f0" },
+    "errorContainer": { "value": "#e6cfc7" },
+    "onErrorContainer": { "value": "#5c2418" },
+    "success": { "value": "#4f6b4a" },
+    "onSuccess": { "value": "#faf7f0" },
+    "warning": { "value": "#8a6a2e" },
+    "onWarning": { "value": "#faf7f0" }
+  },
+  "disabled": {
+    "bg": { "value": "#e4ddc9" },
+    "text": { "value": "#9a8f79" }
+  },
+  "scrollbar": {
+    "bg": { "value": "#e2dac6" },
+    "thumb": { "value": "#5c7268" }
+  }
+}

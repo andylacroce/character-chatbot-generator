@@ -6,12 +6,11 @@
    - Designed for accessibility and responsive layout
    ============================= */
 
-/* Playfair Display (a digital revival tracing back to Baskerville's 18th-century
-   type) carries the editorial, period voice of the headline, wordmark, and name
-   input — most characters here are public-domain figures a century or more old,
-   so the display face leans into that rather than reading as a modern app.
-   Everything else stays on the app's existing Inter (--font-primary). */
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap");
+/* --font-secondary (Spectral, loaded globally — see globals.css) carries the
+   editorial, archival voice of the headline, wordmark, and name input — most
+   characters here are public-domain figures a century or more old, so the
+   display face leans into that rather than reading as a modern app. Everything
+   else stays on the app's body serif (--font-primary). */
 
 /* ===== Page / form shell ===== */
 
@@ -91,7 +90,7 @@
    out of this same accent color specifically so it reads as its own small
    eyebrow label rather than a second line of the logo. */
 .heroWordmark {
-  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-family: var(--font-secondary), serif;
   font-weight: 600;
   font-size: clamp(2.6rem, 10vw, 3.6rem);
   letter-spacing: 0.01em;
@@ -178,7 +177,7 @@
 }
 
 .headline {
-  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-family: var(--font-secondary), serif;
   font-weight: 500;
   font-size: clamp(1.9rem, 5vw, 2.5rem);
   line-height: 1.15;
@@ -201,7 +200,7 @@
   font-weight: 700;
   letter-spacing: 0.01em;
   text-decoration: none;
-  box-shadow: 0 3px 10px rgba(51, 89, 94, 0.25);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--color-secondary) 45%, transparent);
   transition: all 0.2s ease;
 }
 
@@ -209,13 +208,13 @@
 .wallCta:focus-visible {
   background: var(--send-button-hover-bg);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(51, 89, 94, 0.35);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-secondary) 55%, transparent);
   outline: none;
 }
 
 .wallCta:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(51, 89, 94, 0.25);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--color-secondary) 45%, transparent);
 }
 
 .orDivider {
@@ -263,7 +262,7 @@
   outline: none;
   -webkit-appearance: none;
   appearance: none;
-  font-family: "Playfair Display", var(--font-secondary), var(--font-primary), serif;
+  font-family: var(--font-secondary), serif;
   font-size: 1.35rem;
   color: var(--color-text);
 }

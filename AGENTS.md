@@ -123,9 +123,11 @@ it runs because its format step writes files.
 - Inline comments should explain constraints or reasoning, not restate the code.
 - Preserve accessibility: semantic controls, keyboard operation, visible focus,
   descriptive labels, reduced-motion support, and usable phone layouts.
-- Component styling belongs in `app/components/styles/*.module.css`; shared theme tokens
-  belong in `app/globals.css` and `app/darkmode.css`. Verify light and dark modes when a
-  change uses theme colors.
+- Component styling belongs in `app/components/styles/*.module.css`; shared color/font
+  tokens are authored in `packages/shared/src/tokens/{light,dark,fonts}.json` and consumed
+  in `app/globals.css` via the generated `app/theme-tokens.generated.css`
+  (`npm run theme:generate`) — never hand-edit a hex value in `globals.css` or the
+  generated file directly. Verify light and dark modes when a change uses theme colors.
 - Do not hand-edit generated output in `.next/`, `coverage/`, `docs-generated/`, or
   `public/openapi.json`.
 

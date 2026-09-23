@@ -40,12 +40,16 @@ what the backend and web app actually do:
   `formatHistory()` builds the string array, matching `useChatController.ts`'s own
   conversion.
 - `POST /api/get-voice-config` wasn't in `types.ts` at all — added `GetVoiceConfigRequest`.
-- Brand colors (`lightColors`/`darkColors`, mirroring `app/globals.css`/`darkmode.css`)
-  and copy (`BRAND.name`/`kicker`/`headline`, mirroring `BotCreator.tsx`'s hero) live in
-  shared `theme.ts` — this repo's `src/theme.ts` just re-exports them, `src/ThemeContext.tsx`
-  provides the light/dark switch (mirrors the web app's `DarkModeContext` exactly:
-  manual toggle only, no OS `prefers-color-scheme` following, same
-  `STORAGE_KEYS.darkMode` key).
+- Brand colors (`lightColors`/`darkColors`) and copy (`BRAND.name`/`kicker`/`headline`,
+  mirroring `BotCreator.tsx`'s hero) live in shared `theme.ts` — this repo's
+  `src/theme.ts` just re-exports them, `src/ThemeContext.tsx` provides the light/dark
+  switch (mirrors the web app's `DarkModeContext` exactly: manual toggle only, no OS
+  `prefers-color-scheme` following, same `STORAGE_KEYS.darkMode` key). The colors
+  themselves are authored once, in `packages/shared/src/tokens/{light,dark}.json`
+  (Style Dictionary token format) — shared `theme.ts` flattens them for this app, and
+  the web app's `scripts/generate-theme-css.cjs` feeds the same two files to Style
+  Dictionary to produce its own `app/theme-tokens.generated.css`. Both platforms read
+  one source now; there's no more hand-copying a hex value between them.
 - **Tried and reverted — shared hand-drawn icon glyphs.** Pulled the web app's
   hand-drawn send/stop/volume `<svg>` paths (from `ChatInput.tsx`) into shared
   `icons.ts` as platform-agnostic shape data, rendered here via `react-native-svg`
@@ -61,11 +65,6 @@ what the backend and web app actually do:
   icon). If cross-platform icon sharing gets revisited, treat it as a genuinely
   hard problem, not a quick win — and validate on a real Android device before
   declaring it fixed, since none of this reproduced in the web preview.
-- **Not done, flagged for later:** the web app still hand-maintains its own CSS copies
-  of these colors in `globals.css`/`darkmode.css` rather than generating them from
-  shared `theme.ts` — actually wiring that up is a real migration into
-  production-app build tooling, out of scope for a mobile-side pass. Whoever touches
-  web app colors next should update shared `theme.ts` too (or better, do the migration).
 
 **Branding assets reuse the web app's real brand mark**, not an invented one:
 `assets/icon.png`, `splash-icon.png`, and the `android-icon-*` set are all rendered

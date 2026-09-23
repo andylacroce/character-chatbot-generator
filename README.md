@@ -2,6 +2,9 @@
 
 [![License: Proprietary](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)](LICENSE)
 [![CI](https://github.com/andylacroce/character-chatbot-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/andylacroce/character-chatbot-generator/actions/workflows/ci.yml)
+[![Status: Beta](https://img.shields.io/badge/Status-Beta-orange.svg)](#license--disclaimer)
+
+**This app is in early beta.** Expect bugs and rough edges — see [License & Disclaimer](#license--disclaimer).
 
 A Next.js 16 + TypeScript app for chatting with history's greatest minds, legendary heroes, and literary icons, with Claude-powered responses, factually-grounded personalities, and Google Text-to-Speech audio replies.
 
@@ -450,6 +453,8 @@ PRs welcome! Please include:
 - Run `npm run lint` before submitting
 
 ## License & Disclaimer
+
+**Beta status**: this app is in early beta — expect bugs and rough edges. It's for entertainment purposes only; no information it provides should be considered professional, legal, medical, or financial advice, and content may be AI-generated and inaccurate. Use at your own risk.
 
 All rights reserved — see [LICENSE](LICENSE). Source is publicly viewable for portfolio purposes only; no permission is granted to use, copy, modify, or redistribute it. Not affiliated with Anthropic or Google.
 
