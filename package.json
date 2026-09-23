@@ -101,7 +101,7 @@
     "node-mocks-http": "^1.18.1",
     "postcss": "^8.5.15",
     "prettier": "^3.9.8",
-    "react-native": "^0.86.3",
+    "react-native": "^0.87.1",
     "swagger-jsdoc": "^6.3.0",
     "typedoc": "^0.28.20",
     "typescript": "^6"
