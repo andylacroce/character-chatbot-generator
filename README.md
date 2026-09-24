@@ -132,16 +132,18 @@ Visit `http://localhost:3000`
 
 ## CI-Style Local Validation
 
-`npm run ci` is the single composite command to run before considering work done — it's
-also what `.github/workflows/ci.yml` runs on every push. It chains, in order: auto-format
-(`format`), lint with zero warnings allowed, markdown lint, TypeScript type-check, a
-read-only DB schema drift check, TypeDoc generation, the full test suite with coverage,
-and a production build. See the `"ci"` script in `package.json` for the exact, current
-step list rather than relying on this description if the two ever disagree.
+`npm run ci` is the single composite command to run before considering work done. It
+covers web, mobile, and the shared package: auto-format, lint, markdown lint, type-check,
+mobile's own checks (including the Expo SDK dependency check), a read-only DB schema drift
+check, TypeDoc generation, tests with coverage, and a production build.
 
 ```powershell
 npm run ci
 ```
+
+GitHub Actions runs the same checks as parallel jobs, and the required ones block merging
+to `main`. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for every workflow, what blocks a merge, how
+Dependabot and the weekly Expo SDK upgrade work, and troubleshooting.
 
 ## API Documentation
 
@@ -445,12 +447,7 @@ Check browser console for SSE connection errors. Ensure the API endpoint isn't b
 
 ## Contributing
 
-PRs welcome! Please include:
-
-- Tests for new features
-- Updated documentation
-- Follow existing code style
-- Run `npm run lint` before submitting
+PRs welcome. See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the checklist and how CI works.
 
 ## License & Disclaimer
 
