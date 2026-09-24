@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.15.2 — 2026-09-24 — Expo SDK check actually runs on GitHub
+
+- v0.15.1 added the Expo SDK check only to mobile's local `ci` script, but the GitHub Mobile CI workflow runs each step separately and never called it. Two mismatched Dependabot bumps (safe-area-context 5.10 and expo-linking 58, a different Expo SDK) passed and auto-merged minutes later. Both are reverted, and the workflow now runs the check as its first step.
+
 ## v0.15.1 — 2026-09-24 — Mobile native dependencies checked against the Expo SDK in CI
 
 - Mobile's `react-native-safe-area-context` is back on the version Expo Go ships (5.7). A Dependabot bump to 5.10 passed CI but would have failed on a device, since Jest mocks native modules.

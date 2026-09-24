@@ -33,6 +33,12 @@ jobs:
       - name: Install dependencies (workspace root)
         run: npm ci
 
+      # Jest mocks native modules, so a native package ahead of the Expo SDK
+      # passes every other step here but fails on-device.
+      - name: Check native deps match the Expo SDK
+        working-directory: apps/mobile
+        run: npm run deps:check
+
       - name: Lint (fail on warnings)
         working-directory: apps/mobile
         run: npm run lint -- --max-warnings=0

@@ -18,7 +18,7 @@
     "expo-haptics": "~57.0.3",
     "expo-image": "~57.0.5",
     "expo-linear-gradient": "~57.0.2",
-    "expo-linking": "~58.0.4",
+    "expo-linking": "~57.0.11",
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
@@ -26,7 +26,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.86.3",
-    "react-native-safe-area-context": "~5.10.0",
+    "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "^0.21.2"
   },
