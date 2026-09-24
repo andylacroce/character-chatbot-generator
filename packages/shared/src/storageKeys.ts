@@ -24,6 +24,8 @@ export const STORAGE_KEYS = {
   gameTranscript: "chatbot-game-transcript",
   /** The web landing carousel's last portrait sample, repainted instantly on the next visit. */
   landingCarouselCache: "chatbot-landing-carousel-cache",
+  /** Web-only opt-in preference for loading Google Analytics. */
+  googleAnalyticsConsent: "portrayal-google-analytics-consent",
 } as const;
 
 /** Prefixes for keys that are suffixed per-character by bot name. */

@@ -8,7 +8,11 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { DarkModeProvider, DEFAULT_DARK_MODE } from "./components/DarkModeContext";
+import GoogleAnalyticsConsent from "./components/GoogleAnalyticsConsent";
 import Providers from "./components/Providers";
+
+const PRODUCTION_GOOGLE_ANALYTICS_ID = "G-W01K2YSWH4";
+const PRODUCTION_GOOGLE_TAG_MANAGER_ID = "GTM-WVFLVRGS";
 
 /**
  * Root layout component that wraps the entire application.
@@ -21,6 +25,13 @@ import Providers from "./components/Providers";
  * @returns {JSX.Element} The HTML document structure with analytics components
  */
 const RootLayout = ({ children }: { children: React.ReactNode }) => {
+  const googleAnalyticsId =
+    process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID ??
+    (process.env.NODE_ENV === "production" ? PRODUCTION_GOOGLE_ANALYTICS_ID : undefined);
+  const googleTagManagerId =
+    process.env.NEXT_PUBLIC_GOOGLE_TAG_MANAGER_ID ??
+    (process.env.NODE_ENV === "production" ? PRODUCTION_GOOGLE_TAG_MANAGER_ID : undefined);
+
   return (
     // className derives from DarkModeContext's DEFAULT_DARK_MODE so a first-time
     // visitor's server-rendered HTML already has the right theme applied — otherwise
@@ -63,6 +74,10 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
             {children}
             <Analytics />
             <SpeedInsights />
+            <GoogleAnalyticsConsent
+              measurementId={googleAnalyticsId}
+              tagManagerId={googleTagManagerId}
+            />
           </DarkModeProvider>
         </Providers>
       </body>

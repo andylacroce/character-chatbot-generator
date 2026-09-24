@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## Unreleased — Consent-gated Google Analytics and Tag Manager
+
+- Added Google Analytics 4 page-view/navigation tracking and Google Tag Manager for the production site (`G-W01K2YSWH4` and `GTM-WVFLVRGS`, with environment-variable overrides). Neither Google loader runs until a visitor opts in, declining leaves the rest of the app unchanged, and the choice can be reviewed or changed from the privacy page. The consent prompt and settings disclose exactly what is sent and confirm that Portrayal does not push chat text, character names, or guesses into the tag data layer.
+
 ## v0.15.3 — 2026-09-24 — Fixed two mobile web layout bugs in the chat input bar
 
 - Fixed the chat input's right edge getting clipped on narrow mobile screens while a reply's audio was playing. The audio Stop button is a CSS Grid item with no `min-width: 0`, so its own flex row's content-based minimum width (from its non-shrinking icon/Send buttons) propagated upward and briefly pushed the whole page wider than the viewport for as long as playback lasted.

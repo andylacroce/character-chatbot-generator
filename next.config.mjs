@@ -7,18 +7,20 @@ const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "tr
 // need to allow that CDN and 'unsafe-inline'. This isn't a nonce-based CSP —
 // Next's App Router relies on inline scripts to hydrate RSC payloads, and wiring
 // a per-request nonce through cleanly is a separate, larger change — so
-// script-src keeps 'unsafe-inline' too. Still meaningfully narrows the attack
-// surface versus no CSP: blocks framing, arbitrary object/embed, and any script,
-// style, image, or fetch target outside this explicit allowlist.
+// script-src keeps 'unsafe-inline' too. Google Analytics is consent-gated in the
+// UI, but its script and collection endpoint still need to be valid CSP sources
+// for opted-in visitors. This policy still meaningfully narrows the attack surface
+// versus no CSP: it blocks framing, arbitrary object/embed, and any script, style,
+// image, or fetch target outside this explicit allowlist.
 const isDev = process.env.NODE_ENV !== "production";
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.googletagmanager.com${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
   "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:",
   "img-src 'self' data: https:",
   "media-src 'self'",
-  "connect-src 'self' https://cdn.jsdelivr.net",
+  "connect-src 'self' https://cdn.jsdelivr.net https://*.google-analytics.com",
   "object-src 'none'",
   "base-uri 'self'",
   // Auth.js's sign-in page submits a real <form> to /api/auth/signin/<provider>, which
