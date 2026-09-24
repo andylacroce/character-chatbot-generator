@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.15.1 — 2026-09-24 — Fixed two mobile web layout bugs in the chat input bar
+
+- Fixed the chat input's right edge getting clipped on narrow mobile screens while a reply's audio was playing. The audio Stop button is a CSS Grid item with no `min-width: 0`, so its own flex row's content-based minimum width (from its non-shrinking icon/Send buttons) propagated upward and briefly pushed the whole page wider than the viewport for as long as playback lasted.
+- Fixed the on-screen mobile keyboard overlapping the chat input: the CSS rule meant to reserve extra scroll space for the keyboard lived in `globals.css` and targeted `.chatMessagesScroll` by its literal, un-hashed name — but that class comes from a CSS Module, so the rendered element's real class was always a different, mangled token. The rule had never matched in any build; it now lives in the CSS Module itself with the toggled ancestor class correctly marked `:global(...)`.
+
 ## v0.15.0 — 2026-09-23 — "Museum Placard" theme, and one shared color source for web and mobile
 
 - The web app has a new look, "Museum Placard": Spectral (headings/names) and Source Serif 4 (body text) replace the former sans-serif type, with Courier Prime for small typewriter-style tags and labels. Colors moved from the earlier clay-and-teal palette to a quieter sepia-ink and patina-green on parchment, extending the same archival language the Character Wall (`/chars`) already had to the whole app, in both light and dark. Several components' ad hoc per-component font overrides ("Lora", "Playfair Display", "Cormorant Garamond", each loaded separately) are gone in favor of the app's own shared type tokens.
