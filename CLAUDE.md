@@ -21,7 +21,7 @@ npm run test:coverage               # jest --coverage (enforces 80% global thres
 npm run analyze                      # ANALYZE=true next build (bundle analysis)
 npm run docs:api                      # regenerate public/openapi.json from @swagger JSDoc comments; runs automatically before dev/build
 npm run db:check                       # read-only check that schema.ts matches the live DB; runs automatically before dev and as part of ci
-npm run ci                             # format (auto-fix) && lint --max-warnings=0 && lint:md && type-check && db:check && docs:code && test:coverage && build — run this before considering work done
+npm run ci                             # format (auto-fix) && lint --max-warnings=0 && lint:md && type-check && mobile ci && shared tests && db:check && docs:code && test:coverage && build — run this before considering work done
 ```
 
 `npm run ci`'s local composite deliberately runs `format` (auto-`--write`) as its very
@@ -37,6 +37,11 @@ checking, so it must fail loudly on drift rather than silently paper over it. Th
 pre-commit hook (`.githooks/pre-commit`, wired via `npm run prepare`) is the third
 layer: it auto-formats whatever's staged before a commit even exists, so drift
 ideally never reaches either `npm run ci` or GitHub Actions in the first place.
+
+GitHub Actions workflows, required checks, Dependabot/Expo upgrade flow, and the
+`EXPO_UPGRADE_TOKEN` secret are documented in `.github/CONTRIBUTING.md`. Any step added to a `ci`
+script must also be added to the matching workflow; the workflows list steps one by one
+rather than calling `npm run ci`.
 
 Run a single test file: `npx jest tests/api/chat.test.ts`
 Run tests matching a name: `npx jest -t "some test description"`

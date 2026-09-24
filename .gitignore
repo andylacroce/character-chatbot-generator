@@ -55,9 +55,6 @@ app/theme-tokens.generated.css
 # Generated code-reference docs (TypeDoc) — see `npm run docs:code`
 docs-generated/
 
-# Documentation directories
-docs/
-
 # Local AI agent guidance (keep local overrides out of commits)
 .claude/
 .vercel

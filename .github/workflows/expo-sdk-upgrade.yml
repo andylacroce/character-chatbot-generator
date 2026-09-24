@@ -1,0 +1,70 @@
+name: Expo SDK upgrade
+
+# Weekly: move apps/mobile to the latest stable Expo SDK and align every native
+# package with it (`expo install --fix`), then open an auto-merging PR. The PR goes
+# through the same required checks as anything else, so an SDK that needs code
+# changes stays open for a human. Dependabot closes its own PRs once they're
+# superseded.
+#
+# Needs the EXPO_UPGRADE_TOKEN secret (fine-grained PAT, this repo only, Contents +
+# Pull requests read/write): GitHub doesn't run CI on PRs opened with the built-in
+# GITHUB_TOKEN, so the required checks would never report and it could never merge.
+
+on:
+  schedule:
+    - cron: "0 14 * * 1" # Mondays 14:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: expo-sdk-upgrade
+  cancel-in-progress: false
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies (workspace root)
+        run: npm ci
+
+      - name: Upgrade Expo and align native packages
+        id: upgrade
+        working-directory: apps/mobile
+        run: |
+          # Explicit ~ keeps the repo's pin style; `expo@latest` alone writes ^.
+          npx expo install "expo@~$(npm view expo@latest version)"
+          npx expo install --fix
+          npm run deps:check
+          echo "expo=$(node -p "require('expo/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR
+        id: pr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.EXPO_UPGRADE_TOKEN }}
+          branch: chore/expo-sdk-upgrade
+          delete-branch: true
+          commit-message: "chore(deps): upgrade mobile to Expo ${{ steps.upgrade.outputs.expo }}"
+          title: "chore(deps): upgrade mobile to Expo ${{ steps.upgrade.outputs.expo }}"
+          body: |
+            Automated weekly Expo SDK upgrade (`expo install expo@~<latest>` + `expo install --fix`).
+            Auto-merges once required checks pass; if they fail, the new SDK needs code changes.
+
+      - name: Enable auto-merge
+        if: steps.pr.outputs.pull-request-operation == 'created'
+        env:
+          GH_TOKEN: ${{ secrets.EXPO_UPGRADE_TOKEN }}
+        run: gh pr merge "${{ steps.pr.outputs.pull-request-number }}" --auto --merge
