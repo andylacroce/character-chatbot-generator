@@ -20,7 +20,7 @@ const contentSecurityPolicy = [
   "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:",
   "img-src 'self' data: https:",
   "media-src 'self'",
-  "connect-src 'self' https://cdn.jsdelivr.net https://*.google-analytics.com",
+  "connect-src 'self' https://cdn.jsdelivr.net https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com",
   "object-src 'none'",
   "base-uri 'self'",
   // Auth.js's sign-in page submits a real <form> to /api/auth/signin/<provider>, which

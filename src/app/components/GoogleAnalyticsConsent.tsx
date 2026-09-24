@@ -43,7 +43,6 @@ function useAnalyticsConsent(): AnalyticsConsentSnapshot {
 /** Persists a consent choice and notifies every mounted consent control in this tab. */
 function saveAnalyticsConsent(consent: AnalyticsConsent): void {
   storage.setItem(STORAGE_KEYS.googleAnalyticsConsent, consent);
-  updateGoogleConsentMode(consent === "granted");
   window.dispatchEvent(new Event(CONSENT_CHANGE_EVENT));
 }
 

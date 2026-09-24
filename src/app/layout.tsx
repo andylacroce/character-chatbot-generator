@@ -25,12 +25,15 @@ const PRODUCTION_GOOGLE_TAG_MANAGER_ID = "GTM-WVFLVRGS";
  * @returns {JSX.Element} The HTML document structure with analytics components
  */
 const RootLayout = ({ children }: { children: React.ReactNode }) => {
+  // VERCEL_ENV, not NODE_ENV: preview deployments and a local `next start` also run with
+  // NODE_ENV=production and would otherwise report into the live GA stream.
+  const isProductionSite = process.env.VERCEL_ENV === "production";
   const googleAnalyticsId =
     process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID ??
-    (process.env.NODE_ENV === "production" ? PRODUCTION_GOOGLE_ANALYTICS_ID : undefined);
+    (isProductionSite ? PRODUCTION_GOOGLE_ANALYTICS_ID : undefined);
   const googleTagManagerId =
     process.env.NEXT_PUBLIC_GOOGLE_TAG_MANAGER_ID ??
-    (process.env.NODE_ENV === "production" ? PRODUCTION_GOOGLE_TAG_MANAGER_ID : undefined);
+    (isProductionSite ? PRODUCTION_GOOGLE_TAG_MANAGER_ID : undefined);
 
   return (
     // className derives from DarkModeContext's DEFAULT_DARK_MODE so a first-time
