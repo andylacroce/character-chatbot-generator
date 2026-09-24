@@ -50,6 +50,21 @@
   /* Grid item that fills available space */
 }
 
+/* Mobile keyboard input focus workaround — moved here from globals.css, which could
+   never actually apply it: `.chatMessagesScroll` there was a bare, unhashed class name,
+   but this file is a CSS Module, so the real class on the element is always a mangled
+   token (e.g. `ChatPage-module__xxxxx__chatMessagesScroll`), never the literal string
+   `chatMessagesScroll` — so `.mobile-keyboard-open .chatMessagesScroll` could never
+   match in any build, and this reserved-space compensation silently never ran. `.
+   ff-android-input-focus`/`.mobile-keyboard-open` are still toggled by JS on
+   <html> (useChatController.ts's visualViewport effect, useChatScrollAndFocus.ts) — a
+   plain, unscoped element — so the ancestor half of the selector has to stay wrapped in
+   `:global(...)` while the target half resolves to this module's real local class. */
+:global(.ff-android-input-focus) .chatMessagesScroll,
+:global(.mobile-keyboard-open) .chatMessagesScroll {
+  padding-bottom: var(--vv-keyboard-pad, 220px) !important;
+}
+
 /*
   Width-constrained inner wrapper for the message content.
   Split out from .chatMessagesScroll (the actual overflow-y:auto element)

@@ -12,12 +12,25 @@
    - Uses CSS variables from globals.css for theme consistency
    ============================= */
 
+/* `min-width: 0` matters here for the same reason ChatPage.module.css's `.chatLayout`
+   already carries `min-height: 0` — this element is a CSS Grid item of `.chatLayout`
+   (an implicit single-column grid), and a grid/flex item's default `min-width: auto`
+   floors its size at its content's own min-content width. `.chatInputContainer`
+   inside is a row-direction flex container whose own min-content width is the sum of
+   its non-shrinking children (the circular audio icon buttons, the nowrap "Send"
+   button) — `.chatInput`'s own `min-width: 0` lets THAT child shrink to nothing, but
+   without this rule, the fixed-width buttons' combined minimum still propagated up
+   through this grid item and forced the whole page wider than the viewport the
+   instant the audio Stop button (`ChatInput.tsx`'s `isAudioPlaying` icon) added one
+   more non-shrinking ~34px+gap button to that sum — clipped on the right by
+   globals.css's page-wide `overflow-x: hidden` for as long as playback lasted. */
 .chatInputArea {
   position: sticky;
   bottom: 0;
   left: 0;
   right: 0;
   width: 100%;
+  min-width: 0;
   max-width: 800px;
   margin: 0 auto;
   background: var(--color-background);

@@ -306,16 +306,6 @@ html {
   border-color: var(--disabled-bg) !important;
 }
 
-/* --- Mobile keyboard input focus workaround ---
-   Keep Firefox-specific class for Firefox Android, and add a general
-   `mobile-keyboard-open` class that's toggled for Chromium-based browsers.
-   JS sets `--vv-keyboard-pad` dynamically; this rule uses that variable
-   with a sensible fallback for browsers that don't support it. */
-.ff-android-input-focus .chatMessagesScroll,
-.mobile-keyboard-open .chatMessagesScroll {
-  padding-bottom: var(--vv-keyboard-pad, 220px) !important;
-}
-
 @media (max-width: 600px) {
   :root {
     --chat-message-font-size: 1rem;
