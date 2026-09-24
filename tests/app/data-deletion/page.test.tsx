@@ -16,10 +16,10 @@ describe("DataDeletionPage", () => {
 
   it("gives a mailto link with a prefilled subject for deletion requests", () => {
     render(<DataDeletionPage />);
-    const link = screen.getByText("ccg@andrewlacroce.com");
+    const link = screen.getByText("portrayal-support@andrewlacroce.com");
     expect(link).toHaveAttribute(
       "href",
-      "mailto:ccg@andrewlacroce.com?subject=Data%20deletion%20request",
+      "mailto:portrayal-support@andrewlacroce.com?subject=Data%20deletion%20request",
     );
   });
 

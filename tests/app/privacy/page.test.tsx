@@ -32,9 +32,9 @@ describe("PrivacyPage", () => {
 
   it("provides a contact email", () => {
     render(<PrivacyPage />);
-    expect(screen.getByText("ccg@andrewlacroce.com")).toHaveAttribute(
+    expect(screen.getByText("portrayal-support@andrewlacroce.com")).toHaveAttribute(
       "href",
-      "mailto:ccg@andrewlacroce.com",
+      "mailto:portrayal-support@andrewlacroce.com",
     );
   });
 

@@ -33,8 +33,8 @@ export default function DataDeletionPage() {
         <h2 className={styles.sectionTitle}>If you signed in with Google</h2>
         <p>
           To request deletion of your account, saved characters, and chat history, email{" "}
-          <a href="mailto:ccg@andrewlacroce.com?subject=Data%20deletion%20request">
-            ccg@andrewlacroce.com
+          <a href="mailto:portrayal-support@andrewlacroce.com?subject=Data%20deletion%20request">
+            portrayal-support@andrewlacroce.com
           </a>{" "}
           from the email address you signed in with, with the subject line{" "}
           <strong>&quot;Data deletion request&quot;</strong>. Include the name you signed in with if
