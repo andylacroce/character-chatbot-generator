@@ -12,3 +12,4 @@ export * from "./useCharacterCarousel";
 export * from "./characterCreation";
 export * from "./useCharacterCreation";
 export * from "./replayAudio";
+export * from "./account";

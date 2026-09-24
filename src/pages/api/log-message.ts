@@ -1,6 +1,8 @@
 /**
  * API endpoint for logging chat messages and events.
- * Stores logs using Vercel Blob or local file storage with XSS-safe HTML escaping.
+ * Stores logs using Vercel Blob or local file storage with XSS-safe HTML escaping. A
+ * signed-in user's logs go under their per-account prefix (utils/userBlobs.ts) so
+ * pages/api/account.ts can delete them with the account.
  */
 
 import { BlobNotFoundError, head, put } from "@vercel/blob";
@@ -8,6 +10,8 @@ import fs from "fs";
 import path from "path";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../utils/logger";
 import { escapeHtml } from "../../utils/security";
+import { chatLogPrefix } from "../../utils/userBlobs";
+import { getSessionUserId } from "../../utils/getSessionUserId";
 import { withRequestLog } from "../../utils/withRequestLog";
 
 /**
@@ -162,22 +166,16 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
     const cleanSender = safeSender.replace(/[\r\n\t\0\x0B\f]/g, "");
     const cleanText = safeText.replace(/[\r\n\t\0\x0B\f]/g, "");
 
-    // Extract and validate client IP (no geolocation for privacy)
-    const ip =
-      ((req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || "")
-        .split(",")[0]
-        .trim() || "UnknownIP";
-    const safeIp = ip.replace(/[^a-zA-Z0-9\.:_-]/g, ""); // Remove potentially dangerous characters
-    // End IP extraction
-
     const timestamp = new Date().toISOString();
-    const logEntry = `[${timestamp}] [${safeIp}] ${cleanSender}: ${cleanText}\n`;
+    // Deliberately no IP address: an IP would tie a guest's otherwise-anonymous log to a
+    // real person, which the privacy policy promises not to do.
+    const logEntry = `[${timestamp}] ${cleanSender}: ${cleanText}\n`;
 
     // --- Determine Log Filename ---
     // Sanitize filename to prevent directory traversal
     const safeSessionDatetime = sessionDatetime.replace(/[^a-zA-Z0-9_-]/g, "");
     const safeShortSessionId = sessionId.slice(0, 8).replace(/[^a-zA-Z0-9]/g, "");
-    const logFilename: string = `${safeSessionDatetime}_session_${safeShortSessionId}.log`;
+    const logFilename: string = `${chatLogPrefix(await getSessionUserId(req))}${safeSessionDatetime}_session_${safeShortSessionId}.log`;
     // --- End Determine Log Filename ---
 
     // --- Append to Log ---
@@ -245,7 +243,7 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
           throw new Error("Invalid log file path");
         }
 
-        fs.mkdirSync(logDir, { recursive: true });
+        fs.mkdirSync(path.dirname(resolvedFilePath), { recursive: true });
         fs.appendFileSync(resolvedFilePath, logEntry, "utf8");
       } catch (error) {
         logEvent(
@@ -271,7 +269,6 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
       sanitizeLogMeta({
         requestId,
         timestamp,
-        ip: safeIp,
         sender: cleanSender,
         sessionId,
         sessionDatetime,

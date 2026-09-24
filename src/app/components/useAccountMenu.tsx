@@ -3,7 +3,7 @@
 /**
  * Shared "account" bundle for a page's AppHeader hamburger: menu items leading with a
  * non-interactive identity label ("Guest" or the visitor's name), then change-name and
- * sign in/out — plus the modals those items open (NameCaptureModal, SignInModal). Used
+ * sign in/out and (signed in) account deletion — plus the modals those items open. Used
  * by every page's header (BotCreator.tsx, CharsGallery.tsx, ChatPage.tsx, GamePage.tsx)
  * — each appends its own page-specific items first, then this hook's `menuItems`, so
  * this logic lives in exactly one place instead of being copy-pasted per page.
@@ -17,10 +17,13 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSession, getProviders } from "next-auth/react";
-import { FaUser, FaUserShield, FaBan, FaTrophy, FaHistory } from "react-icons/fa";
+import { useSession, getProviders, signOut } from "next-auth/react";
+import { ACCOUNT_DELETE_CONFIRM, isPersonalStorageKey } from "character-chatbot-shared";
+import { FaUser, FaUserShield, FaBan, FaTrophy, FaHistory, FaTrashAlt } from "react-icons/fa";
 import { authenticatedFetch } from "../../utils/api";
+import { removeItemsWhere } from "../../utils/storage";
 import AuthControl from "./AuthControl";
+import ConfirmDialog from "./ConfirmDialog";
 import { NameCaptureModal } from "./NameCaptureModal";
 import SignInModal from "./SignInModal";
 import { useUserName, type UserNameContext } from "./useUserName";
@@ -52,6 +55,7 @@ export function useAccountMenu(): AccountMenu {
   const [providerIds, setProviderIds] = useState<string[] | null>(null);
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [showSignInModal, setShowSignInModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -95,6 +99,14 @@ export function useAccountMenu(): AccountMenu {
 
   const requestSignIn = () => setShowSignInModal(true);
 
+  // Server first; local data is only cleared once the account is really gone.
+  const deleteAccount = async () => {
+    const res = await authenticatedFetch("/api/account", { method: "DELETE" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    removeItemsWhere(isPersonalStorageKey);
+    await signOut({ callbackUrl: "/" });
+  };
+
   const identityLabel = session?.user
     ? userNameCtx.name || session.user.name || session.user.email || "Signed in"
     : userNameCtx.name || "Guest";
@@ -122,6 +134,12 @@ export function useAccountMenu(): AccountMenu {
         <FaTrophy size={18} className="menuIcon" />
         <span>Leaderboard</span>
       </Link>
+      {sessionStatus === "authenticated" && (
+        <button type="button" onClick={() => setShowDeleteAccountModal(true)}>
+          <FaTrashAlt size={18} className="menuIcon" />
+          <span>Delete account</span>
+        </button>
+      )}
       {isAdmin && (
         <>
           <div className="menuDivider" role="separator" />
@@ -156,6 +174,12 @@ export function useAccountMenu(): AccountMenu {
         show={showSignInModal}
         onClose={() => setShowSignInModal(false)}
         providerIds={providerIds}
+      />
+      <ConfirmDialog
+        show={showDeleteAccountModal}
+        copy={ACCOUNT_DELETE_CONFIRM}
+        onConfirm={deleteAccount}
+        onClose={() => setShowDeleteAccountModal(false)}
       />
     </>
   );

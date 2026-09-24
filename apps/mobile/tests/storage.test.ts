@@ -2,6 +2,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEYS, chatHistoryKey, type Bot, type ChatMessage } from "character-chatbot-shared";
 import {
   appendChatMessage,
+  clearLocalChats,
+  clearPersonalData,
   loadAudioEnabled,
   loadBot,
   loadChatHistory,
@@ -113,5 +115,29 @@ describe("storage", () => {
     expect(await loadGameInstructionsSeen()).toBe(false);
     await saveGameInstructionsSeen();
     expect(await loadGameInstructionsSeen()).toBe(true);
+  });
+
+  it("clearPersonalData removes chats and identity but keeps device preferences", async () => {
+    await saveUserName("Jane");
+    await AsyncStorage.setItem(chatHistoryKey("Zeus"), "[]");
+    await saveAudioEnabled(false);
+    await clearPersonalData();
+    expect(await loadUserName()).toBeNull();
+    expect(await AsyncStorage.getItem(chatHistoryKey("Zeus"))).toBeNull();
+    expect(await AsyncStorage.getItem(STORAGE_KEYS.audioEnabled)).not.toBeNull();
+  });
+
+  it("clearLocalChats removes one character's chat, or all chats", async () => {
+    await AsyncStorage.setItem(chatHistoryKey("Zeus"), "[]");
+    await AsyncStorage.setItem(chatHistoryKey("Hera"), "[]");
+    await saveUserName("Jane");
+
+    await clearLocalChats("Zeus");
+    expect(await AsyncStorage.getItem(chatHistoryKey("Zeus"))).toBeNull();
+    expect(await AsyncStorage.getItem(chatHistoryKey("Hera"))).toBe("[]");
+
+    await clearLocalChats();
+    expect(await AsyncStorage.getItem(chatHistoryKey("Hera"))).toBeNull();
+    expect(await loadUserName()).toBe("Jane");
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "portrayal",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -43,7 +43,8 @@
     "chars:backfill-display-names": "node scripts/backfill-avatar-display-names.cjs",
     "chars:backfill-categories": "node scripts/backfill-avatar-categories.cjs",
     "chars:backfill-full-names": "node scripts/backfill-full-character-names.cjs",
-    "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs"
+    "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs",
+    "logs:scrub-ips": "node scripts/scrub-chat-log-ips.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",

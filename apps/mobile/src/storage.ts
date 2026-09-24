@@ -9,6 +9,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   STORAGE_KEYS,
   chatHistoryKey,
+  isPersonalStorageKey,
+  isChatHistoryStorageKey,
+  chatStorageKeys,
   type Bot,
   type CarouselCache,
   type CharacterEntry,
@@ -116,3 +119,21 @@ export const carouselCache: CarouselCache = {
   save: (characters) =>
     AsyncStorage.setItem(STORAGE_KEYS.landingCarouselCache, JSON.stringify(characters)),
 };
+
+/** Removes every personal key (chats, characters, name, game state) after account deletion; keeps device preferences. */
+export async function clearPersonalData(): Promise<void> {
+  const keys = await AsyncStorage.getAllKeys();
+  await AsyncStorage.multiRemove(keys.filter(isPersonalStorageKey));
+}
+
+/** Removes one character's local chat (by name), or every local chat when no name is given. */
+export async function clearLocalChats(botName?: string): Promise<void> {
+  if (botName === undefined) {
+    const keys = await AsyncStorage.getAllKeys();
+    await AsyncStorage.multiRemove(keys.filter(isChatHistoryStorageKey));
+    return;
+  }
+  const keys = chatStorageKeys(botName);
+  if ((await loadBot())?.name === botName) keys.push(STORAGE_KEYS.bot);
+  await AsyncStorage.multiRemove(keys);
+}

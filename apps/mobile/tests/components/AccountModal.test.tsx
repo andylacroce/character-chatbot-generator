@@ -1,4 +1,5 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert } from "react-native";
 import AccountModal from "../../src/components/AccountModal";
 import { ThemeProvider } from "../../src/ThemeContext";
 import type { UserNameContext } from "../../src/useUserName";
@@ -200,5 +201,28 @@ describe("AccountModal", () => {
     fireEvent.press(await findByText("Close"));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("confirms before deleting the account, and shows an error if it fails", async () => {
+    const deleteAccount = jest.fn().mockRejectedValue(new Error("500"));
+    mockedUseAuth.mockReturnValue({
+      status: "signedIn",
+      email: "andy@example.com",
+      name: "Andy",
+      signIn: jest.fn(),
+      signOut: jest.fn(),
+      deleteAccount,
+    });
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const { findByText } = await renderModal();
+    await fireEvent.press(await findByText("Delete account"));
+    expect(deleteAccount).not.toHaveBeenCalled();
+
+    const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+    await act(async () => buttons.find((b) => b.text === "Delete account")?.onPress?.());
+
+    expect(deleteAccount).toHaveBeenCalled();
+    expect(await findByText("Couldn't delete your account. Please try again.")).toBeTruthy();
+    alertSpy.mockRestore();
   });
 });

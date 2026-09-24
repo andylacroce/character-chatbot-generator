@@ -10,10 +10,11 @@ jest.mock("next/navigation", () => ({
 }));
 
 const mockUseSession = jest.fn();
+const mockSignOut = jest.fn();
 jest.mock("next-auth/react", () => ({
   useSession: () => mockUseSession(),
   signIn: jest.fn(),
-  signOut: jest.fn(),
+  signOut: (...args: unknown[]) => mockSignOut(...args),
   getProviders: () => Promise.resolve({ google: { id: "google", name: "Google" } }),
 }));
 
@@ -24,13 +25,25 @@ jest.mock("@/src/utils/api", () => ({
 
 const authed = { data: { user: { id: "u1", email: "a@b.c" } }, status: "authenticated" };
 
-function mockBots(bots: unknown[]) {
-  mockAuthenticatedFetch.mockImplementation((url: string) =>
-    Promise.resolve({
-      json: async () => (url === "/api/bots" ? { bots } : { isAdmin: false }),
-    }),
+function mockBots(bots: unknown[], deleteOk = true) {
+  mockAuthenticatedFetch.mockImplementation((url: string, init?: RequestInit) =>
+    Promise.resolve(
+      init?.method === "DELETE"
+        ? { ok: deleteOk, status: deleteOk ? 200 : 500, json: async () => ({}) }
+        : { json: async () => (url === "/api/bots" ? { bots } : { isAdmin: false }) },
+    ),
   );
 }
+
+const savedBot = (id: string, name: string) => ({
+  id,
+  name,
+  personality: "p",
+  avatarUrl: null,
+  gender: null,
+  voiceConfig: null,
+  updatedAt: new Date().toISOString(),
+});
 
 describe("HistoryPage", () => {
   beforeEach(() => jest.clearAllMocks());
@@ -85,6 +98,73 @@ describe("HistoryPage", () => {
     mockAuthenticatedFetch.mockRejectedValue(new Error("down"));
     render(<HistoryPage />);
     expect(await screen.findByText(/No saved chats yet/)).toBeInTheDocument();
+  });
+
+  describe("deleting chats", () => {
+    beforeEach(() => {
+      localStorage.clear();
+      mockUseSession.mockReturnValue(authed);
+    });
+
+    it("deletes one chat after confirming, removing its row and local history", async () => {
+      localStorage.setItem("chatbot-history-Zeus", "[]");
+      localStorage.setItem("chatbot-history-Hera", "[]");
+      mockBots([savedBot("b1", "Zeus"), savedBot("b2", "Hera")]);
+      render(<HistoryPage />);
+
+      fireEvent.click(await screen.findByLabelText("Delete chat with Zeus"));
+      expect(screen.getByText("Delete your chat with Zeus?")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+      await waitFor(() => expect(screen.queryByText("Zeus")).toBeNull());
+      expect(mockAuthenticatedFetch).toHaveBeenCalledWith("/api/bots?id=b1", {
+        method: "DELETE",
+      });
+      expect(screen.getByText("Hera")).toBeInTheDocument();
+      expect(localStorage.getItem("chatbot-history-Zeus")).toBeNull();
+      expect(localStorage.getItem("chatbot-history-Hera")).toBe("[]");
+    });
+
+    it("keeps the chat when the delete fails", async () => {
+      mockBots([savedBot("b1", "Zeus")], false);
+      render(<HistoryPage />);
+      fireEvent.click(await screen.findByLabelText("Delete chat with Zeus"));
+      fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+      expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't delete this chat");
+      expect(screen.getByText("Zeus")).toBeInTheDocument();
+    });
+
+    it("clears every chat after confirming", async () => {
+      localStorage.setItem("chatbot-history-Zeus", "[]");
+      localStorage.setItem("darkMode", "true");
+      mockBots([savedBot("b1", "Zeus"), savedBot("b2", "Hera")]);
+      render(<HistoryPage />);
+
+      fireEvent.click(await screen.findByText("Clear all chats"));
+      fireEvent.click(screen.getByRole("button", { name: "Clear history" }));
+
+      expect(await screen.findByText(/No saved chats yet/)).toBeInTheDocument();
+      expect(mockAuthenticatedFetch).toHaveBeenCalledWith("/api/bots", { method: "DELETE" });
+      expect(localStorage.getItem("chatbot-history-Zeus")).toBeNull();
+      expect(localStorage.getItem("darkMode")).toBe("true");
+    });
+  });
+
+  it("account menu: deletes the account after confirming, then clears local data and signs out", async () => {
+    localStorage.setItem("chatbot-user-name", "Andy");
+    localStorage.setItem("darkMode", "true");
+    mockUseSession.mockReturnValue(authed);
+    mockBots([]);
+    render(<HistoryPage />);
+
+    fireEvent.click(screen.getByLabelText(/open menu/i));
+    fireEvent.click(await screen.findByText("Delete account"));
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete account" }).at(-1)!);
+
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalledWith({ callbackUrl: "/" }));
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith("/api/account", { method: "DELETE" });
+    expect(localStorage.getItem("chatbot-user-name")).toBeNull();
+    expect(localStorage.getItem("darkMode")).toBe("true");
   });
 
   it("Back falls back to / on a direct load", async () => {

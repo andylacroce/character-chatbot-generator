@@ -2,6 +2,12 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.17.0 — 2026-09-24 — Self-serve account and chat deletion
+
+- Signed-in users can now delete their own account from the account menu on the web, or the account screen in the mobile app. A confirmation step comes first; after that, deletion is immediate and permanent. It erases the account and everything tied to it: saved characters, chat history, preferred name, game scores and leaderboard name, pending magic-link tokens, and any portrait made only for that user's own characters. It also clears that browser's or device's saved chats and anonymous game identity, then signs out. Shared character portraits and anonymized usage counts are kept, since they aren't tied to the person. The privacy and data deletion pages now explain the in-app steps, with email kept as a fallback for anyone who can't sign in.
+- The Past chats page (web and mobile) can now delete a single saved chat or clear them all, each after a confirmation. This erases the character, its whole conversation, and any portrait made only for it; clearing everything also erases the user's chat troubleshooting logs.
+- Chat troubleshooting logs no longer record IP addresses, since an IP could tie an otherwise-anonymous guest's chat to a real person. A signed-in user's logs are now filed under their account, so the deletions above remove them too. A new opt-in script (`npm run logs:scrub-ips`) strips IPs from logs written before this change. The privacy policy now discloses these logs; it previously said guest chats were never stored on the server. It also no longer mentions the removed Google Tag Manager.
+
 ## v0.16.1 — 2026-09-24 — Removed Google Tag Manager
 
 - Removed Google Tag Manager (`GTM-WVFLVRGS`) and its `NEXT_PUBLIC_GOOGLE_TAG_MANAGER_ID` override. The container never held any tags: GA4 page views are sent directly, and product-usage events already live in the app's own `/admin` analytics. The consent prompt and privacy page now cover Google Analytics alone. The support contact email is now `portrayal-support@andrewlacroce.com`.

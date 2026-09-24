@@ -240,6 +240,18 @@ Drizzle ORM), so both survive across devices and browser sessions:
   copyright/trademark warning anyway, that character and its portrait are never saved to the
   shared avatar cache, Vercel Blob, or the user's own account — it works for that session
   only, exactly like a guest's.
+- **Deleting chats**: the Past chats page (web and mobile) can delete one saved chat or clear
+  them all, each behind a confirmation (`DELETE /api/bots[?id=]`). That removes the characters,
+  their messages (cascade), and portraits only they used. Clearing all also removes the
+  user's chat logs.
+- **Chat logs**: `/api/log-message` troubleshooting logs never record IP addresses. A signed-in
+  user's logs are filed under a hashed per-account Blob prefix so the deletions above can find
+  them. `npm run logs:scrub-ips [-- --dry-run]` strips IPs from logs written before this change.
+- **Account deletion**: signed-in users can delete their own account from the account menu
+  (web) or the account screen (mobile). `DELETE /api/account` erases it immediately: the
+  `users` row (which cascades to characters, chat history, and game scores), pending
+  magic-link tokens, that browser's guest game identity, any Blob portrait only their
+  characters used, and their chat logs. Shared cached portraits and anonymized analytics counts stay.
 - **Schema changes**: apply locally with `npm run db:push` (Drizzle Kit) after pulling
   changes to `src/db/schema.ts`. Not part of `npm run ci`, since it mutates external state.
 
@@ -456,7 +468,7 @@ The guessing game's round-generation progress streams over SSE. Check the browse
 
 ## Support
 
-Questions, bug reports, or data requests: [portrayal-support@andrewlacroce.com](mailto:portrayal-support@andrewlacroce.com). To delete your data, see the in-app [data deletion](https://character-chatbot-generator.vercel.app/data-deletion) page.
+Questions, bug reports, or data requests: [portrayal-support@andrewlacroce.com](mailto:portrayal-support@andrewlacroce.com). Signed-in users can delete their account themselves from the app's menu; see the [data deletion](https://character-chatbot-generator.vercel.app/data-deletion) page.
 
 ## Contributing
 

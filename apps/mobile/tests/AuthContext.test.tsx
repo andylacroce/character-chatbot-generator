@@ -8,7 +8,14 @@ jest.mock("../src/auth", () => ({
   signOut: jest.fn(),
 }));
 
+jest.mock("../src/api", () => ({ deleteAccount: jest.fn() }));
+jest.mock("../src/gameGuest", () => ({ clearGameGuestId: jest.fn() }));
+jest.mock("../src/storage", () => ({ clearPersonalData: jest.fn() }));
+
 import { getMobileSession, loadAuthToken, signIn, signOut } from "../src/auth";
+import { deleteAccount } from "../src/api";
+import { clearGameGuestId } from "../src/gameGuest";
+import { clearPersonalData } from "../src/storage";
 import { AuthProvider, useAuth } from "../src/AuthContext";
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -157,5 +164,34 @@ describe("AuthContext", () => {
     }
     const { getByText } = await render(<Consumer />);
     expect(getByText("loading")).toBeTruthy();
+  });
+
+  it("deleteAccount() erases server and local data, then signs out", async () => {
+    (loadAuthToken as jest.Mock).mockResolvedValue("tok");
+    (getMobileSession as jest.Mock).mockResolvedValue({ userId: "u1", email: "a@b.c", name: null });
+    (deleteAccount as jest.Mock).mockResolvedValue({ deleted: true });
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("signedIn"));
+
+    await act(() => result.current.deleteAccount());
+
+    expect(deleteAccount).toHaveBeenCalled();
+    expect(clearPersonalData).toHaveBeenCalled();
+    expect(clearGameGuestId).toHaveBeenCalled();
+    expect(signOut).toHaveBeenCalled();
+    expect(result.current.status).toBe("signedOut");
+  });
+
+  it("deleteAccount() keeps the session and local data when the server call fails", async () => {
+    (loadAuthToken as jest.Mock).mockResolvedValue("tok");
+    (getMobileSession as jest.Mock).mockResolvedValue({ userId: "u1", email: "a@b.c", name: null });
+    (deleteAccount as jest.Mock).mockRejectedValue(new Error("500"));
+    (clearPersonalData as jest.Mock).mockClear();
+    const { result } = await renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("signedIn"));
+
+    await expect(result.current.deleteAccount()).rejects.toThrow("500");
+    expect(clearPersonalData).not.toHaveBeenCalled();
+    expect(result.current.status).toBe("signedIn");
   });
 });

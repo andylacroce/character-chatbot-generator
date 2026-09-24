@@ -22,8 +22,16 @@ const mockOnConflictDoUpdate = jest.fn();
 const mockValues = jest.fn(() => ({ onConflictDoUpdate: mockOnConflictDoUpdate }));
 const mockInsert = jest.fn(() => ({ values: mockValues }));
 
-const mockDb = { select: mockSelect, insert: mockInsert };
+const mockReturning = jest.fn();
+const mockDelete = jest.fn(() => ({ where: () => ({ returning: mockReturning }) }));
+
+const mockDb = { select: mockSelect, insert: mockInsert, delete: mockDelete };
 jest.mock("../../../src/db/client", () => ({ getDb: () => mockDb }));
+
+const mockDeleteUserBlobs = jest.fn();
+jest.mock("../../../src/utils/userBlobs", () => ({
+  deleteUserBlobs: (...args: unknown[]) => mockDeleteUserBlobs(...args),
+}));
 
 describe("bots API", () => {
   const OLD_ENV = process.env;
@@ -41,7 +49,7 @@ describe("bots API", () => {
 
   it("returns 405 for unsupported methods", async () => {
     const handler = (await import("../../../src/pages/api/bots")).default;
-    const { req, res } = createMocks({ method: "DELETE" });
+    const { req, res } = createMocks({ method: "PUT" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
   });
@@ -78,6 +86,61 @@ describe("bots API", () => {
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
       expect(res._getJSONData()).toEqual({ bots: [] });
+    });
+  });
+
+  describe("DELETE (clear chat history)", () => {
+    const run = async (query: Record<string, string> = {}) => {
+      const handler = (await import("../../../src/pages/api/bots")).default;
+      const { req, res } = createMocks({ method: "DELETE", query });
+      await handler(req, res);
+      return res;
+    };
+
+    it("is a no-op for a guest", async () => {
+      mockGetSessionUserId.mockResolvedValue(null);
+      const res = await run();
+      expect(res._getJSONData()).toEqual({ cleared: 0 });
+      expect(mockDelete).not.toHaveBeenCalled();
+    });
+
+    it("deletes the user's bots in this environment and their blobs", async () => {
+      mockGetSessionUserId.mockResolvedValue("user-1");
+      mockReturning.mockResolvedValue([{ avatarUrl: "https://x/a.png" }, { avatarUrl: null }]);
+      mockDeleteUserBlobs.mockResolvedValue(1);
+      const res = await run();
+      expect(res._getStatusCode()).toBe(200);
+      expect(res._getJSONData()).toEqual({ cleared: 2 });
+      expect(mockEq).toHaveBeenCalledWith(expect.anything(), "user-1");
+      expect(mockDeleteUserBlobs).toHaveBeenCalledWith("user-1", ["https://x/a.png", null], {
+        chatLogs: true,
+      });
+    });
+
+    it("deletes a single character by id, keeping chat logs", async () => {
+      mockGetSessionUserId.mockResolvedValue("user-1");
+      mockReturning.mockResolvedValue([{ avatarUrl: null }]);
+      mockDeleteUserBlobs.mockResolvedValue(0);
+      const res = await run({ id: "bot-7" });
+      expect(res._getJSONData()).toEqual({ cleared: 1 });
+      expect(mockEq).toHaveBeenCalledWith(expect.anything(), "bot-7");
+      expect(mockDeleteUserBlobs).toHaveBeenCalledWith("user-1", [null], { chatLogs: false });
+    });
+
+    it("returns 500 when the delete fails", async () => {
+      mockGetSessionUserId.mockResolvedValue("user-1");
+      mockReturning.mockRejectedValue(new Error("db down"));
+      const res = await run();
+      expect(res._getStatusCode()).toBe(500);
+      expect(mockDeleteUserBlobs).not.toHaveBeenCalled();
+    });
+
+    it("still succeeds when blob cleanup fails", async () => {
+      mockGetSessionUserId.mockResolvedValue("user-1");
+      mockReturning.mockResolvedValue([{ avatarUrl: null }]);
+      mockDeleteUserBlobs.mockRejectedValue(new Error("blob down"));
+      const res = await run();
+      expect(res._getJSONData()).toEqual({ cleared: 1 });
     });
   });
 

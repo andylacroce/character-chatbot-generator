@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { getMobileSession, loadAuthToken, signIn, signOut, type SignInResult } from "./auth";
+import { deleteAccount } from "./api";
+import { clearGameGuestId } from "./gameGuest";
+import { clearPersonalData } from "./storage";
 
 type AuthStatus = "loading" | "signedIn" | "signedOut";
 
@@ -9,6 +12,8 @@ interface AuthContextValue {
   name: string | null;
   signIn: () => Promise<SignInResult>;
   signOut: () => Promise<void>;
+  /** Permanently deletes the account server-side, then this device's personal data, then signs out. Throws on failure. */
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -17,6 +22,7 @@ const AuthContext = createContext<AuthContextValue>({
   name: null,
   signIn: async () => ({ ok: false, error: "not_ready" }),
   signOut: async () => {},
+  deleteAccount: async () => {},
 });
 
 /**
@@ -92,9 +98,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setName(null);
   };
 
+  const handleDeleteAccount = async () => {
+    await deleteAccount();
+    await Promise.all([clearPersonalData(), clearGameGuestId()]);
+    await handleSignOut();
+  };
+
   return (
     <AuthContext.Provider
-      value={{ status, email, name, signIn: handleSignIn, signOut: handleSignOut }}
+      value={{
+        status,
+        email,
+        name,
+        signIn: handleSignIn,
+        signOut: handleSignOut,
+        deleteAccount: handleDeleteAccount,
+      }}
     >
       {children}
     </AuthContext.Provider>

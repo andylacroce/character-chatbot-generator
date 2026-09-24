@@ -183,6 +183,23 @@ export function saveUserProfile(name: string): Promise<{ persisted: boolean }> {
   return post("/api/user-profile", { name });
 }
 
+/** Deletes one saved chat by id, or (no id) clears every saved chat — see the backend's DELETE /api/bots. */
+export function deleteSavedChats(id?: string): Promise<{ cleared: number }> {
+  const query = id ? `?id=${encodeURIComponent(id)}` : "";
+  return apiFetch(`/api/bots${query}`, { method: "DELETE" });
+}
+
+/**
+ * Permanently deletes the signed-in account (see the backend's pages/api/account.ts). Sends
+ * this device's guest identity too, so its anonymous game results are erased with it.
+ */
+export async function deleteAccount(): Promise<{ deleted: boolean }> {
+  return apiFetch("/api/account", {
+    method: "DELETE",
+    headers: { "x-game-guest": await getGameGuestId() },
+  });
+}
+
 /**
  * The message from an ApiError whose body is the backend's usual `{ error }` JSON, falling
  * back to `fallback` for anything else (network failure, HTML error page).

@@ -41,3 +41,9 @@ export function getGameGuestId(): Promise<string> {
   }
   return cached;
 }
+
+/** Forgets this device's guest secret (after account deletion), so the next game mints a new one. */
+export async function clearGameGuestId(): Promise<void> {
+  cached = null;
+  await SecureStore.deleteItemAsync(STORAGE_KEYS.gameGuestId);
+}

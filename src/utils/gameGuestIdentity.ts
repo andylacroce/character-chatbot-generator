@@ -35,3 +35,8 @@ export function ensureGuestId(req: NextApiRequest, res: NextApiResponse): string
   );
   return hashGuestToken(token);
 }
+
+/** Expires this browser's guest identity cookie, so its next game mints a fresh one. */
+export function clearGuestId(res: NextApiResponse): void {
+  res.setHeader("Set-Cookie", `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`);
+}

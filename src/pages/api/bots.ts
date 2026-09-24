@@ -9,6 +9,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { bots } from "../../db/schema";
 import { getSessionUserId } from "../../utils/getSessionUserId";
+import { deleteUserBlobs } from "../../utils/userBlobs";
 import { sanitizeCharacterName } from "../../utils/security";
 import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
 import { getCurrentEnvironment } from "../../utils/environment";
@@ -98,19 +99,50 @@ const botsRateLimit = createRateLimiter({
  *         description: Rate limit exceeded
  *       500:
  *         description: Failed to list characters
+ *   delete:
+ *     summary: Delete one saved character, or clear the signed-in user's chat history
+ *     description: >
+ *       With `id`, deletes that one saved character (if it's the caller's) with its
+ *       messages and private portrait. Without it, deletes every saved character in the
+ *       current environment along with their messages, private portraits, and the user's
+ *       chat logs. Guests and deployments with no DATABASE_URL get `{ cleared: 0 }`.
+ *     tags: [Bots]
+ *     parameters:
+ *       - in: query
+ *         name: id
+ *         required: false
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Number of characters removed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 cleared:
+ *                   type: integer
+ *       405:
+ *         description: Method not allowed
+ *       429:
+ *         description: Rate limit exceeded
+ *       500:
+ *         description: Failed to clear chat history
  */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(botsRateLimit, req, res))) return;
 
-  if (req.method !== "POST" && req.method !== "GET") {
-    res.setHeader("Allow", ["GET", "POST"]);
+  if (req.method !== "POST" && req.method !== "GET" && req.method !== "DELETE") {
+    res.setHeader("Allow", ["GET", "POST", "DELETE"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
     return;
   }
 
   const userId = await getSessionUserId(req);
   if (!userId || !process.env.DATABASE_URL) {
-    res.status(200).json(req.method === "GET" ? { bots: [] } : { persisted: false });
+    const noop = { GET: { bots: [] }, DELETE: { cleared: 0 } }[req.method as string];
+    res.status(200).json(noop ?? { persisted: false });
     return;
   }
 
@@ -135,6 +167,53 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       );
       res.status(500).json({ error: "Failed to list characters" });
     }
+    return;
+  }
+
+  if (req.method === "DELETE") {
+    const id = typeof req.query.id === "string" ? req.query.id : null;
+    let deleted: { avatarUrl: string | null }[];
+    try {
+      // Cascades to `messages` via its FK to bots.id.
+      deleted = await db
+        .delete(bots)
+        .where(
+          and(
+            eq(bots.userId, userId),
+            eq(bots.environment, environment),
+            id ? eq(bots.id, id) : undefined,
+          ),
+        )
+        .returning({ avatarUrl: bots.avatarUrl });
+    } catch (err) {
+      logEvent(
+        "error",
+        "bots_clear_failed",
+        "Failed to clear chat history",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
+      res.status(500).json({ error: "Failed to clear chat history" });
+      return;
+    }
+    // History is already gone; a leftover blob is logged for manual cleanup, not a failure.
+    try {
+      await deleteUserBlobs(
+        userId,
+        deleted.map((row) => row.avatarUrl),
+        { chatLogs: !id },
+      );
+    } catch (err) {
+      logEvent(
+        "error",
+        "bots_clear_blob_failed",
+        "Chat history cleared but its avatar images or chat logs could not be removed",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
+    }
+    logEvent("info", id ? "bots_deleted" : "bots_cleared", "Saved chats deleted", {
+      count: deleted.length,
+    });
+    res.status(200).json({ cleared: deleted.length });
     return;
   }
 

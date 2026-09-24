@@ -22,6 +22,13 @@ describe("PrivacyPage", () => {
     expect(screen.getByText(/Google Analytics is optional/)).toBeInTheDocument();
   });
 
+  it("discloses chat troubleshooting logs and that account deletion removes a user's", () => {
+    render(<PrivacyPage />);
+    expect(screen.getByText(/plain-text log of each/)).toHaveTextContent(
+      /deleting your account removes them too/,
+    );
+  });
+
   it("links to the data deletion page", () => {
     render(<PrivacyPage />);
     expect(screen.getByText("data deletion instructions")).toHaveAttribute(

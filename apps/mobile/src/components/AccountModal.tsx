@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -9,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { ThemeColors } from "character-chatbot-shared";
+import { ACCOUNT_DELETE_CONFIRM, type ThemeColors } from "character-chatbot-shared";
 import { useTheme } from "../ThemeContext";
 import { useAuth } from "../AuthContext";
 import type { UserNameContext } from "../useUserName";
@@ -34,14 +35,14 @@ const SIGN_IN_ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
- * Sign in / sign out — mirrors the visual family of CopyrightWarningModal/
+ * Sign in / sign out / delete account — mirrors the visual family of CopyrightWarningModal/
  * CharacterDescriptionModal. Reachable from CreatorScreen's header only for this
  * pass (mobile has no shared header/menu component the way the web app does).
  */
 export default function AccountModal({ visible, onClose, userNameCtx, onOpenHistory }: Props) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const { status, email, name, signIn, signOut } = useAuth();
+  const { status, email, name, signIn, signOut, deleteAccount } = useAuth();
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState("");
   const [showEditName, setShowEditName] = useState(false);
@@ -61,6 +62,20 @@ export default function AccountModal({ visible, onClose, userNameCtx, onOpenHist
   const handleSignOut = async () => {
     setError("");
     await signOut();
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(ACCOUNT_DELETE_CONFIRM.title, ACCOUNT_DELETE_CONFIRM.body, [
+      { text: ACCOUNT_DELETE_CONFIRM.cancelLabel, style: "cancel" },
+      {
+        text: ACCOUNT_DELETE_CONFIRM.confirmLabel,
+        style: "destructive",
+        onPress: () => {
+          setError("");
+          deleteAccount().catch(() => setError(ACCOUNT_DELETE_CONFIRM.errorMessage));
+        },
+      },
+    ]);
   };
 
   const handleClose = () => {
@@ -83,6 +98,7 @@ export default function AccountModal({ visible, onClose, userNameCtx, onOpenHist
             <>
               <Text style={styles.title}>Signed in</Text>
               <Text style={styles.identity}>{name || email}</Text>
+              {error ? <Text style={styles.error}>{error}</Text> : null}
               <Pressable style={styles.primaryButton} onPress={handleSignOut}>
                 <Text style={styles.primaryButtonText}>Sign out</Text>
               </Pressable>
@@ -122,6 +138,12 @@ export default function AccountModal({ visible, onClose, userNameCtx, onOpenHist
             <Pressable style={styles.nameRow} onPress={onOpenHistory}>
               <Text style={styles.nameRowLabel}>Past chats</Text>
               <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+            </Pressable>
+          ) : null}
+
+          {status === "signedIn" ? (
+            <Pressable style={styles.nameRow} onPress={handleDeleteAccount}>
+              <Text style={styles.deleteLabel}>Delete account</Text>
             </Pressable>
           ) : null}
 
@@ -196,5 +218,6 @@ function makeStyles(colors: ThemeColors) {
     nameRowLabel: { color: colors.text, fontSize: 14 },
     nameRowRight: { flexDirection: "row", alignItems: "center", gap: 6 },
     nameRowValue: { color: colors.textSecondary, fontSize: 14 },
+    deleteLabel: { color: colors.error, fontSize: 14 },
   });
 }

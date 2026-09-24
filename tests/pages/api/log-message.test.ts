@@ -13,6 +13,11 @@ jest.mock("@vercel/blob", () => {
   };
 });
 
+const mockGetSessionUserId = jest.fn();
+jest.mock("../../../src/utils/getSessionUserId", () => ({
+  getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
+}));
+
 const mockMkdirSync = jest.fn();
 const mockAppendFileSync = jest.fn();
 jest.mock("fs", () => ({
@@ -164,17 +169,11 @@ describe("log-message API", () => {
       });
       const [filePath, entry, encoding] = mockAppendFileSync.mock.calls[0];
       expect(filePath).toContain("2026-08-23T10-00-00_session_abcdef12.log");
-      expect(entry).toContain("[198.51.100.4]");
+      expect(entry).not.toContain("198.51.100.4");
       expect(entry).toContain("User: hello there");
       expect(encoding).toBe("utf8");
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ success: true, requestId: "generated-id" });
-    });
-
-    it("falls back to the socket address when no forwarding header is present", async () => {
-      await handler(makeReq(validBody), makeRes());
-
-      expect(mockAppendFileSync.mock.calls[0][1]).toContain("[203.0.113.7]");
     });
 
     it("escapes HTML so stored logs cannot carry script payloads", async () => {
@@ -254,6 +253,16 @@ describe("log-message API", () => {
         token: "blob-token",
       });
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("files a signed-in user's log under their hashed account prefix", async () => {
+      mockGetSessionUserId.mockResolvedValueOnce("user-1");
+      mockHead.mockRejectedValueOnce(blobNotFound());
+      await handler(makeReq(validBody), makeRes());
+
+      expect(mockPut.mock.calls[0][0]).toMatch(
+        /^chat-logs\/users\/[0-9a-f]{64}\/2026-08-23T10-00-00_session_abcdef12\.log$/,
+      );
     });
 
     it("starts a fresh log when the blob does not exist yet", async () => {

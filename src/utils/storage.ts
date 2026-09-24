@@ -151,10 +151,25 @@ export function migrateToVersioned<T = unknown>(
   }
 }
 
+/** Removes every stored key matching `predicate` (e.g. all personal data on account deletion). */
+export function removeItemsWhere(predicate: (key: string) => boolean) {
+  try {
+    if (storageAvailable()) {
+      const keys = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
+      for (const key of keys) if (key && predicate(key)) localStorage.removeItem(key);
+      return;
+    }
+  } catch {
+    // Fall back to in-memory storage
+  }
+  for (const key of [...memoryFallback.keys()]) if (predicate(key)) memoryFallback.delete(key);
+}
+
 const storageExports = {
   setItem,
   getItem,
   removeItem,
+  removeItemsWhere,
   setJSON,
   getJSON,
   clearMemoryFallback,

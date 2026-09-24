@@ -33,11 +33,18 @@ export default function PrivacyPage() {
         <h2 className={styles.sectionTitle}>Using the app without an account</h2>
         <p>
           You do not need an account to use this app. As a guest, the character you create and your
-          conversation with it are stored only in your own browser (local storage) and are never
-          saved to our servers. Closing your browser, clearing site data, or switching devices will
-          lose that history, exactly as you&apos;d expect from browser-only storage. The one
-          exception is the guessing game, which tracks a guest&apos;s best streak server-side — see{" "}
-          <strong>Guessing game</strong> below.
+          conversation with it are stored only in your own browser (local storage), not in an
+          account. Closing your browser, clearing site data, or switching devices will lose that
+          history, exactly as you&apos;d expect from browser-only storage. The guessing game also
+          tracks a guest&apos;s best streak server-side — see <strong>Guessing game</strong> below.
+        </p>
+        <p>
+          For troubleshooting and abuse prevention, the server also keeps a plain-text log of each
+          chat session&apos;s messages, labeled with the time only, never your IP address. This
+          applies to guests and signed-in users alike, and the logs are read only when investigating
+          a problem. If you&apos;re signed in, your logs are filed under your account (never your
+          name or email) so deleting your account removes them too. Guest logs aren&apos;t linked to
+          anyone.
         </p>
         <p>
           Regardless of whether you&apos;re signed in, the text you send is sent to Anthropic&apos;s
@@ -106,10 +113,9 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          If you explicitly allow analytics, Google Analytics and tags managed through Google Tag
-          Manager may also set analytics cookies that help us count visits and understand page
-          navigation. These are disabled unless you opt in, and you can change that choice below at
-          any time. We do not use advertising cookies.
+          If you explicitly allow analytics, Google Analytics may also set analytics cookies that
+          help us count visits and understand page navigation. These are disabled unless you opt in,
+          and you can change that choice below at any time. We do not use advertising cookies.
         </p>
       </div>
 
@@ -153,9 +159,9 @@ export default function PrivacyPage() {
             characters, and chat history.
           </li>
           <li>
-            <strong>Vercel</strong> — hosts the app, stores generated avatar images, and provides
-            basic, non-advertising traffic analytics (page views and performance, not individual
-            tracking or ad targeting).
+            <strong>Vercel</strong> — hosts the app, stores generated avatar images and chat
+            troubleshooting logs, and provides basic, non-advertising traffic analytics (page views
+            and performance, not individual tracking or ad targeting).
           </li>
         </ul>
         <p>
@@ -180,9 +186,12 @@ export default function PrivacyPage() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>Data retention and deletion</h2>
         <p>
-          If you signed in, your account, saved characters, and chat history are kept until you ask
-          us to delete them. See our <a href="/data-deletion">data deletion instructions</a> for how
-          to request that.
+          If you signed in, your account, saved characters, and chat history are kept until you
+          delete them. On the <strong>Past chats</strong> page you can delete any single chat, or
+          clear them all. To delete everything, open the menu and choose{" "}
+          <strong>Delete account</strong>. Either way, the data is erased immediately once you
+          confirm. See our <a href="/data-deletion">data deletion instructions</a> for the full
+          details.
         </p>
       </div>
 
