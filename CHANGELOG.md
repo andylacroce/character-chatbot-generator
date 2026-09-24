@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.15.1 — 2026-09-24 — Mobile native dependencies checked against the Expo SDK in CI
+
+- Mobile's `react-native-safe-area-context` is back on the version Expo Go ships (5.7). A Dependabot bump to 5.10 passed CI but would have failed on a device, since Jest mocks native modules.
+- Mobile CI now runs `expo install --check` first, so any native package that drifts from the Expo SDK fails a required check and Dependabot's auto-merge won't land it. JS-only packages deliberately ahead of Expo's pins (React 19.3, Jest 30, TypeScript 7) are excluded from that check. Dependabot no longer ignores React, React Native, or Expo upgrades; CI decides instead.
+
 ## v0.15.0 — 2026-09-23 — "Museum Placard" theme, and one shared color source for web and mobile
 
 - The web app has a new look, "Museum Placard": Spectral (headings/names) and Source Serif 4 (body text) replace the former sans-serif type, with Courier Prime for small typewriter-style tags and labels. Colors moved from the earlier clay-and-teal palette to a quieter sepia-ink and patina-green on parchment, extending the same archival language the Character Wall (`/chars`) already had to the whole app, in both light and dark. Several components' ad hoc per-component font overrides ("Lora", "Playfair Display", "Cormorant Garamond", each loaded separately) are gone in favor of the app's own shared type tokens.
