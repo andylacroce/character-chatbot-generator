@@ -29,24 +29,25 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - [Storage (Client-Side)](#storage-client-side)
 - [Project Structure](#project-structure)
 - [Troubleshooting](#troubleshooting)
+- [Support](#support)
 - [Contributing](#contributing)
 - [License & Disclaimer](#license--disclaimer)
 - [Agent Instructions](#agent-instructions)
 
 ## Key Features
 
-- **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with streaming responses and conversation summarization
+- **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with conversation summarization
 - **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions, backed by a permanent allow/block list and an admin-only `/admin/moderation` panel
 - **Guessing Game**: A second mode at `/game` — chat with a named character who steers the conversation toward a different, hidden figure; guesses go in the same chat box (no separate control), a correct one promotes that figure to your new chat partner, and the streak keeps building — see [Guessing Game](#guessing-game-game)
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
 - **Avatar Generation**: Claude generates a detailed image prompt; a free image provider renders the portrait — Cloudflare Workers AI (Flux Schnell) first, falling back to Pollinations.ai if it's unconfigured or fails — returned as a base64 data URL (or a durable Vercel Blob URL, if configured)
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 20 messages, with a rolling summary checkpoint for signed-in users so long conversations stay cheap
-- **Real-time Streaming**: Server-Sent Events (SSE) for live response delivery
+- **Live Progress**: The guessing game streams real, server-reported progress (Server-Sent Events) while it builds each new character
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
 - **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, presented as a responsive tattered-parchment mosaic — see [Character Wall](#character-wall-chars)
 - **Personalized Greeting**: Characters can greet you by name — a one-time, skippable prompt the first time you create a character, editable anytime from the account menu — see [Personalized Greeting](#personalized-greeting)
 - **Privacy-conscious Analytics**: Cookie-free Vercel traffic metrics, consent-gated Google Analytics 4, and a small self-hosted product-usage log with an admin-only `/admin` stats view — see [Internal Analytics](#internal-analytics-admin)
-- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,100+ passing tests
+- **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,400+ passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
 - **Android/iOS App**: An Expo (React Native) client in `apps/mobile` with the same creation flow, chat, Character Wall, guessing game, leaderboard, and Past chats, calling this app's API. Logic, copy, and types live once in `packages/shared` and both clients use them. See [`apps/mobile/README.md`](apps/mobile/README.md)
@@ -199,10 +200,10 @@ Multi-layered protection for all API endpoints:
 
 - **Origin Validation**: Automatic authentication for localhost, Vercel production, and preview deployments
 - **API Key Authentication**: External origins require valid `x-api-key` header matching `API_SECRET`
-- **Route Protection**: All `/api/*` endpoints secured via proxy middleware
+- **Route Protection**: All `/api/*` endpoints pass through `src/proxy.ts`
 - **Request Logging**: Failed authentication attempts logged for monitoring
 
-**Custom Domains**: Update `allowedHosts` in `proxy.ts` when deploying to custom domains.
+**Custom Domains**: Update `allowedHosts` in `src/proxy.ts` when deploying to custom domains.
 
 ## Account Persistence (Optional)
 
@@ -211,7 +212,7 @@ The app is fully usable as a guest — nothing below is required. When `DATABASE
 with Google to save their characters and chat history server-side (Neon Postgres via
 Drizzle ORM), so both survive across devices and browser sessions:
 
-- **Sign-in**: A landing-page-only control (`AuthControl`) using Auth.js (`next-auth@4`,
+- **Sign-in**: A "Sign in" item in every page's account menu (`AuthControl`), using Auth.js (`next-auth@4`,
   JWT sessions, no `sessions` table). Clicking "Sign in" opens an in-page lightbox
   (`SignInModal`) with a "Continue with Google" button, rather than redirecting straight
   off-site or (Auth.js's default) a bare picker page. On Vercel preview deployments, an
@@ -338,10 +339,8 @@ Vercel Analytics/Speed Insights (already wired into `src/app/layout.tsx`) cover 
 views and performance. Production also has consent-gated GA4 traffic/navigation metrics
 (`G-W01K2YSWH4`); `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` can override that ID or enable the flow in
 development. `GoogleAnalyticsConsent.tsx` does not load the Google tag until the visitor opts in,
-stores only that choice locally, and lets them change it from the privacy page. Google Tag Manager
-was removed as unused; add it back only with tags that don't duplicate the direct GA4 page views.
-The self-hosted layer below records a deliberately
-small set of product-usage events rather than acting as a general-purpose observability service.
+stores only that choice locally, and lets them change it from the privacy page. The self-hosted layer below records a deliberately small set of product-usage events rather than
+acting as a general-purpose observability service.
 
 - **Why it exists**: most usage — guest sessions, likely the majority of traffic since
   sign-in isn't required — never touches the database at all, so without this, real usage
@@ -368,8 +367,8 @@ small set of product-usage events rather than acting as a general-purpose observ
   runs have no ending event, and the event counts are best effort.
 - **Discoverable, if you're an admin**: a cheap `GET /api/admin/is-admin` check (no
   database query — just the same session/allowlist check the page itself enforces) lets
-  the account menu show an "Admin Stats" link only to signed-in admins, instead of it
-  being an unlinked URL you have to remember. This is a convenience, not the security
+  the account menu show an Admin section (Stats and Moderation links) only to signed-in
+  admins, instead of them being unlinked URLs you have to remember. This is a convenience, not the security
   boundary — the page and its data endpoint enforce their own access control regardless
   of whether the link is visible.
 - **Fully optional**: skip `ADMIN_EMAILS` (and even `DATABASE_URL`) and nothing about the
@@ -415,6 +414,7 @@ src/
    app/                  # Next.js App Router UI
       components/        # Client components and hooks (ChatShell, GamePage, useBotCreation, ...)
       chars/, game/, leaderboard/, history/, admin/, auth/  # Character Wall, guessing game, leaderboard, Past chats, admin, sign-in
+      privacy/, data-deletion/, reference/  # Privacy policy, data deletion, API reference (Scalar)
    pages/api/            # API routes (Pages Router; server handlers are authoritative)
       chat.ts            # Main chat endpoint with streaming & summarization
       audio.ts           # TTS audio generation (also regenerates replay audio on demand)
@@ -450,9 +450,13 @@ React hydration warnings from browser extensions (e.g., Dark Reader) are expecte
 
 Ensure `GOOGLE_APPLICATION_CREDENTIALS_JSON` is set correctly and the service account has Text-to-Speech API enabled.
 
-### Streaming Issues
+### Game Progress Stuck Loading
 
-Check browser console for SSE connection errors. Ensure the API endpoint isn't being blocked by corporate firewalls.
+The guessing game's round-generation progress streams over SSE. Check the browser console for connection errors, and make sure a corporate proxy or firewall isn't buffering or blocking `/api/game/*` responses.
+
+## Support
+
+Questions, bug reports, or data requests: [portrayal-support@andrewlacroce.com](mailto:portrayal-support@andrewlacroce.com). To delete your data, see the in-app [data deletion](https://character-chatbot-generator.vercel.app/data-deletion) page.
 
 ## Contributing
 
