@@ -4,6 +4,7 @@
  */
 
 import Link from "next/link";
+import { AnalyticsPreferences } from "../components/GoogleAnalyticsConsent";
 import styles from "../components/styles/LegalPage.module.css";
 
 export const metadata = {
@@ -18,7 +19,7 @@ export default function PrivacyPage() {
         &larr; Back to Portrayal
       </Link>
       <h1 className={styles.title}>Privacy Policy</h1>
-      <p className={styles.updated}>Last updated: September 2026</p>
+      <p className={styles.updated}>Last updated: September 24, 2026</p>
 
       <div className={styles.section}>
         <p>
@@ -92,7 +93,7 @@ export default function PrivacyPage() {
 
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>Cookies</h2>
-        <p>We use two functional cookies, never advertising or tracking cookies:</p>
+        <p>We use two functional cookies:</p>
         <ul>
           <li>
             <strong>Sign-in session</strong> (if you sign in): an encrypted session cookie set by
@@ -104,6 +105,22 @@ export default function PrivacyPage() {
             for the leaderboard described above. Set only if you play the guessing game as a guest.
           </li>
         </ul>
+        <p>
+          If you explicitly allow analytics, Google Analytics and tags managed through Google Tag
+          Manager may also set analytics cookies that help us count visits and understand page
+          navigation. These are disabled unless you opt in, and you can change that choice below at
+          any time. We do not use advertising cookies.
+        </p>
+      </div>
+
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Analytics choices</h2>
+        <p>
+          Google Analytics and Tag Manager are optional. Whether you allow or decline them, the rest
+          of the app works the same. Changing your choice takes effect immediately for future
+          collection.
+        </p>
+        <AnalyticsPreferences />
       </div>
 
       <div className={styles.section}>
@@ -118,6 +135,12 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Google</strong> — if you choose to sign in, for authentication only.
+          </li>
+          <li>
+            <strong>Google Analytics and Google Tag Manager</strong> — only if you opt in, load the
+            site&apos;s analytics tags and receive page URLs and basic device, browser, and
+            approximate-location information so we can understand site traffic. Portrayal never
+            pushes your chat text, character names, or guesses into the tag data layer.
           </li>
           <li>
             <strong>Cloudflare</strong> — renders character portraits (Workers AI), when configured.

@@ -19,6 +19,7 @@ describe("PrivacyPage", () => {
     expect(screen.getAllByText(/Anthropic/).length).toBeGreaterThan(0);
     expect(screen.getByText(/Neon/)).toBeInTheDocument();
     expect(screen.getByText(/Vercel/)).toBeInTheDocument();
+    expect(screen.getByText(/Google Analytics and Tag Manager are optional/)).toBeInTheDocument();
   });
 
   it("links to the data deletion page", () => {
