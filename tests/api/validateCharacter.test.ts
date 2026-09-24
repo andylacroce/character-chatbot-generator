@@ -87,35 +87,35 @@ describe("validate-character API", () => {
   });
 
   it("returns 405 if method is not POST", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
   });
 
   it("returns 400 if name is missing", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: {} });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
   });
 
   it("returns 400 if name is not a string", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: 123 } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
   });
 
   it("returns 400 if name is empty", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "   " } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
   });
 
   it("returns validation result for public domain character", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       // Not on the curated allowlist (src/utils/characterAllowlist.ts) — this test
@@ -162,7 +162,7 @@ describe("validate-character API", () => {
       ],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Hero" },
@@ -183,7 +183,7 @@ describe("validate-character API", () => {
   });
 
   it("short-circuits to warningLevel none for a name on the curated public-domain allowlist, without calling Claude", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Sherlock Holmes" },
@@ -203,7 +203,7 @@ describe("validate-character API", () => {
     // the allowlist check happens first and short-circuits before the blocklist is
     // ever consulted (asserted below), so a queued-but-never-consumed once-value
     // would otherwise leak into a later test's call.
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Thor" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -229,7 +229,7 @@ describe("validate-character API", () => {
       ],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Spider-Man" },
@@ -266,7 +266,7 @@ describe("validate-character API", () => {
     });
     mockScrubCachedAvatar.mockResolvedValueOnce(true);
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Spider-Man" },
@@ -302,7 +302,7 @@ describe("validate-character API", () => {
       ],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Elsa" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -330,7 +330,7 @@ describe("validate-character API", () => {
       createdAt: new Date(),
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Elsa" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -360,7 +360,7 @@ describe("validate-character API", () => {
       createdAt: new Date(),
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Bill Cosby" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -374,7 +374,7 @@ describe("validate-character API", () => {
   });
 
   it("does not call scrubCachedAvatar for a caution-level or safe name", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Ada Lovelace" },
@@ -401,7 +401,7 @@ describe("validate-character API", () => {
       ],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Some Abusive Name" },
@@ -442,7 +442,7 @@ describe("validate-character API", () => {
       ],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Bill Cosby" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -472,7 +472,7 @@ describe("validate-character API", () => {
       ],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Ada Lovelace" } });
     await handler(req, res);
     expect(res._getJSONData().blocked).toBe(false);
@@ -480,7 +480,7 @@ describe("validate-character API", () => {
 
   it("defaults blocked to false on a Claude API error", async () => {
     mockCreate.mockRejectedValueOnce(new Error("Claude is down"));
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Ada Lovelace" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -503,7 +503,7 @@ describe("validate-character API", () => {
       ],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "SomeUnknownCharacter" },
@@ -517,7 +517,7 @@ describe("validate-character API", () => {
   it("handles Claude API errors gracefully", async () => {
     mockCreate.mockRejectedValueOnce(new Error("Claude API error"));
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Test Character" },
@@ -535,7 +535,7 @@ describe("validate-character API", () => {
       content: [{ type: "text", text: "invalid json string" }],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Test" },
@@ -561,7 +561,7 @@ describe("validate-character API", () => {
       ],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Homer" },
@@ -583,7 +583,7 @@ describe("validate-character API", () => {
       ],
     });
 
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Partial" },
@@ -597,7 +597,7 @@ describe("validate-character API", () => {
   });
 
   it("extracts IP from x-forwarded-for header", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Test" },
@@ -608,7 +608,7 @@ describe("validate-character API", () => {
   });
 
   it("extracts IP from x-real-ip header when x-forwarded-for is missing", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Test" },
@@ -619,7 +619,7 @@ describe("validate-character API", () => {
   });
 
   it("handles request with connection.remoteAddress fallback", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Test" },
@@ -631,7 +631,7 @@ describe("validate-character API", () => {
   });
 
   it("handles request with socket.remoteAddress fallback", async () => {
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { name: "Test" },
@@ -646,7 +646,7 @@ describe("validate-character API", () => {
     mockCreate.mockResolvedValueOnce({
       content: [{ type: "image" }],
     });
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Test" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -663,7 +663,7 @@ describe("validate-character API", () => {
         },
       ],
     });
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Test" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -673,7 +673,7 @@ describe("validate-character API", () => {
 
   it("covers non-Error thrown in catch (L118 cond-expr[1])", async () => {
     mockCreate.mockRejectedValueOnce("plain rejection string");
-    const handler = (await import("../../pages/api/validate-character")).default;
+    const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Test" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);

@@ -58,7 +58,7 @@ describe("game/give-up API", () => {
   });
 
   it("returns 405 for non-POST methods", async () => {
-    const handler = require("../../../../pages/api/game/give-up").default;
+    const handler = require("../../../../src/pages/api/game/give-up").default;
     const req = { method: "GET" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -66,7 +66,7 @@ describe("game/give-up API", () => {
   });
 
   it("returns 400 for an invalid or expired game token", async () => {
-    const handler = require("../../../../pages/api/game/give-up").default;
+    const handler = require("../../../../src/pages/api/game/give-up").default;
     const req = makeReq({ gameToken: "not-a-real-token" });
     const res = makeRes();
     await handler(req, res);
@@ -77,7 +77,7 @@ describe("game/give-up API", () => {
 
   it("reveals the hidden name and ends the run without touching Claude or audio", async () => {
     const token = signGameState(makeGameState());
-    const handler = require("../../../../pages/api/game/give-up").default;
+    const handler = require("../../../../src/pages/api/game/give-up").default;
     const req = makeReq({ gameToken: token });
     const res = makeRes();
     await handler(req, res);

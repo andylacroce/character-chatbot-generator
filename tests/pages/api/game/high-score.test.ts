@@ -28,7 +28,7 @@ describe("game/high-score API", () => {
   });
 
   it("returns 405 for unsupported methods", async () => {
-    const handler = (await import("../../../../pages/api/game/high-score")).default;
+    const handler = (await import("../../../../src/pages/api/game/high-score")).default;
     const { req, res } = createMocks({ method: "POST" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
@@ -36,7 +36,7 @@ describe("game/high-score API", () => {
 
   it("returns a null high score for a guest (no session)", async () => {
     mockGetSessionUserId.mockResolvedValue(null);
-    const handler = (await import("../../../../pages/api/game/high-score")).default;
+    const handler = (await import("../../../../src/pages/api/game/high-score")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -47,7 +47,7 @@ describe("game/high-score API", () => {
   it("is a no-op when signed in but DATABASE_URL is not configured", async () => {
     delete process.env.DATABASE_URL;
     mockGetSessionUserId.mockResolvedValue("user-1");
-    const handler = (await import("../../../../pages/api/game/high-score")).default;
+    const handler = (await import("../../../../src/pages/api/game/high-score")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -58,7 +58,7 @@ describe("game/high-score API", () => {
   it("returns the signed-in user's stored personal best", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockGetHighScore.mockResolvedValue(7);
-    const handler = (await import("../../../../pages/api/game/high-score")).default;
+    const handler = (await import("../../../../src/pages/api/game/high-score")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -69,7 +69,7 @@ describe("game/high-score API", () => {
   it("returns null for a signed-in user who has never beaten a streak", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockGetHighScore.mockResolvedValue(null);
-    const handler = (await import("../../../../pages/api/game/high-score")).default;
+    const handler = (await import("../../../../src/pages/api/game/high-score")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getJSONData()).toEqual({ highScore: null });

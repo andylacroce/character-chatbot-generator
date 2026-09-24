@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import GameInstructionsModal from "@/app/components/GameInstructionsModal";
+import GameInstructionsModal from "@/src/app/components/GameInstructionsModal";
 
 describe("GameInstructionsModal", () => {
   it("renders nothing when show is false", () => {

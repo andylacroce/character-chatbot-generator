@@ -11,7 +11,7 @@ describe("admin/is-admin API", () => {
   });
 
   it("returns 405 for non-GET methods", async () => {
-    const handler = (await import("../../../../pages/api/admin/is-admin")).default;
+    const handler = (await import("../../../../src/pages/api/admin/is-admin")).default;
     const { req, res } = createMocks({ method: "POST" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
@@ -19,7 +19,7 @@ describe("admin/is-admin API", () => {
 
   it("returns isAdmin: true for an admin session", async () => {
     mockIsAdmin.mockResolvedValue(true);
-    const handler = (await import("../../../../pages/api/admin/is-admin")).default;
+    const handler = (await import("../../../../src/pages/api/admin/is-admin")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -28,7 +28,7 @@ describe("admin/is-admin API", () => {
 
   it("returns isAdmin: false for a guest or non-admin — never 401/403", async () => {
     mockIsAdmin.mockResolvedValue(false);
-    const handler = (await import("../../../../pages/api/admin/is-admin")).default;
+    const handler = (await import("../../../../src/pages/api/admin/is-admin")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -37,7 +37,7 @@ describe("admin/is-admin API", () => {
 
   it("fails closed to isAdmin: false when the check throws", async () => {
     mockIsAdmin.mockRejectedValue(new Error("session lookup failed"));
-    const handler = (await import("../../../../pages/api/admin/is-admin")).default;
+    const handler = (await import("../../../../src/pages/api/admin/is-admin")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);

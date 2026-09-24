@@ -33,7 +33,7 @@ jest.mock("../src/utils/logger", () => ({
   sanitizeLogMeta: jest.fn((meta: Record<string, unknown>) => meta),
 }));
 
-import { proxy, config } from "../proxy";
+import { proxy, config } from "../src/proxy";
 import { logEvent } from "../src/utils/logger";
 
 const API_SECRET = "test-secret";

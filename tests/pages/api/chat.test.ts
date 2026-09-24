@@ -5,7 +5,7 @@ import {
   messages as messagesTable,
   users as usersTable,
 } from "../../../src/db/schema";
-import handlerDefault from "../../../pages/api/chat";
+import handlerDefault from "../../../src/pages/api/chat";
 
 // Phase 3c: chat.ts looks up a signed-in user's saved character before deciding whether to
 // trust the client-supplied personality/history or the server's own copy. Defaults to a

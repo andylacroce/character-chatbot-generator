@@ -1,7 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import ChatMessagesList from "../../../app/components/ChatMessagesList";
-import { Bot } from "../../../app/components/BotCreator";
+import ChatMessagesList from "../../../src/app/components/ChatMessagesList";
+import { Bot } from "../../../src/app/components/BotCreator";
 
 const mockBot: Bot = {
   name: "Gandalf",

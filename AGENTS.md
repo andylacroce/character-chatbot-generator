@@ -10,8 +10,8 @@ Portrayal is a Next.js 16, React 19, and TypeScript application for creating and
 chatting with historical, mythological, literary, and original characters. It uses a
 hybrid routing architecture:
 
-- `app/` contains App Router pages, UI components, hooks, and CSS modules.
-- `pages/api/` contains the authoritative Pages Router API handlers. Do not migrate
+- `src/app/` contains App Router pages, UI components, hooks, and CSS modules.
+- `src/pages/api/` contains the authoritative Pages Router API handlers. Do not migrate
   these to App Router route handlers as incidental cleanup.
 - `src/` contains shared configuration, database, types, and utilities.
 - `tests/` mirrors the source tree and uses Jest plus Testing Library.
@@ -118,14 +118,14 @@ it runs because its format step writes files.
 - Add no production dependency unless it materially improves the requested solution.
 - Keep TypeScript types explicit at public boundaries; avoid `any` and unchecked casts.
 - Add a one-sentence `/** ... */` JSDoc summary immediately above every new top-level
-  function, component, or hook under `app/components/`, `src/`, and `pages/api/`.
+  function, component, or hook under `src/app/components/`, `src/`, and `src/pages/api/`.
   Parameters and return tags are optional unless they clarify a non-obvious contract.
 - Inline comments should explain constraints or reasoning, not restate the code.
 - Preserve accessibility: semantic controls, keyboard operation, visible focus,
   descriptive labels, reduced-motion support, and usable phone layouts.
-- Component styling belongs in `app/components/styles/*.module.css`; shared color/font
+- Component styling belongs in `src/app/components/styles/*.module.css`; shared color/font
   tokens are authored in `packages/shared/src/tokens/{light,dark,fonts}.json` and consumed
-  in `app/globals.css` via the generated `app/theme-tokens.generated.css`
+  in `src/app/globals.css` via the generated `src/app/theme-tokens.generated.css`
   (`npm run theme:generate`) — never hand-edit a hex value in `globals.css` or the
   generated file directly. Verify light and dark modes when a change uses theme colors.
 - Do not hand-edit generated output in `.next/`, `coverage/`, `docs-generated/`, or

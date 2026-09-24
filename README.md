@@ -147,7 +147,7 @@ Dependabot and the weekly Expo SDK upgrade work, and troubleshooting.
 
 ## API Documentation
 
-Every API route is documented with OpenAPI (Swagger) via `@swagger` JSDoc comments in `pages/api/*.ts`. Run the app locally and open:
+Every API route is documented with OpenAPI (Swagger) via `@swagger` JSDoc comments in `src/pages/api/*.ts`. Run the app locally and open:
 
 ```text
 http://localhost:3000/reference
@@ -331,7 +331,7 @@ asks again in that browser. Set anytime from the account menu (click your name, 
 
 ## Internal Analytics (`/admin`)
 
-Vercel Analytics/Speed Insights (already wired into `app/layout.tsx`) cover page views and
+Vercel Analytics/Speed Insights (already wired into `src/app/layout.tsx`) cover page views and
 performance. This is the *product*-usage layer on top — deliberately a small, self-hosted
 event log rather than a third-party analytics service (Splunk, Datadog, etc.), since this
 app is a single hobby-scale Vercel deployment, not a system that needs that kind of infra
@@ -403,20 +403,21 @@ the mobile app import.
 ## Project Structure
 
 ```text
-app/                     # Next.js App Router UI
-   components/           # Client components and hooks (ChatShell, GamePage, useBotCreation, ...)
-   chars/, game/, leaderboard/, history/, admin/, auth/  # Character Wall, guessing game, leaderboard, Past chats, admin, sign-in
-pages/api/               # API routes (Pages Router; server handlers are authoritative)
-   chat.ts               # Main chat endpoint with streaming & summarization
-   audio.ts              # TTS audio generation (also regenerates replay audio on demand)
-   validate-character.ts, generate-personality.ts, generate-avatar.ts, get-voice-config.ts  # Character creation pipeline
-   chars.ts              # Character Wall / carousel data
-   random-character.ts   # Public domain character suggestions
-   bots.ts, messages.ts, user-profile.ts  # A signed-in user's characters, chat history, and name (optional)
-   game/                 # Guessing game: start, message, continue, give-up, high-score, leaderboard, leaderboard-settings
-   admin/                # Admin-only stats and copyright moderation
-   auth/                 # Auth.js, plus the mobile sign-in bridge (mobile-auth-start/-complete, mobile-session)
 src/
+   app/                  # Next.js App Router UI
+      components/        # Client components and hooks (ChatShell, GamePage, useBotCreation, ...)
+      chars/, game/, leaderboard/, history/, admin/, auth/  # Character Wall, guessing game, leaderboard, Past chats, admin, sign-in
+   pages/api/            # API routes (Pages Router; server handlers are authoritative)
+      chat.ts            # Main chat endpoint with streaming & summarization
+      audio.ts           # TTS audio generation (also regenerates replay audio on demand)
+      validate-character.ts, generate-personality.ts, generate-avatar.ts, get-voice-config.ts  # Character creation pipeline
+      chars.ts           # Character Wall / carousel data
+      random-character.ts  # Public domain character suggestions
+      bots.ts, messages.ts, user-profile.ts  # A signed-in user's characters, chat history, and name (optional)
+      game/              # Guessing game: start, message, continue, give-up, high-score, leaderboard, leaderboard-settings
+      admin/             # Admin-only stats and copyright moderation
+      auth/              # Auth.js, plus the mobile sign-in bridge (mobile-auth-start/-complete, mobile-session)
+   proxy.ts              # API authentication middleware (Next.js 16)
    utils/                # Server utilities (TTS, logger, rate limiting, security, game token, ...)
    config/               # Prompt builders and server configuration
    data/                 # Curated character-name lists
@@ -428,7 +429,7 @@ apps/mobile/             # Expo (React Native) client; see apps/mobile/README.md
    src/screens/          # Creator, Chat, CharWall, History, Game, Leaderboard
    src/components/       # ChatView, modals, carousel, header title, lightbox, ...
 tests/                   # Web Jest suite (80%+ coverage gate); mobile and shared keep their own tests
-proxy.ts                 # API authentication middleware (Next.js 16)
+config/                  # Tool configs that don't need the repo root (TypeDoc, Drizzle, markdownlint)
 ```
 
 ## Troubleshooting

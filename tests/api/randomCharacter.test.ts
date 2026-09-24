@@ -12,14 +12,14 @@ describe("random-character API", () => {
   });
 
   it("returns 405 if method is not GET", async () => {
-    const handler = (await import("../../pages/api/random-character")).default;
+    const handler = (await import("../../src/pages/api/random-character")).default;
     const { req, res } = createMocks({ method: "POST" });
     handler(req, res);
     expect(res._getStatusCode()).toBe(405);
   });
 
   it("returns a name from the static list", async () => {
-    const handler = (await import("../../pages/api/random-character")).default;
+    const handler = (await import("../../src/pages/api/random-character")).default;
     const { req, res } = createMocks({ method: "GET" });
     handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -29,7 +29,7 @@ describe("random-character API", () => {
   });
 
   it("does not repeat a recently chosen name", async () => {
-    const handler = (await import("../../pages/api/random-character")).default;
+    const handler = (await import("../../src/pages/api/random-character")).default;
     const chosen = new Set<string>();
     // With 5 names, 5 requests should produce 5 unique names
     for (let i = 0; i < 5; i++) {
@@ -42,7 +42,7 @@ describe("random-character API", () => {
   });
 
   it("resets and continues working after exhausting all names", async () => {
-    const handler = (await import("../../pages/api/random-character")).default;
+    const handler = (await import("../../src/pages/api/random-character")).default;
     // Exhaust all 5 names
     for (let i = 0; i < 5; i++) {
       const { req, res } = createMocks({ method: "GET" });
@@ -57,7 +57,7 @@ describe("random-character API", () => {
 
   it("makes no external API calls", async () => {
     const fetchSpy = jest.spyOn(global, "fetch");
-    const handler = (await import("../../pages/api/random-character")).default;
+    const handler = (await import("../../src/pages/api/random-character")).default;
     const { req, res } = createMocks({ method: "GET" });
     handler(req, res);
     expect(fetchSpy).not.toHaveBeenCalled();

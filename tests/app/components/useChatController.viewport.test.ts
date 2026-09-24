@@ -1,6 +1,6 @@
 import React from "react";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { useChatController } from "../../../app/components/useChatController";
+import { useChatController } from "../../../src/app/components/useChatController";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
@@ -24,7 +24,7 @@ const mockPlayAudio = jest.fn();
 const mockStopAudio = jest.fn();
 const mockIsAudioPlaying = jest.fn();
 const mockAudioRef = { current: { muted: false } } as unknown as React.RefObject<HTMLAudioElement>;
-jest.mock("../../../app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: mockPlayAudio,
     stopAudio: mockStopAudio,
@@ -34,7 +34,7 @@ jest.mock("../../../app/components/useAudioPlayer", () => ({
 }));
 
 const mockApiGetVoiceConfigForCharacter = jest.fn();
-jest.mock("../../../app/components/api_getVoiceConfigForCharacter", () => ({
+jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter", () => ({
   api_getVoiceConfigForCharacter: (...args: unknown[]) =>
     mockApiGetVoiceConfigForCharacter(...(args as unknown[])),
 }));
@@ -45,7 +45,7 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import type { Bot } from "../../../app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/BotCreator";
 
 const baseBot: Bot = {
   name: "Gandalf",

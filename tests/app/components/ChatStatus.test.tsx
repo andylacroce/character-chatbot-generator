@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import ChatStatus from "../../../app/components/ChatStatus";
+import ChatStatus from "../../../src/app/components/ChatStatus";
 
 describe("ChatStatus", () => {
   it("shows nothing significant when no error and not retrying", () => {

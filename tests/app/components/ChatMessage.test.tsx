@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import ChatMessage, { Message } from "../../../app/components/ChatMessage";
+import ChatMessage, { Message } from "../../../src/app/components/ChatMessage";
 import { logEvent } from "../../../src/utils/logger";
 
 // Mock the logger

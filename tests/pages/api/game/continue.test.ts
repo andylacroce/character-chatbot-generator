@@ -120,7 +120,7 @@ describe("game/continue API", () => {
   });
 
   it("rejects a valid round token until a correct guess was judged", async () => {
-    const handler = require("../../../../pages/api/game/continue").default;
+    const handler = require("../../../../src/pages/api/game/continue").default;
     const req = makeReq({ gameToken: signGameState(makeGameState({ canContinue: false })) });
     const res = makeRes();
     await handler(req, res);
@@ -131,7 +131,7 @@ describe("game/continue API", () => {
   });
 
   it("returns 405 for non-POST methods", async () => {
-    const handler = require("../../../../pages/api/game/continue").default;
+    const handler = require("../../../../src/pages/api/game/continue").default;
     const req = { method: "GET" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -139,7 +139,7 @@ describe("game/continue API", () => {
   });
 
   it("returns 400 for an invalid or expired game token", async () => {
-    const handler = require("../../../../pages/api/game/continue").default;
+    const handler = require("../../../../src/pages/api/game/continue").default;
     const req = makeReq({ gameToken: "not-a-real-token" });
     const res = makeRes();
     await handler(req, res);
@@ -147,7 +147,7 @@ describe("game/continue API", () => {
   });
 
   it("generates the newly-revealed character's round from the still-hidden nextCharacterName", async () => {
-    const handler = require("../../../../pages/api/game/continue").default;
+    const handler = require("../../../../src/pages/api/game/continue").default;
     const req = makeReq({ gameToken: token });
     const res = makeRes();
     await handler(req, res);
@@ -191,7 +191,7 @@ describe("game/continue API", () => {
   });
 
   it("streams real progress frames as each round-generation step completes when stream: true", async () => {
-    const handler = require("../../../../pages/api/game/continue").default;
+    const handler = require("../../../../src/pages/api/game/continue").default;
     const req = makeReq({ gameToken: token, stream: true });
     const res = makeRes();
     await handler(req, res);
@@ -218,7 +218,7 @@ describe("game/continue API", () => {
     generateGameCluePersonaPrompt.mockReset();
     generateGameCluePersonaPrompt.mockRejectedValueOnce(new Error("Claude is down"));
 
-    const handler = require("../../../../pages/api/game/continue").default;
+    const handler = require("../../../../src/pages/api/game/continue").default;
     const req = makeReq({ gameToken: token });
     const res = makeRes();
     await handler(req, res);

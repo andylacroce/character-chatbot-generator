@@ -1,0 +1,427 @@
+/**
+ * API endpoint for generating downloadable chat transcripts.
+ * Accepts POST requests with messages (up to 10MB) and returns HTML document.
+ */
+
+import { NextApiRequest, NextApiResponse } from "next";
+import { logEvent, sanitizeLogMeta } from "../../utils/logger";
+import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+import { sanitizeForDisplay, escapeHtml } from "../../utils/security";
+import { withRequestLog } from "../../utils/withRequestLog";
+import { displayCharacterName } from "character-chatbot-shared";
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "10mb",
+    },
+  },
+};
+
+/** Rate limiter: 10 requests per minute per IP to prevent transcript generation abuse. */
+const transcriptRateLimit = createRateLimiter({
+  name: "transcript",
+  max: 10,
+  message: "Too many transcript requests from this IP, please try again later.",
+});
+
+/**
+ * Next.js API route handler for generating and downloading chat transcripts.
+ * Accepts POST requests with a messages array and returns a text file.
+ * @param {NextApiRequest} req - The API request object.
+ * @param {NextApiResponse} res - The API response object.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ *
+ * @swagger
+ * /transcript:
+ *   post:
+ *     summary: Generate a downloadable chat transcript
+ *     description: >
+ *       Renders the given messages as a styled, self-contained HTML document
+ *       (all text HTML-escaped). Body size limit 10MB, message count limit
+ *       10000, total messages payload limit 5MB. Rate limited to 10 requests/
+ *       minute/IP.
+ *     tags: [Transcript]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [messages]
+ *             properties:
+ *               messages:
+ *                 type: array
+ *                 maxItems: 10000
+ *                 items:
+ *                   type: object
+ *                   required: [sender, text]
+ *                   properties:
+ *                     sender:
+ *                       type: string
+ *                     text:
+ *                       type: string
+ *               bot:
+ *                 type: object
+ *                 nullable: true
+ *                 properties:
+ *                   name:
+ *                     type: string
+ *                   avatarUrl:
+ *                     type: string
+ *               exportedAt:
+ *                 type: string
+ *                 nullable: true
+ *               userName:
+ *                 type: string
+ *                 nullable: true
+ *                 description: The visitor's preferred name, shown instead of "Me" on their own messages.
+ *     responses:
+ *       200:
+ *         description: HTML transcript document
+ *         content:
+ *           text/html:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid request body
+ *       405:
+ *         description: Method not allowed
+ *       429:
+ *         description: Rate limit exceeded
+ */
+async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== "POST") {
+    logEvent(
+      "info",
+      "transcript_method_not_allowed",
+      "Method not allowed",
+      sanitizeLogMeta({ method: req.method }),
+    );
+    res.setHeader("Allow", ["POST"]);
+    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return;
+  }
+
+  // Apply rate limiting middleware to this request
+  if (!(await applyRateLimit(transcriptRateLimit, req, res))) {
+    return;
+  }
+
+  // Extract messages from request body (sent by downloadTranscript utility)
+  const { messages, bot, exportedAt, userName } = req.body;
+  const senderName = typeof userName === "string" && userName.trim() ? userName.trim() : "Me";
+
+  if (!Array.isArray(messages)) {
+    logEvent(
+      "info",
+      "transcript_bad_request",
+      "Messages array required",
+      sanitizeLogMeta({ reason: "not_an_array" }),
+    );
+    res.status(400).json({ error: "Messages array required" });
+    return;
+  }
+
+  // Validate required fields and types
+  if (bot !== undefined && (typeof bot !== "object" || bot === null)) {
+    logEvent(
+      "info",
+      "transcript_bad_request",
+      "bot must be an object",
+      sanitizeLogMeta({ reason: "invalid_bot" }),
+    );
+    res.status(400).json({ error: "bot must be an object" });
+    return;
+  }
+  if (bot && typeof bot.name !== "string") {
+    logEvent(
+      "info",
+      "transcript_bad_request",
+      "bot.name must be a string",
+      sanitizeLogMeta({ reason: "invalid_bot_name" }),
+    );
+    res.status(400).json({ error: "bot.name must be a string" });
+    return;
+  }
+  if (bot && typeof bot.avatarUrl !== "string") {
+    logEvent(
+      "info",
+      "transcript_bad_request",
+      "bot.avatarUrl must be a string",
+      sanitizeLogMeta({ reason: "invalid_bot_avatar_url" }),
+    );
+    res.status(400).json({ error: "bot.avatarUrl must be a string" });
+    return;
+  }
+  for (const msg of messages) {
+    if (
+      typeof msg !== "object" ||
+      msg === null ||
+      typeof msg.sender !== "string" ||
+      typeof msg.text !== "string"
+    ) {
+      logEvent(
+        "info",
+        "transcript_bad_request",
+        "Invalid message format",
+        sanitizeLogMeta({ reason: "invalid_message_format" }),
+      );
+      res.status(400).json({ error: "Invalid message format" });
+      return;
+    }
+  }
+
+  // Ensure message count is reasonable to prevent resource exhaustion
+  if (messages.length > 10000) {
+    logEvent(
+      "warn",
+      "transcript_bad_request",
+      "Too many messages",
+      sanitizeLogMeta({ reason: "too_many_messages", count: messages.length }),
+    );
+    res.status(400).json({ error: "Too many messages (max 10000)" });
+    return;
+  }
+
+  // Ensure total payload size stays within limits to prevent abuse
+  const totalSize = JSON.stringify(messages).length;
+  if (totalSize > 5 * 1024 * 1024) {
+    // 5MB size limit
+    logEvent(
+      "warn",
+      "transcript_bad_request",
+      "Transcript too large",
+      sanitizeLogMeta({ reason: "too_large", totalSize }),
+    );
+    res.status(400).json({ error: "Transcript too large (max 5MB)" });
+    return;
+  }
+
+  // Use friendly timestamp if provided, otherwise generate machine-readable one
+  const displayTimestamp =
+    exportedAt && typeof exportedAt === "string"
+      ? exportedAt
+      : (() => {
+          const now = new Date();
+          return now.toLocaleString(undefined, {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: true,
+            timeZoneName: "short",
+          });
+        })();
+
+  // Generate descriptive filename for the HTML document
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const datetime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+  const filename = `Character Chat Transcript ${datetime}.html`;
+
+  // Generate formatted HTML transcript with styling and safety measures.
+  // Palette, type pairing (Inter for labels, Playfair Display for titles, Lora for
+  // the actual readable message body) and "no bubbles" transcript treatment
+  // mirror the live chat page's immersive-stage design (ChatMessage.module.css,
+  // globals.css) so a downloaded transcript still looks like this app. Unlike the
+  // live app, this stays on the light palette always (no dark-mode media query)
+  // since a downloaded/printed document should stay print-friendly rather than
+  // follow the viewer's OS theme.
+  const htmlTranscript = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${filename}</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Playfair+Display:wght@400;500;600;700&family=Lora:wght@400;500;600&display=swap');
+
+        :root {
+          --color-background: #f7f4ef;
+          --color-surface-variant: #efe6de;
+          --color-outline: #9c8f7d;
+          --color-text: #18160f;
+          --color-text-secondary: #5c5245;
+          --color-accent: #3d6e73;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+        body {
+          font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 2rem 1.25rem 4rem;
+          background-color: var(--color-background);
+          color: var(--color-text);
+        }
+        h1 {
+          font-family: 'Playfair Display', 'Inter', serif;
+          font-weight: 500;
+          font-size: 1.65rem;
+          color: var(--color-text);
+          text-align: center;
+          margin-bottom: 0.5rem;
+        }
+        h2 {
+          font-family: 'Playfair Display', 'Inter', serif;
+          font-weight: 500;
+          font-size: 1.3rem;
+          color: var(--color-text);
+          text-align: center;
+          margin-top: 0.65rem;
+        }
+        .header-info {
+          text-align: center;
+          color: var(--color-text-secondary);
+          font-size: 0.9rem;
+          margin-bottom: 2rem;
+        }
+        .header-info strong {
+          color: var(--color-text);
+        }
+        .character-image {
+          display: block;
+          margin: 0 auto;
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          object-fit: cover;
+          background: var(--color-surface-variant);
+          border: 3px solid var(--color-accent);
+        }
+        .messages {
+          margin-top: 1rem;
+        }
+        .message {
+          padding: 1rem 0;
+          border-bottom: 1px solid var(--color-outline);
+          line-height: 1.5;
+        }
+        .message:last-child {
+          border-bottom: none;
+        }
+        .bot-message {
+          border-left: 2px solid var(--color-accent);
+          padding-left: 1rem;
+        }
+        .user-message {
+          padding-left: 1rem;
+        }
+        .message strong {
+          display: block;
+          font-family: 'Inter', sans-serif;
+          font-weight: 700;
+          font-size: 0.7rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          margin-bottom: 0.4rem;
+        }
+        .user-sender {
+          color: var(--color-text-secondary);
+        }
+        .bot-sender {
+          color: var(--color-accent);
+        }
+        .bot-message .message-text {
+          display: block;
+          font-family: 'Lora', 'Inter', serif;
+          font-size: 1.25rem;
+          line-height: 1.5;
+          color: var(--color-text);
+        }
+        .user-message .message-text {
+          display: block;
+          font-family: 'Inter', sans-serif;
+          font-size: 1rem;
+          color: var(--color-text-secondary);
+          max-width: 60ch;
+        }
+        .bot-header {
+          margin-bottom: 2rem;
+        }
+        @media print {
+          body {
+            padding: 0;
+          }
+          .message {
+            break-inside: avoid;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Portrayal Transcript</h1>
+      <div class="header-info">
+        <p><strong>Exported:</strong> ${escapeHtml(displayTimestamp) /* nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- escaped before HTML interpolation */}</p>
+      </div>
+      ${
+        bot
+          ? `
+        <div class="bot-header">
+          ${isValidAvatarUrl(bot.avatarUrl) ? `<img src="${escapeHtml(bot.avatarUrl)}" alt="${escapeHtml(bot.name)}" class="character-image" />` : ""}
+          <h2>${escapeHtml(displayCharacterName(bot.name)) /* nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- escaped before HTML interpolation */}</h2>
+        </div>
+      `
+          : ""
+      }
+      <div class="messages">
+        ${messages
+          .map((msg: { sender: string; text: string }) => {
+            const isUser = msg.sender === "User";
+            return `
+              <div class="message ${isUser ? "user-message" : "bot-message"}">
+                <strong class="${isUser ? "user-sender" : "bot-sender"}">${isUser ? escapeHtml(senderName) : escapeHtml(displayCharacterName(bot ? bot.name : msg.sender)) /* nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- both branches are escaped before HTML interpolation */}:</strong>
+                <span class="message-text">${sanitizeForDisplay(msg.text) /* nosemgrep: javascript.express.security.injection.raw-html-format.raw-html-format -- sanitizer returns HTML-escaped text */}</span>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </body>
+    </html>
+  `;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  // CodeQL [js/reflected-xss] - All user inputs are validated and properly HTML-escaped before insertion into the HTML template
+  res.status(200).send(htmlTranscript);
+  logEvent(
+    "info",
+    "transcript_sent",
+    "Transcript sent for display",
+    sanitizeLogMeta({ messageCount: messages.length }),
+  );
+}
+
+/**
+ * Helper function to validate avatar URL format for security.
+ *
+ * Scheme detection is done on the `scheme:` prefix rather than on `://`, because
+ * scheme-only URLs such as `javascript:alert(1)` have no authority component and
+ * would otherwise be mistaken for a relative path and rendered as-is.
+ */
+export function isValidAvatarUrl(url: string): boolean {
+  if (typeof url !== "string" || url === "") return false;
+  // Allow absolute paths starting with /
+  if (url.startsWith("/")) return true;
+  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.\-]*:/.test(url);
+  // Allow relative URLs without a scheme (e.g., 'silhouette.svg')
+  if (!hasScheme) return true;
+  // Generated avatars are inlined as base64 image data URLs by /api/generate-avatar.
+  // SVG is excluded: it is the one image type that can carry markup of its own.
+  if (/^data:image\/(?:png|jpe?g|gif|webp|avif);base64,/i.test(url)) return true;
+  // For full URLs, validate the protocol is safe
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export default withRequestLog(handler);

@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import HistoryPage from "@/app/components/HistoryPage";
-import { persistedBotToBot } from "@/app/components/BotCreator";
+import HistoryPage from "@/src/app/components/HistoryPage";
+import { persistedBotToBot } from "@/src/app/components/BotCreator";
 
 const mockRouter = { push: jest.fn(), back: jest.fn() };
 jest.mock("next/navigation", () => ({

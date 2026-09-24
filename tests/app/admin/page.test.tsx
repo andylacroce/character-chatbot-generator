@@ -13,12 +13,12 @@ jest.mock("next/navigation", () => ({
   notFound: () => mockNotFound(),
 }));
 
-jest.mock("@/app/admin/AdminStatsView", () => ({
+jest.mock("@/src/app/admin/AdminStatsView", () => ({
   __esModule: true,
   default: () => <div data-testid="admin-stats-view-stub" />,
 }));
 
-import AdminPage from "@/app/admin/page";
+import AdminPage from "@/src/app/admin/page";
 
 describe("AdminPage (server-side admin gate)", () => {
   beforeEach(() => {

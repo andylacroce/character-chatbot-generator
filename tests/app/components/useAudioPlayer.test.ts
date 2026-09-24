@@ -1,6 +1,6 @@
 import React, { useImperativeHandle, forwardRef } from "react";
 import { render, act } from "@testing-library/react";
-import { useAudioPlayer } from "@/app/components/useAudioPlayer";
+import { useAudioPlayer } from "@/src/app/components/useAudioPlayer";
 
 // --- fetch mock for arrayBuffer ---
 let originalFetch: typeof global.fetch;

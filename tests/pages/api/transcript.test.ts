@@ -7,7 +7,7 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import handler, { isValidAvatarUrl } from "../../../pages/api/transcript";
+import handler, { isValidAvatarUrl } from "../../../src/pages/api/transcript";
 
 function makeRes() {
   const res: Partial<NextApiResponse> & { headersSent: boolean } = { headersSent: false };
@@ -42,7 +42,7 @@ describe("transcript API", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("accepts a 10mb body so long transcripts are not truncated", () => {
-    const { config } = jest.requireActual("../../../pages/api/transcript");
+    const { config } = jest.requireActual("../../../src/pages/api/transcript");
     expect(config.api.bodyParser.sizeLimit).toBe("10mb");
   });
 

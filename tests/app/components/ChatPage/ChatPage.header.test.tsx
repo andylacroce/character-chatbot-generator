@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, act } from "@testing-library/react";
-import ChatPage from "../../../../app/components/ChatPage";
-import { Bot } from "../../../../app/components/BotCreator";
+import ChatPage from "../../../../src/app/components/ChatPage";
+import { Bot } from "../../../../src/app/components/BotCreator";
 import { mockResponse } from "../../../helpers/mockResponse";
 
 // The server-history reconciliation effect (and useUserName) need a next-auth session
@@ -20,9 +20,9 @@ jest.mock("../../../../src/utils/api", () => ({
 jest.mock("../../../../src/utils/downloadTranscript");
 import { downloadTranscript } from "../../../../src/utils/downloadTranscript";
 
-jest.mock("../../../../app/components/useAudioPlayer", () => ({
+jest.mock("../../../../src/app/components/useAudioPlayer", () => ({
   __esModule: true,
-  ...jest.requireActual("../../../../app/components/useAudioPlayer"),
+  ...jest.requireActual("../../../../src/app/components/useAudioPlayer"),
   useAudioPlayer: jest.fn(() => ({
     playAudio: jest.fn(),
     stopAudio: jest.fn(),

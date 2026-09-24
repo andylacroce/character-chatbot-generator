@@ -31,7 +31,7 @@ describe("user-profile API", () => {
   });
 
   it("returns 405 for unsupported methods", async () => {
-    const handler = (await import("../../../pages/api/user-profile")).default;
+    const handler = (await import("../../../src/pages/api/user-profile")).default;
     const { req, res } = createMocks({ method: "DELETE" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
@@ -40,7 +40,7 @@ describe("user-profile API", () => {
   describe("guest / no-DB no-op", () => {
     it("GET returns a null name for a guest (no session)", async () => {
       mockGetSessionUserId.mockResolvedValue(null);
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -50,7 +50,7 @@ describe("user-profile API", () => {
 
     it("POST is a no-op for a guest (no session)", async () => {
       mockGetSessionUserId.mockResolvedValue(null);
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "POST", body: { name: "Andy" } });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -61,7 +61,7 @@ describe("user-profile API", () => {
     it("is a no-op when signed in but DATABASE_URL is not configured", async () => {
       delete process.env.DATABASE_URL;
       mockGetSessionUserId.mockResolvedValue("user-1");
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -74,7 +74,7 @@ describe("user-profile API", () => {
 
     it("returns the stored preferred name", async () => {
       mockWhereSelect.mockResolvedValueOnce([{ preferredName: "Andy" }]);
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -83,7 +83,7 @@ describe("user-profile API", () => {
 
     it("returns null when no row or no name is stored", async () => {
       mockWhereSelect.mockResolvedValueOnce([{ preferredName: null }]);
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getJSONData()).toEqual({ name: null });
@@ -91,7 +91,7 @@ describe("user-profile API", () => {
 
     it("returns 500 when the query fails", async () => {
       mockWhereSelect.mockRejectedValueOnce(new Error("db down"));
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(500);
@@ -102,14 +102,14 @@ describe("user-profile API", () => {
     beforeEach(() => mockGetSessionUserId.mockResolvedValue("user-1"));
 
     it("rejects a non-string name", async () => {
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "POST", body: { name: 123 } });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);
     });
 
     it("sanitizes and persists the name", async () => {
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "POST", body: { name: "  Andy <script> " } });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -118,7 +118,7 @@ describe("user-profile API", () => {
     });
 
     it("clears the name when given an empty string", async () => {
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "POST", body: { name: "" } });
       await handler(req, res);
       expect(mockSet).toHaveBeenCalledWith({ preferredName: null });
@@ -126,7 +126,7 @@ describe("user-profile API", () => {
 
     it("returns 500 when the update fails", async () => {
       mockWhereUpdate.mockRejectedValueOnce(new Error("db down"));
-      const handler = (await import("../../../pages/api/user-profile")).default;
+      const handler = (await import("../../../src/pages/api/user-profile")).default;
       const { req, res } = createMocks({ method: "POST", body: { name: "Andy" } });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(500);

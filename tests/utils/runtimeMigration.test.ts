@@ -1,4 +1,4 @@
-import { runStartupMigrations } from "../../app/index";
+import { runStartupMigrations } from "../../src/app/index";
 
 describe("startup migrations", () => {
   beforeEach(() => {

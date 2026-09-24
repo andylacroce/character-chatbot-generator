@@ -64,35 +64,35 @@ describe("generate-avatar API", () => {
   });
 
   it("returns 400 if name is missing", async () => {
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: {} });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
   });
 
   it("returns 400 if name is not a string", async () => {
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: 123 } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
   });
 
   it("returns 400 if sanitized name is empty", async () => {
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "   " } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(400);
   });
 
   it("returns 405 if not POST", async () => {
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
   });
 
   it("returns 200 and a data URL for a valid name", async () => {
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -106,7 +106,7 @@ describe("generate-avatar API", () => {
   });
 
   it("includes gender in response when Claude provides it", async () => {
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -115,7 +115,7 @@ describe("generate-avatar API", () => {
   });
 
   it("calls Cloudflare Workers AI with the account id and bearer token", async () => {
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     expect(mockFetch).toHaveBeenCalledWith(
@@ -135,7 +135,7 @@ describe("generate-avatar API", () => {
       arrayBuffer: async () => Buffer.from("pollinationsdata"),
     });
 
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -155,7 +155,7 @@ describe("generate-avatar API", () => {
         arrayBuffer: async () => Buffer.from("pollinationsdata"),
       });
 
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -169,7 +169,7 @@ describe("generate-avatar API", () => {
       arrayBuffer: async () => Buffer.from("pollinationsdata"),
     });
 
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -179,7 +179,7 @@ describe("generate-avatar API", () => {
   it("returns silhouette fallback when both Cloudflare and Pollinations fail", async () => {
     mockFetch.mockResolvedValue({ ok: false, status: 500, text: async () => "error" });
 
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -194,7 +194,7 @@ describe("generate-avatar API", () => {
 
   it("handles Claude prompt generation failure gracefully and uses fallback prompt", async () => {
     mockAnthropicCreate.mockRejectedValueOnce(new Error("Claude error"));
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     // Should still attempt image generation with the fallback prompt
@@ -207,7 +207,7 @@ describe("generate-avatar API", () => {
     mockAnthropicCreate.mockImplementationOnce(() => {
       throw new Error("top-level error");
     });
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Sherlock Holmes" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -232,7 +232,7 @@ describe("generate-avatar API", () => {
         },
       ],
     });
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Test Character" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -245,7 +245,7 @@ describe("generate-avatar API", () => {
     mockFetch
       .mockRejectedValueOnce("plain string error")
       .mockResolvedValueOnce({ ok: false, status: 500, text: async () => "error" });
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Test Character" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -257,7 +257,7 @@ describe("generate-avatar API", () => {
     mockAnthropicCreate.mockImplementationOnce(() => {
       throw 42;
     });
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Test Character" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -269,7 +269,7 @@ describe("generate-avatar API", () => {
     mockAnthropicCreate.mockResolvedValueOnce({
       content: [{ type: "image", source: {} }],
     });
-    const handler = (await import("../../pages/api/generate-avatar")).default;
+    const handler = (await import("../../src/pages/api/generate-avatar")).default;
     const { req, res } = createMocks({ method: "POST", body: { name: "Test Character" } });
     await handler(req, res);
     // JSON.parse("{}") → promptData with no subject etc, still generates ok

@@ -18,7 +18,7 @@ module.exports = [
       "coverage/**",
       "docs-generated/**",
       "tmp/**",
-      "jest.setup.js",
+      "tests/setup.js",
       "scripts/**",
       "**/*.sh",
       // apps/mobile is a separate React Native/Expo app with its own eslint.config.js
@@ -50,7 +50,7 @@ module.exports = [
     },
   },
   {
-    files: ["**/*.test.{ts,tsx,js,jsx}", "tests/**/*.{ts,tsx,js,jsx}"],
+    files: ["**/*.test.{ts,tsx}", "tests/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/ban-ts-comment": "warn",
@@ -64,7 +64,7 @@ module.exports = [
     },
   },
   {
-    files: ["**/*.cjs", "**/*.config.{js,cjs}", "jest.*.{js,cjs}", "scripts/**/*.js"],
+    files: ["**/*.cjs", "**/*.config.{js,cjs}", "scripts/**/*.js"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
     },
@@ -79,7 +79,7 @@ module.exports = [
   // log line goes through src/utils/logger.ts, not a raw console call, so it's captured
   // by the same server-side (Winston) / client-side (browser) formatting either way.
   {
-    files: ["app/**/*.{ts,tsx}", "src/**/*.ts", "pages/**/*.ts"],
+    files: ["src/app/**/*.{ts,tsx}", "src/pages/**/*.ts", "src/!(app|pages)/**/*.ts"],
     ignores: ["**/*.test.{ts,tsx}", "src/utils/logger.ts"],
     rules: {
       "no-console": "warn",
@@ -90,7 +90,7 @@ module.exports = [
   // greppable `event` name instead of a hand-formatted message string. src/utils/logger.ts
   // itself and its tests are exempt (they implement/exercise the `logger` object).
   {
-    files: ["pages/api/**/*.ts"],
+    files: ["src/pages/api/**/*.ts"],
     ignores: ["**/*.test.ts"],
     rules: {
       "no-restricted-syntax": [
@@ -114,7 +114,11 @@ module.exports = [
   // primary form of in-code documentation; this layer is about the public API
   // surface being discoverable, not about re-explaining every parameter.
   {
-    files: ["app/components/**/*.{ts,tsx}", "src/**/*.ts", "pages/api/**/*.ts"],
+    files: [
+      "src/app/components/**/*.{ts,tsx}",
+      "src/pages/api/**/*.ts",
+      "src/!(app|pages)/**/*.ts",
+    ],
     ignores: ["**/*.test.{ts,tsx}", "**/*.d.ts"],
     plugins: { jsdoc: jsdocPlugin },
     rules: {
@@ -172,7 +176,7 @@ module.exports = [
   // rules above — scripts/tests/config files are excluded, matching this file's
   // existing convention.
   {
-    files: ["app/**/*.{ts,tsx}", "src/**/*.ts", "pages/**/*.ts"],
+    files: ["src/app/**/*.{ts,tsx}", "src/pages/**/*.ts", "src/!(app|pages)/**/*.ts"],
     ignores: ["**/*.test.{ts,tsx}"],
     plugins: { security: securityPlugin },
     rules: {
@@ -185,7 +189,7 @@ module.exports = [
       // future finding from the other rules isn't lost in noise from this one.
       "security/detect-object-injection": "off",
       // Flagged 47 pre-existing, already-reviewed call sites in the TTS/audio-cache
-      // subsystem (pages/api/audio.ts, chat.ts, src/utils/tts.ts, ttsReply.ts) — every
+      // subsystem (src/pages/api/audio.ts, chat.ts, src/utils/tts.ts, ttsReply.ts) — every
       // one builds its path from a hashed cache key run through sanitizeFilename()
       // (or, in audio.ts, an explicit escapesRoot()/realpathSync() traversal guard),
       // inside a fixed root (os.tmpdir()/public), never from raw request input. The

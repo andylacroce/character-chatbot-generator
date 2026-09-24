@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent, act, within } from "@testing-library/react";
-import AdminStatsView from "@/app/admin/AdminStatsView";
+import AdminStatsView from "@/src/app/admin/AdminStatsView";
 
 const mockUseSession = jest.fn();
 jest.mock("next-auth/react", () => ({

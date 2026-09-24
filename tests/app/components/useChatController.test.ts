@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
-import type { Bot } from "../../../app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/BotCreator";
 import { mockResponse } from "../../helpers/mockResponse";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
@@ -36,7 +36,7 @@ const mockPlayAudio = jest.fn();
 const mockStopAudio = jest.fn();
 const mockIsAudioPlaying = jest.fn();
 const mockAudioRef = { current: { muted: false } } as unknown as React.RefObject<HTMLAudioElement>;
-jest.mock("../../../app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/useAudioPlayer", () => ({
   useAudioPlayer: (..._args: unknown[]) => ({
     playAudio: mockPlayAudio,
     stopAudio: mockStopAudio,
@@ -47,7 +47,7 @@ jest.mock("../../../app/components/useAudioPlayer", () => ({
 
 // Mock API voice config fetcher used by the controller
 const mockApiGetVoiceConfigForCharacter = jest.fn();
-jest.mock("../../../app/components/api_getVoiceConfigForCharacter", () => ({
+jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter", () => ({
   api_getVoiceConfigForCharacter: (...args: unknown[]) =>
     mockApiGetVoiceConfigForCharacter(...(args as unknown[])),
 }));
@@ -57,7 +57,7 @@ jest.mock("../../../src/utils/downloadTranscript", () => ({
   downloadTranscript: (...args: unknown[]) => mockDownloadTranscript(...(args as unknown[])),
 }));
 
-import { useChatController } from "../../../app/components/useChatController";
+import { useChatController } from "../../../src/app/components/useChatController";
 // Merge: mock storage to exercise additional branches
 jest.mock("../../../src/utils/storage", () => ({
   getItem: jest.fn(),
@@ -840,7 +840,7 @@ describe("useChatController additional branches (merged)", () => {
 
   it("logMessage returns early when session is missing (no /api/log-message call)", async () => {
     // Simulate SSR/no browser session so `useSession` returns empty values
-    const useSessionModule = require("../../../app/components/useSession");
+    const useSessionModule = require("../../../src/app/components/useSession");
     useSessionModule.setIsBrowserForTests(() => false);
 
     // Ensure chat API responds so sendMessage proceeds

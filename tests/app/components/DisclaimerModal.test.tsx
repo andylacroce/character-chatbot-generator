@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import DisclaimerModal from "@/app/components/DisclaimerModal";
+import DisclaimerModal from "@/src/app/components/DisclaimerModal";
 
 describe("DisclaimerModal", () => {
   it("renders nothing when show is false", () => {

@@ -104,7 +104,7 @@ describe("admin/stats API", () => {
   });
 
   it("returns 405 for non-GET methods", async () => {
-    const handler = (await import("../../../../pages/api/admin/stats")).default;
+    const handler = (await import("../../../../src/pages/api/admin/stats")).default;
     const { req, res } = createMocks({ method: "POST" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
@@ -112,7 +112,7 @@ describe("admin/stats API", () => {
 
   it("returns 401 for a guest (no session)", async () => {
     mockGetSessionUserId.mockResolvedValue(null);
-    const handler = (await import("../../../../pages/api/admin/stats")).default;
+    const handler = (await import("../../../../src/pages/api/admin/stats")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(401);
@@ -122,7 +122,7 @@ describe("admin/stats API", () => {
   it("returns 403 for a signed-in user who isn't an admin", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockIsAdmin.mockResolvedValue(false);
-    const handler = (await import("../../../../pages/api/admin/stats")).default;
+    const handler = (await import("../../../../src/pages/api/admin/stats")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
@@ -133,7 +133,7 @@ describe("admin/stats API", () => {
     process.env.DATABASE_URL = "";
     mockGetSessionUserId.mockResolvedValue("admin-1");
     mockIsAdmin.mockResolvedValue(true);
-    const handler = (await import("../../../../pages/api/admin/stats")).default;
+    const handler = (await import("../../../../src/pages/api/admin/stats")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -152,7 +152,7 @@ describe("admin/stats API", () => {
     mockGetSessionUserId.mockResolvedValue("admin-1");
     mockIsAdmin.mockResolvedValue(true);
     queueDefaultSelects(mockSelect);
-    const handler = (await import("../../../../pages/api/admin/stats")).default;
+    const handler = (await import("../../../../src/pages/api/admin/stats")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -209,7 +209,7 @@ describe("admin/stats API", () => {
       .mockImplementationOnce(() => makeQuery([{ total: 0 }]))
       .mockImplementationOnce(() => makeQuery([]))
       .mockImplementationOnce(() => makeQuery([]));
-    const handler = (await import("../../../../pages/api/admin/stats")).default;
+    const handler = (await import("../../../../src/pages/api/admin/stats")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     const data = res._getJSONData();
@@ -228,7 +228,7 @@ describe("admin/stats API", () => {
     mockSelect.mockImplementationOnce(() => {
       throw new Error("db exploded");
     });
-    const handler = (await import("../../../../pages/api/admin/stats")).default;
+    const handler = (await import("../../../../src/pages/api/admin/stats")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(500);

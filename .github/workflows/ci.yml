@@ -114,7 +114,7 @@ jobs:
           # Exact match requires both the lockfile and source to be unchanged;
           # falling back to the restore-keys prefix on a source change still
           # reuses Next's dependency-graph cache instead of building cold.
-          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/**', 'pages/**', 'src/**') }}
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**') }}
           restore-keys: |
             nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
 

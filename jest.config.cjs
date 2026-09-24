@@ -23,7 +23,10 @@ const createJestConfig = nextJest({
 const customJestConfig = {
   testEnvironment: "jest-environment-jsdom",
   transform: {
-    "^.+\\.(js|jsx|ts|tsx)$": ["babel-jest", { configFile: "./babel-jest.config.js" }],
+    "^.+\\.(js|jsx|ts|tsx)$": [
+      "babel-jest",
+      { presets: ["next/babel", ["@babel/preset-typescript", { allowDeclareFields: true }]] },
+    ],
   },
   moduleNameMapper: {
     // CSS/SCSS/SASS imports are already handled by next/jest's own mocks
@@ -37,7 +40,7 @@ const customJestConfig = {
   // Jest to parse them. The pattern below whitelists specific packages while keeping
   // the default behavior for others. It handles both POSIX and Windows path separators.
   transformIgnorePatterns: ["node_modules[/\\\\]?(?!(lodash-es|uuid)(?:[/\\\\]|$))"],
-  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"], // Ensure test setup is loaded
+  setupFilesAfterEnv: ["<rootDir>/tests/setup.js"], // Ensure test setup is loaded
   testMatch: [
     "<rootDir>/tests/**/*.test.(ts|tsx|js|jsx)",
     "<rootDir>/**/__tests__/**/*.(ts|tsx|js|jsx)",
@@ -57,14 +60,7 @@ const customJestConfig = {
   // so an entirely untested module (proxy.ts once was one) costs nothing against the
   // threshold below. Enumerate the shipped source instead so the percentage is
   // measured against the real denominator.
-  collectCoverageFrom: [
-    "app/**/*.{ts,tsx}",
-    "pages/**/*.{ts,tsx}",
-    "src/**/*.{ts,tsx}",
-    "proxy.ts",
-    "!**/*.d.ts",
-    "!**/node_modules/**",
-  ],
+  collectCoverageFrom: ["src/**/*.{ts,tsx}", "!**/*.d.ts", "!**/node_modules/**"],
   coverageDirectory: "<rootDir>/coverage",
   coverageThreshold: {
     global: {

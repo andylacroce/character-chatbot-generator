@@ -1,6 +1,6 @@
 import React from "react";
 import { act, render, screen, fireEvent } from "@testing-library/react";
-import LandingCharacterCarousel from "../../../app/components/LandingCharacterCarousel";
+import LandingCharacterCarousel from "../../../src/app/components/LandingCharacterCarousel";
 import { STORAGE_KEYS } from "character-chatbot-shared";
 
 const mockPush = jest.fn();

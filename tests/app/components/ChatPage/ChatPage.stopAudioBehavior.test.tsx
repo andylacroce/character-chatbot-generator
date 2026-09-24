@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ChatPage from "../../../../app/components/ChatPage";
-import type { Bot } from "../../../../app/components/BotCreator";
+import ChatPage from "../../../../src/app/components/ChatPage";
+import type { Bot } from "../../../../src/app/components/BotCreator";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
@@ -14,7 +14,7 @@ jest.mock("next-auth/react", () => ({
 const stopSpy = jest.fn();
 const playSpy = jest.fn();
 
-jest.mock("../../../../app/components/useAudioPlayer", () => ({
+jest.mock("../../../../src/app/components/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: playSpy,
     stopAudio: stopSpy,

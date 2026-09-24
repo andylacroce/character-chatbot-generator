@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
-import type { Bot } from "../../../app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/BotCreator";
 import { mockResponse } from "../../helpers/mockResponse";
 
 // Mock logger to capture warnings/info
@@ -17,7 +17,7 @@ jest.mock("../../../src/utils/api", () => ({
 
 // Mock voice config fetcher used by the hook
 const mockApiGetVoiceConfigForCharacter = jest.fn();
-jest.mock("../../../app/components/api_getVoiceConfigForCharacter", () => ({
+jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter", () => ({
   api_getVoiceConfigForCharacter: (...args: unknown[]) =>
     mockApiGetVoiceConfigForCharacter(...(args as unknown[])),
 }));
@@ -29,8 +29,8 @@ jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
   loadVoiceConfig: jest.fn(),
 }));
 
-import { useBotCreation } from "../../../app/components/useBotCreation";
-import type { UserNameContext } from "../../../app/components/useUserName";
+import { useBotCreation } from "../../../src/app/components/useBotCreation";
+import type { UserNameContext } from "../../../src/app/components/useUserName";
 
 // isResolved: false ("we don't know yet") means the name gate never triggers — these
 // tests exercise generation itself, not the gate.

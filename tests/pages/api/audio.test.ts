@@ -51,7 +51,7 @@ jest.mock("../../../src/utils/anthropicClient", () => ({
 import os from "os";
 import path from "path";
 
-const handler = require("../../../pages/api/audio").default as (
+const handler = require("../../../src/pages/api/audio").default as (
   req: NextApiRequest,
   res: NextApiResponse,
 ) => Promise<void>;

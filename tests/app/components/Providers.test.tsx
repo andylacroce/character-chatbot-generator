@@ -1,6 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react";
-import Providers from "@/app/components/Providers";
+import Providers from "@/src/app/components/Providers";
 import {
   hasNavigatedWithinSession,
   __resetClientNavigationStateForTest,

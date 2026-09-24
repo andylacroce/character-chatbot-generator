@@ -13,7 +13,7 @@ jest.mock("../../../src/utils/storage", () => ({
   clearMemoryFallback: jest.fn(),
   setVersionedJSON: jest.fn(),
 }));
-jest.mock("../../../app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: jest.fn(),
     stopAudio: jest.fn(),
@@ -22,8 +22,8 @@ jest.mock("../../../app/components/useAudioPlayer", () => ({
   }),
 }));
 
-import { useChatController } from "../../../app/components/useChatController";
-import type { Bot } from "../../../app/components/BotCreator";
+import { useChatController } from "../../../src/app/components/useChatController";
+import type { Bot } from "../../../src/app/components/BotCreator";
 
 type MinimalBot = { name: string; personality: string; avatarUrl: string; voiceConfig?: unknown };
 const mockBot: MinimalBot = {

@@ -1,5 +1,5 @@
 /**
- * Generates app/theme-tokens.generated.css from packages/shared/src/tokens/ using
+ * Generates src/app/theme-tokens.generated.css from packages/shared/src/tokens/ using
  * Style Dictionary — the standard tool for "one set of design tokens, many
  * platform outputs" (it also backs the plain object packages/shared/src/theme.ts
  * exports for the mobile app to read the same colors from). Runs at dev/build time
@@ -8,7 +8,7 @@
  *
  * Editing a color means editing packages/shared/src/tokens/{light,dark}.json;
  * editing a font means editing packages/shared/src/tokens/fonts.json. Never edit
- * this script's output, and never author a color/font value in app/globals.css.
+ * this script's output, and never author a color/font value in src/app/globals.css.
  */
 
 const fs = require("fs");
@@ -19,7 +19,7 @@ const TOKENS_DIR = path
   .join(__dirname, "..", "packages", "shared", "src", "tokens")
   .split(path.sep)
   .join("/");
-const OUT_PATH = path.join(__dirname, "..", "app", "theme-tokens.generated.css");
+const OUT_PATH = path.join(__dirname, "..", "src", "app", "theme-tokens.generated.css");
 
 const fonts = require(path.join(TOKENS_DIR, "fonts.json"));
 

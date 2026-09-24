@@ -39,7 +39,7 @@ describe("messages API", () => {
   });
 
   it("returns 405 for non-GET methods", async () => {
-    const handler = (await import("../../../pages/api/messages")).default;
+    const handler = (await import("../../../src/pages/api/messages")).default;
     const { req, res } = createMocks({ method: "POST" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
@@ -47,7 +47,7 @@ describe("messages API", () => {
 
   it("returns an empty list for a guest (no session)", async () => {
     mockGetSessionUserId.mockResolvedValue(null);
-    const handler = (await import("../../../pages/api/messages")).default;
+    const handler = (await import("../../../src/pages/api/messages")).default;
     const { req, res } = createMocks({ method: "GET", query: { botName: "Ada" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -57,7 +57,7 @@ describe("messages API", () => {
 
   it("returns an empty list when botName is missing", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
-    const handler = (await import("../../../pages/api/messages")).default;
+    const handler = (await import("../../../src/pages/api/messages")).default;
     const { req, res } = createMocks({ method: "GET", query: {} });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -68,7 +68,7 @@ describe("messages API", () => {
   it("returns an empty list when signed in but DATABASE_URL is not configured", async () => {
     delete process.env.DATABASE_URL;
     mockGetSessionUserId.mockResolvedValue("user-1");
-    const handler = (await import("../../../pages/api/messages")).default;
+    const handler = (await import("../../../src/pages/api/messages")).default;
     const { req, res } = createMocks({ method: "GET", query: { botName: "Ada" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -78,7 +78,7 @@ describe("messages API", () => {
   it("returns an empty list when this user has no bot with that name", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockBotWhere.mockResolvedValue([]);
-    const handler = (await import("../../../pages/api/messages")).default;
+    const handler = (await import("../../../src/pages/api/messages")).default;
     const { req, res } = createMocks({ method: "GET", query: { botName: "Nobody" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -93,7 +93,7 @@ describe("messages API", () => {
       { id: 2, botId: "bot-1", sender: "Ada", text: "hello", createdAt: new Date() },
       { id: 1, botId: "bot-1", sender: "User", text: "hi", createdAt: new Date() },
     ]);
-    const handler = (await import("../../../pages/api/messages")).default;
+    const handler = (await import("../../../src/pages/api/messages")).default;
     const { req, res } = createMocks({ method: "GET", query: { botName: "Ada" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -109,7 +109,7 @@ describe("messages API", () => {
   it("returns 500 when the bot lookup fails", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockBotWhere.mockRejectedValue(new Error("db down"));
-    const handler = (await import("../../../pages/api/messages")).default;
+    const handler = (await import("../../../src/pages/api/messages")).default;
     const { req, res } = createMocks({ method: "GET", query: { botName: "Ada" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(500);
@@ -118,7 +118,7 @@ describe("messages API", () => {
   it("returns 500 when the messages query fails", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockMessagesLimit.mockRejectedValue(new Error("db down"));
-    const handler = (await import("../../../pages/api/messages")).default;
+    const handler = (await import("../../../src/pages/api/messages")).default;
     const { req, res } = createMocks({ method: "GET", query: { botName: "Ada" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(500);

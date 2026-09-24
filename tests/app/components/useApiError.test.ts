@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
-import { useApiError } from "@/app/components/useApiError";
+import { useApiError } from "@/src/app/components/useApiError";
 
 describe("useApiError", () => {
   it("returns initial state and allows setting error", () => {

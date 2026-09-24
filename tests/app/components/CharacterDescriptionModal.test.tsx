@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { CharacterDescriptionModal } from "../../../app/components/CharacterDescriptionModal";
+import { CharacterDescriptionModal } from "../../../src/app/components/CharacterDescriptionModal";
 
 describe("CharacterDescriptionModal", () => {
   const mockOnSubmit = jest.fn();

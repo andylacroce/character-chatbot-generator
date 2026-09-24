@@ -46,7 +46,7 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import handler from "../../../pages/api/health";
+import handler from "../../../src/pages/api/health";
 
 const SERVICE_ACCOUNT = JSON.stringify({
   client_email: "test@test.iam.gserviceaccount.com",

@@ -39,7 +39,7 @@ describe("admin/allowlist API", () => {
 
   it("returns 401 for a guest (no session)", async () => {
     mockGetSessionUserId.mockResolvedValue(null);
-    const handler = (await import("../../../../pages/api/admin/allowlist")).default;
+    const handler = (await import("../../../../src/pages/api/admin/allowlist")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(401);
@@ -49,7 +49,7 @@ describe("admin/allowlist API", () => {
   it("returns 403 for a signed-in user who isn't an admin", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockIsAdmin.mockResolvedValue(false);
-    const handler = (await import("../../../../pages/api/admin/allowlist")).default;
+    const handler = (await import("../../../../src/pages/api/admin/allowlist")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
@@ -59,7 +59,7 @@ describe("admin/allowlist API", () => {
   it("returns 405 for an unsupported method", async () => {
     mockGetSessionUserId.mockResolvedValue("admin-1");
     mockIsAdmin.mockResolvedValue(true);
-    const handler = (await import("../../../../pages/api/admin/allowlist")).default;
+    const handler = (await import("../../../../src/pages/api/admin/allowlist")).default;
     const { req, res } = createMocks({ method: "PATCH" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
@@ -81,7 +81,7 @@ describe("admin/allowlist API", () => {
           createdAt: new Date("2026-01-01"),
         },
       ]);
-      const handler = (await import("../../../../pages/api/admin/allowlist")).default;
+      const handler = (await import("../../../../src/pages/api/admin/allowlist")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -91,7 +91,7 @@ describe("admin/allowlist API", () => {
     });
 
     it("POST adds a name and un-blocks it", async () => {
-      const handler = (await import("../../../../pages/api/admin/allowlist")).default;
+      const handler = (await import("../../../../src/pages/api/admin/allowlist")).default;
       const { req, res } = createMocks({
         method: "POST",
         body: { name: "Alice Munro", reason: "Real person" },
@@ -104,7 +104,7 @@ describe("admin/allowlist API", () => {
     });
 
     it("POST returns 400 for a missing/blank name", async () => {
-      const handler = (await import("../../../../pages/api/admin/allowlist")).default;
+      const handler = (await import("../../../../src/pages/api/admin/allowlist")).default;
       const { req, res } = createMocks({ method: "POST", body: { name: "   " } });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);
@@ -112,7 +112,7 @@ describe("admin/allowlist API", () => {
     });
 
     it("DELETE removes a name and reports whether it existed", async () => {
-      const handler = (await import("../../../../pages/api/admin/allowlist")).default;
+      const handler = (await import("../../../../src/pages/api/admin/allowlist")).default;
       const { req, res } = createMocks({ method: "DELETE", body: { name: "Alice Munro" } });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -121,7 +121,7 @@ describe("admin/allowlist API", () => {
     });
 
     it("DELETE returns 400 for a missing/blank name", async () => {
-      const handler = (await import("../../../../pages/api/admin/allowlist")).default;
+      const handler = (await import("../../../../src/pages/api/admin/allowlist")).default;
       const { req, res } = createMocks({ method: "DELETE", body: {} });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);

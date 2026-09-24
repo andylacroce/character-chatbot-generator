@@ -40,7 +40,7 @@ describe("bots API", () => {
   });
 
   it("returns 405 for unsupported methods", async () => {
-    const handler = (await import("../../../pages/api/bots")).default;
+    const handler = (await import("../../../src/pages/api/bots")).default;
     const { req, res } = createMocks({ method: "DELETE" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
@@ -49,7 +49,7 @@ describe("bots API", () => {
   describe("guest / no-DB no-op", () => {
     it("GET returns an empty list for a guest (no session)", async () => {
       mockGetSessionUserId.mockResolvedValue(null);
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -59,7 +59,7 @@ describe("bots API", () => {
 
     it("POST is a no-op for a guest (no session)", async () => {
       mockGetSessionUserId.mockResolvedValue(null);
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({
         method: "POST",
         body: { name: "Sherlock Holmes", personality: "A detective." },
@@ -73,7 +73,7 @@ describe("bots API", () => {
     it("is a no-op when signed in but DATABASE_URL is not configured", async () => {
       delete process.env.DATABASE_URL;
       mockGetSessionUserId.mockResolvedValue("user-1");
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -90,7 +90,7 @@ describe("bots API", () => {
         { id: "b2", name: "Cleopatra" },
       ];
       mockLimit.mockResolvedValueOnce(rows);
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -99,7 +99,7 @@ describe("bots API", () => {
     });
 
     it("caps the query at the 50 most recently updated characters", async () => {
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(mockLimit).toHaveBeenCalledWith(50);
@@ -107,7 +107,7 @@ describe("bots API", () => {
 
     it("returns 500 when the query fails", async () => {
       mockLimit.mockRejectedValueOnce(new Error("db down"));
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(500);
@@ -115,7 +115,7 @@ describe("bots API", () => {
 
     it("scopes the query to the current VERCEL_ENV", async () => {
       process.env.VERCEL_ENV = "production";
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(mockEq.mock.calls.some((call) => call[1] === "production")).toBe(true);
@@ -123,7 +123,7 @@ describe("bots API", () => {
 
     it('defaults to "development" when VERCEL_ENV is unset (local dev)', async () => {
       delete process.env.VERCEL_ENV;
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(mockEq.mock.calls.some((call) => call[1] === "development")).toBe(true);
@@ -134,7 +134,7 @@ describe("bots API", () => {
     beforeEach(() => mockGetSessionUserId.mockResolvedValue("user-1"));
 
     it("rejects a missing name", async () => {
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({
         method: "POST",
         body: { personality: "A detective." },
@@ -144,7 +144,7 @@ describe("bots API", () => {
     });
 
     it("rejects a missing personality", async () => {
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({
         method: "POST",
         body: { name: "Sherlock Holmes" },
@@ -155,7 +155,7 @@ describe("bots API", () => {
 
     it("upserts on (userId, name, environment) and persists", async () => {
       process.env.VERCEL_ENV = "preview";
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({
         method: "POST",
         body: {
@@ -192,7 +192,7 @@ describe("bots API", () => {
     });
 
     it("defaults optional fields to null", async () => {
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({
         method: "POST",
         body: { name: "Sherlock Holmes", personality: "A detective." },
@@ -209,7 +209,7 @@ describe("bots API", () => {
 
     it("returns 500 when the upsert fails", async () => {
       mockOnConflictDoUpdate.mockRejectedValueOnce(new Error("db down"));
-      const handler = (await import("../../../pages/api/bots")).default;
+      const handler = (await import("../../../src/pages/api/bots")).default;
       const { req, res } = createMocks({
         method: "POST",
         body: { name: "Sherlock Holmes", personality: "A detective." },

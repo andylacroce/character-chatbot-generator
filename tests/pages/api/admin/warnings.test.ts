@@ -26,7 +26,7 @@ describe("admin/warnings API", () => {
   });
 
   it("returns 405 for non-GET methods", async () => {
-    const handler = (await import("../../../../pages/api/admin/warnings")).default;
+    const handler = (await import("../../../../src/pages/api/admin/warnings")).default;
     const { req, res } = createMocks({ method: "POST" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(405);
@@ -34,7 +34,7 @@ describe("admin/warnings API", () => {
 
   it("returns 401 for a guest (no session)", async () => {
     mockGetSessionUserId.mockResolvedValue(null);
-    const handler = (await import("../../../../pages/api/admin/warnings")).default;
+    const handler = (await import("../../../../src/pages/api/admin/warnings")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(401);
@@ -44,7 +44,7 @@ describe("admin/warnings API", () => {
   it("returns 403 for a signed-in user who isn't an admin", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockIsAdmin.mockResolvedValue(false);
-    const handler = (await import("../../../../pages/api/admin/warnings")).default;
+    const handler = (await import("../../../../src/pages/api/admin/warnings")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
@@ -57,7 +57,7 @@ describe("admin/warnings API", () => {
     mockListWarnings.mockResolvedValueOnce([
       { characterName: "elsa", displayName: "Elsa", reason: "Disney", createdAt: new Date() },
     ]);
-    const handler = (await import("../../../../pages/api/admin/warnings")).default;
+    const handler = (await import("../../../../src/pages/api/admin/warnings")).default;
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);

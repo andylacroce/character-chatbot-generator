@@ -22,7 +22,7 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import { useUserName } from "../../../app/components/useUserName";
+import { useUserName } from "../../../src/app/components/useUserName";
 
 describe("useUserName", () => {
   beforeEach(() => {

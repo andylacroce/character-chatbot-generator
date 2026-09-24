@@ -5,7 +5,7 @@ jest.mock("../../../src/utils/characterVoices", () => ({
   getVoiceConfigForCharacter: (...args: unknown[]) => mockGetVoiceConfig(...args),
 }));
 
-import handler from "../../../pages/api/get-voice-config";
+import handler from "../../../src/pages/api/get-voice-config";
 
 function makeRes() {
   const res: Partial<NextApiResponse> = {};

@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import AuthControl from "@/app/components/AuthControl";
+import AuthControl from "@/src/app/components/AuthControl";
 
 const mockUseSession = jest.fn();
 const mockSignIn = jest.fn();

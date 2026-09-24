@@ -1,6 +1,6 @@
 import React from "react";
 import { render, fireEvent, screen } from "@testing-library/react";
-import HamburgerMenu from "../../../app/components/HamburgerMenu";
+import HamburgerMenu from "../../../src/app/components/HamburgerMenu";
 
 // Simple child button for testing
 function DummyButton({ onClick }: { onClick?: () => void }) {

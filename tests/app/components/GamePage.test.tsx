@@ -1,10 +1,10 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import GamePage from "../../../app/components/GamePage";
+import GamePage from "../../../src/app/components/GamePage";
 
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
-jest.mock("../../../app/components/LeaderboardClaim", () => ({
+jest.mock("../../../src/app/components/LeaderboardClaim", () => ({
   __esModule: true,
   default: () => null,
 }));
@@ -30,7 +30,7 @@ const mockSetInput = jest.fn();
 
 let controllerState: Record<string, unknown>;
 
-jest.mock("../../../app/components/useGameController", () => ({
+jest.mock("../../../src/app/components/useGameController", () => ({
   useGameController: () => controllerState,
 }));
 

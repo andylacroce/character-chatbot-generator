@@ -32,7 +32,7 @@ consolidation happened because three separate local workarounds had already pile
 in this repo for the same underlying problem — the shared package was out of sync with
 what the backend and web app actually do:
 
-- `ChatRequest.conversationHistory` was typed as `ChatMessage[]` but `pages/api/chat.ts`
+- `ChatRequest.conversationHistory` was typed as `ChatMessage[]` but `src/pages/api/chat.ts`
   actually expects pre-formatted `"User: …"`/`"Bot: …"` strings (`buildClaudeMessages()`
   calls `.startsWith()` on each entry) — sending raw objects 500s with `"t.startsWith is
   not a function"`. Fixed in shared `types.ts` directly (also added the missing
@@ -48,7 +48,7 @@ what the backend and web app actually do:
   themselves are authored once, in `packages/shared/src/tokens/{light,dark}.json`
   (Style Dictionary token format) — shared `theme.ts` flattens them for this app, and
   the web app's `scripts/generate-theme-css.cjs` feeds the same two files to Style
-  Dictionary to produce its own `app/theme-tokens.generated.css`. Both platforms read
+  Dictionary to produce its own `src/app/theme-tokens.generated.css`. Both platforms read
   one source now; there's no more hand-copying a hex value between them.
 - **Tried and reverted — shared hand-drawn icon glyphs.** Pulled the web app's
   hand-drawn send/stop/volume `<svg>` paths (from `ChatInput.tsx`) into shared
@@ -160,13 +160,13 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
   `GET /api/auth/mobile-auth-start?redirect_uri=...` in a browser tab
   (`expo-web-browser`'s `openAuthSessionAsync`, redirect URI from `expo-linking`'s
   `createURL`, matching `app.json`'s `"scheme": "character-chatbot-mobile"`), which
-  redirects straight to the backend's own sign-in page (`app/auth/signin/`,
+  redirects straight to the backend's own sign-in page (`src/app/auth/signin/`,
   `authOptions.ts`'s custom `pages.signIn` — styled to match the app instead of
   NextAuth's generic default picker, since web's own sign-in is an in-app lightbox
   that never navigates here), offering both Google and email. Whichever provider
   completes, NextAuth's own callback routes (`/api/auth/callback/google` /
   `/api/auth/callback/email`, both completely unchanged) handle it, then redirect to
-  `pages/api/auth/mobile-auth-complete.ts`, which reads the resulting session cookie and
+  `src/pages/api/auth/mobile-auth-complete.ts`, which reads the resulting session cookie and
   mints a bearer JWT (`next-auth/jwt`'s `encode`, same shape as the web session cookie —
   `getSessionUserId` already reads either) back into the app. This replaced an earlier
   Google-only version (`mobile-google-start.ts`/`-callback.ts`) that hand-rolled the

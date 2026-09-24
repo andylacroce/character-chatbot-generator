@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
-import CharsGallery from "@/app/components/CharsGallery";
+import CharsGallery from "@/src/app/components/CharsGallery";
 import {
   markClientNavigation,
   __resetClientNavigationStateForTest,

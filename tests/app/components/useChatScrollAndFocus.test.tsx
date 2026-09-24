@@ -1,6 +1,6 @@
 import React from "react";
 import { render, act } from "@testing-library/react";
-import { useChatScrollAndFocus } from "../../../app/components/useChatScrollAndFocus";
+import { useChatScrollAndFocus } from "../../../src/app/components/useChatScrollAndFocus";
 
 function setup({ messages: _messages = [], loading: _loading = false } = {}) {
   const chatBoxRef = React.createRef<HTMLDivElement>();

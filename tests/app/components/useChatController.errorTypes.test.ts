@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
-import { useChatController } from "../../../app/components/useChatController";
+import { useChatController } from "../../../src/app/components/useChatController";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
@@ -24,7 +24,7 @@ jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
   persistVoiceConfig: jest.fn(),
 }));
 
-import type { Bot } from "../../../app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/BotCreator";
 
 const bot: Bot = {
   name: "ErrBot",

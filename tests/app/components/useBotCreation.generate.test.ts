@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { generateBotDataWithProgressCancelable } from "../../../app/components/useBotCreation";
-import { api_getVoiceConfigForCharacter } from "../../../app/components/api_getVoiceConfigForCharacter";
+import { generateBotDataWithProgressCancelable } from "../../../src/app/components/useBotCreation";
+import { api_getVoiceConfigForCharacter } from "../../../src/app/components/api_getVoiceConfigForCharacter";
 import { persistVoiceConfig } from "../../../src/utils/voiceConfigPersistence";
 import { authenticatedFetch } from "../../../src/utils/api";
 
-jest.mock("../../../app/components/api_getVoiceConfigForCharacter");
+jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter");
 jest.mock("../../../src/utils/voiceConfigPersistence");
 jest.mock("../../../src/utils/api");
 

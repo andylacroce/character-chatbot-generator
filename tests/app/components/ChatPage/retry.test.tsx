@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import ChatPage from "../../../../app/components/ChatPage";
-import { Bot } from "../../../../app/components/BotCreator";
+import ChatPage from "../../../../src/app/components/ChatPage";
+import { Bot } from "../../../../src/app/components/BotCreator";
 import "@testing-library/jest-dom";
 import { mockResponse } from "../../../helpers/mockResponse";
 
@@ -18,7 +18,7 @@ jest.mock("../../../../src/utils/api", () => ({
   authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
 }));
 
-jest.mock("../../../../app/components/useAudioPlayer", () => ({
+jest.mock("../../../../src/app/components/useAudioPlayer", () => ({
   __esModule: true,
   useAudioPlayer: () => ({
     playAudio: jest.fn(),

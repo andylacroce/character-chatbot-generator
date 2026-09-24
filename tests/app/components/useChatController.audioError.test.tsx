@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
-import type { Bot } from "../../../app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/BotCreator";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.
@@ -16,7 +16,7 @@ jest.mock("../../../src/utils/storage", () => ({
 }));
 
 // Mock audio player to throw a non-abort error
-jest.mock("../../../app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: jest.fn(async (_url: string, _signal?: AbortSignal) => {
       const err = new Error("playback failed") as Error & { name?: string };
@@ -29,7 +29,7 @@ jest.mock("../../../app/components/useAudioPlayer", () => ({
   }),
 }));
 
-import { useChatController } from "../../../app/components/useChatController";
+import { useChatController } from "../../../src/app/components/useChatController";
 
 const mockBot: Bot = {
   name: "ErrorBot",

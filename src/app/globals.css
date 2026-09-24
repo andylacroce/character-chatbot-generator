@@ -1,0 +1,311 @@
+/* =============================
+   GLOBALS.CSS (MANAGED)
+   - Global styles for the Portrayal app
+   - For component-specific styles, prefer CSS modules in app/components/styles/
+   - See README for CSS documentation practices
+   ============================= */
+
+/*
+  GLOBAL CSS VARIABLES
+  --------------------
+  All color, font, and layout variables for consistent theming.
+  Update these to change the app's look and feel globally.
+*/
+
+/* --- Design tokens ---
+   Color and font custom properties (--color-*, --font-*, --disabled-*,
+   --scrollbar-*) are generated from packages/shared/src/theme-tokens.json — the
+   "Museum Placard" archival theme, the same restrained sepia-and-patina palette
+   as the Character Wall (/chars), extended app-wide — via
+   scripts/generate-theme-css.cjs (npm run theme:generate, wired into predev/build).
+   That JSON file is the single source shared with the mobile app; edit values
+   there, never in the generated file below or by hand-copying a hex code here. */
+@import "./theme-tokens.generated.css";
+
+:root {
+  /* Everything below is a semantic alias built from the generated base tokens
+     above, or a plain derivation (color-mix) of one — not a second place that
+     authors color values. Only these alias *names* (not their values) are
+     app-specific enough to live here rather than in the shared token file. */
+  --color-sender: var(--color-primary);
+  --card-body-bg: var(--color-surface);
+  --chatbox-background: var(--color-background);
+  --user-message-bg: var(--color-primary-container);
+  --bot-message-bg: var(--color-secondary-container);
+  --bot-sender: var(--color-secondary);
+  --button-bg: var(--color-primary);
+  --button-hover-bg: color-mix(in srgb, var(--color-primary) 82%, black);
+  --send-button-bg: var(--color-accent);
+  --send-button-hover-bg: color-mix(in srgb, var(--color-accent) 82%, black);
+  --send-button-text: var(--color-on-secondary);
+  --input-bg: var(--color-surface-variant);
+  --input-text: var(--color-text);
+  --input-placeholder: var(--color-text-secondary);
+  --button-shadow: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  --button-shadow-hover: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  --chat-message-font-size: 1.2rem;
+}
+
+.dark {
+  /* Hover derivations lighten instead of darken in dark mode. Shadows stay
+     black-based rather than tinted by (now light-colored) --color-primary — a
+     shadow simulates depth/occlusion, which reads correctly in either theme,
+     unlike a hover fill. */
+  --button-hover-bg: color-mix(in srgb, var(--color-primary) 85%, white) !important;
+  --send-button-hover-bg: color-mix(in srgb, var(--color-accent) 85%, white) !important;
+  --button-shadow: rgba(0, 0, 0, 0.3) !important;
+  --button-shadow-hover: color-mix(in srgb, var(--color-primary) 25%, black) !important;
+}
+
+/*
+  CSS RESET AND BASE STYLES
+  -------------------------
+  Reset and normalize browser styles for consistency.
+  Set up base font, background, and layout for the app.
+*/
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+body {
+  font-family: var(--font-primary), sans-serif;
+  font-size: 1.125rem;
+  background-color: var(--color-background) !important;
+  color: var(--color-text);
+  display: flex;
+  /* Kept for clarity, though inherited */
+  flex-direction: column;
+  /* Kept for clarity */
+  flex: 1 1 auto;
+  /* Body is a flex child of html and should grow */
+  width: 100%;
+}
+
+#__next {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Important for nested flex scroll */
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  /* Ensure #__next also takes full width */
+}
+
+/* --- Fix viewport overflow for mobile and desktop --- */
+html,
+body,
+#__next {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Reserves the vertical-scrollbar gutter on every page load, whether or not that
+   page's own content is tall enough to actually need it. Without this, a page whose
+   body scrolls (the admin pages, the Character Wall's infinite-scroll gallery) has a
+   narrower usable width than one that doesn't (chat/game, which only ever scroll a
+   nested message list, never the page itself) on any browser that reserves scrollbar
+   space (desktop Chrome/Firefox/Edge; most mobile browsers already use an overlay
+   scrollbar with zero reserved width, so this is a no-op there) — shifting
+   AppHeader.tsx's hamburger (and everything else anchored to an edge) by the
+   scrollbar's width depending purely on how tall that specific page happens to be.
+   `stable` reserves the gutter unconditionally, so every page's usable width — and
+   hence the hamburger's position — is identical regardless of its own content height. */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* --- Utility and Shared Styles --- */
+/*
+  Utility classes for border radius, padding, font size, and margin.
+  Use these for quick layout tweaks in components.
+*/
+.rounded {
+  border-radius: 10px;
+}
+
+.p-2 {
+  padding: 10px;
+}
+
+.text-sm {
+  font-size: 0.98rem;
+}
+
+.mb-1 {
+  margin-bottom: 5px;
+}
+
+.my-2 {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+/* --- Extended Utility and Shared Styles --- */
+/*
+  Use these utility classes for layout, spacing, and alignment to promote reuse.
+  Prefer utility classes over repeating similar rules in component modules.
+*/
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-start {
+  align-items: flex-start;
+}
+
+.items-end {
+  align-items: flex-end;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.gap-1 {
+  gap: 0.25rem;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-4 {
+  gap: 1rem;
+}
+
+.px-2 {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.px-4 {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.mt-2 {
+  margin-top: 0.5rem;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.max-w-800 {
+  max-width: 800px;
+}
+
+/* Horizontal rule separating groups of items inside a hamburger dropdown (e.g. a page's
+   own menu items from the shared account-menu items appended after them) — a single,
+   atomic, single-class rule with no descendant selector, so sharing it carries none of
+   the cross-component leakage risk that motivates keeping page-specific CSS modules
+   separate (see AppHeader.tsx/CLAUDE.md's "Unified header" section). Used by AppHeader,
+   ChatPage, and GamePage instead of each repeating the same five lines. */
+.menuDivider {
+  border: none;
+  border-top: 1px solid var(--color-outline);
+  margin: 0.3rem 0.2rem;
+}
+
+/* A hamburger dropdown item's icon — one color for every item regardless of which
+   component renders it (a page's own menu items, useAccountMenu's items, or
+   AuthControl's sign in/out), so a single dropdown never mixes icon colors. */
+.menuIcon {
+  color: var(--color-primary);
+}
+
+/*
+  Usage:
+  - Use utility classes in JSX: <div className="flex flex-row items-center gap-2 px-4">
+  - For custom component-specific styles, use CSS modules.
+*/
+
+/* --- Third-Party Component Overrides --- */
+/*
+  Customization for @trendmicro/react-toggle-switch and other third-party components.
+  Use class selectors to override library styles as needed.
+*/
+[class*="toggle-switch---switch"][class*="checked"] [class*="toggle-switch---toggle"] {
+  background-color: var(--color-primary) !important;
+  border-color: var(--button-hover-bg) !important;
+}
+
+[class*="toggle-switch---switch"] [class*="toggle-switch---toggle"] {
+  background-color: var(--send-button-text) !important;
+  border-color: var(--disabled-bg) !important;
+}
+
+@media (max-width: 600px) {
+  :root {
+    --chat-message-font-size: 1rem;
+  }
+}

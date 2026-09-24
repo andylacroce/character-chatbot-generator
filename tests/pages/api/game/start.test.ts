@@ -111,7 +111,7 @@ describe("game/start API", () => {
   });
 
   it("returns 405 for non-POST methods", async () => {
-    const handler = require("../../../../pages/api/game/start").default;
+    const handler = require("../../../../src/pages/api/game/start").default;
     const req = { method: "GET" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -119,7 +119,7 @@ describe("game/start API", () => {
   });
 
   it("returns 200 with game state on successful start", async () => {
-    const handler = require("../../../../pages/api/game/start").default;
+    const handler = require("../../../../src/pages/api/game/start").default;
     const req = { method: "POST" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -142,7 +142,7 @@ describe("game/start API", () => {
     // synthesized. Asserting the exact string also pins the voice cache key to it, so a
     // different hidden target naturally gets its own cache entry instead of silently
     // sharing a cast voice with the last round for the same currentCharacterName.
-    const handler = require("../../../../pages/api/game/start").default;
+    const handler = require("../../../../src/pages/api/game/start").default;
     const req = { method: "POST" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -155,7 +155,7 @@ describe("game/start API", () => {
   });
 
   it("calls pickRandomCharacterName twice with exclusion, drawing from the game's curated pool", async () => {
-    const handler = require("../../../../pages/api/game/start").default;
+    const handler = require("../../../../src/pages/api/game/start").default;
     const req = { method: "POST" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -171,7 +171,7 @@ describe("game/start API", () => {
   });
 
   it("hides the next character name in the response but keeps it in the token", async () => {
-    const handler = require("../../../../pages/api/game/start").default;
+    const handler = require("../../../../src/pages/api/game/start").default;
     const req = { method: "POST" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -191,7 +191,7 @@ describe("game/start API", () => {
     generateGameCluePersonaPrompt.mockReset();
     generateGameCluePersonaPrompt.mockRejectedValueOnce(new Error("Claude is down"));
 
-    const handler = require("../../../../pages/api/game/start").default;
+    const handler = require("../../../../src/pages/api/game/start").default;
     const req = { method: "POST" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -210,7 +210,7 @@ describe("game/start API", () => {
     avatarGeneration.getOrGenerateAvatar.mockReset();
     avatarGeneration.getOrGenerateAvatar.mockRejectedValueOnce(new Error("avatar boom"));
 
-    const handler = require("../../../../pages/api/game/start").default;
+    const handler = require("../../../../src/pages/api/game/start").default;
     const req = { method: "POST" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -218,7 +218,7 @@ describe("game/start API", () => {
   });
 
   it("streams real progress frames as each round-generation step completes when stream: true", async () => {
-    const handler = require("../../../../pages/api/game/start").default;
+    const handler = require("../../../../src/pages/api/game/start").default;
     const req = {
       method: "POST",
       body: { stream: true },
@@ -250,7 +250,7 @@ describe("game/start API", () => {
     generateGameCluePersonaPrompt.mockReset();
     generateGameCluePersonaPrompt.mockRejectedValueOnce(new Error("Claude is down"));
 
-    const handler = require("../../../../pages/api/game/start").default;
+    const handler = require("../../../../src/pages/api/game/start").default;
     const req = {
       method: "POST",
       body: { stream: true },

@@ -29,7 +29,7 @@ const mockPlayAudio = jest.fn();
 const mockStopAudio = jest.fn();
 const mockIsAudioPlaying = jest.fn();
 const mockAudioRef = { current: { muted: false } } as unknown as React.RefObject<HTMLAudioElement>;
-jest.mock("../../../app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/useAudioPlayer", () => ({
   useAudioPlayer: (..._args: unknown[]) => ({
     playAudio: mockPlayAudio,
     stopAudio: mockStopAudio,
@@ -46,7 +46,7 @@ jest.mock("../../../src/utils/storage", () => ({
   setJSON: jest.fn(),
 }));
 
-import { useGameController } from "../../../app/components/useGameController";
+import { useGameController } from "../../../src/app/components/useGameController";
 import * as storage from "../../../src/utils/storage";
 
 const mockStorage = storage as unknown as jest.Mocked<{

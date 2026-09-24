@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import AppHeader from "@/app/components/AppHeader";
+import AppHeader from "@/src/app/components/AppHeader";
 
 describe("AppHeader", () => {
   it("renders the center content and menu items inside the hamburger dropdown", () => {

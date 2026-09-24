@@ -11,7 +11,7 @@ pressure, so this asks explicitly, every time.
 
 ## Logging
 
-- [ ] Every new/changed `pages/api/*.ts` failure path (`catch` blocks, non-2xx
+- [ ] Every new/changed `src/pages/api/*.ts` failure path (`catch` blocks, non-2xx
       responses) logs via `logEvent(level, event, message, meta)` — see
       CLAUDE.md's "Logging standards" — or there's a specific reason it
       shouldn't (e.g. a purely cosmetic client-side fetch failure).

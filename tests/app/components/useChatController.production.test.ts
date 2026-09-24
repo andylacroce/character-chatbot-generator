@@ -1,7 +1,7 @@
 import React from "react";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { render } from "@testing-library/react";
-import { useChatController } from "../../../app/components/useChatController";
+import { useChatController } from "../../../src/app/components/useChatController";
 import storage from "../../../src/utils/storage";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
@@ -13,7 +13,7 @@ jest.mock("next-auth/react", () => ({
 const mockPlayAudio = jest.fn();
 const mockStopAudio = jest.fn();
 const mockAudioRef = { current: { muted: false } } as unknown as React.RefObject<HTMLAudioElement>;
-jest.mock("../../../app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: mockPlayAudio,
     stopAudio: mockStopAudio,

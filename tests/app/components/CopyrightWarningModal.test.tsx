@@ -1,8 +1,8 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { CopyrightWarningModal } from "../../../app/components/CopyrightWarningModal";
-import type { CharacterValidationResult } from "../../../pages/api/validate-character";
+import { CopyrightWarningModal } from "../../../src/app/components/CopyrightWarningModal";
+import type { CharacterValidationResult } from "../../../src/pages/api/validate-character";
 
 describe("CopyrightWarningModal", () => {
   const mockOnContinue = jest.fn();

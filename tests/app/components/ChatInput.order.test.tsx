@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import ChatInput from "../../../app/components/ChatInput";
+import ChatInput from "../../../src/app/components/ChatInput";
 
 /**
  * Regression coverage for issue #879: the send button must be the last control

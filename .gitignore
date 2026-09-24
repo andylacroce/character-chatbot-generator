@@ -50,7 +50,7 @@ tmp/
 
 # Public generated assets
 public/openapi.json
-app/theme-tokens.generated.css
+src/app/theme-tokens.generated.css
 
 # Generated code-reference docs (TypeDoc) — see `npm run docs:code`
 docs-generated/

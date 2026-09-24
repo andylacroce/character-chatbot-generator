@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import PrivacyPage, { metadata } from "../../../app/privacy/page";
+import PrivacyPage, { metadata } from "../../../src/app/privacy/page";
 
 describe("PrivacyPage", () => {
   it("renders the title and a link back to the app", () => {

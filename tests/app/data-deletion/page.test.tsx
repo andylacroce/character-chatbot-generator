@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import DataDeletionPage, { metadata } from "../../../app/data-deletion/page";
+import DataDeletionPage, { metadata } from "../../../src/app/data-deletion/page";
 
 describe("DataDeletionPage", () => {
   it("renders the title and a link back to the app", () => {

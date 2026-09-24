@@ -9,7 +9,7 @@ jest.mock("@scalar/nextjs-api-reference", () => ({
 
 describe("app/reference/route", () => {
   it("configures ApiReference to read /openapi.json", async () => {
-    const { GET } = await import("../../../app/reference/route");
+    const { GET } = await import("../../../src/app/reference/route");
 
     expect(mockApiReference).toHaveBeenCalledWith(
       expect.objectContaining({ url: "/openapi.json" }),

@@ -23,7 +23,7 @@ jest.mock("../../../src/utils/claudeModelSelector", () => ({
 }));
 
 // Now that mocks are set up, require the handler module
-const handler = require("../../../pages/api/validate-character").default;
+const handler = require("../../../src/pages/api/validate-character").default;
 
 function makeRes() {
   const res: Partial<NextApiResponse> = {};
@@ -146,7 +146,7 @@ describe("validate-character API", () => {
       });
     });
 
-    const handler2 = require("../../../pages/api/validate-character").default;
+    const handler2 = require("../../../src/pages/api/validate-character").default;
 
     const req = {
       method: "POST",

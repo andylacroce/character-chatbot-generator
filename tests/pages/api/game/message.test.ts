@@ -131,7 +131,7 @@ describe("game/message API", () => {
   });
 
   it("returns 405 for non-POST methods", async () => {
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = { method: "GET" } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -139,7 +139,7 @@ describe("game/message API", () => {
   });
 
   it("returns 400 when message is missing", async () => {
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token });
     const res = makeRes();
     await handler(req, res);
@@ -148,7 +148,7 @@ describe("game/message API", () => {
   });
 
   it("returns 400 for an invalid or expired game token", async () => {
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: "not-a-real-token", message: "hello" });
     const res = makeRes();
     await handler(req, res);
@@ -161,7 +161,7 @@ describe("game/message API", () => {
     mockClassification("none");
     mockGetGameReply.mockResolvedValueOnce("I've solved many cases, ask away.");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "What's your favorite case?" });
     const res = makeRes();
     await handler(req, res);
@@ -184,7 +184,7 @@ describe("game/message API", () => {
     mockClassification("ambiguous");
     mockGetGameReply.mockResolvedValueOnce("Do you have a name in mind?");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "is it someone from London?" });
     const res = makeRes();
     await handler(req, res);
@@ -206,7 +206,7 @@ describe("game/message API", () => {
   it("signals giveUpRequested without generating a reply when the message is a give-up request", async () => {
     mockClassification("giveUp");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "I give up, just tell me" });
     const res = makeRes();
     await handler(req, res);
@@ -231,7 +231,7 @@ describe("game/message API", () => {
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
     mockSynthesizeReplyAudio.mockResolvedValueOnce("/api/audio?file=reaction.mp3");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "It's Irene Adler!" });
     const res = makeRes();
     await handler(req, res);
@@ -266,7 +266,7 @@ describe("game/message API", () => {
     mockClassification("clear", true);
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "It's Irene Adler!" });
     const res = makeRes();
     await handler(req, res);
@@ -286,7 +286,7 @@ describe("game/message API", () => {
     mockGetGuestId.mockReturnValue("guest-hash");
     mockClassification("clear", true);
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant!");
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const res = makeRes();
     await handler(makeReq({ gameToken: token, message: "Irene Adler" }), res);
     expect(res.status).toHaveBeenCalledWith(200);
@@ -305,7 +305,7 @@ describe("game/message API", () => {
     mockGetGuestId.mockReturnValue("different-browser");
     mockClassification("clear", true);
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant!");
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     await handler(makeReq({ gameToken: token, message: "Irene Adler" }), makeRes());
     expect(mockRecordGameResult).not.toHaveBeenCalled();
   });
@@ -318,7 +318,7 @@ describe("game/message API", () => {
     mockClassification("clear", true);
     mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant, you got it!");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "It's Irene Adler!" });
     const res = makeRes();
     await handler(req, res);
@@ -333,7 +333,7 @@ describe("game/message API", () => {
     mockClassification("clear", false);
     mockGetGuessReactionReply.mockResolvedValueOnce("Not quite, try again?");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "Is it Moriarty?" });
     const res = makeRes();
     await handler(req, res);
@@ -356,7 +356,7 @@ describe("game/message API", () => {
     mockClassification("clear", false);
     mockGetGuessReactionReply.mockResolvedValueOnce("A close counterpart, but not my answer.");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const res = makeRes();
     await handler(makeReq({ gameToken: token, message: "Aphrodite" }), res);
 
@@ -376,7 +376,7 @@ describe("game/message API", () => {
     mockClassification("clear", false);
     mockGetGuessReactionReply.mockResolvedValueOnce("Alas, it was Irene Adler.");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "Is it Moriarty?" });
     const res = makeRes();
     await handler(req, res);
@@ -405,7 +405,7 @@ describe("game/message API", () => {
     mockClassification("none");
     mockGetGameReply.mockRejectedValueOnce(new Error("Claude is down"));
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "hello" });
     const res = makeRes();
     await handler(req, res);
@@ -424,7 +424,7 @@ describe("game/message API", () => {
     mockCreate.mockResolvedValueOnce({ content: [{ type: "text", text: "not json" }] });
     mockGetGameReply.mockResolvedValueOnce("Ask me something else.");
 
-    const handler = require("../../../../pages/api/game/message").default;
+    const handler = require("../../../../src/pages/api/game/message").default;
     const req = makeReq({ gameToken: token, message: "garbled input" });
     const res = makeRes();
     await handler(req, res);

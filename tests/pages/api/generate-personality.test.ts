@@ -28,7 +28,7 @@ const mockFrom = jest.fn(() => ({ orderBy: mockOrderBy }));
 const mockSelect = jest.fn(() => ({ from: mockFrom }));
 jest.mock("../../../src/db/client", () => ({ getDb: () => ({ select: mockSelect }) }));
 
-import handler from "../../../pages/api/generate-personality";
+import handler from "../../../src/pages/api/generate-personality";
 
 function makeRes() {
   const res: Partial<NextApiResponse> = { headersSent: false };

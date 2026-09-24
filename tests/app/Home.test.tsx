@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
-import { Bot } from "../../app/components/BotCreator";
+import { Bot } from "../../src/app/components/BotCreator";
 
 // Mock storage - must be defined before jest.mock call
 jest.mock("../../src/utils/storage", () => ({
@@ -87,7 +87,7 @@ jest.mock("../../src/utils/api", () => ({
   authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...args),
 }));
 
-import Home from "../../app/index";
+import Home from "../../src/app/index";
 
 describe("Home component URL parameter functionality", () => {
   // Use jest.requireMock so we don't rely on CommonJS require()

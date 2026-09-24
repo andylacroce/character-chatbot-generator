@@ -1,4 +1,4 @@
-import { api_getVoiceConfigForCharacter } from "../../../app/components/api_getVoiceConfigForCharacter";
+import { api_getVoiceConfigForCharacter } from "../../../src/app/components/api_getVoiceConfigForCharacter";
 
 jest.mock("../../../src/utils/api", () => ({
   authenticatedFetch: jest.fn(),

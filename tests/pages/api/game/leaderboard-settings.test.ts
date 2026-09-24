@@ -59,7 +59,7 @@ describe("game/leaderboard-settings API", () => {
   });
 
   it("lets an eligible guest browser submit a moderated name", async () => {
-    const handler = (await import("../../../../pages/api/game/leaderboard-settings")).default;
+    const handler = (await import("../../../../src/pages/api/game/leaderboard-settings")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { showOnLeaderboard: true, name: "Guest Ace" },
@@ -79,7 +79,7 @@ describe("game/leaderboard-settings API", () => {
 
   it("rejects a player outside the top ten before moderation or database writes", async () => {
     mockIsTopTenPlayer.mockResolvedValue(false);
-    const handler = (await import("../../../../pages/api/game/leaderboard-settings")).default;
+    const handler = (await import("../../../../src/pages/api/game/leaderboard-settings")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { showOnLeaderboard: true, name: "Guest Ace" },
@@ -91,7 +91,7 @@ describe("game/leaderboard-settings API", () => {
   });
 
   it("does not publish an abusive or unverified name", async () => {
-    const handler = (await import("../../../../pages/api/game/leaderboard-settings")).default;
+    const handler = (await import("../../../../src/pages/api/game/leaderboard-settings")).default;
     for (const [status, expected] of [
       ["rejected", 400],
       ["unavailable", 503],
@@ -109,7 +109,7 @@ describe("game/leaderboard-settings API", () => {
 
   it("allows a guest to leave without a moderation call", async () => {
     mockReturning.mockResolvedValueOnce([{ showOnLeaderboard: false, name: "Guest Ace" }]);
-    const handler = (await import("../../../../pages/api/game/leaderboard-settings")).default;
+    const handler = (await import("../../../../src/pages/api/game/leaderboard-settings")).default;
     const { req, res } = createMocks({ method: "POST", body: { showOnLeaderboard: false } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -119,7 +119,7 @@ describe("game/leaderboard-settings API", () => {
 
   it("requires a browser identity for a guest", async () => {
     mockGetGuestId.mockReturnValue(null);
-    const handler = (await import("../../../../pages/api/game/leaderboard-settings")).default;
+    const handler = (await import("../../../../src/pages/api/game/leaderboard-settings")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { showOnLeaderboard: true, name: "Ace" },
@@ -133,7 +133,7 @@ describe("game/leaderboard-settings API", () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockCheckLeaderboardName.mockResolvedValue({ status: "approved", name: "Ada" });
     mockReturning.mockResolvedValueOnce([{ showOnLeaderboard: true, name: "Ada" }]);
-    const handler = (await import("../../../../pages/api/game/leaderboard-settings")).default;
+    const handler = (await import("../../../../src/pages/api/game/leaderboard-settings")).default;
     const { req, res } = createMocks({
       method: "POST",
       body: { showOnLeaderboard: true, name: "Ada" },

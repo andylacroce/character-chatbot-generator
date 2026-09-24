@@ -37,7 +37,7 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import handler from "../../../pages/api/log-message";
+import handler from "../../../src/pages/api/log-message";
 import { BlobNotFoundError as MockBlobNotFoundError } from "@vercel/blob";
 
 /** The mocked BlobNotFoundError; the real type declares a no-arg constructor. */

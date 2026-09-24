@@ -12,7 +12,7 @@ jest.mock("../../../src/utils/logger", () => ({
 }));
 
 const mockGetVoiceConfig = jest.fn();
-jest.mock("../../../app/components/api_getVoiceConfigForCharacter", () => ({
+jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter", () => ({
   api_getVoiceConfigForCharacter: (...args: unknown[]) =>
     mockGetVoiceConfig(...(args as unknown[])),
 }));
@@ -22,8 +22,8 @@ jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
   persistVoiceConfig: jest.fn(),
 }));
 
-import { useBotCreation } from "../../../app/components/useBotCreation";
-import type { UserNameContext } from "../../../app/components/useUserName";
+import { useBotCreation } from "../../../src/app/components/useBotCreation";
+import type { UserNameContext } from "../../../src/app/components/useUserName";
 
 // Shared test type used across multiple cases
 type VoiceCfg = { name: string; languageCodes: string[] };
