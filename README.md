@@ -45,7 +45,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
 - **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, presented as a responsive tattered-parchment mosaic — see [Character Wall](#character-wall-chars)
 - **Personalized Greeting**: Characters can greet you by name — a one-time, skippable prompt the first time you create a character, editable anytime from the account menu — see [Personalized Greeting](#personalized-greeting)
-- **Privacy-conscious Analytics**: Cookie-free Vercel traffic metrics, consent-gated Google Analytics 4 and Google Tag Manager, and a small self-hosted product-usage log with an admin-only `/admin` stats view — see [Internal Analytics](#internal-analytics-admin)
+- **Privacy-conscious Analytics**: Cookie-free Vercel traffic metrics, consent-gated Google Analytics 4, and a small self-hosted product-usage log with an admin-only `/admin` stats view — see [Internal Analytics](#internal-analytics-admin)
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,100+ passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: Mobile-friendly UI with dark mode support
@@ -70,7 +70,7 @@ Everything below is an **account you'd need to create**, not just an env var to 
 | **Cloudflare** | [dash.cloudflare.com](https://dash.cloudflare.com) | Optional | Primary (free-tier) avatar image provider (Workers AI, Flux Schnell). Skip it and avatar generation still works via the Pollinations.ai fallback with no config at all | `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN` |
 | **Neon** (Postgres) | [neon.tech](https://neon.tech) | Optional | Server-side persistence: saved characters, chat history, the shared avatar cache table. Skip it and the app is a fully-functional guest-only experience | `DATABASE_URL` |
 | **Google Cloud Console → OAuth credentials** | Same GCP project as above, but a *separate* setup step (APIs & Services → Credentials → OAuth client ID) — not the service account key | Optional | "Sign in with Google" on the landing page. Needs `DATABASE_URL` set too, or there's nothing to sign in *for* | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
-| **Google Analytics / Tag Manager** | [analytics.google.com](https://analytics.google.com) / [tagmanager.google.com](https://tagmanager.google.com) | Optional | Consent-gated GA4 page views and the site's GTM container. Neither Google loader runs before a visitor opts in | `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID`, `NEXT_PUBLIC_GOOGLE_TAG_MANAGER_ID` (optional overrides) |
+| **Google Analytics** | [analytics.google.com](https://analytics.google.com) | Optional | Consent-gated GA4 page views. The Google tag never loads before a visitor opts in | `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` (optional override) |
 | **Any SMTP sender** (Gmail App Password, Resend, etc.) | No new account needed if you already have an inbox you can send mail from | Optional | Passwordless magic-link sign-in alongside Google. Needs `DATABASE_URL` set too | `EMAIL_SERVER`, `EMAIL_FROM` |
 | **Vercel** | [vercel.com](https://vercel.com) | Optional | Deployment target, plus two of its own add-ons if you want them: **Blob** storage (durable avatar URLs instead of base64 data URLs) and **KV**/Marketplace Redis (shared rate-limit counters across serverless instances) | `VERCEL_BLOB_READ_WRITE_TOKEN`, `KV_REST_API_URL` + `KV_REST_API_TOKEN` |
 | **Upstash** (Redis) | [upstash.com](https://upstash.com) | Optional | Same shared-rate-limit feature as Vercel KV above, if you'd rather provision Redis directly instead of through Vercel's marketplace | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` |
@@ -97,7 +97,6 @@ API_SECRET=your_server_api_secret
 GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
 # Optional:
 NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
-NEXT_PUBLIC_GOOGLE_TAG_MANAGER_ID=GTM-XXXXXXX
 CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
 CLOUDFLARE_API_TOKEN=your_cloudflare_api_token
 VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_token
@@ -169,7 +168,6 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 ### Optional
 
 - `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` — Overrides the production site's built-in GA4 measurement ID, or enables the consent flow during local development. Use a web data stream's `G-...` ID; the Google tag is not loaded until a visitor explicitly opts in, and client-side route changes are tracked automatically when GA4 Enhanced Measurement has browser-history page changes enabled.
-- `NEXT_PUBLIC_GOOGLE_TAG_MANAGER_ID` — Overrides the production site's built-in `GTM-...` container ID, or enables Tag Manager during local development. GTM uses the same analytics opt-in and is never loaded for a visitor who declines.
 - `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` — Enables Cloudflare Workers AI (Flux Schnell) as the primary avatar image provider. Without them, avatar generation still works via the Pollinations.ai fallback with no config at all
 - `VERCEL_BLOB_READ_WRITE_TOKEN` (or `BLOB_READ_WRITE_TOKEN`) — Enables logging to Vercel Blob storage, and durable Blob-hosted avatar URLs instead of base64 data URLs
 - `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
@@ -337,13 +335,12 @@ asks again in that browser. Set anytime from the account menu (click your name, 
 ## Internal Analytics (`/admin`)
 
 Vercel Analytics/Speed Insights (already wired into `src/app/layout.tsx`) cover cookie-free page
-views and performance. Production also has consent-gated GA4 traffic/navigation metrics and the
-`GTM-WVFLVRGS` Tag Manager container; the two `NEXT_PUBLIC_GOOGLE_*_ID` variables can override those
-IDs or enable the flow in development. `GoogleAnalyticsConsent.tsx` does not load either Google
-loader until the visitor opts in, stores only that choice locally, and lets them change it from the
-privacy page. The direct GA integration already sends `G-W01K2YSWH4`, so the GTM container must not
-also publish a GA4 Google tag for that same measurement ID or page views will be counted twice. Use
-the container for additional, non-duplicate tags. The self-hosted layer below records a deliberately
+views and performance. Production also has consent-gated GA4 traffic/navigation metrics
+(`G-W01K2YSWH4`); `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` can override that ID or enable the flow in
+development. `GoogleAnalyticsConsent.tsx` does not load the Google tag until the visitor opts in,
+stores only that choice locally, and lets them change it from the privacy page. Google Tag Manager
+was removed as unused; add it back only with tags that don't duplicate the direct GA4 page views.
+The self-hosted layer below records a deliberately
 small set of product-usage events rather than acting as a general-purpose observability service.
 
 - **Why it exists**: most usage — guest sessions, likely the majority of traffic since

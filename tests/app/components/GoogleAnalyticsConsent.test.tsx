@@ -9,13 +9,9 @@ jest.mock("@next/third-parties/google", () => ({
   GoogleAnalytics: ({ gaId }: { gaId: string }) => (
     <div data-testid="google-analytics" data-measurement-id={gaId} />
   ),
-  GoogleTagManager: ({ gtmId }: { gtmId: string }) => (
-    <div data-testid="google-tag-manager" data-container-id={gtmId} />
-  ),
 }));
 
 const MEASUREMENT_ID = "G-TEST123";
-const TAG_MANAGER_ID = "GTM-TEST123";
 
 describe("GoogleAnalyticsConsent", () => {
   beforeEach(() => {
@@ -36,7 +32,6 @@ describe("GoogleAnalyticsConsent", () => {
 
     expect(await screen.findByLabelText("Analytics preferences")).toBeInTheDocument();
     expect(screen.queryByTestId("google-analytics")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("google-tag-manager")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Decline" }));
 
@@ -45,7 +40,6 @@ describe("GoogleAnalyticsConsent", () => {
     );
     expect(localStorage.getItem(STORAGE_KEYS.googleAnalyticsConsent)).toBe("denied");
     expect(screen.queryByTestId("google-analytics")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("google-tag-manager")).not.toBeInTheDocument();
     expect((window as unknown as Record<string, boolean>)[`ga-disable-${MEASUREMENT_ID}`]).toBe(
       true,
     );
@@ -59,22 +53,13 @@ describe("GoogleAnalyticsConsent", () => {
     ]);
   });
 
-  it("loads Google Analytics and Tag Manager only after opt-in", async () => {
-    render(
-      <GoogleAnalyticsConsent
-        measurementId={`  ${MEASUREMENT_ID}  `}
-        tagManagerId={`  ${TAG_MANAGER_ID}  `}
-      />,
-    );
+  it("loads Google Analytics only after opt-in", async () => {
+    render(<GoogleAnalyticsConsent measurementId={`  ${MEASUREMENT_ID}  `} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Allow analytics" }));
 
     const analytics = await screen.findByTestId("google-analytics");
     expect(analytics).toHaveAttribute("data-measurement-id", MEASUREMENT_ID);
-    expect(screen.getByTestId("google-tag-manager")).toHaveAttribute(
-      "data-container-id",
-      TAG_MANAGER_ID,
-    );
     expect(localStorage.getItem(STORAGE_KEYS.googleAnalyticsConsent)).toBe("granted");
     expect((window as unknown as Record<string, boolean>)[`ga-disable-${MEASUREMENT_ID}`]).toBe(
       false,
@@ -87,17 +72,6 @@ describe("GoogleAnalyticsConsent", () => {
       "update",
       expect.objectContaining({ analytics_storage: "granted", ad_storage: "denied" }),
     ]);
-  });
-
-  it("can load a valid Tag Manager container without a GA measurement ID", async () => {
-    localStorage.setItem(STORAGE_KEYS.googleAnalyticsConsent, "granted");
-    render(<GoogleAnalyticsConsent tagManagerId={TAG_MANAGER_ID} />);
-
-    expect(await screen.findByTestId("google-tag-manager")).toHaveAttribute(
-      "data-container-id",
-      TAG_MANAGER_ID,
-    );
-    expect(screen.queryByTestId("google-analytics")).not.toBeInTheDocument();
   });
 
   it("restores an existing opt-in without showing the prompt", async () => {
@@ -147,15 +121,11 @@ describe("AnalyticsPreferences", () => {
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Allow analytics" }));
-    expect(
-      await screen.findByText("Google analytics tags are currently allowed."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Google Analytics is currently allowed.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Allow analytics" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Decline analytics" }));
-    expect(
-      await screen.findByText("Google analytics tags are currently declined."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Google Analytics is currently declined.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Decline analytics" })).toBeDisabled();
   });
 });

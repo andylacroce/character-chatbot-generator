@@ -2,7 +2,7 @@
 
 import React, { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { GoogleAnalytics, GoogleTagManager } from "@next/third-parties/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { STORAGE_KEYS } from "character-chatbot-shared";
 import storage from "../../utils/storage";
 import styles from "./styles/GoogleAnalyticsConsent.module.css";
@@ -12,7 +12,6 @@ type AnalyticsConsentSnapshot = AnalyticsConsent | "loading" | null;
 
 const CONSENT_CHANGE_EVENT = "portrayal:google-analytics-consent-change";
 const GOOGLE_MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]+$/i;
-const GOOGLE_TAG_MANAGER_ID_PATTERN = /^GTM-[A-Z0-9]+$/i;
 
 /** Reads the visitor's persisted Google Analytics choice, ignoring unknown values. */
 function readAnalyticsConsent(): AnalyticsConsent | null {
@@ -51,7 +50,7 @@ function setGoogleAnalyticsDisabled(measurementId: string, disabled: boolean): v
   (window as unknown as Record<string, boolean>)[`ga-disable-${measurementId}`] = disabled;
 }
 
-/** Updates Google's consent state for already-loaded GA and GTM scripts. */
+/** Updates Google's consent state for an already-loaded GA script. */
 function updateGoogleConsentMode(granted: boolean): void {
   const analyticsWindow = window as typeof window & { dataLayer?: unknown[] };
   analyticsWindow.dataLayer = analyticsWindow.dataLayer ?? [];
@@ -68,52 +67,36 @@ function updateGoogleConsentMode(granted: boolean): void {
 
 interface GoogleAnalyticsConsentProps {
   measurementId?: string;
-  tagManagerId?: string;
 }
 
-/** Loads Google analytics tags only after opt-in and otherwise presents a consent prompt. */
-export default function GoogleAnalyticsConsent({
-  measurementId,
-  tagManagerId,
-}: GoogleAnalyticsConsentProps) {
+/** Loads Google Analytics only after opt-in and otherwise presents a consent prompt. */
+export default function GoogleAnalyticsConsent({ measurementId }: GoogleAnalyticsConsentProps) {
   const consent = useAnalyticsConsent();
   const normalizedMeasurementId = measurementId?.trim();
-  const normalizedTagManagerId = tagManagerId?.trim();
-  const hasAnalytics = Boolean(
-    normalizedMeasurementId && GOOGLE_MEASUREMENT_ID_PATTERN.test(normalizedMeasurementId),
-  );
-  const hasTagManager = Boolean(
-    normalizedTagManagerId && GOOGLE_TAG_MANAGER_ID_PATTERN.test(normalizedTagManagerId),
-  );
-  const isConfigured = hasAnalytics || hasTagManager;
+  const validMeasurementId =
+    normalizedMeasurementId && GOOGLE_MEASUREMENT_ID_PATTERN.test(normalizedMeasurementId)
+      ? normalizedMeasurementId
+      : undefined;
 
   useEffect(() => {
-    if (!isConfigured || consent === "loading") return;
+    if (!validMeasurementId || consent === "loading") return;
     const granted = consent === "granted";
     updateGoogleConsentMode(granted);
-    if (hasAnalytics && normalizedMeasurementId) {
-      setGoogleAnalyticsDisabled(normalizedMeasurementId, !granted);
-    }
-  }, [consent, hasAnalytics, isConfigured, normalizedMeasurementId]);
+    setGoogleAnalyticsDisabled(validMeasurementId, !granted);
+  }, [consent, validMeasurementId]);
 
-  if (!isConfigured || consent === "loading") return null;
+  if (!validMeasurementId || consent === "loading") return null;
 
   return (
     <>
-      {consent === "granted" && hasTagManager && normalizedTagManagerId && (
-        <GoogleTagManager gtmId={normalizedTagManagerId} />
-      )}
-      {consent === "granted" && hasAnalytics && normalizedMeasurementId && (
-        <GoogleAnalytics gaId={normalizedMeasurementId} />
-      )}
+      {consent === "granted" && <GoogleAnalytics gaId={validMeasurementId} />}
       {consent === null && (
         <aside className={styles.banner} aria-label="Analytics preferences">
           <div className={styles.copy}>
             <strong>Help improve Portrayal?</strong>
             <p>
-              Allow Google Analytics and Tag Manager to measure visits and page navigation. We never
-              send them your chat text or character names. See the{" "}
-              <Link href="/privacy">privacy policy</Link>.
+              Allow Google Analytics to measure visits and page navigation. We never send them your
+              chat text or character names. See the <Link href="/privacy">privacy policy</Link>.
             </p>
           </div>
           <div className={styles.actions}>
@@ -143,9 +126,9 @@ export function AnalyticsPreferences() {
   const consent = useAnalyticsConsent();
   const status =
     consent === "granted"
-      ? "Google analytics tags are currently allowed."
+      ? "Google Analytics is currently allowed."
       : consent === "denied"
-        ? "Google analytics tags are currently declined."
+        ? "Google Analytics is currently declined."
         : consent === null
           ? "You have not made an analytics choice yet."
           : "Loading your analytics preference…";

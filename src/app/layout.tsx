@@ -12,7 +12,6 @@ import GoogleAnalyticsConsent from "./components/GoogleAnalyticsConsent";
 import Providers from "./components/Providers";
 
 const PRODUCTION_GOOGLE_ANALYTICS_ID = "G-W01K2YSWH4";
-const PRODUCTION_GOOGLE_TAG_MANAGER_ID = "GTM-WVFLVRGS";
 
 /**
  * Root layout component that wraps the entire application.
@@ -31,9 +30,6 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
   const googleAnalyticsId =
     process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID ??
     (isProductionSite ? PRODUCTION_GOOGLE_ANALYTICS_ID : undefined);
-  const googleTagManagerId =
-    process.env.NEXT_PUBLIC_GOOGLE_TAG_MANAGER_ID ??
-    (isProductionSite ? PRODUCTION_GOOGLE_TAG_MANAGER_ID : undefined);
 
   return (
     // className derives from DarkModeContext's DEFAULT_DARK_MODE so a first-time
@@ -77,10 +73,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
             {children}
             <Analytics />
             <SpeedInsights />
-            <GoogleAnalyticsConsent
-              measurementId={googleAnalyticsId}
-              tagManagerId={googleTagManagerId}
-            />
+            <GoogleAnalyticsConsent measurementId={googleAnalyticsId} />
           </DarkModeProvider>
         </Providers>
       </body>

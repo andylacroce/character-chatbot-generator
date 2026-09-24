@@ -116,9 +116,8 @@ export default function PrivacyPage() {
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>Analytics choices</h2>
         <p>
-          Google Analytics and Tag Manager are optional. Whether you allow or decline them, the rest
-          of the app works the same. Changing your choice takes effect immediately for future
-          collection.
+          Google Analytics is optional. Whether you allow or decline it, the rest of the app works
+          the same. Changing your choice takes effect immediately for future collection.
         </p>
         <AnalyticsPreferences />
       </div>
@@ -137,10 +136,9 @@ export default function PrivacyPage() {
             <strong>Google</strong> — if you choose to sign in, for authentication only.
           </li>
           <li>
-            <strong>Google Analytics and Google Tag Manager</strong> — only if you opt in, load the
-            site&apos;s analytics tags and receive page URLs and basic device, browser, and
-            approximate-location information so we can understand site traffic. Portrayal never
-            pushes your chat text, character names, or guesses into the tag data layer.
+            <strong>Google Analytics</strong> — only if you opt in, receives page URLs and basic
+            device, browser, and approximate-location information so we can understand site traffic.
+            Portrayal never sends it your chat text, character names, or guesses.
           </li>
           <li>
             <strong>Cloudflare</strong> — renders character portraits (Workers AI), when configured.

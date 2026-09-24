@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.16.1 — 2026-09-24 — Removed Google Tag Manager
+
+- Removed Google Tag Manager (`GTM-WVFLVRGS`) and its `NEXT_PUBLIC_GOOGLE_TAG_MANAGER_ID` override. The container never held any tags: GA4 page views are sent directly, and product-usage events already live in the app's own `/admin` analytics. The consent prompt and privacy page now cover Google Analytics alone. The support contact email is now `portrayal-support@andrewlacroce.com`.
+
 ## v0.16.0 — 2026-09-24 — Consent-gated Google Analytics and Tag Manager
 
 - Added Google Analytics 4 page-view/navigation tracking and Google Tag Manager for the production site (`G-W01K2YSWH4` and `GTM-WVFLVRGS`, with environment-variable overrides). Neither Google loader runs until a visitor opts in, declining leaves the rest of the app unchanged, and the choice can be reviewed or changed from the privacy page. The consent prompt and settings disclose exactly what is sent and confirm that Portrayal does not push chat text, character names, or guesses into the tag data layer.
