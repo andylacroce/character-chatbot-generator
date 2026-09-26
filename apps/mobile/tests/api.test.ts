@@ -188,14 +188,23 @@ describe("api", () => {
       );
     });
 
-    it("getChars builds the limit/offset query string", async () => {
+    it("getChars builds the limit/offset/sort/group query string", async () => {
       mockFetchOnce({
         ok: true,
         json: async () => ({ characters: [], hasMore: false }),
       } as Response);
       await getChars(20, 40);
       expect((globalThis.fetch as jest.Mock).mock.calls[0][0]).toBe(
-        `${API_BASE_URL}/api/chars?limit=20&offset=40`,
+        `${API_BASE_URL}/api/chars?limit=20&offset=40&sort=newest&group=none`,
+      );
+
+      mockFetchOnce({
+        ok: true,
+        json: async () => ({ characters: [], hasMore: false }),
+      } as Response);
+      await getChars(20, 40, "name-asc", "category");
+      expect((globalThis.fetch as jest.Mock).mock.calls[1][0]).toBe(
+        `${API_BASE_URL}/api/chars?limit=20&offset=40&sort=name-asc&group=category`,
       );
     });
 

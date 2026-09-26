@@ -13,3 +13,4 @@ export * from "./characterCreation";
 export * from "./useCharacterCreation";
 export * from "./replayAudio";
 export * from "./account";
+export * from "./characterCategories";

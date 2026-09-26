@@ -19,38 +19,45 @@ jest.mock("../../src/storage", () => ({
   saveBot: jest.fn(),
 }));
 
-// The real FlatList's underlying VirtualizedList schedules a real (unmocked) setTimeout to
-// decide which cells to render, which otherwise logs stray "not wrapped in act()" warnings
+// The real SectionList's underlying VirtualizedList schedules a real (unmocked) setTimeout
+// to decide which cells to render, which otherwise logs stray "not wrapped in act()" warnings
 // once it fires outside any test's own act scope. A trivial, non-virtualized stand-in avoids
-// that entirely; CharWallScreen only relies on FlatList for `data`/`renderItem`/`keyExtractor`/
-// `onEndReached`/`ListFooterComponent`, all preserved here.
+// that entirely; CharWallScreen only relies on SectionList for `sections`/`renderItem`/
+// `renderSectionHeader`/`keyExtractor`/`onEndReached`/`ListFooterComponent`, all preserved here.
 jest.mock("react-native", () => {
   const RN = jest.requireActual("react-native");
-  function MockFlatList({
-    data,
+  function MockSectionList({
+    sections,
     renderItem,
+    renderSectionHeader,
     keyExtractor,
     ListFooterComponent,
     onEndReached,
   }: {
-    data: unknown[];
+    sections: { key: string; data: unknown[] }[];
     renderItem: (info: { item: unknown; index: number }) => React.ReactNode;
+    renderSectionHeader?: (info: { section: { key: string; data: unknown[] } }) => React.ReactNode;
     keyExtractor?: (item: unknown, index: number) => string;
     ListFooterComponent?: React.ReactNode;
     onEndReached?: () => void;
   }) {
     return (
-      <RN.View testID="mock-flatlist" onEndReached={onEndReached}>
-        {data.map((item, index) => (
-          <RN.View key={keyExtractor ? keyExtractor(item, index) : index}>
-            {renderItem({ item, index })}
+      <RN.View testID="mock-sectionlist" onEndReached={onEndReached}>
+        {sections.map((section) => (
+          <RN.View key={section.key}>
+            {renderSectionHeader?.({ section })}
+            {section.data.map((item, index) => (
+              <RN.View key={keyExtractor ? keyExtractor(item, index) : index}>
+                {renderItem({ item, index })}
+              </RN.View>
+            ))}
           </RN.View>
         ))}
         {ListFooterComponent}
       </RN.View>
     );
   }
-  // A plain `{ ...RN, FlatList: MockFlatList }` spread eagerly evaluates every one of
+  // A plain `{ ...RN, SectionList: MockSectionList }` spread eagerly evaluates every one of
   // react-native's lazy-getter exports (its real index.js defines each module via a lazy
   // `get()`) to copy them into a new object — which crashes here on `DevMenu`, a TurboModule
   // that's never registered in this test environment and is normally never touched because
@@ -58,7 +65,7 @@ jest.mock("react-native", () => {
   // it, so every export CharWallScreen's tree really uses still resolves normally and lazily.
   return new Proxy(RN, {
     get(target, prop) {
-      return prop === "FlatList" ? MockFlatList : target[prop as keyof typeof target];
+      return prop === "SectionList" ? MockSectionList : target[prop as keyof typeof target];
     },
   });
 });
@@ -71,8 +78,13 @@ import { saveBot } from "../../src/storage";
 const oneChar: CharacterEntry = {
   name: "Sherlock Holmes",
   avatarUrl: "https://example.com/a.png",
+  category: "literature",
 } as CharacterEntry;
-const svgChar: CharacterEntry = { name: "Zeus", avatarUrl: "/silhouette.svg" } as CharacterEntry;
+const svgChar: CharacterEntry = {
+  name: "Zeus",
+  avatarUrl: "/silhouette.svg",
+  category: "mythology",
+} as CharacterEntry;
 
 async function renderScreen() {
   const navigation = { navigate: jest.fn() };
@@ -88,7 +100,7 @@ describe("CharWallScreen", () => {
   it("shows a loading spinner while the first page loads", async () => {
     (getChars as jest.Mock).mockReturnValue(new Promise(() => {}));
     const { queryByTestId } = await renderScreen();
-    expect(queryByTestId("mock-flatlist")).toBeNull();
+    expect(queryByTestId("mock-sectionlist")).toBeNull();
   });
 
   it("shows an error state when the first page fails to load", async () => {
@@ -156,9 +168,37 @@ describe("CharWallScreen", () => {
     const { findByText, getByTestId } = await renderScreen();
     await findByText("Sherlock Holmes");
 
-    fireEvent(getByTestId("mock-flatlist"), "onEndReached");
+    fireEvent(getByTestId("mock-sectionlist"), "onEndReached");
 
     expect(await findByText("Zeus")).toBeTruthy();
     expect(getChars).toHaveBeenCalledTimes(2);
+  });
+
+  it("re-fetches from the start when the sort changes", async () => {
+    (getChars as jest.Mock).mockResolvedValue({ characters: [oneChar], hasMore: false });
+    const { findByText } = await renderScreen();
+    await findByText("Sherlock Holmes");
+
+    fireEvent.press(await findByText("A–Z"));
+
+    await waitFor(() => expect(getChars).toHaveBeenLastCalledWith(30, 0, "name-asc", "none"));
+  });
+
+  it("groups by category into collapsed sections that expand on tap", async () => {
+    (getChars as jest.Mock).mockResolvedValue({ characters: [oneChar, svgChar], hasMore: false });
+    const { findByText, queryByText } = await renderScreen();
+    await findByText("Sherlock Holmes");
+
+    fireEvent.press(await findByText("Group by category"));
+    await waitFor(() => expect(getChars).toHaveBeenLastCalledWith(30, 0, "newest", "category"));
+
+    expect(await findByText("Literature")).toBeTruthy();
+    expect(await findByText("Mythology")).toBeTruthy();
+    // Collapsed by default — no tiles rendered under either heading yet.
+    expect(queryByText("Sherlock Holmes")).toBeNull();
+
+    fireEvent.press(await findByText("Literature"));
+    expect(await findByText("Sherlock Holmes")).toBeTruthy();
+    expect(queryByText("Zeus")).toBeNull();
   });
 });

@@ -1,5 +1,4 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { useMemo, useState, type ReactElement } from "react";
 import type { Bot } from "character-chatbot-shared";
 import CreatorScreen from "../../src/screens/CreatorScreen";
 import { ThemeProvider } from "../../src/ThemeContext";
@@ -38,13 +37,6 @@ jest.mock("../../src/components/CharacterCarousel", () => {
     );
   };
 });
-jest.mock("../../src/components/AccountModal", () => {
-  const { Text } = require("react-native");
-  return function MockAccountModal({ visible }: { visible: boolean }) {
-    return visible ? <Text>account-modal-open</Text> : null;
-  };
-});
-
 import {
   getRandomCharacter,
   validateCharacter,
@@ -95,19 +87,10 @@ async function renderScreen() {
     focusListeners.push(cb);
     return () => {};
   };
-  function Harness() {
-    const [options, setOptions] = useState<{ headerLeft?: () => ReactElement }>({});
-    const navigation = useMemo(() => ({ setOptions, navigate, addListener }), []);
-    return (
-      <>
-        {options.headerLeft?.()}
-        <CreatorScreen navigation={navigation as never} route={{} as never} />
-      </>
-    );
-  }
+  const navigation = { navigate, addListener };
   const utils = await render(
     <ThemeProvider>
-      <Harness />
+      <CreatorScreen navigation={navigation as never} route={{} as never} />
     </ThemeProvider>,
   );
   const focus = () => act(() => focusListeners.forEach((cb) => cb()));
@@ -388,18 +371,6 @@ describe("CreatorScreen", () => {
   it("hides the Past chats link from guests", async () => {
     const utils = await renderScreen();
     expect(utils.queryByText("Past chats")).toBeNull();
-  });
-
-  it("opens the account modal from the header, labeled by sign-in state", async () => {
-    const utils = await renderScreen();
-    await fireEvent.press(await utils.findByLabelText("Sign in"));
-    expect(utils.getByText("account-modal-open")).toBeTruthy();
-  });
-
-  it("labels the header button Account when signed in", async () => {
-    (useAuth as jest.Mock).mockReturnValue({ status: "signedIn" });
-    const utils = await renderScreen();
-    expect(await utils.findByLabelText("Account")).toBeTruthy();
   });
 
   it("links to the Character Wall", async () => {

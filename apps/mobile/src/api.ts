@@ -9,7 +9,9 @@ import type {
   CharacterVoiceConfig,
   ChatRequest,
   ChatResponse,
+  CharsGroup,
   CharsResponse,
+  CharsSort,
   GameGiveUpResponse,
   GameHighScoreResponse,
   GameLeaderboardResponse,
@@ -144,8 +146,13 @@ export async function getCarouselSample(): Promise<CharsResponse["characters"]> 
   return characters ?? [];
 }
 
-export function getChars(limit: number, offset: number): Promise<CharsResponse> {
-  return apiFetch(`/api/chars?limit=${limit}&offset=${offset}`);
+export function getChars(
+  limit: number,
+  offset: number,
+  sort: CharsSort = "newest",
+  group: CharsGroup = "none",
+): Promise<CharsResponse> {
+  return apiFetch(`/api/chars?limit=${limit}&offset=${offset}&sort=${sort}&group=${group}`);
 }
 
 /** Lists the signed-in user's persisted characters. Guests/signed-out get an empty list. */

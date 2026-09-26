@@ -15,6 +15,7 @@ jest.mock("../src/screens/CreatorScreen", () => {
 });
 jest.mock("../src/AuthContext", () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAuth: () => ({ status: "signedOut", email: null, name: null }),
 }));
 
 describe("App", () => {

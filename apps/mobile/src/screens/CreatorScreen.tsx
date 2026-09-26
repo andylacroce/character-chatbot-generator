@@ -32,7 +32,6 @@ import CharacterCarousel, { CAROUSEL_MAX_SIZE } from "../components/CharacterCar
 import Wordmark from "../components/Wordmark";
 import CopyrightWarningModal from "../components/CopyrightWarningModal";
 import CharacterDescriptionModal from "../components/CharacterDescriptionModal";
-import AccountModal from "../components/AccountModal";
 import NameCaptureModal from "../components/NameCaptureModal";
 import ModalCard from "../components/ModalCard";
 
@@ -56,7 +55,6 @@ export default function CreatorScreen({ navigation }: Props) {
   const auth = useAuth();
   const userNameCtx = useUserName();
   const [savedBot, setSavedBot] = useState<Bot | null>(null);
-  const [showAccountModal, setShowAccountModal] = useState(false);
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false);
 
   // Reload on every focus, not just mount: returning from a chat must show that
@@ -76,26 +74,6 @@ export default function CreatorScreen({ navigation }: Props) {
     userNameCtx,
     log: () => {},
   });
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <Pressable
-          onPress={() => setShowAccountModal(true)}
-          hitSlop={8}
-          android_ripple={{ color: colors.secondaryContainer, borderless: true, radius: 18 }}
-          style={styles.headerAccountButton}
-          accessibilityLabel={auth.status === "signedIn" ? "Account" : "Sign in"}
-        >
-          <Ionicons
-            name={auth.status === "signedIn" ? "person-circle" : "person-circle-outline"}
-            size={22}
-            color={colors.text}
-          />
-        </Pressable>
-      ),
-    });
-  }, [navigation, colors, auth.status, styles.headerAccountButton]);
 
   // The carousel is the one flexible element: it shrinks so the whole screen fits
   // without scrolling on short Android displays. viewportH keeps the tallest height
@@ -276,15 +254,6 @@ export default function CreatorScreen({ navigation }: Props) {
         onSubmit={creation.handleDescriptionSubmit}
         onCancel={creation.handleDescriptionCancel}
       />
-      <AccountModal
-        visible={showAccountModal}
-        onClose={() => setShowAccountModal(false)}
-        userNameCtx={userNameCtx}
-        onOpenHistory={() => {
-          setShowAccountModal(false);
-          navigation.navigate("History");
-        }}
-      />
       <NameCaptureModal
         visible={creation.showNameGateModal}
         mode="gate"
@@ -351,7 +320,6 @@ function makeStyles(colors: ThemeColors) {
     resumeTextWrap: { flex: 1 },
     resumeLabel: { color: colors.textSecondary, fontSize: 11 },
     resumeName: { color: colors.text, fontSize: 16, fontWeight: "600", fontFamily: serif },
-    headerAccountButton: { padding: 6, marginLeft: 4 },
     headline: {
       fontFamily: serif,
       fontSize: 20,
