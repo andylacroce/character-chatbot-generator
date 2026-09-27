@@ -34,6 +34,7 @@ import PortraitLightbox from "../components/PortraitLightbox";
 import GameInstructionsModal from "../components/GameInstructionsModal";
 import LeaderboardClaim from "../components/LeaderboardClaim";
 import DarkModeButton from "../components/DarkModeButton";
+import AccountHeaderButton from "../components/AccountHeaderButton";
 import Button from "../components/Button";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Game">;
@@ -140,6 +141,7 @@ export default function GameScreen({ navigation }: Props) {
               <Ionicons name="flag-outline" size={20} color={colors.text} />
             </Pressable>
           ) : null}
+          <AccountHeaderButton navigation={navigation} />
           <DarkModeButton />
         </View>
       ),

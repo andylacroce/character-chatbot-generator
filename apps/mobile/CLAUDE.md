@@ -185,8 +185,9 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
   `STORAGE_KEYS.authToken`, not a locally hardcoded string). `GET /api/auth/mobile-session`
   (since next-auth v4's JWT is encrypted — no client-side decode path) resolves the
   token to `{ email, name }` for display; `src/AuthContext.tsx`'s `useAuth()` exposes
-  `status`/`email`/`name`/`signIn`/`signOut`, reachable via the account icon in
-  `CreatorScreen`'s header (`AccountModal.tsx`). A created character persists to
+  `status`/`email`/`name`/`signIn`/`signOut`, reachable from every screen's header via
+  `AccountHeaderButton.tsx`/`AccountModal.tsx` — see the "cross-screen header parity" bullet
+  in the roadmap below. A created character persists to
   `POST /api/bots` when signed in (`persistBotIfSignedIn` in `botCreation.ts`,
   fire-and-forget); `HistoryScreen` ("Past chats", linked from `CreatorScreen` and
   `AccountModal` when signed in) lists them back via `GET /api/bots`
@@ -247,10 +248,30 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
    `NameCaptureModal.tsx` gates `CreatorScreen`'s two creation entry points — typed
    name and carousel tap — the first time no name is known yet, and doubles as
    `AccountModal.tsx`'s "Add your name"/"Called: X" edit row; `ChatScreen.tsx` already
-   sent/displayed it once storage.ts's `saveUserName` finally had a caller). All of
-   this is reachable via the account icon in `CreatorScreen`'s header only, for now;
-   every other screen still has no sign-in/account/name entry point (mobile has no
-   shared header/menu component the way the web app does).
+   sent/displayed it once storage.ts's `saveUserName` finally had a caller).
+2a. **Cross-screen header parity (done, 2026-09-26).** Closed two gaps a web/mobile parity
+   audit flagged: account/sign-in/name entry used to be reachable only via the account icon
+   in `CreatorScreen`'s header (mobile had no shared header/menu component the way the web
+   app's `AppHeader`/`useAccountMenu` does), and the Character Wall had no sort-by/group-by
+   controls at all, unlike web's `CharsGallery.tsx`.
+   - `src/components/AccountHeaderButton.tsx` is now every screen's default `headerRight`
+     (set once in `App.tsx`'s `screenOptions`, alongside `DarkModeButton`), so sign-in,
+     changing your name, and Past Chats are reachable from Chat/Game/CharWall/History/
+     Leaderboard too, not just Creator. It takes `navigation` as a plain prop rather than
+     reading `useNavigation()`, so a screen's own unit tests (which pass a hand-built
+     `navigation` mock, not a real `NavigationContainer`) don't need to change shape. It
+     lives in `headerRight`, not `headerLeft` — overriding `headerLeft` globally would have
+     replaced native-stack's own default back button on every pushed screen.
+   - `CharWallScreen.tsx` gained sort chips (Recent/Oldest/A–Z/Z–A) and a "Group by
+     category" switch, calling `GET /api/chars`'s existing `sort`/`group` params (already
+     supported server-side; only the mobile client was missing them). Grouped mode renders
+     via `SectionList` (rows of 3 tiles per section, chunked client-side) with collapsible,
+     collapsed-by-default category headers — the same shape as web's gallery groups, done
+     natively rather than porting web's masonry CSS. `CHARACTER_CATEGORIES`/
+     `getCharacterCategoryLabel`/`isCharacterCategory` were added to
+     `packages/shared/src/characterCategories.ts` (mirroring, not yet replacing, the web
+     app's own `src/utils/characterCategories.ts` — same "not migrated yet" caveat as the
+     rest of this package) so both platforms group by the same taxonomy.
 3. **Guessing game + leaderboard: done (2026-09-23).** `GameScreen.tsx` and
    `LeaderboardScreen.tsx` run on the same shared state machines as web
    (`packages/shared`'s `useGameSession`/`game.ts`, `useLeaderboard`/`useLeaderboardClaim`);

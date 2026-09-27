@@ -1,3 +1,4 @@
+import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -9,11 +10,33 @@ import HistoryScreen from "./src/screens/HistoryScreen";
 import GameScreen from "./src/screens/GameScreen";
 import LeaderboardScreen from "./src/screens/LeaderboardScreen";
 import DarkModeButton from "./src/components/DarkModeButton";
+import AccountHeaderButton from "./src/components/AccountHeaderButton";
 import type { RootStackParamList } from "./src/navigation/types";
 import { ThemeProvider, useTheme } from "./src/ThemeContext";
 import { AuthProvider } from "./src/AuthContext";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+/**
+ * Every screen's default headerRight: the account/sign-in entry point plus the dark-mode
+ * toggle, side by side. A screen that needs its own headerRight (currently just GameScreen)
+ * re-renders both alongside its own icons rather than overriding this away. Takes
+ * `navigation` as a prop (from screenOptions' own `{ navigation }`, not `useNavigation()`)
+ * so AccountHeaderButton can navigate to History without requiring a NavigationContainer
+ * in a screen's own unit tests.
+ */
+function DefaultHeaderRight({
+  navigation,
+}: {
+  navigation: { navigate: (screen: "History") => void };
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <AccountHeaderButton navigation={navigation} />
+      <DarkModeButton />
+    </View>
+  );
+}
 
 function AppNavigator() {
   const { colors, darkMode } = useTheme();
@@ -35,7 +58,13 @@ function AppNavigator() {
       <StatusBar style={darkMode ? "light" : "dark"} />
       <Stack.Navigator
         initialRouteName="Creator"
-        screenOptions={{ headerTitleAlign: "center", headerRight: () => <DarkModeButton /> }}
+        screenOptions={({ navigation }) => ({
+          headerTitleAlign: "center",
+          // headerLeft is intentionally left at native-stack's default (the back button on
+          // every pushed screen) — AccountHeaderButton lives in headerRight instead so it
+          // never displaces back navigation. See DefaultHeaderRight below.
+          headerRight: () => <DefaultHeaderRight navigation={navigation} />,
+        })}
       >
         <Stack.Screen name="Creator" component={CreatorScreen} options={{ title: "" }} />
         <Stack.Screen

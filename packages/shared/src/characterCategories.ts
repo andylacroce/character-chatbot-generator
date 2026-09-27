@@ -1,0 +1,28 @@
+import type { CharacterCategory } from "./types";
+
+/**
+ * Stable taxonomy used to classify and group public Character Wall portraits — mirrors
+ * the web app's src/utils/characterCategories.ts (not yet migrated to this package; kept
+ * in sync by hand until it is).
+ */
+export const CHARACTER_CATEGORIES: readonly { value: CharacterCategory; label: string }[] = [
+  { value: "history", label: "Historical Figures" },
+  { value: "mythology", label: "Mythology" },
+  { value: "literature", label: "Literature" },
+  { value: "folklore", label: "Folklore & Legend" },
+  { value: "religion", label: "Religion & Philosophy" },
+  { value: "other", label: "Other" },
+];
+
+const CATEGORY_VALUES = new Set<string>(CHARACTER_CATEGORIES.map(({ value }) => value));
+
+/** Returns whether an unknown value is one of the persisted category identifiers. */
+export function isCharacterCategory(value: unknown): value is CharacterCategory {
+  return typeof value === "string" && CATEGORY_VALUES.has(value);
+}
+
+/** Maps persisted category values to display labels, treating missing legacy data as Other. */
+export function getCharacterCategoryLabel(value: unknown): string {
+  const category = CHARACTER_CATEGORIES.find((entry) => entry.value === value);
+  return category?.label ?? "Other";
+}
