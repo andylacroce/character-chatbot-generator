@@ -12,7 +12,9 @@ name: Expo SDK upgrade
 
 on:
   schedule:
-    - cron: "0 14 * * 1" # Mondays 14:00 UTC
+    # 4:00 AM US Eastern, Sunday (08:00 UTC during EDT, 09:00 UTC during EST — cron
+    # can't shift for DST, so this runs ~3am Eastern in winter).
+    - cron: "0 8 * * 0"
   workflow_dispatch:
 
 permissions:
