@@ -267,14 +267,29 @@ same hook and the same `normalizeDictatedText` cleanup below.
 - **`next.config.mjs`'s `Permissions-Policy` allows `microphone=(self)`** (this origin
   only; embedded iframes still blocked) — it previously blocked microphone access
   entirely (`microphone=()`).
-- **Mobile is a known, tracked parity gap, not shipped alongside web.** The most
+- **Mobile is a deliberate, evaluated parity gap, not a "not built yet."** The most
   actively maintained Expo-compatible speech-recognition library
   (`expo-speech-recognition`, wraps native Android `SpeechRecognizer` and iOS
   `SFSpeechRecognizer`) requires a custom dev client (Expo prebuild) — it cannot run in
-  plain Expo Go. `apps/mobile/CLAUDE.md` documents staying on plain Expo Go as a
-  deliberate decision (a dev client was tried once, for an unrelated keyboard bug, and
-  fully reverted), so adopting one for this feature needs its own decision, not a side
-  effect of shipping web voice input. See CLAUDE.md's web/mobile parity goal above.
+  plain Expo Go on either platform (there's no Android-only version of this gap; the
+  module set Expo Go bundles is identical across both OSes). `apps/mobile/CLAUDE.md`
+  documents staying on plain Expo Go as a deliberate decision (a dev client was tried
+  once, for an unrelated keyboard bug, and fully reverted), so adopting one for this
+  feature needs its own decision, not a side effect of shipping web voice input.
+  A record/upload/transcribe round trip via Google Cloud Speech-to-Text (the same GCP
+  project already billing TTS) was prototyped on a branch as the Expo-Go-compatible
+  alternative and evaluated 2026-09-27, then declined for now: real dollar cost is
+  trivial at this app's scale (~$0.002-0.003 per short dictated message vs. web's
+  $0/free browser-native path), but it reopens a genuine, unforced privacy question —
+  sending a user's own recorded voice to a cloud API — that TTS's synthesized *output*
+  never had to answer, for a feature currently used by nobody. Revisit either path
+  (dev client, or the GCP round trip) if real user demand for mobile voice input shows
+  up; the branch's approach (platform-specific recording format — AMR_WB on Android,
+  LINEAR16/WAV on iOS — chosen so no server-side transcoding is ever needed, a shared
+  `normalizeDictatedText` extracted to `packages/shared` for both platforms to reuse,
+  and a hard 20s client-side recording cap so a stuck-open mic can't run up an
+  open-ended bill) is a reasonable starting point if picked back up. See CLAUDE.md's
+  web/mobile parity goal above.
 
 ### Client-side storage
 

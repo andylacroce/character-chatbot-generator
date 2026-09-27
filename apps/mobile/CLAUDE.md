@@ -225,6 +225,14 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
   out to solve it without any native module. Don't reach for a dev client/native
   dependency again without confirming Expo Go's built-in module set genuinely can't
   do the job — it solved a problem here that looked like it needed one.
+- **No voice input (speech-to-text), evaluated and declined 2026-09-27** — see the
+  backend's `CLAUDE.md` "Voice input" section for the full writeup. Short version: a
+  native speech-recognition module needs the dev client this app deliberately avoids
+  (above), and the Expo-Go-compatible alternative (record → upload → Google Cloud
+  Speech-to-Text) was prototyped on a branch, then declined — not for cost (trivial at
+  this app's scale) but because it sends a user's own recorded voice to a cloud API,
+  a real privacy tradeoff web's free browser-native equivalent never has to make, for
+  a feature with no demonstrated user demand yet on mobile.
 
 ## Phased roadmap
 
