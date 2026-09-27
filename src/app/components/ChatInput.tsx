@@ -13,9 +13,23 @@ interface ChatInputProps {
   onAudioToggle: () => void;
   onStopAudio: () => void;
   isAudioPlaying: boolean;
+  /**
+   * Whether the browser supports SpeechRecognition — the mic button renders only when
+   * true, never as a disabled/broken control. Also hidden while isAudioPlaying, capping
+   * simultaneous icon buttons at 3 on mobile (mic+toggle+send, or stop+toggle+send,
+   * never all four) — dictating a new message while the character is still talking
+   * isn't a real use case anyway.
+   */
+  isSpeechSupported?: boolean;
+  isRecording?: boolean;
+  onMicToggle?: () => void;
 }
 
-/** Message composer: text field, the audio on/off/stop controls, and the send button on the far right. */
+/**
+ * Message composer: text field, an optional mic toggle for dictating the message (only
+ * rendered when the browser supports SpeechRecognition — see useSpeechRecognition.ts),
+ * the audio on/off/stop controls, and the send button on the far right.
+ */
 const ChatInput: React.FC<ChatInputProps> = ({
   input,
   setInput,
@@ -28,6 +42,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
   onAudioToggle,
   onStopAudio,
   isAudioPlaying,
+  isSpeechSupported,
+  isRecording,
+  onMicToggle,
 }) => {
   const handleAudioToggle = () => {
     onAudioToggle();
@@ -83,6 +100,63 @@ const ChatInput: React.FC<ChatInputProps> = ({
                 <rect x="8" y="8" width="8" height="8" rx="1.5" fill="currentColor" />
               </svg>
             </span>
+          </button>
+        )}
+        {isSpeechSupported && !isAudioPlaying && (
+          <button
+            type="button"
+            onClick={onMicToggle}
+            disabled={loading || !apiAvailable}
+            className={styles.micButton}
+            aria-label={isRecording ? "Stop voice input" : "Start voice input"}
+            aria-pressed={!!isRecording}
+            data-testid="chat-mic-toggle"
+          >
+            {isRecording ? (
+              // Filled mic icon while recording, to read clearly as "active"
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect x="9" y="2" width="6" height="12" rx="3" />
+                <path
+                  d="M5 11a7 7 0 0014 0M12 18v3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
+            ) : (
+              // Outlined mic icon while idle
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect
+                  x="9"
+                  y="2"
+                  width="6"
+                  height="12"
+                  rx="3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M5 11a7 7 0 0014 0M12 18v3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
+            )}
           </button>
         )}
         <button

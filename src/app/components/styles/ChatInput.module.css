@@ -160,6 +160,15 @@
   border-color: var(--color-outline);
 }
 
+.micButton {
+  composes: iconButton;
+}
+
+.micButton[aria-pressed="true"] {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
 @media (max-width: 600px) {
   .chatInputArea {
     padding-left: 2vw;

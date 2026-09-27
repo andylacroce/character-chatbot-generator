@@ -57,6 +57,9 @@ export interface ChatShellProps {
   onReplayAudio?: (message: Message) => void;
   error: string;
   retrying?: boolean;
+  isSpeechSupported?: boolean;
+  isRecording?: boolean;
+  onMicToggle?: () => void;
 }
 
 /** Shared chat screen shell — see module doc above. */
@@ -84,6 +87,9 @@ function ChatShell({
   onReplayAudio,
   error,
   retrying,
+  isSpeechSupported,
+  isRecording,
+  onMicToggle,
 }: ChatShellProps) {
   const [showImageModal, setShowImageModal] = React.useState(false);
   const handleAvatarClick = React.useCallback(() => setShowImageModal(true), []);
@@ -153,6 +159,9 @@ function ChatShell({
         onAudioToggle={onAudioToggle}
         onStopAudio={onStopAudio}
         isAudioPlaying={isAudioPlaying}
+        isSpeechSupported={isSpeechSupported}
+        isRecording={isRecording}
+        onMicToggle={onMicToggle}
       />
       <ChatStatus error={error} retrying={retrying} />
       <ModalImageViewer

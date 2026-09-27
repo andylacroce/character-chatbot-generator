@@ -217,6 +217,45 @@ A public, no-auth gallery of every *recognized* portrait in the shared `avatar_c
   - **StrictMode footgun already fixed once, don't reintroduce it:** the guard ref (`hasAutoSubmittedRef`) is set synchronously *before* the `/api/bots` lookup's `await` resolves. React 18 StrictMode runs every effect twice in dev (mount → cleanup → mount again) without resetting refs in between; if the cleanup ran while that fetch was still in flight, the first invocation's result got silently dropped (`cancelled` check) while the second invocation saw the guard already set and bailed — so *nothing* ever called `onBotCreated`/`handleCreate`, and the launch hung on the loading screen forever. Fixed by tracking a local `dispatched` flag and only releasing the guard in the effect's cleanup when nothing was actually dispatched yet. `tests/app/components/BotCreator.url.test.tsx` has a dedicated regression test that renders inside `<React.StrictMode>` to pin this.
 - **Profanity is blocked before a name can ever reach this page** — see the `blocked` field described in the copyright-validation section above.
 
+### Voice input (speech-to-text)
+
+`src/app/components/useSpeechRecognition.ts` wraps the browser's native
+`SpeechRecognition`/`webkitSpeechRecognition` API (Chrome/Edge; no support in Firefox,
+inconsistent in Safari) — deliberately not a server-side MediaRecorder + Google Cloud
+Speech-to-Text round trip, so voice input costs nothing per use and needs no new backend
+route. `isSupported`/`isRecording`/`transcript`/`error` plus `startRecording`/
+`stopRecording`/`toggleRecording` are returned rather than writing into an input
+directly, so the merge decision lives at the integration point, not inside the
+browser-API wrapper.
+
+- **The mic button is a toggle** (click to start, click to stop), mirroring the
+  existing audio mute/unmute button's interaction pattern rather than push-to-talk.
+  It renders in `ChatInput.tsx` only when `isSpeechSupported` — unsupported browsers
+  never see a broken control, just no button — and is hidden while `isAudioPlaying` to
+  cap simultaneous icon buttons at 3 on mobile widths (mic+toggle+send, or
+  stop+toggle+send, never all four); dictating while the character is still talking
+  isn't a real use case anyway.
+- **Starting a recording overwrites the current input text** rather than appending, to
+  avoid interim-result flicker against already-typed text. Both `useChatController.ts`
+  (ordinary chat) and `useGameController.ts` (the guessing game — same shared
+  `ChatShell.tsx`/`ChatInput.tsx`, so this had to ship in both places for parity) sync
+  the live transcript into the input while recording, force-stop any in-progress
+  recording the moment a message actually sends, and route a speech error into the same
+  error banner ordinary chat/game errors use. The game's own `useGameSession` (shared
+  with mobile) doesn't expose a settable error, so its speech error is tracked in a
+  local `speechErrorDisplay` state instead, cleared the moment a message sends.
+- **`next.config.mjs`'s `Permissions-Policy` allows `microphone=(self)`** (this origin
+  only; embedded iframes still blocked) — it previously blocked microphone access
+  entirely (`microphone=()`).
+- **Mobile is a known, tracked parity gap, not shipped alongside web.** The most
+  actively maintained Expo-compatible speech-recognition library
+  (`expo-speech-recognition`, wraps native Android `SpeechRecognizer` and iOS
+  `SFSpeechRecognizer`) requires a custom dev client (Expo prebuild) — it cannot run in
+  plain Expo Go. `apps/mobile/CLAUDE.md` documents staying on plain Expo Go as a
+  deliberate decision (a dev client was tried once, for an unrelated keyboard bug, and
+  fully reverted), so adopting one for this feature needs its own decision, not a side
+  effect of shipping web voice input. See CLAUDE.md's web/mobile parity goal above.
+
 ### Client-side storage
 
 `src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Known keys: `chatbot-bot`, `chatbot-history-<bot.name>`, `voiceConfig-<bot.name>` (versioned — use the versioned helpers in `storage.ts`, never write the shape directly), `audioEnabled`, `darkMode`, `bot-session-id`, `chatbot-user-name` and `chatbot-user-name-gate-skipped` (the visitor's own preferred name and whether they've dismissed the name gate — see "Personalized greeting" below), `chatbot-game-token`/`chatbot-game-transcript`/`chatbot-game-instructions-seen` (the guessing game's current round token, its transcript, and its one-time "how to play" gate — see "Guessing game" below), `chatbot-landing-carousel-cache` (the landing header carousel's last-fetched portrait sample, repainted immediately on a return visit — see "Unified header" below), and `portrayal-google-analytics-consent` (web-only `granted`/`denied` choice for optional GA4; never an identifier). Never store secrets or PII here; it's client-side only.

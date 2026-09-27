@@ -6,6 +6,7 @@ import { useSession } from "./useSession";
 import { useApiError } from "./useApiError";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 import { useAudioPlayer } from "./useAudioPlayer";
+import { useSpeechRecognition } from "./useSpeechRecognition";
 import storage from "../../utils/storage";
 import type { Message } from "../../types/message";
 import type { Bot } from "./BotCreator";
@@ -339,6 +340,36 @@ export function useChatController(
 
   const { playAudio, stopAudio, isAudioPlaying, audioRef } = useAudioPlayer(audioEnabledRef);
 
+  const {
+    isSupported: isSpeechSupported,
+    isRecording,
+    transcript,
+    error: speechError,
+    stopRecording,
+    toggleRecording,
+  } = useSpeechRecognition();
+
+  // Live-updates the input with the in-progress dictation. Overwrites rather than
+  // appends to avoid interim-result flicker against already-typed text (see
+  // ChatInput.tsx's mic button doc comment for the full rationale). Synchronizes React
+  // state from useSpeechRecognition's own external browser-API state, which can't be
+  // derived during render.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (isRecording) setInput(transcript);
+  }, [isRecording, transcript]);
+
+  // Routes a speech-recognition error through the same banner ordinary chat errors use.
+  useEffect(() => {
+    if (speechError) setError(speechError);
+  }, [speechError, setError]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const handleMicToggle = useCallback(() => {
+    if (loading) return;
+    toggleRecording();
+  }, [loading, toggleRecording]);
+
   const replayMessageAudio = useCallback(
     async (message: Message) => {
       if (message.sender === "User") return;
@@ -602,6 +633,7 @@ export function useChatController(
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     const currentInput = input;
     setInput("");
+    stopRecording();
     setLoading(true);
     setError("");
     logMessage(userMessage);
@@ -700,6 +732,7 @@ export function useChatController(
     bot,
     ensureVoiceConfig,
     messages,
+    stopRecording,
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -1078,5 +1111,8 @@ export function useChatController(
     replayMessageAudio,
     stopAudio,
     isAudioPlaying,
+    isSpeechSupported,
+    isRecording,
+    handleMicToggle,
   };
 }
