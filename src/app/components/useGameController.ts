@@ -18,6 +18,7 @@ import type { Message } from "../../types/message";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
 import { useAudioPlayer } from "./useAudioPlayer";
 import { useAudioEnabled } from "./useAudioEnabled";
+import { useSpeechRecognition } from "./useSpeechRecognition";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 import type { LoadingStage } from "./CharacterLoadingOverlay";
 
@@ -229,12 +230,51 @@ export function useGameController() {
     gender,
     loading,
     input,
-    sendMessage,
+    setInput,
+    sendMessage: sendSessionMessage,
     startGame: startSession,
     continueRound: continueSession,
   } = session;
 
   useChatScrollAndFocus({ chatBoxRef, inputRef, messages, loading });
+
+  const {
+    isSupported: isSpeechSupported,
+    isRecording,
+    transcript,
+    error: speechError,
+    stopRecording,
+    toggleRecording,
+  } = useSpeechRecognition();
+
+  // Same overwrite-while-dictating behavior as useChatController.ts's chat input.
+  // Synchronizes React state from useSpeechRecognition's own external browser-API
+  // state, which can't be derived during render.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (isRecording) setInput(transcript);
+  }, [isRecording, transcript, setInput]);
+
+  // useGameSession's own `error` state isn't settable from here, so a speech-recognition
+  // error is tracked separately and cleared the moment a message actually sends —
+  // mirrors useChatController.ts's sendMessage clearing its single shared error state.
+  const [speechErrorDisplay, setSpeechErrorDisplay] = useState<string | null>(null);
+  useEffect(() => {
+    if (speechError) setSpeechErrorDisplay(speechError);
+  }, [speechError]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const handleMicToggle = useCallback(() => {
+    if (loading) return;
+    toggleRecording();
+  }, [loading, toggleRecording]);
+
+  // Force-stops any in-progress recording right after sending, same as ordinary chat.
+  const sendMessage = useCallback(() => {
+    setSpeechErrorDisplay(null);
+    stopRecording();
+    return sendSessionMessage();
+  }, [sendSessionMessage, stopRecording]);
 
   const replayMessageAudio = useCallback(
     async (message: Message) => {
@@ -330,6 +370,8 @@ export function useGameController() {
 
   return {
     ...session,
+    error: speechErrorDisplay || session.error,
+    sendMessage,
     continueRound,
     continueProgressMessage,
     continueProgressStages,
@@ -344,5 +386,8 @@ export function useGameController() {
     startProgressMessage,
     startProgressStages,
     handleKeyDown,
+    isSpeechSupported,
+    isRecording,
+    handleMicToggle,
   };
 }

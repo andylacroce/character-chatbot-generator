@@ -75,6 +75,9 @@ function GamePage() {
     startProgressStages = [],
     sendMessage,
     handleKeyDown,
+    isSpeechSupported,
+    isRecording,
+    handleMicToggle,
   } = useGameController();
 
   // Shared with BotCreator.tsx/CharsGallery.tsx/ChatPage.tsx — identity label, change-name
@@ -315,6 +318,9 @@ function GamePage() {
       onReplayAudio={replayMessageAudio}
       onStopAudio={stopAudio}
       isAudioPlaying={isAudioPlaying}
+      isSpeechSupported={isSpeechSupported}
+      isRecording={isRecording}
+      onMicToggle={handleMicToggle}
       error={error}
       retrying={false}
     />

@@ -64,6 +64,9 @@ function ChatPage({
     replayMessageAudio,
     stopAudio,
     isAudioPlaying,
+    isSpeechSupported,
+    isRecording,
+    handleMicToggle,
   } = useChatController(bot, onBackToCharacterCreation, userNameCtx.name);
 
   const menuItems = (
@@ -130,6 +133,9 @@ function ChatPage({
       onReplayAudio={replayMessageAudio}
       onStopAudio={stopAudio}
       isAudioPlaying={isAudioPlaying}
+      isSpeechSupported={isSpeechSupported}
+      isRecording={isRecording}
+      onMicToggle={handleMicToggle}
       error={introError ?? error ?? ""}
       retrying={retrying}
     />
