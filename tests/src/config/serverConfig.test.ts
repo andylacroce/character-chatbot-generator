@@ -11,6 +11,7 @@ import {
   RESPONSE_CONSTRAINTS,
   CONTENT_GUIDELINES,
   generatePersonalityPrompt,
+  generateGameCluePersonaPrompt,
 } from "../../../src/config/serverConfig";
 import { getClaudeModel } from "../../../src/utils/claudeModelSelector";
 
@@ -164,6 +165,78 @@ describe("serverConfig", () => {
 
       expect(correctedName).toBe("Albert Einstein");
       expect(prompt).toContain("You are Albert Einstein.");
+    });
+  });
+
+  describe("generateGameCluePersonaPrompt", () => {
+    it("builds the base persona plus the game rules block, with the hidden name for internal reference only", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+
+      const { prompt } = await generateGameCluePersonaPrompt("Sherlock Holmes", "Cleopatra VII");
+
+      expect(prompt).toContain("You are Sherlock Holmes.");
+      expect(prompt).toContain("GAME RULES YOU MUST FOLLOW");
+      expect(prompt).toContain(
+        "(For your own internal reference only — never say this name in any reply): Cleopatra VII",
+      );
+    });
+
+    it("grounds the current character's own identity when work is supplied", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+
+      const { prompt } = await generateGameCluePersonaPrompt(
+        "Scarecrow (The Wizard of Oz)",
+        "Zeus",
+        {
+          current: "L. Frank Baum's The Wonderful Wizard of Oz",
+        },
+      );
+
+      expect(prompt).toContain(
+        "You are specifically drawn from: L. Frank Baum's The Wonderful Wizard of Oz.",
+      );
+    });
+
+    it("grounds the hidden character's identity when work is supplied", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+
+      const { prompt } = await generateGameCluePersonaPrompt(
+        "Zeus",
+        "Beauty (Beauty and the Beast)",
+        {
+          next: "The fairy tale Beauty and the Beast",
+        },
+      );
+
+      expect(prompt).toContain(
+        "(For your own internal reference only — never say this name in any reply): Beauty (Beauty and the Beast) — specifically the one from: The fairy tale Beauty and the Beast",
+      );
+    });
+
+    it("omits all work grounding when no work object is supplied", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+
+      const { prompt } = await generateGameCluePersonaPrompt("Zeus", "Hera");
+
+      expect(prompt).not.toContain("specifically drawn from");
+      expect(prompt).not.toContain("specifically the one from");
+    });
+
+    it("omits current-only grounding when only next is supplied, and vice versa", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+      const { prompt: nextOnly } = await generateGameCluePersonaPrompt("Zeus", "Hera", {
+        next: "Greek mythology",
+      });
+      expect(nextOnly).not.toContain("You are specifically drawn from");
+      expect(nextOnly).toContain("specifically the one from: Greek mythology");
+
+      jest.clearAllMocks();
+      claudeReturns(JSON.stringify(fullConfig));
+      const { prompt: currentOnly } = await generateGameCluePersonaPrompt("Zeus", "Hera", {
+        current: "Greek mythology",
+      });
+      expect(currentOnly).toContain("You are specifically drawn from: Greek mythology");
+      expect(currentOnly).not.toContain("specifically the one from");
     });
   });
 });

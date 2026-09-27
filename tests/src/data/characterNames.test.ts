@@ -47,6 +47,16 @@ describe("characterNames", () => {
     // this test: it only matched a bare noun exactly, never a "The X" form, which is
     // this list's actual naming convention for most such entries ("The Beast", "The
     // Emperor") — fixed by stripping a leading article before comparing, below.
+    // A fourth instance, "Scarecrow" (The Wizard of Oz — reported live as a game round
+    // whose clues drifted toward a generic scarecrow instead of the specific character),
+    // exposed a second gap: this denylist only ever matched a single bare word, so the
+    // sibling entries "Tin Man" and "Cowardly Lion" (same list, same ambiguity, both
+    // multi-word) were never caught by this mechanism at all and had to be fixed by hand
+    // alongside "Scarecrow". This single-word denylist is a backstop, not the primary
+    // fix for the game specifically — see `src/data/gameCharacterWork.ts` and CLAUDE.md's
+    // "Guessing game" section for the structured per-entry metadata that now grounds the
+    // game's clue-generation and guess-classification prompts, which catches multi-word
+    // ambiguity this test structurally cannot.
     const genericArchetypes = new Set([
       "hero",
       "beauty",
@@ -93,6 +103,7 @@ describe("characterNames", () => {
       "fool",
       "bard",
       "minstrel",
+      "scarecrow",
     ]);
     const stripArticle = (name: string) => name.toLowerCase().replace(/^(the|an?) /, "");
     const offenders = characterNames.filter((name) => genericArchetypes.has(stripArticle(name)));

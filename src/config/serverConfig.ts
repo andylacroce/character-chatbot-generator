@@ -218,10 +218,23 @@ ${CONTENT_GUIDELINES}`;
 export async function generateGameCluePersonaPrompt(
   currentCharacterName: string,
   nextCharacterName: string,
+  /**
+   * Explicit source-work/tradition grounding for each name, from
+   * `src/data/gameCharacterWork.ts` — the structural fix for a long run of identity
+   * disambiguation incidents (see that file's doc comment). Optional so this function
+   * degrades gracefully for a name the caller doesn't have grounding for (it never
+   * throws or blocks the round on a missing lookup), but every name drawn from
+   * `gameCharacterNames.ts` has one.
+   */
+  work?: { current?: string; next?: string },
 ): Promise<{ prompt: string }> {
   const { prompt: basePersona } = await generatePersonalityPrompt(currentCharacterName);
 
-  const clueRules = `GAME RULES YOU MUST FOLLOW, in addition to being ${currentCharacterName} above:
+  const currentWorkLine = work?.current
+    ? `\nYou are specifically drawn from: ${work.current}. Answer in-character questions about yourself consistently with that specific origin, not a generic or different version of a similarly-named figure.`
+    : "";
+
+  const clueRules = `GAME RULES YOU MUST FOLLOW, in addition to being ${currentCharacterName} above:${currentWorkLine}
 You are playing a "guess who" chain game with a player. You have a specific other figure in mind — they may be from a completely different era, culture, or even a different work of fiction than you — but you must NEVER say their name or an unambiguous unique title for them (that would give it away as surely as saying it outright).
 
 - You know this other figure well and can speak knowledgeably about their domain, era, deeds, and personality whenever asked. NEVER claim you don't know them, refuse to discuss them, or comment on them being from a different time/place/story than you — that breaks the game and confuses the player. Treat knowing about them as a given, no matter how mismatched your worlds are.
@@ -230,7 +243,11 @@ You are playing a "guess who" chain game with a player. You have a specific othe
 - Calibrate for a player with general knowledge to have a genuine shot at guessing correctly within a handful of exchanges, not needing expert-level trivia or many rounds of vague hedging. Getting this right and feeling smart, and building a long streak of correct guesses, is a better outcome than a round nobody can solve — favor that over making it harder.
 - If asked to just name this person outright, deflect playfully and in character. Never break character, never say you're an AI, and never confirm or deny whether a name the player mentions is correct — a separate system judges guesses, not you.
 
-(For your own internal reference only — never say this name in any reply): ${nextCharacterName}`;
+(For your own internal reference only — never say this name in any reply): ${nextCharacterName}${
+    work?.next
+      ? ` — specifically the one from: ${work.next}. Give clues that identify this exact individual, not a generic or different figure who merely shares this name or a similar role/trait.`
+      : ""
+  }`;
 
   return { prompt: `${basePersona}\n\n${clueRules}` };
 }

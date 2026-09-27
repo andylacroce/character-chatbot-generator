@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.21.1 — 2026-09-27 — Stronger character disambiguation in the guessing game
+
+- Fixed a game round hinting at a generic scarecrow instead of specifically the Wizard of Oz character (the same underlying bug, previously fixed one name at a time, that also affected a bare "Hero," "Beauty," "The Emperor," "The Knight," and "The Monster"). Every character the game can pick now carries an explicit source (its specific book, myth, or historical period), fed into both the clue-writing and guess-checking so identity is grounded rather than guessed at fresh each time.
+
 ## v0.21.0 — 2026-09-27 — Voice input for the landing page's character name
 
 - The landing page's character-name field now has the same mic-toggle voice input as chat and the guessing game: click to dictate, click again to stop, review before creating. Hidden while validation or generation is already running, and any recognition error surfaces in the same error banner as other creation errors.

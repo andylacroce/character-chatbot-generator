@@ -53,7 +53,16 @@ const customJestConfig = {
     "<rootDir>/.next/",
     "<rootDir>/apps/",
     "<rootDir>/packages/",
+    "<rootDir>/.claude/",
   ],
+  // Isolated git worktrees for background agents (Claude Code's Agent tool with
+  // isolation: "worktree") are checked out under .claude/worktrees/ — a separate
+  // branch's own copy of this same repo, including its own packages/shared/package.json.
+  // Without this, Jest's Haste module map sees two packages both named
+  // "character-chatbot-shared" and refuses to resolve either one, failing every test
+  // that imports it. testPathIgnorePatterns above only skips *running* test files from
+  // there; this is what's needed to stop module *resolution* from scanning it too.
+  modulePathIgnorePatterns: ["<rootDir>/.claude/"],
   verbose: true,
   collectCoverage: true, // Enable coverage reports
   // Without this, coverage is only measured over files some test happens to import,

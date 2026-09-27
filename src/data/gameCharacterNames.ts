@@ -233,9 +233,9 @@ const gameCharacterNames: string[] = [
 
   // The Wizard of Oz
   "Dorothy Gale",
-  "Scarecrow",
-  "Tin Man",
-  "Cowardly Lion",
+  "Scarecrow (The Wizard of Oz)",
+  "Tin Man (The Wizard of Oz)",
+  "Cowardly Lion (The Wizard of Oz)",
   "Wicked Witch of the West",
 
   // Peter Pan
