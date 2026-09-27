@@ -9,7 +9,7 @@
  * @module BotCreator
  */
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useCallback, useRef, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -22,6 +22,7 @@ import { hasNavigatedWithinSession } from "../../utils/clientNavigationState";
 import DisclaimerModal from "./DisclaimerModal";
 import CharacterInfoModal from "./CharacterInfoModal";
 import { useBotCreation } from "./useBotCreation";
+import { useSpeechRecognition } from "./useSpeechRecognition";
 import { useAccountMenu } from "./useAccountMenu";
 import { NameCaptureModal } from "./NameCaptureModal";
 import { CopyrightWarningModal } from "./CopyrightWarningModal";
@@ -109,6 +110,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     input,
     setInput,
     error,
+    setError,
     loading,
     progress,
     randomizing,
@@ -171,6 +173,50 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // loading state nobody actually perceives as "loading". `randomizing` still disables
   // the Random button itself, below, as lightweight double-click protection.
   const isBusy = loading || validating;
+
+  const {
+    isSupported: isSpeechSupported,
+    isRecording,
+    transcript,
+    error: speechError,
+    stopRecording,
+    toggleRecording,
+  } = useSpeechRecognition();
+
+  // Live-updates the name field with the in-progress dictation, mirroring
+  // useChatController.ts/useGameController.ts's own mic wiring. Overwrites rather than
+  // appends (see useSpeechRecognition.ts's doc comment). Synchronizes React state from
+  // useSpeechRecognition's own external browser-API state, which can't be derived
+  // during render. Unlike those two hooks, `setInput`/`setError` here come from
+  // useBotCreation (not a local useState in this component), so
+  // react-hooks/set-state-in-effect doesn't flag this and no disable comment is needed.
+  useEffect(() => {
+    if (isRecording) setInput(transcript);
+  }, [isRecording, transcript, setInput]);
+
+  // Routes a speech-recognition error through the same banner other creation errors use.
+  useEffect(() => {
+    if (speechError) setError(speechError);
+  }, [speechError, setError]);
+
+  // Hidden/no-op while validation or generation is already running (isBusy), the same
+  // condition that already disables the Random/Create buttons on this form.
+  const handleMicToggle = useCallback(() => {
+    if (isBusy) return;
+    toggleRecording();
+  }, [isBusy, toggleRecording]);
+
+  // Force-stops any in-progress dictation the moment a name is actually submitted,
+  // mirroring useChatController.ts's sendMessage — the transcript has already landed in
+  // `input` via the effect above, so this just prevents the recognizer from continuing
+  // to run (and mutate `input` again) once creation has started.
+  const handleFormSubmit = useCallback(
+    (e?: { preventDefault(): void }) => {
+      stopRecording();
+      return handleCreate(e);
+    },
+    [stopRecording, handleCreate],
+  );
   // Guard flag only — never read by the render output, so a ref (not state) avoids an
   // unnecessary extra render on top of the one handleCreate() itself already triggers.
   const hasAutoSubmittedRef = useRef<boolean>(false);
@@ -323,7 +369,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   return (
     <>
       <AppHeader menuItems={menuItems} center={<LandingCharacterCarousel />} />
-      <form onSubmit={handleCreate} className={styles.formContainer} autoComplete="off">
+      <form onSubmit={handleFormSubmit} className={styles.formContainer} autoComplete="off">
         <div className={styles.formInner}>
           {!isLaunchingFromUrl && !interstitial && (
             <>
@@ -417,6 +463,62 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                   maxLength={36}
                   ref={inputRef}
                 />
+                {isSpeechSupported && !isBusy && (
+                  <button
+                    type="button"
+                    onClick={handleMicToggle}
+                    className={styles.micButton}
+                    aria-label={isRecording ? "Stop voice input" : "Start voice input"}
+                    aria-pressed={isRecording}
+                    data-testid="bot-creator-mic-toggle"
+                  >
+                    {isRecording ? (
+                      // Filled mic icon while recording, to read clearly as "active"
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <rect x="9" y="2" width="6" height="12" rx="3" />
+                        <path
+                          d="M5 11a7 7 0 0014 0M12 18v3"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          fill="none"
+                        />
+                      </svg>
+                    ) : (
+                      // Outlined mic icon while idle
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <rect
+                          x="9"
+                          y="2"
+                          width="6"
+                          height="12"
+                          rx="3"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M5 11a7 7 0 0014 0M12 18v3"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          fill="none"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                )}
                 <div className={styles.textLinks}>
                   <button
                     type="button"

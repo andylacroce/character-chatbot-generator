@@ -226,7 +226,11 @@ Speech-to-Text round trip, so voice input costs nothing per use and needs no new
 route. `isSupported`/`isRecording`/`transcript`/`error` plus `startRecording`/
 `stopRecording`/`toggleRecording` are returned rather than writing into an input
 directly, so the merge decision lives at the integration point, not inside the
-browser-API wrapper.
+browser-API wrapper. Covers three text fields: ordinary chat and the guessing game's
+shared `ChatInput.tsx`, and the landing page's character-name field
+(`src/app/components/BotCreator.tsx`) — each integration point owns its own wiring
+(there's no shared "attach a mic to this input" component), but all three consume the
+same hook and the same `normalizeDictatedText` cleanup below.
 
 - **The mic button is a toggle** (click to start, click to stop), mirroring the
   existing audio mute/unmute button's interaction pattern rather than push-to-talk.
@@ -234,7 +238,11 @@ browser-API wrapper.
   never see a broken control, just no button — and is hidden while `isAudioPlaying` to
   cap simultaneous icon buttons at 3 on mobile widths (mic+toggle+send, or
   stop+toggle+send, never all four); dictating while the character is still talking
-  isn't a real use case anyway.
+  isn't a real use case anyway. `BotCreator.tsx`'s own mic button (its own inline
+  markup/CSS, not an import of `ChatInput.module.css` — see the "no shared CSS modules"
+  convention) follows the same toggle/icon pattern, hidden instead while validation or
+  generation is already running (`isBusy`, the same condition that already disables its
+  Random/Create buttons).
 - **The live transcript is run through `normalizeDictatedText`** (capitalization and
   punctuation spacing only — collapses whitespace, drops a space before punctuation,
   capitalizes sentence starts and the standalone pronoun "i") before it's returned,
@@ -243,14 +251,19 @@ browser-API wrapper.
   which breaks voice input's zero-cost design; a misheard word is still on the user to
   fix before sending, same as a typo.
 - **Starting a recording overwrites the current input text** rather than appending, to
-  avoid interim-result flicker against already-typed text. Both `useChatController.ts`
-  (ordinary chat) and `useGameController.ts` (the guessing game — same shared
-  `ChatShell.tsx`/`ChatInput.tsx`, so this had to ship in both places for parity) sync
-  the live transcript into the input while recording, force-stop any in-progress
-  recording the moment a message actually sends, and route a speech error into the same
-  error banner ordinary chat/game errors use. The game's own `useGameSession` (shared
-  with mobile) doesn't expose a settable error, so its speech error is tracked in a
-  local `speechErrorDisplay` state instead, cleared the moment a message sends.
+  avoid interim-result flicker against already-typed text. `useChatController.ts`
+  (ordinary chat), `useGameController.ts` (the guessing game — same shared
+  `ChatShell.tsx`/`ChatInput.tsx`, so this had to ship in both places for parity), and
+  `BotCreator.tsx` (the landing page's character-name field) all sync the live
+  transcript into their own input while recording, force-stop any in-progress recording
+  the moment a name/message actually submits, and route a speech error into the same
+  error banner their own screen already uses for other errors. The game's own
+  `useGameSession` (shared with mobile) doesn't expose a settable error, so its speech
+  error is tracked in a local `speechErrorDisplay` state instead, cleared the moment a
+  message sends; `BotCreator.tsx` routes into `useBotCreation.ts`'s own `setError`
+  (from the shared `useCharacterCreation` hook) since that's a local `useState`, not a
+  `set-state-in-effect`-flagged local state the way `useChatController.ts`'s `setInput`
+  is — so its sync effects don't need the disable-comment wrapper the other two do.
 - **`next.config.mjs`'s `Permissions-Policy` allows `microphone=(self)`** (this origin
   only; embedded iframes still blocked) — it previously blocked microphone access
   entirely (`microphone=()`).

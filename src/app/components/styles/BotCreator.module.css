@@ -277,6 +277,47 @@
   cursor: not-allowed;
 }
 
+/* Mic toggle for dictating the character name — rendered only when the browser
+   supports SpeechRecognition (see useSpeechRecognition.ts), same conditional-render
+   pattern as ChatInput.tsx's own mic button, but styled to match this page's own
+   text-link buttons rather than importing ChatInput's CSS module (no shared CSS
+   modules — see CLAUDE.md). */
+.micButton {
+  flex: 0 0 auto;
+  background: none;
+  border: 1px solid var(--color-outline);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-accent);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.micButton:hover,
+.micButton:focus {
+  background: var(--color-primary-container);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  outline: none;
+}
+
+.micButton[aria-pressed="true"] {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.micButton svg {
+  display: block;
+}
+
 .textLinks {
   display: flex;
   gap: 1rem;
