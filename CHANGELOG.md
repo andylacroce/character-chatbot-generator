@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.20.0 — 2026-09-27 — Live autocorrect for voice input
+
+- Dictated text now capitalizes and cleans up punctuation spacing live, in the input box itself, while still speaking — not just on send. It's local, lightweight cleanup (capitalization, punctuation spacing) rather than a real spelling/grammar fix, so voice input still costs nothing per use.
+
 ## v0.19.0 — 2026-09-27 — Voice input for chat (web)
 
 - Added a mic button to the chat input (both ordinary chat and the guessing game) that dictates a message using the browser's built-in speech recognition (Chrome/Edge; no server round trip, no added cost). It's a toggle — click to start, click again to stop — and fills the input for review before sending, never auto-sending. It only appears in browsers that support it, and is hidden while the character's reply audio is playing to keep the input bar from getting crowded on narrow screens. A permission-denied, no-microphone, or network error surfaces in the same error banner ordinary chat errors use.

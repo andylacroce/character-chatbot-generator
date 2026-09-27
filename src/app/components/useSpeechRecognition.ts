@@ -4,7 +4,10 @@
  * ref, mirroring useAudioPlayer.ts's imperative-ref-over-browser-API pattern. Exposes
  * the transcript rather than writing into an input directly, so the merge decision
  * (overwrite vs. append) lives at the integration point (useChatController.ts /
- * useGameController.ts), not inside this browser-API wrapper.
+ * useGameController.ts), not inside this browser-API wrapper. The transcript itself is
+ * run through normalizeDictatedText (capitalization/punctuation spacing only, no
+ * spelling/grammar correction) before being returned, so it already reads cleanly while
+ * still being dictated.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -32,6 +35,29 @@ interface SpeechRecognitionErrorEventLike {
 }
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+/**
+ * Lightweight, local cleanup applied to the live transcript as it lands in the input —
+ * capitalization and punctuation spacing only, never a real spelling/grammar fix (that
+ * would need a Claude call, breaking voice input's zero-cost design). Runs on every
+ * `onresult` update, not just once at the end, so the input already reads cleanly while
+ * still dictating.
+ */
+export function normalizeDictatedText(text: string): string {
+  let result = text.trim().replace(/\s+/g, " ");
+  // Remove space before punctuation ("hello , there" -> "hello, there"). A single literal
+  // space (not \s+) is enough here since the previous line already collapsed all runs of
+  // whitespace to one space.
+  result = result.replace(/ ([,.!?;:])/g, "$1");
+  // Capitalize the first letter of the string and after any sentence-ending punctuation.
+  result = result.replace(
+    /(^\s*|[.!?]\s+)([a-z])/g,
+    (_m, prefix, letter) => prefix + letter.toUpperCase(),
+  );
+  // The standalone pronoun "I" often comes back lowercase from recognition.
+  result = result.replace(/\bi\b/g, "I");
+  return result;
+}
 
 /** Normalizes a SpeechRecognition error code into a user-facing message. `aborted` is expected (user-initiated stop) and never surfaced. */
 function describeSpeechError(code: string): string | null {
@@ -114,7 +140,7 @@ export function useSpeechRecognition() {
       for (let i = 0; i < event.results.length; i++) {
         combined += event.results[i][0]?.transcript ?? "";
       }
-      setTranscript(combined.trim());
+      setTranscript(normalizeDictatedText(combined));
     };
     recognition.onerror = (event) => {
       const message = describeSpeechError(event.error);

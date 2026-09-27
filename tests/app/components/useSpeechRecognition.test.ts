@@ -1,5 +1,8 @@
 import { renderHook, act } from "@testing-library/react";
-import { useSpeechRecognition } from "@/src/app/components/useSpeechRecognition";
+import {
+  useSpeechRecognition,
+  normalizeDictatedText,
+} from "@/src/app/components/useSpeechRecognition";
 
 type Handlers = {
   onresult: ((event: unknown) => void) | null;
@@ -64,12 +67,12 @@ describe("useSpeechRecognition", () => {
     act(() => {
       lastInstance?.onresult?.({ results: [makeResult("hello")] });
     });
-    expect(result.current.transcript).toBe("hello");
+    expect(result.current.transcript).toBe("Hello");
 
     act(() => {
       lastInstance?.onresult?.({ results: [makeResult("hello world")] });
     });
-    expect(result.current.transcript).toBe("hello world");
+    expect(result.current.transcript).toBe("Hello world");
   });
 
   it("falls back to webkitSpeechRecognition when SpeechRecognition is absent", () => {
@@ -150,5 +153,43 @@ describe("useSpeechRecognition", () => {
     const instance = lastInstance;
     unmount();
     expect(instance?.abort).toHaveBeenCalled();
+  });
+});
+
+describe("normalizeDictatedText", () => {
+  it("capitalizes the first letter of the string", () => {
+    expect(normalizeDictatedText("hello there")).toBe("Hello there");
+  });
+
+  it("capitalizes after sentence-ending punctuation", () => {
+    expect(normalizeDictatedText("this is great. it worked")).toBe("This is great. It worked");
+    expect(normalizeDictatedText("really? yes it did! great")).toBe("Really? Yes it did! Great");
+  });
+
+  it("removes space before punctuation", () => {
+    expect(normalizeDictatedText("hello , how are you")).toBe("Hello, how are you");
+    expect(normalizeDictatedText("wait !")).toBe("Wait!");
+  });
+
+  it("collapses repeated whitespace and trims", () => {
+    expect(normalizeDictatedText("  multiple   spaces  ")).toBe("Multiple spaces");
+  });
+
+  it("capitalizes the standalone pronoun i, including in contractions", () => {
+    expect(normalizeDictatedText("i am fine")).toBe("I am fine");
+    expect(normalizeDictatedText("i'm fine")).toBe("I'm fine");
+  });
+
+  it("does not touch i inside another word", () => {
+    expect(normalizeDictatedText("with him")).toBe("With him");
+  });
+
+  it("preserves contractions and apostrophes", () => {
+    expect(normalizeDictatedText("what's up")).toBe("What's up");
+  });
+
+  it("returns an empty string unchanged", () => {
+    expect(normalizeDictatedText("")).toBe("");
+    expect(normalizeDictatedText("   ")).toBe("");
   });
 });

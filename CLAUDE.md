@@ -235,6 +235,13 @@ browser-API wrapper.
   cap simultaneous icon buttons at 3 on mobile widths (mic+toggle+send, or
   stop+toggle+send, never all four); dictating while the character is still talking
   isn't a real use case anyway.
+- **The live transcript is run through `normalizeDictatedText`** (capitalization and
+  punctuation spacing only — collapses whitespace, drops a space before punctuation,
+  capitalizes sentence starts and the standalone pronoun "i") before it's returned,
+  so the input already reads cleanly while still dictating. Deliberately not a real
+  spelling/grammar/misheard-word correction pass — that would need a Claude call,
+  which breaks voice input's zero-cost design; a misheard word is still on the user to
+  fix before sending, same as a typo.
 - **Starting a recording overwrites the current input text** rather than appending, to
   avoid interim-result flicker against already-typed text. Both `useChatController.ts`
   (ordinary chat) and `useGameController.ts` (the guessing game — same shared
