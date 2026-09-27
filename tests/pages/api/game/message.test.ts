@@ -371,6 +371,38 @@ describe("game/message API", () => {
     expect(classifierRequest.system).toMatch(/counterpart or analogue[\s\S]*not a match/);
   });
 
+  it("grounds the hidden character with its source work when gameCharacterWork has an entry", async () => {
+    token = signGameState(makeGameState({ nextCharacterName: "Beauty (Beauty and the Beast)" }));
+    mockClassification("clear", false);
+    mockGetGuessReactionReply.mockResolvedValueOnce("Not quite.");
+
+    const handler = require("../../../../src/pages/api/game/message").default;
+    const res = makeRes();
+    await handler(makeReq({ gameToken: token, message: "Cleopatra" }), res);
+
+    const classifierRequest = mockCreate.mock.calls[0][0];
+    const userContent = classifierRequest.messages[0].content as string;
+    expect(userContent).toContain(
+      'Hidden character (trusted, for judging only): "Beauty (Beauty and the Beast)" — specifically the one from: The fairy tale Beauty and the Beast',
+    );
+  });
+
+  it("omits the source-work grounding line when gameCharacterWork has no entry for the hidden character", async () => {
+    // Default nextCharacterName ("Irene Adler") isn't in gameCharacterWork, since it's
+    // a token fixture name, not a real gameCharacterNames.ts entry.
+    mockClassification("clear", false);
+    mockGetGuessReactionReply.mockResolvedValueOnce("Not quite.");
+
+    const handler = require("../../../../src/pages/api/game/message").default;
+    const res = makeRes();
+    await handler(makeReq({ gameToken: token, message: "Moriarty" }), res);
+
+    const classifierRequest = mockCreate.mock.calls[0][0];
+    const userContent = classifierRequest.messages[0].content as string;
+    expect(userContent).toContain('Hidden character (trusted, for judging only): "Irene Adler"');
+    expect(userContent).not.toContain("specifically the one from");
+  });
+
   it("ends the run on a second wrong guess and reveals the hidden name", async () => {
     token = signGameState(makeGameState({ wrongGuessCount: 1 }));
     mockClassification("clear", false);

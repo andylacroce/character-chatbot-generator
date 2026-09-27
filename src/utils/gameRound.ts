@@ -9,6 +9,7 @@
 
 import { pickRandomCharacterName } from "./pickRandomCharacterName";
 import gameCharacterNames from "../data/gameCharacterNames";
+import gameCharacterWork from "../data/gameCharacterWork";
 import { generateGameCluePersonaPrompt } from "../config/serverConfig";
 import { getOrGenerateAvatar } from "./avatarGeneration";
 import { getOpeningReply } from "./gameReply";
@@ -48,10 +49,20 @@ export async function generateGameRound(
 ): Promise<GameRound> {
   const nextCharacterName = pickRandomCharacterName(excludeNames, gameCharacterNames);
 
+  // Explicit source-work grounding, when known (see gameCharacterWork.ts's doc comment)
+  // — threaded into the persona/clue prompt below so identity never has to be
+  // re-derived purely from a name string. Both names are always drawn from
+  // gameCharacterNames.ts (see pages/api/game/start.ts and this function's own
+  // nextCharacterName pick above), which gameCharacterWork.ts covers completely.
+  const work = {
+    current: gameCharacterWork[currentCharacterName],
+    next: gameCharacterWork[nextCharacterName],
+  };
+
   // The persona prompt and the avatar each depend only on currentCharacterName, not on
   // each other, so they run concurrently rather than back-to-back.
   const [{ prompt: personaPrompt }, { avatarUrl, gender }] = await Promise.all([
-    generateGameCluePersonaPrompt(currentCharacterName, nextCharacterName).then((result) => {
+    generateGameCluePersonaPrompt(currentCharacterName, nextCharacterName, work).then((result) => {
       onProgress?.("personality");
       return result;
     }),
