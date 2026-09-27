@@ -283,10 +283,8 @@ generated once for it to show up here for everyone.
   backed by a 60-second in-process cache, so a burst of visitors scrolling through hundreds of
   portraits costs at most one database query per minute, not one per page of results.
 - **Category data**: new portraits persist their category in `avatar_cache` as part of the
-  existing Claude prompt-generation response. After adding the nullable column with
-  `npm run db:push`, run `npm run chars:backfill-categories -- --dry-run` to preview the
-  historical classification, then `npm run chars:backfill-categories` to fill only rows that
-  are still uncategorized.
+  existing Claude prompt-generation response. The one-time historical backfill for rows
+  created before this column existed completed 2026-09-18.
 - **Click a portrait to open it full-size** in a native `<dialog>` lightbox, with a "Chat with
   this character" button that launches straight into a conversation — resuming your own saved
   version of that character if you're signed in and already created one, or generating a fresh

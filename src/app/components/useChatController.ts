@@ -7,19 +7,15 @@ import { useApiError } from "./useApiError";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 import { useAudioPlayer } from "./useAudioPlayer";
 import { useSpeechRecognition } from "./useSpeechRecognition";
+import { useCharacterVoiceConfig } from "./useCharacterVoiceConfig";
+import { useMobileKeyboardViewportAdjustment } from "./useMobileKeyboardViewportAdjustment";
+import { useChatVisiblePagination, INITIAL_VISIBLE_COUNT } from "./useChatVisiblePagination";
+import { useAutoPlayLatestMessage } from "./useAutoPlayLatestMessage";
 import storage from "../../utils/storage";
 import type { Message } from "../../types/message";
 import type { Bot } from "./BotCreator";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { api_getVoiceConfigForCharacter } from "./api_getVoiceConfigForCharacter";
-import { loadVoiceConfig, persistVoiceConfig } from "../../utils/voiceConfigPersistence";
-import type { CharacterVoiceConfig } from "../../utils/characterVoices";
-import {
-  STORAGE_KEYS,
-  chatHistoryKey,
-  getReplayAudioUrl,
-  lastPlayedAudioHashKey,
-} from "character-chatbot-shared";
+import { STORAGE_KEYS, chatHistoryKey, getReplayAudioUrl } from "character-chatbot-shared";
 
 /**
  * The visitor's own preferred name (see useUserName.ts), read directly from localStorage
@@ -30,9 +26,6 @@ import {
 function getStoredUserName(): string | undefined {
   return storage.getItem(STORAGE_KEYS.userName) || undefined;
 }
-
-const INITIAL_VISIBLE_COUNT = 20;
-const LOAD_MORE_COUNT = 10;
 
 /** Defers focusing an input to avoid synchronous DOM updates inside async callbacks. */
 const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
@@ -79,93 +72,7 @@ export function useChatController(
     return [];
   });
 
-  // Voice config state with cookie + localStorage persistence and network fallback
-  const [resolvedVoiceConfig, setResolvedVoiceConfig] = useState<CharacterVoiceConfig | null>(
-    () => {
-      try {
-        const stored = loadVoiceConfig(bot.name);
-        if (stored) return stored;
-      } catch {}
-      return bot.voiceConfig || null;
-    },
-  );
-  const voiceConfigPromiseRef = useRef<Promise<CharacterVoiceConfig | null> | null>(null);
-  const voiceConfigRef = useRef<CharacterVoiceConfig | null>(resolvedVoiceConfig);
-  useEffect(() => {
-    voiceConfigRef.current = resolvedVoiceConfig;
-  }, [resolvedVoiceConfig]);
-
-  const setAndPersistVoiceConfig = useCallback(
-    (config: CharacterVoiceConfig | null) => {
-      if (!config) {
-        voiceConfigRef.current = null;
-        setResolvedVoiceConfig(null);
-        return null;
-      }
-      // Avoid redundant state updates to prevent render loops
-      const current = voiceConfigRef.current;
-      const isSame = current && JSON.stringify(current) === JSON.stringify(config);
-      try {
-        persistVoiceConfig(bot.name, config);
-      } catch {}
-      if (!isSame) {
-        voiceConfigRef.current = config;
-        setResolvedVoiceConfig(config);
-      } else {
-        voiceConfigRef.current = config;
-      }
-      return config;
-    },
-    [bot.name],
-  );
-
-  const ensureVoiceConfig = useCallback(async (): Promise<CharacterVoiceConfig | null> => {
-    if (voiceConfigRef.current) return voiceConfigRef.current;
-    if (voiceConfigPromiseRef.current) return voiceConfigPromiseRef.current;
-    const promise = (async () => {
-      try {
-        const stored = loadVoiceConfig(bot.name);
-        if (stored) return setAndPersistVoiceConfig(stored);
-      } catch {
-        /* ignore */
-      }
-      try {
-        const savedBotRaw = storage.getItem(STORAGE_KEYS.bot);
-        if (savedBotRaw) {
-          const parsed = JSON.parse(savedBotRaw);
-          if (parsed?.name === bot.name && parsed.voiceConfig) {
-            return setAndPersistVoiceConfig(parsed.voiceConfig as CharacterVoiceConfig);
-          }
-        }
-      } catch {
-        /* ignore */
-      }
-      if (bot.voiceConfig) {
-        return setAndPersistVoiceConfig(bot.voiceConfig as CharacterVoiceConfig);
-      }
-      try {
-        const fetched = await api_getVoiceConfigForCharacter(bot.name, bot.gender, bot.personality);
-        return setAndPersistVoiceConfig(fetched);
-      } catch (err) {
-        if (typeof window !== "undefined") {
-          logEvent(
-            "error",
-            "voice_config_fetch_failed",
-            "Failed to fetch voice config",
-            sanitizeLogMeta({
-              botName: bot.name,
-              error: err instanceof Error ? err.message : String(err),
-            }),
-          );
-        }
-        return null;
-      }
-    })();
-    voiceConfigPromiseRef.current = promise;
-    const result = await promise;
-    voiceConfigPromiseRef.current = null;
-    return result;
-  }, [bot.name, bot.gender, bot.personality, bot.voiceConfig, setAndPersistVoiceConfig]);
+  const { ensureVoiceConfig, voiceConfigRef } = useCharacterVoiceConfig(bot);
 
   const [input, setInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -188,10 +95,11 @@ export function useChatController(
 
   useChatScrollAndFocus({ chatBoxRef, inputRef, messages, loading });
 
-  // Declared here (rather than down by the scroll-handling code that uses it) because
-  // the "reset state when bot changes" effect below also resets it, and referencing a
-  // setter before its useState declaration in source order isn't allowed.
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+  const { visibleCount, setVisibleCount, handleScroll } = useChatVisiblePagination(
+    chatBoxRef,
+    messages.length,
+    historyKey,
+  );
 
   // See the reconciliation effect's own comment further down for what this gates.
   // Declared here (not next to that effect) for the same reason as visibleCount above.
@@ -249,14 +157,11 @@ export function useChatController(
     // Reset visible count
     setVisibleCount(INITIAL_VISIBLE_COUNT);
 
-    // Reset last played audio hash for new character
-    lastPlayedAudioHashRef.current = null;
-
     // A signed-in user's server history hasn't been checked yet for this
     // (possibly new) bot — see the reconciliation effect below, and the
     // intro effect that waits on it.
     setHistoryReconciled(false);
-  }, [bot.name, setError]); // Only depend on bot.name to avoid unnecessary resets
+  }, [bot.name, setError, setVisibleCount]); // Only depend on bot.name to avoid unnecessary resets
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Reconcile with server-persisted history (phase 3c). Local storage stays the fast,
@@ -308,35 +213,6 @@ export function useChatController(
     };
   }, [bot.name, authStatus]);
   /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Reset and hydrate voice config when bot changes
-  useEffect(() => {
-    voiceConfigPromiseRef.current = null;
-    let cancelled = false;
-    const hydrate = async () => {
-      try {
-        const stored = loadVoiceConfig(bot.name);
-        if (stored && !cancelled) {
-          setAndPersistVoiceConfig(stored);
-          return;
-        }
-      } catch {
-        /* ignore */
-      }
-      if (bot.voiceConfig && !cancelled) {
-        setAndPersistVoiceConfig(bot.voiceConfig as CharacterVoiceConfig);
-        return;
-      }
-      if (!cancelled) {
-        setResolvedVoiceConfig(null);
-        await ensureVoiceConfig();
-      }
-    };
-    hydrate();
-    return () => {
-      cancelled = true;
-    };
-  }, [bot.name, bot.voiceConfig, setAndPersistVoiceConfig, ensureVoiceConfig]);
 
   const { playAudio, stopAudio, isAudioPlaying, audioRef } = useAudioPlayer(audioEnabledRef);
 
@@ -733,6 +609,7 @@ export function useChatController(
     ensureVoiceConfig,
     messages,
     stopRecording,
+    voiceConfigRef,
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -833,253 +710,9 @@ export function useChatController(
     }
   }, [stopAudio, onBackToCharacterCreation]);
 
-  // (visibleCount is declared up above, near the top of the hook — see that comment.)
-  // Throttle scroll handling using requestAnimationFrame to keep handlers cheap
-  const scrollRafRef = useRef<number | null>(null);
-  const handleScroll = useCallback(() => {
-    if (!chatBoxRef.current) return;
-    // If we already have a pending RAF, skip scheduling another one
-    if (scrollRafRef.current !== null) return;
-    scrollRafRef.current = window.requestAnimationFrame(() => {
-      scrollRafRef.current = null;
-      if (!chatBoxRef.current) return;
-      const { scrollTop } = chatBoxRef.current;
-      if (scrollTop === 0 && visibleCount < messages.length) {
-        setVisibleCount((prev) => {
-          const newCount = Math.min(prev + LOAD_MORE_COUNT, messages.length);
-          return newCount;
-        });
-      }
-    });
-  }, [visibleCount, messages.length]);
+  useMobileKeyboardViewportAdjustment(chatBoxRef, inputRef);
 
-  useEffect(() => {
-    const ref = chatBoxRef.current;
-    if (!ref) return;
-    ref.addEventListener("scroll", handleScroll);
-    return () => {
-      ref.removeEventListener("scroll", handleScroll);
-      // Cancel any pending RAF when cleaning up
-      if (scrollRafRef.current !== null) {
-        window.cancelAnimationFrame(scrollRafRef.current);
-        scrollRafRef.current = null;
-      }
-    };
-  }, [handleScroll, visibleCount, messages.length]);
-
-  // Redundant with the bot-change reset above (historyKey derives from bot.name) but
-  // kept as a direct safety net specifically for this key.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setVisibleCount(INITIAL_VISIBLE_COUNT);
-  }, [historyKey]);
-
-  // MOBILE KEYBOARD / VISUAL VIEWPORT ADJUSTMENT (CSS-driven)
-  // Use existing `.ff-android-input-focus` pattern in globals.css and set
-  // the `--vv-keyboard-pad` CSS variable dynamically so styles stay in CSS.
-  useEffect(() => {
-    const chatEl = chatBoxRef.current;
-    if (!chatEl) return;
-
-    const root = (typeof document !== "undefined" && document.documentElement) || null;
-    const vv =
-      typeof window !== "undefined" &&
-      (window as Window & { visualViewport?: VisualViewport }).visualViewport;
-    let lastPad = 0;
-
-    // iOS heuristic: store an initial window.innerHeight to detect keyboard
-    // by measuring the difference. This helps when visualViewport isn't
-    // reliable on some iOS versions/browsers.
-    let initialInnerHeight: number | null = null;
-    const isIOS = typeof navigator !== "undefined" && /iP(ad|hone|od)/i.test(navigator.userAgent);
-
-    const KEYBOARD_CLASSES = ["ff-android-input-focus", "mobile-keyboard-open"];
-    const setCssPad = (pad: number) => {
-      try {
-        if (!root) return;
-        // set CSS variable on :root so globals.css can consume it
-        root.style.setProperty("--vv-keyboard-pad", `${pad}px`);
-        if (pad > 0) {
-          KEYBOARD_CLASSES.forEach((c) => root.classList.add(c));
-        } else {
-          KEYBOARD_CLASSES.forEach((c) => root.classList.remove(c));
-        }
-      } catch {}
-    };
-
-    let vvRaf: number | null = null;
-    const scheduleViewportChange = () => {
-      if (vvRaf !== null) return;
-      vvRaf = window.requestAnimationFrame(() => {
-        vvRaf = null;
-        onViewportChange();
-      });
-    };
-
-    const onViewportChange = () => {
-      try {
-        // Prefer visualViewport when available
-        let heightDiff = 0;
-        if (vv) {
-          heightDiff = window.innerHeight - vv.height;
-        } else if (isIOS) {
-          // iOS: if we don't yet have an initialInnerHeight, set it now
-          if (!initialInnerHeight) initialInnerHeight = window.innerHeight;
-          heightDiff = initialInnerHeight - window.innerHeight;
-        } else {
-          // Fallback for other browsers without visualViewport
-          heightDiff = 0;
-        }
-
-        const pad = heightDiff > 0 ? Math.min(heightDiff, 600) + 8 : 0;
-        if (pad !== lastPad) {
-          lastPad = pad;
-          setCssPad(pad);
-        }
-      } catch {}
-    };
-
-    const onFocus = () => {
-      // For iOS, capture initial height the first time the input is focused
-      try {
-        if (isIOS && !initialInnerHeight) initialInnerHeight = window.innerHeight;
-      } catch {}
-
-      // Delay slightly to let the visualViewport update
-      setTimeout(() => {
-        onViewportChange();
-        try {
-          chatEl.scrollTop = chatEl.scrollHeight;
-        } catch {}
-        // Also ensure the page itself is scrolled to the bottom on mobile
-        try {
-          const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-          if (/Android|iP(ad|hone|od)/i.test(ua)) {
-            window.scrollTo(0, document.body.scrollHeight);
-          }
-        } catch {}
-      }, 50);
-    };
-
-    const onBlur = () => {
-      lastPad = 0;
-      setCssPad(0);
-    };
-
-    if (vv) {
-      vv.addEventListener("resize", scheduleViewportChange);
-      vv.addEventListener("scroll", scheduleViewportChange);
-    } else {
-      window.addEventListener("resize", scheduleViewportChange);
-    }
-
-    const inputEl = inputRef.current;
-    if (inputEl) {
-      inputEl.addEventListener("focus", onFocus);
-      inputEl.addEventListener("blur", onBlur);
-    }
-
-    return () => {
-      try {
-        if (vv) {
-          vv.removeEventListener("resize", scheduleViewportChange);
-          vv.removeEventListener("scroll", scheduleViewportChange);
-        } else {
-          window.removeEventListener("resize", scheduleViewportChange);
-        }
-        if (inputEl) {
-          inputEl.removeEventListener("focus", onFocus);
-          inputEl.removeEventListener("blur", onBlur);
-        }
-        // cleanup
-        if (root) {
-          KEYBOARD_CLASSES.forEach((c) => root.classList.remove(c));
-          root.style.removeProperty("--vv-keyboard-pad");
-        }
-        if (vvRaf !== null) {
-          window.cancelAnimationFrame(vvRaf);
-          vvRaf = null;
-        }
-      } catch {}
-    };
-  }, [chatBoxRef, inputRef]);
-
-  /** Cheap content hash used to detect whether the latest message actually changed. */
-  function getMessageHash(msg: Message) {
-    return `${msg.sender}__${msg.text}__${msg.audioFileUrl ?? ""}`;
-  }
-
-  const lastPlayedAudioHashRef = useRef<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    const abortController = new AbortController();
-    if (messages.length === 0) return;
-    const lastMsg = messages[messages.length - 1];
-    const lastMsgHash = getMessageHash(lastMsg);
-    if (typeof window !== "undefined") {
-      // Lazy-init cache: only read localStorage once per mount, then rely on this
-      // same ref for every later run of this effect — deliberate read-then-write.
-      if (lastPlayedAudioHashRef.current === null) {
-        try {
-          // eslint-disable-next-line react-hooks/immutability
-          lastPlayedAudioHashRef.current = storage.getItem(lastPlayedAudioHashKey(bot.name));
-        } catch {}
-      }
-    }
-    if (
-      lastMsg.sender === bot.name &&
-      typeof lastMsg.audioFileUrl === "string" &&
-      lastMsgHash !== lastPlayedAudioHashRef.current
-    ) {
-      (async () => {
-        if (!cancelled) {
-          // Mark this message as being played to avoid concurrent double-play
-          lastPlayedAudioHashRef.current = lastMsgHash;
-          try {
-            await playAudio(lastMsg.audioFileUrl!, abortController.signal);
-            try {
-              storage.setItem(lastPlayedAudioHashKey(bot.name), lastMsgHash);
-            } catch {}
-          } catch (err: unknown) {
-            // If playback failed or was aborted, clear the in-progress marker
-            const errName =
-              err && typeof err === "object" && "name" in err
-                ? ((err as Record<string, unknown>)["name"] as string | undefined)
-                : undefined;
-            if (errName === "AbortError") {
-              // aborted - do not log as error
-              if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
-                logEvent("info", "chat_audio_playback_aborted", "Audio playback aborted", {
-                  botName: bot.name,
-                });
-              }
-            } else {
-              if (typeof window !== "undefined") {
-                logEvent(
-                  "error",
-                  "chat_audio_playback_error",
-                  "Audio playback failed",
-                  sanitizeLogMeta({
-                    botName: bot.name,
-                    error: err instanceof Error ? err.message : String(err),
-                    errorName: errName,
-                  }),
-                );
-              }
-            }
-            if (lastPlayedAudioHashRef.current === lastMsgHash) {
-              lastPlayedAudioHashRef.current = null;
-            }
-          }
-        }
-      })();
-    }
-    return () => {
-      cancelled = true;
-      abortController.abort();
-      stopAudio();
-    };
-  }, [messages, bot.name, playAudio, stopAudio]);
+  useAutoPlayLatestMessage(messages, bot.name, playAudio, stopAudio);
 
   useEffect(() => {
     return () => {

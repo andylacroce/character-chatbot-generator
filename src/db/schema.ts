@@ -184,7 +184,8 @@ export const messages = pgTable("messages", {
  * Wall's grouping control: history, mythology, literature, folklore, religion, or
  * other. New rows get it from the structured Claude call already used to create the
  * avatar prompt, so classification adds no model round-trip. Nullable for rows created
- * before the field existed; scripts/backfill-avatar-categories.cjs fills those in.
+ * before the field existed; that historical backfill completed 2026-09-18 (all 129
+ * eligible rows filled) and the one-time script has since been removed.
  */
 export const avatarCache = pgTable("avatar_cache", {
   characterName: text("character_name").primaryKey(),
