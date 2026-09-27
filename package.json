@@ -41,7 +41,6 @@
     "db:studio": "drizzle-kit studio --config config/drizzle.config.ts",
     "chars:reclassify": "node scripts/reclassify-avatar-cache.cjs",
     "chars:backfill-display-names": "node scripts/backfill-avatar-display-names.cjs",
-    "chars:backfill-categories": "node scripts/backfill-avatar-categories.cjs",
     "chars:backfill-full-names": "node scripts/backfill-full-character-names.cjs",
     "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs",
     "logs:scrub-ips": "node scripts/scrub-chat-log-ips.cjs"
