@@ -21,6 +21,14 @@ module.exports = [
       "tests/setup.js",
       "scripts/**",
       "**/*.sh",
+      // Isolated git worktrees for background agents (Claude Code's Agent tool with
+      // isolation: "worktree") are checked out under here — a separate branch's own
+      // in-progress files, not this branch's code. Gitignored already; ESLint's plain
+      // filesystem glob doesn't respect git worktree boundaries on its own, so without
+      // this it silently swept up e.g. apps/mobile/** files nested under a worktree
+      // path that the top-level "apps/mobile/**" ignore above doesn't match (that glob
+      // is relative to the repo root, not a nested worktree root).
+      ".claude/**",
       // apps/mobile is a separate React Native/Expo app with its own eslint.config.js
       // (eslint-config-expo, not eslint-config-next) and its own npm run lint/ci —
       // this repo's web-focused rules (react/no-unescaped-entities, react-hooks/refs'
