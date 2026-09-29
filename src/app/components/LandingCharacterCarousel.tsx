@@ -4,9 +4,7 @@
  * Rotating carousel of recognized character portraits for the landing page's header
  * center slot — the same data `pages/api/chars.ts`/`CharsGallery.tsx` already serves.
  * Auto-advances through a small sample, pausing on hover/focus; clicking a portrait
- * jumps straight into chatting with that character via the same `/?name=<name>`
- * launch point `CharsGallery`'s own lightbox uses (`BotCreator`'s `nameFromUrl`
- * auto-launch effect resolves resume-vs-fresh-create — no new logic needed here).
+ * opens that portrait in the Character Wall, where the visitor can choose to chat.
  */
 
 import React, { useEffect, useState } from "react";
@@ -58,6 +56,7 @@ const LandingCharacterCarousel: React.FC = () => {
         <span className={styles.portraitWrap}>
           <span className={`${styles.portrait} ${styles.portraitLoading}`} />
         </span>
+        <span className={styles.scrim} />
         <span className={styles.nameLabel} />
       </div>
     );
@@ -73,8 +72,8 @@ const LandingCharacterCarousel: React.FC = () => {
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      onClick={() => router.push(`/?name=${encodeURIComponent(current.name)}`)}
-      aria-label={`Chat with ${displayCharacterName(current.name)}`}
+      onClick={() => router.push(`/chars?name=${encodeURIComponent(current.name)}`)}
+      aria-label={`View ${displayCharacterName(current.name)} on the Character Wall`}
     >
       <span key={current.name} className={styles.portraitWrap}>
         {/* Plain <img>, not next/image: sources mix Vercel Blob URLs and base64 data
@@ -83,14 +82,13 @@ const LandingCharacterCarousel: React.FC = () => {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={current.avatarUrl}
-          alt={current.name}
+          alt=""
           className={styles.portrait}
           loading="eager"
           fetchPriority="high"
-          width="140"
-          height="140"
         />
       </span>
+      <span className={styles.scrim} aria-hidden="true" />
       <span key={`${current.name}-label`} className={styles.nameLabel}>
         {displayCharacterName(current.name)}
       </span>

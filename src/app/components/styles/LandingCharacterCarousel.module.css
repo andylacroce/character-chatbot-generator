@@ -1,35 +1,55 @@
 /* =============================
    LandingCharacterCarousel.module.css
-   - Rotating portrait "stage" in the landing header's center slot — a small, self-
-     contained echo of ChatHeader's own avatar-ring treatment (same accent glow),
-     scaled down since this is decorative/navigational, not the page's main focus.
+   - Rotating portrait "stage" across the left three-quarters of the landing header.
+     The portrait fills a slim banner, then fades into the header toward the right,
+     with the character's name overlaid on a scrim rather than in a separate row — this
+     keeps the header's own vertical footprint small (a real constraint on this page:
+     the landing page targets fitting one screen with no scroll across phone-through-
+     desktop heights) while still putting the same amount of image on screen.
    ============================= */
 
 .carousel {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  background: none;
+  align-items: flex-end;
+  justify-content: flex-start;
+  /* AppHeader's wide-center mode assigns this the left three-quarters of the row;
+     filling that track keeps the right-side controls in their own adjacent column. */
+  align-self: flex-start;
+  width: 100%;
+  height: clamp(96px, 12svh, 112px);
   border: none;
-  padding: 0.2rem 0.5rem;
+  border-radius: 12px 0 0 12px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
   cursor: pointer;
-  font-family: var(--font-primary), sans-serif;
-  max-width: 100%;
-  text-align: center;
+  background: transparent;
+  transition: filter 0.2s ease;
+}
+
+.carousel:hover {
+  filter: saturate(1.08) brightness(1.04);
+}
+
+.carousel:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .portraitWrap {
-  display: block;
-  border-radius: 50%;
+  position: absolute;
+  inset: 0;
   /* New key per character (see the component) re-triggers this animation, giving a
-     soft cross-fade/rise on every rotation instead of a hard cut. */
-  animation: portraitIn 0.5s ease both;
+     soft cross-fade on every rotation instead of a hard cut. */
+  animation: portraitIn 0.6s ease both;
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 100%);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .portraitWrap,
+  .portrait,
   .nameLabel,
   .portraitLoading {
     animation: none !important;
@@ -45,79 +65,90 @@
 @keyframes portraitPulse {
   0%,
   100% {
-    opacity: 0.5;
+    opacity: 0.4;
   }
   50% {
-    opacity: 0.85;
+    opacity: 0.65;
   }
 }
 
 @keyframes portraitIn {
   from {
     opacity: 0;
-    transform: translateY(3px) scale(0.96);
+    transform: scale(1.03);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1);
   }
 }
 
 .portrait {
   display: block;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  /* Start around eye level, then reveal more of the portrait before the next slide. */
+  object-position: center 42%;
   background: var(--color-surface-variant);
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--color-accent) 45%, transparent),
-    0 10px 26px color-mix(in srgb, var(--color-accent) 25%, transparent);
-  transition: box-shadow 0.2s ease;
+  filter: saturate(1.05);
 }
 
-.carousel:hover .portrait,
-.carousel:focus-visible .portrait {
-  box-shadow:
-    0 0 0 2px var(--color-accent),
-    0 8px 20px color-mix(in srgb, var(--color-accent) 32%, transparent);
+.portrait:not(.portraitLoading) {
+  animation: portraitPan 6s linear both;
 }
 
-.carousel:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: 10px;
+@keyframes portraitPan {
+  from {
+    object-position: center top;
+  }
+  to {
+    object-position: center 76%;
+  }
+}
+
+/* Darkens the image behind the left-aligned name while following the portrait's
+   right-edge fade into the header background. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(20, 16, 10, 0.02) 35%, rgba(20, 16, 10, 0.72) 100%),
+    linear-gradient(90deg, rgba(20, 16, 10, 0.22), transparent 70%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 100%);
 }
 
 .nameLabel {
+  position: relative;
+  z-index: 1;
   font-family: var(--font-secondary), serif;
-  font-size: 1.4rem;
-  font-weight: 500;
+  font-size: clamp(0.85rem, 2.6vw, 1.05rem);
+  font-weight: 600;
   line-height: 1.2;
-  color: var(--color-text);
-  /* A fixed width AND height (not viewport-, content-, or line-count-relative) so
-     this slot's rendered size never changes between rotations — AppHeader's grid
-     gives this column `auto` width, and any name-dependent size would visibly shift
-     the header's side controls left/right on every rotation. Wraps to 2 lines
-     (most names fit fully that way) before falling back to an ellipsis. */
-  width: 210px;
-  height: 2.4em;
-  text-align: center;
+  /* Always a fixed light color with a shadow, not a theme token — this sits directly
+     on a photo, not a themed surface, so it needs to read against any portrait in
+     either light or dark mode rather than tracking --color-text. */
+  color: #f5f1e6;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.65),
+    0 0 10px rgba(0, 0, 0, 0.35);
+  padding: 0.3rem 0.6rem 0.4rem;
+  max-width: 100%;
+  white-space: nowrap;
   overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   text-overflow: ellipsis;
-  animation: portraitIn 0.5s ease both;
+  animation: portraitIn 0.6s ease both;
 }
 
 @media (max-width: 600px) {
-  .portrait {
-    width: 92px;
-    height: 92px;
+  .carousel {
+    height: clamp(52px, 9svh, 76px);
   }
-  .nameLabel {
-    font-size: 1.15rem;
-    width: 160px;
+
+  .portrait {
+    /* The narrower phone banner already showed the intended amount of each face. */
+    object-position: center 22%;
+    animation: none;
   }
 }
