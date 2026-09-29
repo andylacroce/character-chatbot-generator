@@ -4,6 +4,7 @@ import {
   GUESS_WHO_MYSTERY_NAME,
   guessWhoRoundGreeting,
   parseGuessWhoRoundResult,
+  revealGuessWhoMessages,
   toGuessWhoConversationHistory,
 } from "./guessWho";
 
@@ -44,10 +45,15 @@ describe("applyGuessWhoMessageResponse", () => {
       streak: 3,
       guessWhoToken: "t2",
     });
+    // The reaction reply is attributed to the now-revealed identity, not the mystery
+    // placeholder — the caller pairs this with revealGuessWhoMessages (tested below) to
+    // retroactively update the rest of the round's transcript too.
     expect(outcome.reply).toEqual({
-      sender: GUESS_WHO_MYSTERY_NAME,
+      sender: "Irene Adler",
       text: "Yes, exactly!",
       audioFileUrl: undefined,
+      avatarUrl: "https://example.com/irene.png",
+      gender: "female",
     });
     expect(outcome.lastEvent).toEqual({
       type: "correct",
@@ -87,6 +93,13 @@ describe("applyGuessWhoMessageResponse", () => {
       avatarUrl: "https://example.com/irene.png",
       gender: "female",
       finalStreak: 2,
+    });
+    expect(outcome.reply).toEqual({
+      sender: "Irene Adler",
+      text: "No, that's not it.",
+      audioFileUrl: undefined,
+      avatarUrl: "https://example.com/irene.png",
+      gender: "female",
     });
     expect(outcome.lastEvent).toEqual({
       type: "gameover",
@@ -148,5 +161,57 @@ describe("helpers", () => {
         { sender: GUESS_WHO_MYSTERY_NAME, text: "Perhaps." },
       ]),
     ).toEqual(["User: Are you a king?", "Bot: Perhaps."]);
+  });
+});
+
+describe("revealGuessWhoMessages", () => {
+  it("swaps every mystery-sender message from fromIndex onward to the revealed identity", () => {
+    const messages = [
+      { sender: GUESS_WHO_MYSTERY_NAME, text: "Greetings." },
+      { sender: "User", text: "Are you a king?" },
+      { sender: GUESS_WHO_MYSTERY_NAME, text: "Perhaps." },
+    ];
+    expect(
+      revealGuessWhoMessages(messages, 0, "Irene Adler", "https://example.com/irene.png", "female"),
+    ).toEqual([
+      {
+        sender: "Irene Adler",
+        text: "Greetings.",
+        avatarUrl: "https://example.com/irene.png",
+        gender: "female",
+      },
+      { sender: "User", text: "Are you a king?" },
+      {
+        sender: "Irene Adler",
+        text: "Perhaps.",
+        avatarUrl: "https://example.com/irene.png",
+        gender: "female",
+      },
+    ]);
+  });
+
+  it("leaves messages before fromIndex untouched, e.g. a prior, already-revealed round", () => {
+    const messages = [
+      { sender: "Zeus", text: "You found me before." },
+      { sender: GUESS_WHO_MYSTERY_NAME, text: "Greetings anew." },
+    ];
+    expect(
+      revealGuessWhoMessages(messages, 1, "Irene Adler", "https://example.com/irene.png", "female"),
+    ).toEqual([
+      { sender: "Zeus", text: "You found me before." },
+      {
+        sender: "Irene Adler",
+        text: "Greetings anew.",
+        avatarUrl: "https://example.com/irene.png",
+        gender: "female",
+      },
+    ]);
+  });
+
+  it("never touches the player's own messages", () => {
+    const messages = [{ sender: "User", text: "Are you a king?" }];
+    expect(
+      revealGuessWhoMessages(messages, 0, "Irene Adler", "https://example.com/irene.png", "female"),
+    ).toEqual(messages);
   });
 });

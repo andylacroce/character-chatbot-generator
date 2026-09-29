@@ -27,11 +27,19 @@ export type GuessWhoEvent =
       finalStreak: number;
     };
 
-/** One transcript entry. The mystery character always uses GUESS_WHO_MYSTERY_NAME as its sender label. */
+/**
+ * One transcript entry. The mystery character uses GUESS_WHO_MYSTERY_NAME as its sender
+ * label (and no avatarUrl, see GUESS_WHO_FALLBACK_AVATAR below) until a reveal — see
+ * revealGuessWhoMessages, which retroactively swaps every such message in the current
+ * round over to the real identity once one comes in.
+ */
 export interface GuessWhoMessage {
   sender: string;
   text: string;
   audioFileUrl?: string;
+  avatarUrl?: string;
+  /** The speaker's round-specific gender hint, used when replay audio must be regenerated. */
+  gender?: string | null;
 }
 
 /** Placeholder avatar shown while the round's identity is still hidden, or as a reveal fallback. */
@@ -93,6 +101,28 @@ export interface GuessWhoTurnOutcome {
   newStreak?: number;
 }
 
+/**
+ * Retroactively reveals this round's messages once the hidden character is identified —
+ * replaces every message from `fromIndex` onward whose sender is still the mystery
+ * placeholder with the real name/avatar/gender, so a correct guess or game-over updates
+ * the whole transcript, not just future messages. Called alongside appending the
+ * reaction reply, which already carries the revealed identity (see
+ * applyGuessWhoMessageResponse below) rather than through this function.
+ */
+export function revealGuessWhoMessages(
+  messages: GuessWhoMessage[],
+  fromIndex: number,
+  revealedName: string,
+  avatarUrl: string,
+  gender: string | null,
+): GuessWhoMessage[] {
+  return messages.map((message, index) =>
+    index >= fromIndex && message.sender === GUESS_WHO_MYSTERY_NAME
+      ? { ...message, sender: revealedName, avatarUrl, gender }
+      : message,
+  );
+}
+
 /** Interprets a /guess-who/message response. Throws on a malformed response. */
 export function applyGuessWhoMessageResponse(data: GuessWhoMessageResponse): GuessWhoTurnOutcome {
   if (data.giveUpRequested) {
@@ -101,43 +131,54 @@ export function applyGuessWhoMessageResponse(data: GuessWhoMessageResponse): Gue
   if (typeof data.reply !== "string" || !data.reply) {
     throw new Error("Invalid response from /api/guess-who/message");
   }
+
+  if (data.correct || data.gameOver) {
+    if (!data.revealedName) throw new Error("Invalid response from /api/guess-who/message");
+    const avatarUrl = data.avatarUrl || GUESS_WHO_FALLBACK_AVATAR;
+    const gender = data.gender ?? null;
+    // The reaction reply is spoken by the now-revealed identity, not the mystery
+    // placeholder — pairs with revealGuessWhoMessages, which the caller applies to every
+    // earlier message in this round.
+    const reply: GuessWhoMessage = {
+      sender: data.revealedName,
+      text: data.reply,
+      audioFileUrl: data.audioFileUrl,
+      avatarUrl,
+      gender,
+    };
+    return data.correct
+      ? {
+          giveUpRequested: false,
+          reply,
+          lastEvent: {
+            type: "correct",
+            revealedName: data.revealedName,
+            avatarUrl,
+            gender,
+            streak: data.streak ?? 0,
+          },
+          guessWhoToken: typeof data.guessWhoToken === "string" ? data.guessWhoToken : undefined,
+          newStreak: typeof data.streak === "number" ? data.streak : undefined,
+        }
+      : {
+          giveUpRequested: false,
+          reply,
+          lastEvent: {
+            type: "gameover",
+            revealedName: data.revealedName,
+            avatarUrl,
+            gender,
+            finalStreak: data.finalStreak ?? 0,
+          },
+          guessWhoToken: null,
+        };
+  }
+
   const reply: GuessWhoMessage = {
     sender: GUESS_WHO_MYSTERY_NAME,
     text: data.reply,
     audioFileUrl: data.audioFileUrl,
   };
-
-  if (data.correct) {
-    if (!data.revealedName) throw new Error("Invalid response from /api/guess-who/message");
-    return {
-      giveUpRequested: false,
-      reply,
-      lastEvent: {
-        type: "correct",
-        revealedName: data.revealedName,
-        avatarUrl: data.avatarUrl || GUESS_WHO_FALLBACK_AVATAR,
-        gender: data.gender ?? null,
-        streak: data.streak ?? 0,
-      },
-      guessWhoToken: typeof data.guessWhoToken === "string" ? data.guessWhoToken : undefined,
-      newStreak: typeof data.streak === "number" ? data.streak : undefined,
-    };
-  }
-  if (data.gameOver) {
-    if (!data.revealedName) throw new Error("Invalid response from /api/guess-who/message");
-    return {
-      giveUpRequested: false,
-      reply,
-      lastEvent: {
-        type: "gameover",
-        revealedName: data.revealedName,
-        avatarUrl: data.avatarUrl || GUESS_WHO_FALLBACK_AVATAR,
-        gender: data.gender ?? null,
-        finalStreak: data.finalStreak ?? 0,
-      },
-      guessWhoToken: null,
-    };
-  }
   if (data.wrongGuessesRemaining !== undefined) {
     return {
       giveUpRequested: false,

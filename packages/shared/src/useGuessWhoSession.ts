@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   applyGuessWhoMessageResponse,
   guessWhoRoundGreeting,
+  revealGuessWhoMessages,
   toGuessWhoConversationHistory,
   type GuessWhoEvent,
   type GuessWhoMessage,
@@ -194,6 +195,17 @@ export function useGuessWhoSession({
           gender: data.gender,
           finalStreak: data.finalStreak,
         });
+        // No new reply message is generated on give-up, so this round's transcript is
+        // only ever revealed here, not via applyGuessWhoMessageResponse's reply.
+        setMessages((prev) =>
+          revealGuessWhoMessages(
+            prev,
+            roundStartIndex,
+            data.revealedName,
+            data.avatarUrl,
+            data.gender,
+          ),
+        );
         setGuessWhoToken(null);
       } catch (e) {
         const msg = "Failed to give up. Please try again.";
@@ -203,7 +215,7 @@ export function useGuessWhoSession({
         setLoading(false);
       }
     },
-    [guessWhoToken],
+    [guessWhoToken, roundStartIndex],
   );
 
   /** Sends the player's message, question or guess alike, and applies the outcome. */
@@ -235,7 +247,25 @@ export function useGuessWhoSession({
         setHighScore((prev) => (prev === null ? newStreak : Math.max(prev, newStreak)));
       }
       const reply = outcome.reply;
-      if (reply) setMessages((prev) => [...prev, reply]);
+      const revealEvent = outcome.lastEvent;
+      setMessages((prev) => {
+        // A correct guess or game-over reveals this round's identity — retroactively
+        // swap every earlier "???"-sender message in this round over too, not just the
+        // reaction reply appended below (which already carries the revealed identity,
+        // see applyGuessWhoMessageResponse), so the whole round reads correctly once
+        // solved instead of leaving past lines attributed to the mystery placeholder.
+        const revealed =
+          revealEvent?.type === "correct" || revealEvent?.type === "gameover"
+            ? revealGuessWhoMessages(
+                prev,
+                roundStartIndex,
+                revealEvent.revealedName,
+                revealEvent.avatarUrl,
+                revealEvent.gender,
+              )
+            : prev;
+        return reply ? [...revealed, reply] : revealed;
+      });
     } catch (e) {
       const msg = "Failed to get a reply. Please try again.";
       setError(msg);

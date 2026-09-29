@@ -347,7 +347,21 @@ give-up releases them.
   the same shared `ChatShell` component `GuessWhoNextPage.tsx` uses instead of a
   standalone clue-card screen. The header shows a silhouette placeholder and "???"
   (`GUESS_WHO_MYSTERY_NAME`/`GUESS_WHO_FALLBACK_AVATAR` in `packages/shared/src/guessWho.ts`)
-  until a reveal swaps in the real name/avatar. Mobile has the matching
+  until a reveal swaps in the real name/avatar. **A reveal also retroactively rewrites the
+  already-shown transcript, not just future messages** — every prior message this round
+  still carries `GUESS_WHO_MYSTERY_NAME` as its `sender` (each message's own `avatarUrl`
+  pins the speaker at the time it was said, same mechanism "Guess Who's Next" uses for its
+  round-switching transcript, see `ChatMessage.tsx`'s doc comment), so without this a
+  correct guess would only reveal the identity in the header and the new reaction reply,
+  leaving every earlier line in the round attributed to "???" forever. `guessWho.ts`'s
+  `revealGuessWhoMessages(messages, fromIndex, revealedName, avatarUrl, gender)` maps
+  every still-mystery-sender message from `fromIndex` (the round's `roundStartIndex`)
+  onward over to the real identity; `useGuessWhoSession.ts`'s `sendMessage` calls it right
+  before appending the reaction reply on a correct guess or game-over, and `giveUp` calls
+  it directly (give-up has no new reply message of its own). The reaction reply itself is
+  also attributed to the revealed identity by `applyGuessWhoMessageResponse`, not the
+  mystery placeholder, so it doesn't need a second retroactive pass.
+  Mobile has the matching
   `GuessWhoScreen.tsx`/`useGuessWhoController.ts`, now built on the shared `ChatView`
   component like `GuessWhoNextScreen.tsx` instead of a clue-card + `TextInput` screen.
   **`src/app/components/useGameRoundProgress.ts`** is a new shared helper (the SSE
