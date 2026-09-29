@@ -1,6 +1,6 @@
 /**
  * Core avatar generation pipeline, extracted from pages/api/generate-avatar.ts so it can
- * be called in-process by both that route and the guessing game (pages/api/game/start.ts,
+ * be called in-process by both that route and the guessing game (pages/api/guess-who-next/start.ts,
  * guess.ts) without an internal HTTP self-fetch. Uses Claude to build a detailed image
  * prompt, then renders it on free image providers only — Cloudflare Workers AI (Flux
  * Schnell) first, falling back to Pollinations.ai if Cloudflare isn't configured or

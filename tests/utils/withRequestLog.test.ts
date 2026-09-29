@@ -32,7 +32,7 @@ describe("withRequestLog", () => {
 
   it("logs an info-level http_request_completed event with method/path/status/duration on success", async () => {
     const handler = jest.fn().mockResolvedValue(undefined);
-    const req = makeReq({ method: "POST", url: "/api/game/start" });
+    const req = makeReq({ method: "POST", url: "/api/guess-who-next/start" });
     const res = makeRes(200);
     await withRequestLog(handler)(req, res);
 
@@ -40,7 +40,7 @@ describe("withRequestLog", () => {
     const [level, event, , meta] = mockLogEvent.mock.calls[0];
     expect(level).toBe("info");
     expect(event).toBe("http_request_completed");
-    expect(meta).toMatchObject({ method: "POST", path: "/api/game/start", status: 200 });
+    expect(meta).toMatchObject({ method: "POST", path: "/api/guess-who-next/start", status: 200 });
     expect(typeof meta.durationMs).toBe("number");
   });
 

@@ -26,10 +26,17 @@ export interface UseCharacterCarouselOptions {
   cache: CarouselCache;
   /** Holds the rotation, e.g. while hovered, focused, pressed, or disabled. */
   paused: boolean;
+  /** Time each portrait remains active; defaults to the shared four-second cadence. */
+  rotationMs?: number;
 }
 
 /** Shared carousel state, see module doc above. `index` always points into `characters`. */
-export function useCharacterCarousel({ fetchSample, cache, paused }: UseCharacterCarouselOptions) {
+export function useCharacterCarousel({
+  fetchSample,
+  cache,
+  paused,
+  rotationMs = CAROUSEL_ROTATE_MS,
+}: UseCharacterCarouselOptions) {
   const [characters, setCharacters] = useState<CharacterEntry[]>([]);
   const [index, setIndex] = useState(0);
 
@@ -59,9 +66,9 @@ export function useCharacterCarousel({ fetchSample, cache, paused }: UseCharacte
 
   useEffect(() => {
     if (paused || characters.length < 2) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % characters.length), CAROUSEL_ROTATE_MS);
+    const id = setInterval(() => setIndex((i) => (i + 1) % characters.length), rotationMs);
     return () => clearInterval(id);
-  }, [paused, characters.length]);
+  }, [paused, characters.length, rotationMs]);
 
   return { characters, index: characters.length ? index % characters.length : 0 };
 }

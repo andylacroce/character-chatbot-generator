@@ -279,7 +279,7 @@ export interface GameMessageRequest {
 
 /**
  * POST /game/message response. Which fields are present depends on how the message was
- * classified server-side (see pages/api/game/message.ts's own doc comment):
+ * classified server-side (see pages/api/guess-who-next/message.ts's own doc comment):
  * - `giveUpRequested`: the player asked to give up via chat — no reply/audio this turn; show
  *   the give-up confirmation, then call POST /game/give-up if confirmed.
  * - an ordinary reply: just `reply`/`audioFileUrl`.
@@ -343,4 +343,77 @@ export interface LeaderboardSettingsResponse {
 export interface LeaderboardSettingsRequest {
   showOnLeaderboard: boolean;
   name?: string;
+}
+
+/**
+ * "Guess Who" (the clue-reveal game) types. Deliberately not shaped like the
+ * GameRoundResult/GameMessage* family above — there's no chat turn or persona here, just
+ * a hidden name's ordered clues and a dedicated guess/give-up flow. See
+ * src/pages/api/guess-who/*.ts and packages/shared/src/guessWho.ts.
+ */
+
+/** POST /guess-who/start request body — empty for a run's first round, or the current run's progress to continue past a correct guess. */
+export interface GuessWhoStartRequest {
+  usedNames?: string[];
+  streak?: number;
+}
+
+/** POST /guess-who/start response: a new round's first clue. */
+export interface GuessWhoRoundResult {
+  guessWhoToken: string;
+  clue: string;
+  clueNumber: number;
+  totalClues: number;
+  streak: number;
+}
+
+/** POST /guess-who/guess request body. */
+export interface GuessWhoGuessRequest {
+  guessWhoToken: string;
+  guess: string;
+}
+
+/**
+ * POST /guess-who/guess response. Which fields are present depends on the outcome: a
+ * correct guess carries `revealedName`/`avatarUrl`/`gender`/`usedNames` (no more
+ * `guessWhoToken` — the round is over); a wrong guess with clues remaining carries the
+ * next `clue`/`clueNumber`/`totalClues` and a fresh `guessWhoToken`; a wrong guess with
+ * no clues left (`gameOver: true`) carries the same reveal fields as a correct guess.
+ */
+export interface GuessWhoGuessResponse {
+  correct: boolean;
+  gameOver: boolean;
+  revealedName?: string;
+  avatarUrl?: string;
+  gender?: string | null;
+  streak: number;
+  usedNames?: string[];
+  clue?: string;
+  clueNumber?: number;
+  totalClues?: number;
+  guessWhoToken?: string;
+}
+
+/** POST /guess-who/give-up request body. */
+export interface GuessWhoGiveUpRequest {
+  guessWhoToken: string;
+}
+
+/** POST /guess-who/give-up response. */
+export interface GuessWhoGiveUpResponse {
+  revealedName: string;
+  avatarUrl: string;
+  gender: string | null;
+  finalStreak: number;
+  gameOver: true;
+}
+
+/** GET /guess-who/high-score response — null for a guest/no-database deployment. */
+export interface GuessWhoHighScoreResponse {
+  highScore: number | null;
+}
+
+/** GET /guess-who/leaderboard response — top ten opted-in scores. */
+export interface GuessWhoLeaderboardResponse {
+  entries: LeaderboardEntry[];
 }

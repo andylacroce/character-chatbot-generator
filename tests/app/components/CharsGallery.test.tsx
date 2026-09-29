@@ -222,6 +222,26 @@ describe("CharsGallery", () => {
     await waitFor(() => expect(dialog.open).toBe(false));
   });
 
+  it("opens a deep-linked carousel portrait without waiting for its gallery page", async () => {
+    mockAuthenticatedFetch.mockImplementation((url: string) => {
+      if (url === "/api/chars?name=Ada%20Lovelace") {
+        return Promise.resolve({
+          json: async () => ({
+            character: { name: "Ada Lovelace", avatarUrl: "/a.png", category: "history" },
+          }),
+        });
+      }
+      return Promise.resolve(mockPage([], false));
+    });
+
+    render(<CharsGallery initialCharacterName="Ada Lovelace" />);
+
+    const dialog = document.querySelector("dialog") as HTMLDialogElement;
+    await waitFor(() => expect(dialog.open).toBe(true));
+    expect(within(dialog).getByAltText("Ada Lovelace")).toHaveAttribute("src", "/a.png");
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith("/api/chars?name=Ada%20Lovelace");
+  });
+
   it("closes the lightbox when the backdrop (the dialog element itself) is clicked", async () => {
     mockAuthenticatedFetch.mockResolvedValue(
       mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false),

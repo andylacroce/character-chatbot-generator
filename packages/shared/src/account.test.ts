@@ -8,7 +8,7 @@ describe("isPersonalStorageKey", () => {
       STORAGE_KEYS.userName,
       STORAGE_KEYS.authToken,
       STORAGE_KEYS.gameGuestId,
-      STORAGE_KEYS.gameToken,
+      STORAGE_KEYS.guessWhoNextToken,
       chatHistoryKey("Dracula"),
       voiceConfigKey("Dracula"),
     ]) {

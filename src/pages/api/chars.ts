@@ -182,6 +182,14 @@ function shuffled<T>(items: T[]): T[] {
  *     tags: [Chars]
  *     parameters:
  *       - in: query
+ *         name: name
+ *         description: >
+ *           When present, bypasses pagination and returns one case-insensitive name
+ *           match, or a null character if none exists. Used by the landing carousel
+ *           to open a specific Character Wall lightbox.
+ *         schema:
+ *           type: string
+ *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
@@ -213,7 +221,7 @@ function shuffled<T>(items: T[]): T[] {
  *           default: none
  *     responses:
  *       200:
- *         description: One page of the character portrait gallery
+ *         description: One page of the portrait gallery, or one character when `name` is present
  *         content:
  *           application/json:
  *             schema:
@@ -249,8 +257,37 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
+  const lookupName = typeof req.query.name === "string" ? req.query.name.trim() : "";
+
   if (!process.env.DATABASE_URL) {
-    res.status(200).json({ characters: [], hasMore: false });
+    res.status(200).json(lookupName ? { character: null } : { characters: [], hasMore: false });
+    return;
+  }
+
+  // Single-character lookup, used by the landing carousel's "open this character's
+  // wall lightbox" link — bypasses pagination/sort entirely rather than requiring the
+  // caller to scan pages looking for one name. Matched against the same formatted
+  // display name getAllCharacters() already returns, case-insensitively, since that's
+  // exactly what the carousel's own sample API already handed the client.
+  if (lookupName) {
+    try {
+      const all = await getAllCharacters();
+      const needle = lookupName.toLowerCase();
+      const match = all.find((entry) => entry.name.toLowerCase() === needle);
+      res.status(200).json({
+        character: match
+          ? { name: match.name, avatarUrl: match.avatarUrl, category: match.category }
+          : null,
+      });
+    } catch (err) {
+      logEvent(
+        "error",
+        "chars_lookup_failed",
+        "Failed to look up a single character",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
+      res.status(500).json({ error: "Failed to look up character" });
+    }
     return;
   }
 

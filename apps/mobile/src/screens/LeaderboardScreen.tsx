@@ -1,21 +1,37 @@
-import { useMemo } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LEADERBOARD_COPY, useLeaderboard, type ThemeColors } from "character-chatbot-shared";
-import { getLeaderboard } from "../api";
+import { getGuessWhoLeaderboard, getLeaderboard } from "../api";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
 import LeaderboardClaim from "../components/LeaderboardClaim";
 import Button from "../components/Button";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Leaderboard">;
+type Tab = "guessWho" | "guessWhoNext";
 
-const fetchEntries = async () => (await getLeaderboard()).entries ?? [];
+const fetchGuessWhoEntries = async () => (await getGuessWhoLeaderboard()).entries ?? [];
+const fetchGuessWhoNextEntries = async () => (await getLeaderboard()).entries ?? [];
 
-/** Public top-ten streaks plus the claim form — mirrors the web app's /leaderboard page. */
-export default function LeaderboardScreen({ navigation }: Props) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+/**
+ * One tab's table + claim form. A separate component (rather than inline in
+ * LeaderboardScreen) so switching tabs remounts it and its `useLeaderboard`/claim state
+ * genuinely re-fetches for the new game — `useLeaderboard`'s own `reload` is memoized
+ * once per mount, so swapping just the `fetchEntries` function passed to a single,
+ * already-mounted instance would silently keep showing the previous tab's stale data.
+ */
+function LeaderboardBody({
+  tab,
+  fetchEntries,
+  colors,
+  styles,
+}: {
+  tab: Tab;
+  fetchEntries: () => Promise<{ rank: number; name: string; streak: number }[]>;
+  colors: ThemeColors;
+  styles: ReturnType<typeof makeStyles>;
+}) {
   const { entries, loading, error, reload } = useLeaderboard(fetchEntries);
 
   let body: React.ReactNode;
@@ -42,11 +58,65 @@ export default function LeaderboardScreen({ navigation }: Props) {
     );
 
   return (
-    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <>
       {body}
-      <LeaderboardClaim onChange={reload} />
+      <LeaderboardClaim onChange={reload} game={tab} />
+    </>
+  );
+}
+
+/**
+ * Public top-ten streaks plus the claim form for both games, as tabs — mirrors the web
+ * app's /leaderboard page. "Guess Who" is the first/default-active tab, per the standing
+ * "featured first everywhere both games are listed" rule.
+ */
+export default function LeaderboardScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [tab, setTab] = useState<Tab>("guessWho");
+
+  return (
+    <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <View style={styles.tabs}>
+        <Pressable
+          onPress={() => setTab("guessWho")}
+          style={[styles.tab, tab === "guessWho" && styles.tabActive]}
+        >
+          <Text style={[styles.tabText, tab === "guessWho" && styles.tabTextActive]}>
+            Guess Who
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setTab("guessWhoNext")}
+          style={[styles.tab, tab === "guessWhoNext" && styles.tabActive]}
+        >
+          <Text style={[styles.tabText, tab === "guessWhoNext" && styles.tabTextActive]}>
+            Guess Who&apos;s Next
+          </Text>
+        </Pressable>
+      </View>
+      {tab === "guessWho" ? (
+        <LeaderboardBody
+          key="guessWho"
+          tab="guessWho"
+          fetchEntries={fetchGuessWhoEntries}
+          colors={colors}
+          styles={styles}
+        />
+      ) : (
+        <LeaderboardBody
+          key="guessWhoNext"
+          tab="guessWhoNext"
+          fetchEntries={fetchGuessWhoNextEntries}
+          colors={colors}
+          styles={styles}
+        />
+      )}
       <View style={styles.play}>
-        <Button label={LEADERBOARD_COPY.playLabel} onPress={() => navigation.navigate("Game")} />
+        <Button
+          label={tab === "guessWho" ? "Play Guess Who" : LEADERBOARD_COPY.playLabel}
+          onPress={() => navigation.navigate(tab === "guessWho" ? "GuessWho" : "GuessWhoNext")}
+        />
       </View>
     </ScrollView>
   );
@@ -57,6 +127,21 @@ function makeStyles(colors: ThemeColors) {
     scroll: { flexGrow: 1, padding: 24, backgroundColor: colors.background },
     spinner: { marginTop: 32 },
     message: { color: colors.textSecondary, fontSize: 15, textAlign: "center", marginTop: 24 },
+    tabs: {
+      flexDirection: "row",
+      borderBottomWidth: 1,
+      borderBottomColor: colors.outline,
+      marginBottom: 16,
+    },
+    tab: {
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderBottomWidth: 3,
+      borderBottomColor: "transparent",
+    },
+    tabActive: { borderBottomColor: colors.primary },
+    tabText: { color: colors.textSecondary, fontWeight: "600", fontSize: 14 },
+    tabTextActive: { color: colors.primary },
     table: {
       borderWidth: 1,
       borderColor: colors.outline,

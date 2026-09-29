@@ -69,6 +69,17 @@
   gap: 0.5rem;
 }
 
+/* Landing-only composition: the carousel gets roughly three quarters of the row,
+   while the theme/menu actions keep a dedicated right column on that same row. */
+.chatHeaderContentWide {
+  grid-template-columns: minmax(0, 3fr) minmax(7rem, 1fr);
+  max-width: 1080px;
+}
+
+.chatHeaderContentWide .headerLeft {
+  display: none;
+}
+
 /* Empty on most pages (the hamburger has one standing position, in .headerRight — see
    AppHeader.tsx's doc comment) — in that case it's just a grid cell at the same fixed
    floor width as .headerRight, purely so .headerCenter stays visually centered. A page
@@ -91,6 +102,20 @@
   width: 100%;
 }
 
+/* The landing carousel is an image treatment rather than centered text, so it can
+   use the whole header as a canvas. Its own width stops before the right controls;
+   those controls remain above it in the shared grid stacking order. */
+.headerCenterWide {
+  grid-column: 1;
+  grid-row: 1;
+  align-items: flex-start;
+}
+
+.chatHeaderContentWide .headerRight {
+  grid-column: 2;
+  grid-row: 1;
+}
+
 .headerRight {
   display: flex;
   flex-direction: row;
@@ -99,6 +124,8 @@
   min-width: 0;
   grid-column: 3;
   gap: 1.2rem;
+  position: relative;
+  z-index: 1;
 }
 
 /* DarkModeToggle.tsx's own base class — a small standalone pill button living directly
@@ -170,6 +197,9 @@
     gap: 0.3rem;
     max-width: 100%;
   }
+  .chatHeaderContentWide {
+    grid-template-columns: minmax(0, 3fr) minmax(7rem, 1fr) !important;
+  }
   .headerCenter {
     grid-column: 2;
     align-self: start;
@@ -179,6 +209,13 @@
     align-items: center !important;
     margin: 0 !important;
     text-align: center !important;
+  }
+  .headerCenterWide {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: stretch;
+    align-items: flex-start !important;
+    text-align: left !important;
   }
   .headerRight {
     grid-column: 3;
@@ -196,7 +233,12 @@
        exactly flush with the content padding boundary, reported live as looking "too
        far right-aligned" on a phone. */
     padding-right: 0.5rem;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     overflow-x: visible;
+  }
+  .chatHeaderContentWide .headerRight {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
   }
 }

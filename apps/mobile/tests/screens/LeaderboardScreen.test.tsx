@@ -4,6 +4,9 @@ import { ThemeProvider } from "../../src/ThemeContext";
 
 jest.mock("../../src/api", () => ({
   ...jest.requireActual("../../src/api"),
+  getGuessWhoLeaderboard: jest.fn(),
+  getGuessWhoLeaderboardSettings: jest.fn(),
+  saveGuessWhoLeaderboardSettings: jest.fn(),
   getLeaderboard: jest.fn(),
   getLeaderboardSettings: jest.fn(),
   saveLeaderboardSettings: jest.fn(),
@@ -11,14 +14,16 @@ jest.mock("../../src/api", () => ({
 
 import {
   ApiError,
-  getLeaderboard,
-  getLeaderboardSettings,
-  saveLeaderboardSettings,
+  getGuessWhoLeaderboard,
+  getGuessWhoLeaderboardSettings,
+  saveGuessWhoLeaderboardSettings,
 } from "../../src/api";
 
-const mockedList = getLeaderboard as jest.Mock;
-const mockedSettings = getLeaderboardSettings as jest.Mock;
-const mockedSave = saveLeaderboardSettings as jest.Mock;
+// The "Guess Who" tab is the default/active one on mount (see LeaderboardScreen.tsx's
+// standing "featured first" rule), so these tests exercise its own API functions.
+const mockedList = getGuessWhoLeaderboard as jest.Mock;
+const mockedSettings = getGuessWhoLeaderboardSettings as jest.Mock;
+const mockedSave = saveGuessWhoLeaderboardSettings as jest.Mock;
 
 const eligible = { available: true, eligible: true, showOnLeaderboard: false, name: null };
 
@@ -45,8 +50,8 @@ describe("LeaderboardScreen", () => {
     expect(await utils.findByText("Ada")).toBeTruthy();
     expect(utils.getByText("9")).toBeTruthy();
     expect(utils.queryByText("You made the top 10!")).toBeNull();
-    await fireEvent.press(utils.getByText("Play Guessing Game"));
-    expect(utils.navigate).toHaveBeenCalledWith("Game");
+    await fireEvent.press(utils.getByText("Play Guess Who"));
+    expect(utils.navigate).toHaveBeenCalledWith("GuessWho");
   });
 
   it("shows the empty state", async () => {
@@ -91,5 +96,19 @@ describe("LeaderboardScreen", () => {
     mockedSettings.mockRejectedValue(new Error("down"));
     const utils = await renderScreen();
     expect(await utils.findByText("Could not load your leaderboard settings.")).toBeTruthy();
+  });
+
+  it("switches to the Guess Who's Next tab and loads its own leaderboard", async () => {
+    mockedList.mockResolvedValue({ entries: [] });
+    const { getLeaderboard, getLeaderboardSettings } = jest.requireMock("../../src/api");
+    (getLeaderboard as jest.Mock).mockResolvedValue({
+      entries: [{ rank: 1, name: "Zeus", streak: 4 }],
+    });
+    (getLeaderboardSettings as jest.Mock).mockResolvedValue({ ...eligible, eligible: false });
+    const utils = await renderScreen();
+    await fireEvent.press(utils.getByText("Guess Who's Next"));
+    expect(await utils.findByText("Zeus")).toBeTruthy();
+    await fireEvent.press(utils.getByText("Play Guessing Game"));
+    expect(utils.navigate).toHaveBeenCalledWith("GuessWhoNext");
   });
 });

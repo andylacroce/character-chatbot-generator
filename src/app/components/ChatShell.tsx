@@ -3,7 +3,7 @@
 /**
  * The shared chat screen shell: sticky header (clickable avatar + portrait lightbox,
  * name), scrollable transcript, input bar with audio controls, and status line.
- * Extracted out of ChatPage.tsx so the guessing game (GamePage.tsx) renders the exact
+ * Extracted out of ChatPage.tsx so the guessing game (GuessWhoNextPage.tsx) renders the exact
  * same chat UI instead of a lookalike copy — everything page-specific (menu items,
  * modals, banners, what goes on the input) is a prop, everything else (layout, the
  * avatar lightbox, ARIA roles) lives here once. Mirrors why AppHeader itself was

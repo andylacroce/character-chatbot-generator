@@ -23,7 +23,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - [API Security](#api-security)
 - [Account Persistence (Optional)](#account-persistence-optional)
 - [Character Wall (`/chars`)](#character-wall-chars)
-- [Guessing Game (`/game`)](#guessing-game-game)
+- [Guessing Games](#guessing-games)
 - [Personalized Greeting](#personalized-greeting)
 - [Internal Analytics (`/admin`)](#internal-analytics-admin)
 - [Storage (Client-Side)](#storage-client-side)
@@ -38,19 +38,19 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 
 - **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with conversation summarization
 - **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions, backed by a permanent allow/block list and an admin-only `/admin/moderation` panel
-- **Guessing Game**: A second mode at `/game` — chat with a named character who steers the conversation toward a different, hidden figure; guesses go in the same chat box (no separate control), a correct one promotes that figure to your new chat partner, and the streak keeps building — see [Guessing Game](#guessing-game-game)
+- **Two Guessing Games**: `Guess Who` reveals progressively easier clues, while `Guess Who's Next` is a conversation with a named character who hints at somebody else; both build streaks and have separate public leaderboards — see [Guessing Games](#guessing-games)
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
 - **Avatar Generation**: Claude generates a detailed image prompt; a free image provider renders the portrait — Cloudflare Workers AI (Flux Schnell) first, falling back to Pollinations.ai if it's unconfigured or fails — returned as a base64 data URL (or a durable Vercel Blob URL, if configured)
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 20 messages, with a rolling summary checkpoint for signed-in users so long conversations stay cheap
-- **Live Progress**: The guessing game streams real, server-reported progress (Server-Sent Events) while it builds each new character
+- **Live Progress**: `Guess Who's Next` streams real, server-reported progress (Server-Sent Events) while it builds each new character
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
 - **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, presented as a responsive tattered-parchment mosaic — see [Character Wall](#character-wall-chars)
 - **Personalized Greeting**: Characters can greet you by name — a one-time, skippable prompt the first time you create a character, editable anytime from the account menu — see [Personalized Greeting](#personalized-greeting)
 - **Privacy-conscious Analytics**: Cookie-free Vercel traffic metrics, consent-gated Google Analytics 4, and a small self-hosted product-usage log with an admin-only `/admin` stats view — see [Internal Analytics](#internal-analytics-admin)
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,400+ passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
-- **Responsive Design**: Mobile-friendly UI with dark mode support
-- **Android/iOS App**: An Expo (React Native) client in `apps/mobile` with the same creation flow, chat, Character Wall, guessing game, leaderboard, and Past chats, calling this app's API. Logic, copy, and types live once in `packages/shared` and both clients use them. See [`apps/mobile/README.md`](apps/mobile/README.md)
+- **Responsive Design**: A compact landing dashboard, phone-first layouts, and dark mode support
+- **Android/iOS App**: An Expo (React Native) client in `apps/mobile` with the same creation flow, chat, Character Wall, both guessing games, leaderboards, and Past chats, calling this app's API. Logic, copy, and types live once in `packages/shared` and both clients use them. See [`apps/mobile/README.md`](apps/mobile/README.md)
 - **Audio Replay**: Every character message has a speaker button to hear it again, on web and mobile
 
 ## Prerequisites
@@ -175,7 +175,7 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Redis REST endpoint (Vercel KV / Marketplace Redis) used to share API rate-limit counters across serverless instances. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` work too. With neither pair set, limits fall back to an in-process counter, which is per-instance on Vercel and exactly right for local development.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — Enables optional Google account sign-in and server-side persistence (see [Account Persistence](#account-persistence-optional) below). The app is fully functional as a guest with none of these set.
 - `EMAIL_SERVER` + `EMAIL_FROM` — Enables passwordless magic-link sign-in alongside Google (a plain SMTP connection string works — Gmail App Password, Resend, etc.). Needs `DATABASE_URL` set too.
-- `GAME_TOKEN_SECRET` — Key used to encrypt the guessing game's round token (see [Guessing Game](#guessing-game-game) below). Falls back to `NEXTAUTH_SECRET`, then the already-required `API_SECRET`, so the game works with zero new configuration.
+- `GAME_TOKEN_SECRET` — Key used to encrypt both guessing games' round tokens (see [Guessing Games](#guessing-games) below). Falls back to `NEXTAUTH_SECRET`, then the already-required `API_SECRET`, so both games work with zero new configuration.
 - `ADMIN_EMAILS` — Comma-separated allowlist of emails allowed to view the internal `/admin` stats page (see [Internal Analytics](#internal-analytics-admin) below). With none set, nobody is admin. Never honored on a Vercel Preview deployment regardless of this value.
 
 ## Avatar Generation
@@ -300,32 +300,25 @@ generated once for it to show up here for everyone.
   against a sample of existing ones as part of the personality-generation call it's
   already making, so this costs no extra API round trip.
 
-## Guessing Game (`/game`)
+## Guessing Games
 
-A second mode alongside ordinary chat: a "guess who" chain game, no sign-in required.
+Both games work for guests, persist an in-progress run across reloads, and build a streak
+until the player loses or gives up.
 
-- **How it works**: you start a run in a normal-feeling chat with a real, named character
-  (revealed — name and avatar shown just like any other chat). That character steers the
-  conversation toward a *different, hidden* figure it has in mind, and your job is to
-  figure out who. There's no separate guess control — type both ordinary questions and
-  guesses into the same box; the server classifies which is which on every turn, and asks
-  you to confirm when it's genuinely unclear rather than guessing on your behalf.
-- **Scoring**: one wrong guess per hidden figure is forgiven; a second ends the run. A
-  correct guess reveals the answer and holds on a "Continue" button before that figure
-  becomes your new chat partner — continuing the chain and building a streak. Give up
-  anytime, via the menu or by typing it directly into the chat ("I give up"), and you're
-  always told the answer.
-- **No database required**: the round's state (including the still-hidden figure's name)
-  lives entirely in an encrypted token your browser holds and echoes back on every
-  request — guest play needs zero server-side session storage.
-- **Audio parity with ordinary chat**: every reply gets the same Google TTS voice
-  response as a normal conversation.
-- **Leaderboard (`/leaderboard`, opt-in)**: any player — signed in or guest — whose
-  best streak reaches the overall top 10 can claim a moderated public display name.
-  Guest scores are bound to a persistent, HTTP-only browser cookie (no sign-in needed);
-  names are screened by Claude before publishing. Claim or update your name from the
-  game-over panel or the leaderboard page (linked from the account menu); leaving
-  removes the public name while keeping the private best.
+- **Guess Who (`/guess-who`)**: the focused, quick-play mode. It shows one clue about a
+  hidden character and provides a dedicated guess field. A wrong answer reveals the next,
+  more specific clue; exhausting the clues ends the run. A correct answer reveals the
+  portrait and starts another hidden character when the player continues.
+- **Guess Who's Next (`/guess-who-next`)**: the conversation mode. The player chats with
+  a visible, named character who is thinking of somebody else. Questions and guesses use
+  the same chat box. One wrong guess is forgiven; a second ends the run. A correct answer
+  promotes the hidden figure to the next conversation partner.
+- **Stateless core play**: each game's hidden answer and round state live in its own
+  signed, encrypted token held by the client. Guest play therefore needs no database or
+  server-side session row, and token tampering fails closed.
+- **Leaderboards (`/leaderboard`, opt-in)**: the shared page has a separate tab and top
+  ten for each game. Signed-in and guest players can claim a moderated public name when
+  eligible; private scores still participate in ranking without exposing identity.
 
 ## Personalized Greeting
 
@@ -404,9 +397,12 @@ signed-in user too (the server is the durable copy; see
   persisted server-side instead — see [Personalized Greeting](#personalized-greeting))
 - `chatbot-user-name-gate-skipped` — Set once a guest dismisses the post-creation name
   prompt, so it doesn't reappear on that browser
-- `chatbot-game-token` / `chatbot-game-transcript`: the guessing game's encrypted round
-  token and its transcript, so a reload resumes the run
-- `chatbot-game-instructions-seen`: the guessing game's one-time "how to play" gate
+- `chatbot-guess-who-token` / `chatbot-guess-who-state`: the clue game's encrypted round
+  token and visible clue state
+- `chatbot-guess-who-next-token` / `chatbot-guess-who-next-transcript`: the conversation
+  game's encrypted round token and transcript
+- `chatbot-guess-who-instructions-seen` / `chatbot-guess-who-next-instructions-seen`:
+  each game's one-time "how to play" gate
 - `chatbot-landing-carousel-cache`: the landing carousel's last portrait sample, shown
   instantly on the next visit
 - `portrayal-google-analytics-consent`: whether the web visitor allowed or declined the optional
@@ -422,8 +418,8 @@ the mobile app import.
 ```text
 src/
    app/                  # Next.js App Router UI
-      components/        # Client components and hooks (ChatShell, GamePage, useBotCreation, ...)
-      chars/, game/, leaderboard/, history/, admin/, auth/  # Character Wall, guessing game, leaderboard, Past chats, admin, sign-in
+      components/        # Client components and hooks (ChatShell, GuessWhoPage, useBotCreation, ...)
+      chars/, guess-who/, guess-who-next/, leaderboard/, history/, admin/, auth/
       privacy/, data-deletion/, reference/  # Privacy policy, data deletion, API reference (Scalar)
    pages/api/            # API routes (Pages Router; server handlers are authoritative)
       chat.ts            # Main chat endpoint with streaming & summarization
@@ -432,19 +428,20 @@ src/
       chars.ts           # Character Wall / carousel data
       random-character.ts  # Public domain character suggestions
       bots.ts, messages.ts, user-profile.ts  # A signed-in user's characters, chat history, and name (optional)
-      game/              # Guessing game: start, message, continue, give-up, high-score, leaderboard, leaderboard-settings
+      guess-who/         # Clue game: start, guess, give-up, scores, leaderboard
+      guess-who-next/    # Conversation game: start, message, continue, give-up, scores, leaderboard
       admin/             # Admin-only stats and copyright moderation
       auth/              # Auth.js, plus the mobile sign-in bridge (mobile-auth-start/-complete, mobile-session)
    proxy.ts              # API authentication middleware (Next.js 16)
-   utils/                # Server utilities (TTS, logger, rate limiting, security, game token, ...)
+   utils/                # Server utilities (TTS, logging, security, per-game tokens, ...)
    config/               # Prompt builders and server configuration
    data/                 # Curated character-name lists
    db/                   # Drizzle schema + client (optional account persistence)
    auth/                 # Auth.js configuration (Google sign-in)
 packages/shared/         # character-chatbot-shared: types, copy, storage keys, validation, and shared
-                         # hooks (useCharacterCreation, useGameSession, useCharacterCarousel, ...)
+                         # hooks (character creation, both game sessions, carousel, ...)
 apps/mobile/             # Expo (React Native) client; see apps/mobile/README.md
-   src/screens/          # Creator, Chat, CharWall, History, Game, Leaderboard
+   src/screens/          # Creator, Chat, CharWall, History, both games, Leaderboard
    src/components/       # ChatView, modals, carousel, header title, lightbox, ...
 tests/                   # Web Jest suite (80%+ coverage gate); mobile and shared keep their own tests
 config/                  # Tool configs that don't need the repo root (TypeDoc, Drizzle, markdownlint)
@@ -462,7 +459,9 @@ Ensure `GOOGLE_APPLICATION_CREDENTIALS_JSON` is set correctly and the service ac
 
 ### Game Progress Stuck Loading
 
-The guessing game's round-generation progress streams over SSE. Check the browser console for connection errors, and make sure a corporate proxy or firewall isn't buffering or blocking `/api/game/*` responses.
+`Guess Who's Next` streams round-generation progress over SSE. Check the browser console
+for connection errors, and make sure a corporate proxy or firewall isn't buffering or
+blocking `/api/guess-who-next/*` responses.
 
 ## Support
 

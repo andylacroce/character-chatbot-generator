@@ -14,7 +14,13 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
-import { bots, gameGuestProfiles, gameResults, users, verificationTokens } from "../../db/schema";
+import {
+  bots,
+  guessWhoNextGuestProfiles,
+  guessWhoNextResults,
+  users,
+  verificationTokens,
+} from "../../db/schema";
 import { getSessionUserId } from "../../utils/getSessionUserId";
 import { deleteUserBlobs } from "../../utils/userBlobs";
 import { clearGuestId, getGuestId } from "../../utils/gameGuestIdentity";
@@ -100,8 +106,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const guestId = getGuestId(req);
     if (guestId) {
       await Promise.all([
-        db.delete(gameResults).where(eq(gameResults.guestId, guestId)),
-        db.delete(gameGuestProfiles).where(eq(gameGuestProfiles.guestId, guestId)),
+        db.delete(guessWhoNextResults).where(eq(guessWhoNextResults.guestId, guestId)),
+        db.delete(guessWhoNextGuestProfiles).where(eq(guessWhoNextGuestProfiles.guestId, guestId)),
       ]);
       clearGuestId(res);
     }

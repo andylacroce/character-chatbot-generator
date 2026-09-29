@@ -1,19 +1,28 @@
 /**
  * Guessing-game and leaderboard copy used by both the web app and the mobile app, so the
- * wording can't drift between them.
+ * wording can't drift between them. `GUESS_WHO_NEXT_*` constants are specific to
+ * "Guess Who's Next" (the chat-steering game); `LEADERBOARD_COPY` is shared chrome
+ * reused by both games' leaderboard screens.
  */
 
-export const GAME_INSTRUCTIONS = {
-  title: "How to play",
-  paragraphs: [
-    "You're chatting with a real, named character, no mystery there. But as the conversation goes on, they'll start steering it toward someone else entirely: a different person they have in mind, dropping hints without ever saying the name.",
-    "Ask questions to pull out more clues. When you think you know who they mean, type your guess right into the same chat box, there's no separate guess button, just keep talking. You don't need the exact full name; a nickname or good description works too. If it's unclear whether you're asking a question or guessing, they'll check with you before deciding.",
-    "Guess right and that person becomes your new chat partner, hinting at someone else in turn, so keep the streak going as long as you can. You get one wrong guess per person: a second wrong guess ends the run and reveals the answer. You can also give up anytime to see who it was.",
+/**
+ * Kept short and scannable per product direction: a one-line premise, a handful of
+ * short bullets, one goal line — not a paragraph. Rendered inside GameInstructionsModal.
+ */
+export const GUESS_WHO_NEXT_INSTRUCTIONS = {
+  title: "How to play Guess Who's Next",
+  premise: "You're chatting with a real character who's secretly thinking of someone else.",
+  bullets: [
+    "Ask questions to narrow it down",
+    "Type your guess anytime, right in the chat box",
+    "One wrong guess is OK, a second ends the run",
+    "Guess right and that person joins the chat next",
   ],
+  goal: "Keep guessing right to build your streak.",
   closeLabel: "Got it, let's play",
 } as const;
 
-export const GAME_GIVE_UP_CONFIRM = {
+export const GUESS_WHO_NEXT_GIVE_UP_CONFIRM = {
   title: "Give up this run?",
   body: "The hidden character will be revealed and the run will end. Your streak will stay as it is.",
   confirmLabel: "Yes, give up",
@@ -21,12 +30,12 @@ export const GAME_GIVE_UP_CONFIRM = {
 } as const;
 
 /** `{revealedName}`/`{streak}` are template placeholders — substitute before display. */
-export const GAME_CORRECT_BANNER = "🎉 Correct! It was {revealedName}! Streak: {streak}.";
+export const GUESS_WHO_NEXT_CORRECT_BANNER = "🎉 Correct! It was {revealedName}! Streak: {streak}.";
 
-export const GAME_STREAK_LABEL = "Streak";
+export const GUESS_WHO_NEXT_STREAK_LABEL = "Streak";
 
-/** Start/game-over screen and in-round copy, mirrors GamePage.tsx. `{name}`/`{streak}` are placeholders. */
-export const GAME_SCREEN_COPY = {
+/** Start/game-over screen and in-round copy, mirrors GuessWhoNextPage.tsx. `{name}`/`{streak}` are placeholders. */
+export const GUESS_WHO_NEXT_SCREEN_COPY = {
   headline: "Guess Who's Next?",
   subhead:
     "You'll start out chatting with a named character, no mystery there. As you talk, they'll start steering the conversation toward someone else entirely, and your job is to figure out who. Type your guess right in the chat. Guess right and that person joins the chat next, continuing the chain. One wrong guess is forgiven per person, but a second ends the run.",
@@ -41,12 +50,59 @@ export const GAME_SCREEN_COPY = {
   wrongBanner: "Not quite. You have one more guess before this run ends.",
 } as const;
 
-export const GAME_CTA_LABEL = "Play the Guessing Game";
+export const GUESS_WHO_NEXT_CTA_LABEL = "Play Guess Who's Next";
 export const CHARACTER_WALL_CTA_LABEL = "Pick from the Character Wall";
 
-/** Leaderboard page and top-ten name-claim copy. */
+/** Short, scannable "how to play" copy for "Guess Who" (the clue-reveal game). */
+export const GUESS_WHO_INSTRUCTIONS = {
+  title: "How to play Guess Who",
+  premise: "You'll see clues about a hidden character, one at a time.",
+  bullets: [
+    "Type your guess anytime",
+    "A wrong guess reveals the next clue",
+    "Run out of clues, or give up, and the answer's revealed",
+    "Guess right and a new hidden character begins",
+  ],
+  goal: "Keep guessing right to build your streak.",
+  closeLabel: "Got it, let's play",
+} as const;
+
+export const GUESS_WHO_GIVE_UP_CONFIRM = {
+  title: "Give up this round?",
+  body: "The hidden character will be revealed and the run will end. Your streak will stay as it is.",
+  confirmLabel: "Yes, give up",
+  cancelLabel: "Cancel",
+} as const;
+
+export const GUESS_WHO_STREAK_LABEL = "Streak";
+
+/** Start/game-over screen and in-round copy for "Guess Who". `{name}`/`{streak}` are placeholders. */
+export const GUESS_WHO_SCREEN_COPY = {
+  headline: "Guess Who?",
+  subhead:
+    "You'll see a clue about a hidden character. Type your guess anytime — a wrong guess reveals another clue. Run out of clues (or give up) and the answer's revealed. Guess right and a new hidden character begins, building your streak.",
+  gameOverHeadline: "Game Over",
+  gameOverSubhead: "It was {name}. Final streak: {streak}.",
+  startLabel: "Start Game",
+  playAgainLabel: "Play Again",
+  continueLabel: "Continue",
+  leaderboardLabel: "View leaderboard",
+  startingLabel: "Starting new game…",
+  continuingLabel: "Loading next round…",
+  clueLabel: "Clue",
+  guessPlaceholder: "Who is it?",
+  guessButtonLabel: "Guess",
+  giveUpLabel: "Give Up",
+} as const;
+
+/** `{revealedName}`/`{streak}` are template placeholders — substitute before display. */
+export const GUESS_WHO_CORRECT_BANNER = "🎉 Correct! It was {revealedName}! Streak: {streak}.";
+
+export const GUESS_WHO_CTA_LABEL = "Play Guess Who";
+
+/** Leaderboard page and top-ten name-claim copy, shared chrome for both games' tabs. */
 export const LEADERBOARD_COPY = {
-  title: "Guessing Game Leaderboard",
+  title: "Leaderboard",
   tableCaption: "Public top 10 scores",
   loading: "Loading scores…",
   loadError: "Could not load the leaderboard. Please try again.",

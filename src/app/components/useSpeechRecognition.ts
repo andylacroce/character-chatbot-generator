@@ -4,7 +4,7 @@
  * ref, mirroring useAudioPlayer.ts's imperative-ref-over-browser-API pattern. Exposes
  * the transcript rather than writing into an input directly, so the merge decision
  * (overwrite vs. append) lives at the integration point (useChatController.ts /
- * useGameController.ts), not inside this browser-API wrapper. The transcript itself is
+ * useGuessWhoNextController.ts), not inside this browser-API wrapper. The transcript itself is
  * run through normalizeDictatedText (capitalization/punctuation spacing only, no
  * spelling/grammar correction) before being returned, so it already reads cleanly while
  * still being dictated.

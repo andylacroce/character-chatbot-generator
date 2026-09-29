@@ -80,7 +80,10 @@ function queueDefaultSelects(mockSelect: jest.Mock) {
     .mockImplementationOnce(() => makeQuery(BOTS_TOTAL_ROW))
     .mockImplementationOnce(() => makeQuery(MESSAGES_TOTAL_ROW))
     .mockImplementationOnce(() => makeQuery(GAME_DAILY_ROWS))
-    .mockImplementationOnce(() => makeQuery(GAME_AGG_ROWS));
+    .mockImplementationOnce(() => makeQuery(GAME_AGG_ROWS))
+    // "Guess Who" (the new game) has no activity in this fixture.
+    .mockImplementationOnce(() => makeQuery([]))
+    .mockImplementationOnce(() => makeQuery([]));
 }
 
 const mockSelect = jest.fn();
@@ -145,6 +148,8 @@ describe("admin/stats API", () => {
     expect(data.creators).toEqual({ guestCount: 0, signedInCount: 0, guestPct: null });
     expect(data.game.starts).toBe(0);
     expect(data.game.guessAccuracyPct).toBeNull();
+    expect(data.guessWhoNext.starts).toBe(0);
+    expect(data.guessWho.starts).toBe(0);
     expect(mockSelect).not.toHaveBeenCalled();
   });
 
@@ -176,7 +181,7 @@ describe("admin/stats API", () => {
       { provider: "cloudflare", total: 2, pct: 33.3 },
       { provider: "none", total: 1, pct: 16.7 },
     ]);
-    expect(data.game).toEqual({
+    const expectedGuessWhoNext = {
       starts: 8,
       startedToday: 3,
       startedLast7Days: 3,
@@ -193,6 +198,27 @@ describe("admin/stats API", () => {
       bestStreak: 4,
       finalStreaks: { zero: 1, one: 1, twoToFour: 1, fiveOrMore: 0 },
       daily: GAME_DAILY_ROWS,
+    };
+    expect(data.guessWhoNext).toEqual(expectedGuessWhoNext);
+    // "game" is kept as a backward-compatible alias of guessWhoNext.
+    expect(data.game).toEqual(expectedGuessWhoNext);
+    expect(data.guessWho).toEqual({
+      starts: 0,
+      startedToday: 0,
+      startedLast7Days: 0,
+      guestStarts: 0,
+      guestPct: null,
+      correctGuesses: 0,
+      wrongGuesses: 0,
+      guessAccuracyPct: null,
+      continuedRounds: 0,
+      continuationPct: null,
+      endedByWrongGuess: 0,
+      endedByGiveUp: 0,
+      avgFinalStreak: null,
+      bestStreak: 0,
+      finalStreaks: { zero: 0, one: 0, twoToFour: 0, fiveOrMore: 0 },
+      daily: [],
     });
   });
 
@@ -207,6 +233,8 @@ describe("admin/stats API", () => {
       .mockImplementationOnce(() => makeQuery([]))
       .mockImplementationOnce(() => makeQuery([{ total: 0 }]))
       .mockImplementationOnce(() => makeQuery([{ total: 0 }]))
+      .mockImplementationOnce(() => makeQuery([]))
+      .mockImplementationOnce(() => makeQuery([]))
       .mockImplementationOnce(() => makeQuery([]))
       .mockImplementationOnce(() => makeQuery([]));
     const handler = (await import("../../../../src/pages/api/admin/stats")).default;

@@ -184,7 +184,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   } = useSpeechRecognition();
 
   // Live-updates the name field with the in-progress dictation, mirroring
-  // useChatController.ts/useGameController.ts's own mic wiring. Overwrites rather than
+  // useChatController.ts/useGuessWhoNextController.ts's own mic wiring. Overwrites rather than
   // appends (see useSpeechRecognition.ts's doc comment). Synchronizes React state from
   // useSpeechRecognition's own external browser-API state, which can't be derived
   // during render. Unlike those two hooks, `setInput`/`setError` here come from
@@ -368,219 +368,233 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus, launchCancelled]);
   return (
     <>
-      <AppHeader menuItems={menuItems} center={<LandingCharacterCarousel />} />
+      <AppHeader menuItems={menuItems} center={<LandingCharacterCarousel />} wideCenter />
       <form onSubmit={handleFormSubmit} className={styles.formContainer} autoComplete="off">
         <div className={styles.formInner}>
           {!isLaunchingFromUrl && !interstitial && (
-            <>
-              <div className={styles.hero}>
-                <p className={styles.heroWordmark} aria-hidden="true">
-                  {"Portrayal".split("").map((ch, i) => (
-                    <span
-                      key={i}
-                      className={styles.heroLetter}
-                      style={{ animationDelay: `${i * 0.045}s` }}
-                    >
-                      {ch}
-                    </span>
-                  ))}
-                </p>
-                <span className={styles.betaBadge}>{BRAND.betaLabel}</span>
-                <h1 className={styles.headline}>Who will you bring to life?</h1>
-                <p className={styles.kicker}>Begin a conversation</p>
-                <Link href="/game" className={styles.wallCta}>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    aria-hidden="true"
-                    focusable="false"
-                  >
-                    <circle
-                      cx="10"
-                      cy="10"
-                      r="7.2"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeDasharray="2.2 2.2"
-                    />
-                    <path
-                      d="M8 8.3c0-1.1.9-1.9 2-1.9s2 .7 2 1.7c0 1.3-2 1.4-2 2.9"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                    />
-                    <circle cx="10" cy="13.6" r="0.9" fill="currentColor" />
-                  </svg>
-                  Play the Guessing Game
-                </Link>
-                <Link href="/chars" className={styles.wallCta}>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    aria-hidden="true"
-                    focusable="false"
-                  >
-                    <rect
-                      x="2.5"
-                      y="3.5"
-                      width="15"
-                      height="13"
-                      rx="2"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                    />
-                    <circle cx="7" cy="8" r="1.4" stroke="currentColor" strokeWidth="1.6" />
-                    <path
-                      d="M3.5 14l4.5-4 3 2.5 2.5-2 3.5 3.5"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  Pick from the Character Wall
-                </Link>
-              </div>
+            <div className={styles.landingLayout}>
+              <section className={styles.creatorPanel} aria-labelledby="creator-heading">
+                <div className={styles.hero}>
+                  <div className={styles.brandLine}>
+                    <p className={styles.heroWordmark} aria-hidden="true">
+                      {"Portrayal".split("").map((ch, i) => (
+                        <span
+                          key={i}
+                          className={styles.heroLetter}
+                          style={{ animationDelay: `${i * 0.045}s` }}
+                        >
+                          {ch}
+                        </span>
+                      ))}
+                    </p>
+                    <span className={styles.betaBadge}>{BRAND.betaLabel}</span>
+                  </div>
+                  <p className={styles.kicker}>Create a conversation</p>
+                  <h1 id="creator-heading" className={styles.headline}>
+                    Who will you bring to life?
+                  </h1>
+                  <p className={styles.heroCopy}>
+                    Choose a familiar figure or invent someone entirely your own.
+                  </p>
+                </div>
 
-              <div className={styles.orDivider} role="separator" aria-label="or">
-                <span>or</span>
-              </div>
+                <div className={styles.creationControls}>
+                  <label className={styles.inputLabel} htmlFor="character-name">
+                    Character name
+                  </label>
+                  <div className={styles.inputRow + (isBusy ? " " + styles.hideMobile : "")}>
+                    <div className={styles.fieldShell}>
+                      <input
+                        id="character-name"
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="e.g. Cleopatra"
+                        className={styles.inputField}
+                        disabled={loading}
+                        data-testid="bot-creator-input"
+                        maxLength={36}
+                        ref={inputRef}
+                      />
+                      {isSpeechSupported && !isBusy && (
+                        <button
+                          type="button"
+                          onClick={handleMicToggle}
+                          className={styles.micButton}
+                          aria-label={isRecording ? "Stop voice input" : "Start voice input"}
+                          aria-pressed={isRecording}
+                          data-testid="bot-creator-mic-toggle"
+                        >
+                          {isRecording ? (
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <rect x="9" y="2" width="6" height="12" rx="3" />
+                              <path
+                                d="M5 11a7 7 0 0014 0M12 18v3"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                fill="none"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <rect
+                                x="9"
+                                y="2"
+                                width="6"
+                                height="12"
+                                rx="3"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              />
+                              <path
+                                d="M5 11a7 7 0 0014 0M12 18v3"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                fill="none"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    <div className={styles.textLinks}>
+                      <button
+                        type="button"
+                        className={styles.textLink}
+                        disabled={isBusy || randomizing}
+                        aria-label="Choose a random character name"
+                        onClick={handleRandomCharacter}
+                      >
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <rect
+                            x="3"
+                            y="3"
+                            width="14"
+                            height="14"
+                            rx="3"
+                            stroke="currentColor"
+                            strokeWidth="1.6"
+                            fill="none"
+                          />
+                          <circle cx="7" cy="7" r="1.15" fill="currentColor" />
+                          <circle cx="13" cy="7" r="1.15" fill="currentColor" />
+                          <circle cx="7" cy="13" r="1.15" fill="currentColor" />
+                          <circle cx="13" cy="13" r="1.15" fill="currentColor" />
+                          <circle cx="10" cy="10" r="1.15" fill="currentColor" />
+                        </svg>
+                        Surprise me
+                      </button>
+                      <button
+                        type="submit"
+                        className={styles.textLinkPrimary}
+                        disabled={isBusy}
+                        data-testid="bot-creator-button"
+                        aria-label="Create character"
+                      >
+                        Create character
+                        <svg
+                          width="15"
+                          height="15"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          aria-hidden="true"
+                          focusable="false"
+                        >
+                          <path
+                            d="M6 10h8M11 7l3 3-3 3"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
 
-              <div className={styles.inputRow + (isBusy ? " " + styles.hideMobile : "")}>
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Enter a name"
-                  className={styles.inputField}
-                  disabled={loading}
-                  data-testid="bot-creator-input"
-                  aria-label="Character name"
-                  maxLength={36}
-                  ref={inputRef}
-                />
-                {isSpeechSupported && !isBusy && (
-                  <button
-                    type="button"
-                    onClick={handleMicToggle}
-                    className={styles.micButton}
-                    aria-label={isRecording ? "Stop voice input" : "Start voice input"}
-                    aria-pressed={isRecording}
-                    data-testid="bot-creator-mic-toggle"
-                  >
-                    {isRecording ? (
-                      // Filled mic icon while recording, to read clearly as "active"
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <rect x="9" y="2" width="6" height="12" rx="3" />
-                        <path
-                          d="M5 11a7 7 0 0014 0M12 18v3"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          fill="none"
-                        />
-                      </svg>
-                    ) : (
-                      // Outlined mic icon while idle
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <rect
-                          x="9"
-                          y="2"
-                          width="6"
-                          height="12"
-                          rx="3"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        />
-                        <path
-                          d="M5 11a7 7 0 0014 0M12 18v3"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          fill="none"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                )}
-                <div className={styles.textLinks}>
-                  <button
-                    type="button"
-                    className={styles.textLink}
-                    disabled={isBusy || randomizing}
-                    aria-label="Choose a random character name"
-                    onClick={handleRandomCharacter}
-                  >
+                  <Link href="/chars" className={styles.wallCta}>
                     <svg
-                      width="15"
-                      height="15"
+                      width="17"
+                      height="17"
                       viewBox="0 0 20 20"
                       fill="none"
                       aria-hidden="true"
                       focusable="false"
                     >
                       <rect
-                        x="3"
-                        y="3"
-                        width="14"
-                        height="14"
-                        rx="3"
+                        x="2.5"
+                        y="3.5"
+                        width="15"
+                        height="13"
+                        rx="2"
                         stroke="currentColor"
                         strokeWidth="1.6"
-                        fill="none"
                       />
-                      <circle cx="7" cy="7" r="1.15" fill="currentColor" />
-                      <circle cx="13" cy="7" r="1.15" fill="currentColor" />
-                      <circle cx="7" cy="13" r="1.15" fill="currentColor" />
-                      <circle cx="13" cy="13" r="1.15" fill="currentColor" />
-                      <circle cx="10" cy="10" r="1.15" fill="currentColor" />
-                    </svg>
-                    Random
-                  </button>
-                  <button
-                    type="submit"
-                    className={styles.textLinkPrimary}
-                    disabled={isBusy}
-                    data-testid="bot-creator-button"
-                    aria-label="Create character"
-                  >
-                    Create
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      aria-hidden="true"
-                      focusable="false"
-                    >
+                      <circle cx="7" cy="8" r="1.4" stroke="currentColor" strokeWidth="1.6" />
                       <path
-                        d="M6 10h8M11 7l3 3-3 3"
+                        d="M3.5 14l4.5-4 3 2.5 2.5-2 3.5 3.5"
                         stroke="currentColor"
-                        strokeWidth="1.7"
+                        strokeWidth="1.6"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
                     </svg>
-                  </button>
+                    <span>
+                      <strong>Browse the Character Wall</strong>
+                      <small>Choose from portraits already in the collection</small>
+                    </span>
+                    <span aria-hidden="true">&rarr;</span>
+                  </Link>
                 </div>
-              </div>
-            </>
+
+                {error && <div className={styles.error}>{error}</div>}
+              </section>
+
+              <aside className={styles.playPanel} aria-labelledby="play-heading">
+                <p className={styles.gamesBandEyebrow}>Play a game</p>
+                <h2 id="play-heading" className={styles.playHeading}>
+                  Test your character knowledge
+                </h2>
+                <div className={styles.gamesBand} data-testid="games-invitation-band">
+                  <Link href="/guess-who" className={styles.gamesBandHalf}>
+                    <span className={styles.gamesBandKicker}>Featured</span>
+                    <span className={styles.gamesBandTitleFeatured}>Guess Who</span>
+                    <span className={styles.gamesBandHook}>
+                      Reveal clues one at a time and name the hidden character.
+                    </span>
+                    <span className={styles.gamesBandCta}>Play &rarr;</span>
+                  </Link>
+                  <Link href="/guess-who-next" className={styles.gamesBandHalf}>
+                    <span className={styles.gamesBandTitle}>Guess Who&apos;s Next</span>
+                    <span className={styles.gamesBandHook}>
+                      Chat with a character who is hinting at someone else.
+                    </span>
+                    <span className={styles.gamesBandCta}>Play &rarr;</span>
+                  </Link>
+                </div>
+              </aside>
+            </div>
           )}
 
           <CharacterLoadingOverlay
@@ -622,8 +636,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
             testId="bot-creator-progress"
             onCancel={handleCancelLaunch}
           />
-          {error && <div className={styles.error}>{error}</div>}
-
           {!isLaunchingFromUrl && !interstitial && (
             <div className={styles.footerLinks}>
               {sessionStatus === "authenticated" && (

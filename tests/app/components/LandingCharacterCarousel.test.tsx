@@ -52,7 +52,7 @@ describe("LandingCharacterCarousel", () => {
     expect(container.firstChild).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("shows the first character and navigates to its chat on click", async () => {
+  it("shows the first character and opens it on the Character Wall", async () => {
     mockAuthenticatedFetch.mockResolvedValue({
       json: async () => ({
         characters: [
@@ -63,10 +63,11 @@ describe("LandingCharacterCarousel", () => {
     });
     render(<LandingCharacterCarousel />);
 
-    expect(await screen.findByLabelText("Chat with Sherlock Holmes")).toBeInTheDocument();
-    expect(screen.getByAltText("Sherlock Holmes")).toHaveAttribute("loading", "eager");
-    fireEvent.click(screen.getByLabelText("Chat with Sherlock Holmes"));
-    expect(mockPush).toHaveBeenCalledWith("/?name=Sherlock%20Holmes");
+    const carousel = await screen.findByLabelText("View Sherlock Holmes on the Character Wall");
+    expect(carousel.querySelector("img")).toHaveAttribute("loading", "eager");
+    expect(carousel.querySelector("img")).toHaveAttribute("alt", "");
+    fireEvent.click(carousel);
+    expect(mockPush).toHaveBeenCalledWith("/chars?name=Sherlock%20Holmes");
   });
 
   it("auto-advances to the next character after the rotation interval", async () => {
@@ -79,11 +80,16 @@ describe("LandingCharacterCarousel", () => {
       }),
     });
     render(<LandingCharacterCarousel />);
-    await screen.findByLabelText("Chat with Sherlock Holmes");
+    await screen.findByLabelText("View Sherlock Holmes on the Character Wall");
 
-    act(() => jest.advanceTimersByTime(4000));
+    act(() => jest.advanceTimersByTime(5999));
+    expect(screen.getByLabelText("View Sherlock Holmes on the Character Wall")).toBeInTheDocument();
 
-    expect(await screen.findByLabelText("Chat with Cleopatra")).toBeInTheDocument();
+    act(() => jest.advanceTimersByTime(1));
+
+    expect(
+      await screen.findByLabelText("View Cleopatra on the Character Wall"),
+    ).toBeInTheDocument();
   });
 
   it("paints last visit's cached sample immediately, before the fetch resolves", async () => {
@@ -97,7 +103,9 @@ describe("LandingCharacterCarousel", () => {
     render(<LandingCharacterCarousel />);
 
     // Still awaiting the fetch, yet the cached portrait is already showing.
-    expect(await screen.findByLabelText("Chat with Cached Hero")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("View Cached Hero on the Character Wall"),
+    ).toBeInTheDocument();
 
     await act(async () => {
       resolve({ json: async () => ({ characters: [] }) });
@@ -115,7 +123,9 @@ describe("LandingCharacterCarousel", () => {
 
     render(<LandingCharacterCarousel />);
 
-    expect(await screen.findByLabelText("Chat with Fresh Hero")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("View Fresh Hero on the Character Wall"),
+    ).toBeInTheDocument();
     expect(
       JSON.parse(localStorage.getItem(STORAGE_KEYS.landingCarouselCache) as string).characters,
     ).toEqual([{ name: "Fresh Hero", avatarUrl: "/fresh.png" }]);
@@ -131,7 +141,7 @@ describe("LandingCharacterCarousel", () => {
     render(<LandingCharacterCarousel />);
     await act(async () => {});
 
-    expect(screen.getByLabelText("Chat with Cached Hero")).toBeInTheDocument();
+    expect(screen.getByLabelText("View Cached Hero on the Character Wall")).toBeInTheDocument();
   });
 
   it("pauses auto-advance while hovered", async () => {
@@ -144,14 +154,16 @@ describe("LandingCharacterCarousel", () => {
       }),
     });
     render(<LandingCharacterCarousel />);
-    const button = await screen.findByLabelText("Chat with Sherlock Holmes");
+    const button = await screen.findByLabelText("View Sherlock Holmes on the Character Wall");
 
     fireEvent.mouseEnter(button);
     act(() => jest.advanceTimersByTime(6000));
-    expect(screen.getByLabelText("Chat with Sherlock Holmes")).toBeInTheDocument();
+    expect(screen.getByLabelText("View Sherlock Holmes on the Character Wall")).toBeInTheDocument();
 
     fireEvent.mouseLeave(button);
-    act(() => jest.advanceTimersByTime(4000));
-    expect(await screen.findByLabelText("Chat with Cleopatra")).toBeInTheDocument();
+    act(() => jest.advanceTimersByTime(6000));
+    expect(
+      await screen.findByLabelText("View Cleopatra on the Character Wall"),
+    ).toBeInTheDocument();
   });
 });

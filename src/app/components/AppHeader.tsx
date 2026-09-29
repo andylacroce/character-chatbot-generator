@@ -42,6 +42,8 @@ interface AppHeaderProps {
   menuItems: React.ReactNode;
   /** Center content — chat's avatar+name button, or the landing page's character carousel. */
   center?: React.ReactNode;
+  /** Lets a visual center treatment use the full header canvas behind empty side slots. */
+  wideCenter?: boolean;
   /**
    * Left-aligned content — currently just the Character Wall's and leaderboard's "Back"
    * link (see BackHomeLink.tsx). Left empty (the default) on every other page, in which
@@ -53,12 +55,18 @@ interface AppHeaderProps {
 }
 
 /** Shared sticky header: a centered focal slot, and a dark-mode toggle + hamburger always on the right. */
-const AppHeader: React.FC<AppHeaderProps> = ({ menuItems, center, left }) => {
+const AppHeader: React.FC<AppHeaderProps> = ({ menuItems, center, wideCenter = false, left }) => {
   return (
     <div className={styles.chatHeader} data-testid="app-header" role="banner">
-      <div className={styles.chatHeaderContent}>
+      <div
+        className={`${styles.chatHeaderContent} ${wideCenter ? styles.chatHeaderContentWide : ""}`.trim()}
+      >
         <div className={styles.headerLeft}>{left}</div>
-        <div className={styles.headerCenter}>{center}</div>
+        <div
+          className={`${styles.headerCenter} ${wideCenter ? styles.headerCenterWide : ""}`.trim()}
+        >
+          {center}
+        </div>
         <div className={styles.headerRight}>
           <DarkModeToggle hideLabel />
           <HamburgerMenu>{menuItems}</HamburgerMenu>

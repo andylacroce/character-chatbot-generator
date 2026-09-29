@@ -54,7 +54,7 @@ type Props = {
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
 
 /**
- * The chat transcript and input row shared by ChatScreen and GameScreen — mobile's
+ * The chat transcript and input row shared by ChatScreen and GuessWhoNextScreen — mobile's
  * counterpart to the web app's ChatShell.tsx — so both screens get the same rendering and
  * the same Android keyboard handling.
  */

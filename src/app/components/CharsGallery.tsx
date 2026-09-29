@@ -124,7 +124,7 @@ const PortraitMosaic: React.FC<{
 );
 
 /** Public /chars gallery: paginated, infinite-scroll mosaic of recognized portraits. */
-const CharsGallery: React.FC = () => {
+const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialCharacterName }) => {
   const router = useRouter();
   const { menuItems, modals } = useAccountMenu();
   const [characters, setCharacters] = useState<CharEntry[]>([]);
@@ -288,6 +288,33 @@ const CharsGallery: React.FC = () => {
       close();
     }
   }, []);
+
+  // Carousel links carry only the character name so they stay small even when an
+  // avatar is a large base64 data URL. Resolve that one cached entry independently
+  // of the paginated wall, then open the same lightbox used by an ordinary tile.
+  useEffect(() => {
+    const requestedName = initialCharacterName?.trim();
+    if (!requestedName) return;
+
+    let cancelled = false;
+    void authenticatedFetch(`/api/chars?name=${encodeURIComponent(requestedName)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled || !data?.character) return;
+        const entry = data.character as CharEntry;
+        openLightbox({
+          ...entry,
+          category: isCharacterCategory(entry.category) ? entry.category : "other",
+        });
+      })
+      .catch(() => {
+        // The wall itself remains fully usable when this optional deep link fails.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialCharacterName, openLightbox]);
 
   // A monotonically increasing version prevents a slower response from a prior
   // selection replacing current results when the visitor changes controls quickly.

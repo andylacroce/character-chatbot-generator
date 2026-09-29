@@ -5,7 +5,7 @@ import { loadAudioEnabled, saveAudioEnabled } from "./storage";
 
 /**
  * TTS playback for a character's replies plus the persisted mute toggle, shared by
- * ChatScreen and GameScreen (mirrors the web app's useAudioPlayer + useAudioEnabled pair).
+ * ChatScreen and GuessWhoNextScreen (mirrors the web app's useAudioPlayer + useAudioEnabled pair).
  */
 export function useReplyAudio() {
   const [audioEnabled, setAudioEnabled] = useState(true);

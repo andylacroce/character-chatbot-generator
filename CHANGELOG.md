@@ -2,6 +2,13 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.22.0 — 2026-09-28 — Guess Who and a clearer responsive landing page
+
+- Added **Guess Who**, a faster clue-reveal game alongside the existing conversation game (now named **Guess Who's Next**). Wrong answers reveal progressively more specific clues; correct answers build a streak. Web and mobile share the same state machine, copy, encrypted-token model, score handling, and separate opt-in leaderboard.
+- Renamed the original guessing game's routes, storage, database tables, components, and APIs to `guess-who-next` so the two modes stay unambiguous. The shared leaderboard now presents one tab per game, with Guess Who first.
+- Reworked the landing page into a compact responsive dashboard: character creation is the clear primary panel, both games sit in a scannable secondary panel, and common phone and laptop viewports show the important choices without clipping. Dark mode uses flatter solid surfaces instead of ambient gradients and card glows.
+- Redesigned the landing header as one 3:1 row: a rotating, face-focused portrait spans the left side and fades toward the theme/menu actions on the right. Selecting it now opens that character's existing Character Wall lightbox, with a direct single-character API lookup instead of launching a chat immediately.
+
 ## v0.21.1 — 2026-09-27 — Stronger character disambiguation in the guessing game
 
 - Fixed a game round hinting at a generic scarecrow instead of specifically the Wizard of Oz character (the same underlying bug, previously fixed one name at a time, that also affected a bare "Hero," "Beauty," "The Emperor," "The Knight," and "The Monster"). Every character the game can pick now carries an explicit source (its specific book, myth, or historical period), fed into both the clue-writing and guess-checking so identity is grounded rather than guessed at fresh each time.

@@ -16,16 +16,22 @@ export const STORAGE_KEYS = {
   authToken: "chatbot-auth-token",
   /** Mobile's own guest game identity — the equivalent of the web's HttpOnly `portrayal-game-guest` cookie, which a native client can't reliably persist. Kept in expo-secure-store. */
   gameGuestId: "chatbot-game-guest-id",
-  /** One-time "how to play" gate for the guessing game, mirrors the web's own gameInstructionsSeen key. */
-  gameInstructionsSeen: "chatbot-game-instructions-seen",
-  /** The guessing game's opaque round token (never decoded client-side), mirrors the web's own key. */
-  gameToken: "chatbot-game-token",
-  /** The guessing game's transcript and round state, stored alongside `gameToken`. */
-  gameTranscript: "chatbot-game-transcript",
+  /** One-time "how to play" gate for "Guess Who's Next", mirrors the web's own key. Renamed 2026-09-28 alongside the old game's full internal rename — an in-flight value under the old key string is simply not read again, so this just re-shows the modal once, same low-stakes degrade as a secret rotation elsewhere in this app. */
+  guessWhoNextInstructionsSeen: "chatbot-guess-who-next-instructions-seen",
+  /** "Guess Who's Next"'s opaque round token (never decoded client-side), mirrors the web's own key. Renamed 2026-09-28 — an in-flight round token under the old key string is simply lost once, same "please start a new game" degrade as a secret rotation elsewhere in this app. */
+  guessWhoNextToken: "chatbot-guess-who-next-token",
+  /** "Guess Who's Next"'s transcript and round state, stored alongside `guessWhoNextToken`. */
+  guessWhoNextTranscript: "chatbot-guess-who-next-transcript",
   /** The web landing carousel's last portrait sample, repainted instantly on the next visit. */
   landingCarouselCache: "chatbot-landing-carousel-cache",
   /** Web-only opt-in preference for loading Google Analytics. */
   googleAnalyticsConsent: "portrayal-google-analytics-consent",
+  /** One-time "how to play" gate for "Guess Who" (the clue-reveal game), mirrors the web's own key. */
+  guessWhoInstructionsSeen: "chatbot-guess-who-instructions-seen",
+  /** "Guess Who"'s opaque round token (never decoded client-side). */
+  guessWhoToken: "chatbot-guess-who-token",
+  /** "Guess Who"'s clue-reveal state, stored alongside `guessWhoToken`. */
+  guessWhoState: "chatbot-guess-who-state",
 } as const;
 
 /** Prefixes for keys that are suffixed per-character by bot name. */

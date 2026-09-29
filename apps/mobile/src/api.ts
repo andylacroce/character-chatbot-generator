@@ -18,6 +18,11 @@ import type {
   GameMessageRequest,
   GameMessageResponse,
   GameRoundResult,
+  GuessWhoGiveUpResponse,
+  GuessWhoGuessResponse,
+  GuessWhoHighScoreResponse,
+  GuessWhoLeaderboardResponse,
+  GuessWhoRoundResult,
   GenerateAvatarRequest,
   GenerateAvatarResponse,
   GeneratePersonalityRequest,
@@ -31,7 +36,11 @@ import type {
   UserProfile,
   ValidateCharacterRequest,
 } from "character-chatbot-shared";
-import { CAROUSEL_SAMPLE_PATH, parseGameRoundResult } from "character-chatbot-shared";
+import {
+  CAROUSEL_SAMPLE_PATH,
+  parseGameRoundResult,
+  parseGuessWhoRoundResult,
+} from "character-chatbot-shared";
 import { getCachedAuthToken } from "./authToken";
 import { getGameGuestId } from "./gameGuest";
 
@@ -236,45 +245,98 @@ async function gameFetch<T>(path: string, body?: unknown): Promise<T> {
  * read a streamed body, so mobile waits for the plain JSON result instead of SSE progress.
  */
 export async function startGame(): Promise<GameRoundResult> {
-  return parseGameRoundResult(await gameFetch("/api/game/start", {}), "/api/game/start");
+  return parseGameRoundResult(
+    await gameFetch("/api/guess-who-next/start", {}),
+    "/api/guess-who-next/start",
+  );
 }
 
 /** Generates the next round after a correct guess (plain JSON, like startGame). */
 export async function continueGame(gameToken: string): Promise<GameRoundResult> {
   return parseGameRoundResult(
-    await gameFetch("/api/game/continue", { gameToken }),
-    "/api/game/continue",
+    await gameFetch("/api/guess-who-next/continue", { gameToken }),
+    "/api/guess-who-next/continue",
   );
 }
 
 /** Sends one game turn; the server decides whether it's a question or a guess. */
 export function sendGameMessage(body: GameMessageRequest): Promise<GameMessageResponse> {
-  return gameFetch("/api/game/message", body);
+  return gameFetch("/api/guess-who-next/message", body);
 }
 
 /** Gives up the current run, revealing the hidden character. */
 export function giveUpGame(gameToken: string): Promise<GameGiveUpResponse> {
-  return gameFetch("/api/game/give-up", { gameToken });
+  return gameFetch("/api/guess-who-next/give-up", { gameToken });
 }
 
 /** This account's or device's best streak (null when none is on record). */
 export function getGameHighScore(): Promise<GameHighScoreResponse> {
-  return gameFetch("/api/game/high-score");
+  return gameFetch("/api/guess-who-next/high-score");
 }
 
 /** The public top-ten leaderboard. */
 export function getLeaderboard(): Promise<GameLeaderboardResponse> {
-  return apiFetch("/api/game/leaderboard");
+  return apiFetch("/api/guess-who-next/leaderboard");
 }
 
 /** Whether this account or device can (and does) appear on the leaderboard. */
 export function getLeaderboardSettings(): Promise<LeaderboardSettingsResponse> {
-  return gameFetch("/api/game/leaderboard-settings");
+  return gameFetch("/api/guess-who-next/leaderboard-settings");
 }
 
 /** Joins the leaderboard under a moderated `name`, or leaves it. */
 export function saveLeaderboardSettings(
   body: LeaderboardSettingsRequest,
 ): Promise<LeaderboardSettingsResponse> {
-  return gameFetch("/api/game/leaderboard-settings", body);
+  return gameFetch("/api/guess-who-next/leaderboard-settings", body);
+}
+
+/**
+ * Starts (or continues, carrying `usedNames`/`streak` forward) a "Guess Who" round.
+ * Reuses the same `x-game-guest` guest identity as "Guess Who's Next" (see
+ * gameGuest.ts) — one anonymous player id, shared across both games.
+ */
+export async function startGuessWhoRound(
+  usedNames: string[],
+  streak: number,
+): Promise<GuessWhoRoundResult> {
+  return parseGuessWhoRoundResult(
+    await gameFetch("/api/guess-who/start", { usedNames, streak }),
+    "/api/guess-who/start",
+  );
+}
+
+/** Submits a guess for the current round's hidden character. */
+export function submitGuessWhoGuess(
+  guessWhoToken: string,
+  guess: string,
+): Promise<GuessWhoGuessResponse> {
+  return gameFetch("/api/guess-who/guess", { guessWhoToken, guess });
+}
+
+/** Gives up the current "Guess Who" run, revealing the hidden character. */
+export function giveUpGuessWho(guessWhoToken: string): Promise<GuessWhoGiveUpResponse> {
+  return gameFetch("/api/guess-who/give-up", { guessWhoToken });
+}
+
+/** This account's or device's best "Guess Who" streak (null when none is on record). */
+export function getGuessWhoHighScore(): Promise<GuessWhoHighScoreResponse> {
+  return gameFetch("/api/guess-who/high-score");
+}
+
+/** The public "Guess Who" top-ten leaderboard. */
+export function getGuessWhoLeaderboard(): Promise<GuessWhoLeaderboardResponse> {
+  return apiFetch("/api/guess-who/leaderboard");
+}
+
+/** Whether this account or device can (and does) appear on the "Guess Who" leaderboard. */
+export function getGuessWhoLeaderboardSettings(): Promise<LeaderboardSettingsResponse> {
+  return gameFetch("/api/guess-who/leaderboard-settings");
+}
+
+/** Joins the "Guess Who" leaderboard under a moderated `name`, or leaves it. */
+export function saveGuessWhoLeaderboardSettings(
+  body: LeaderboardSettingsRequest,
+): Promise<LeaderboardSettingsResponse> {
+  return gameFetch("/api/guess-who/leaderboard-settings", body);
 }

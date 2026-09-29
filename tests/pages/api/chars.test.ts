@@ -100,6 +100,32 @@ describe("chars API", () => {
     });
   });
 
+  it("returns one named character for a case-insensitive lookup", async () => {
+    mockOrderBy.mockResolvedValue([
+      makeRow("ada lovelace", "/ada.png", "history"),
+      makeRow("sherlock holmes", "/sherlock.png", "literature"),
+    ]);
+    const handler = (await import("../../../src/pages/api/chars")).default;
+    const { req, res } = createMocks({ method: "GET", query: { name: "ADA LOVELACE" } });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      character: { name: "Ada Lovelace", avatarUrl: "/ada.png", category: "history" },
+    });
+  });
+
+  it("returns a null character when a named lookup has no match", async () => {
+    mockOrderBy.mockResolvedValue([makeRow("ada lovelace")]);
+    const handler = (await import("../../../src/pages/api/chars")).default;
+    const { req, res } = createMocks({ method: "GET", query: { name: "Unknown Person" } });
+
+    await handler(req, res);
+
+    expect(res._getJSONData()).toEqual({ character: null });
+  });
+
   it("sorts the complete cached list before applying pagination", async () => {
     mockOrderBy.mockResolvedValue([
       makeRow("zeus", undefined, "mythology", new Date("2026-01-02")),

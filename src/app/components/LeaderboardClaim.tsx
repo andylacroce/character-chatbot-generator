@@ -15,29 +15,42 @@ import {
 import { authenticatedFetch } from "../../utils/api";
 import styles from "./styles/Leaderboard.module.css";
 
-const SETTINGS_URL = "/api/game/leaderboard-settings";
+const DEFAULT_SETTINGS_URL = "/api/guess-who-next/leaderboard-settings";
 
-const transport: LeaderboardClaimTransport = {
-  load: async () => {
-    const res = await authenticatedFetch(SETTINGS_URL);
-    if (!res.ok) throw new Error(LEADERBOARD_COPY.settingsLoadError);
-    return res.json();
-  },
-  save: async (request) => {
-    const res = await authenticatedFetch(SETTINGS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    });
-    const data = (await res.json()) as LeaderboardSettingsResponse & { error?: string };
-    if (!res.ok) throw new Error(data.error || "");
-    return data;
-  },
-};
+/** Builds a leaderboard-settings transport pointed at the given game's endpoint. */
+function makeTransport(settingsUrl: string): LeaderboardClaimTransport {
+  return {
+    load: async () => {
+      const res = await authenticatedFetch(settingsUrl);
+      if (!res.ok) throw new Error(LEADERBOARD_COPY.settingsLoadError);
+      return res.json();
+    },
+    save: async (request) => {
+      const res = await authenticatedFetch(settingsUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      });
+      const data = (await res.json()) as LeaderboardSettingsResponse & { error?: string };
+      if (!res.ok) throw new Error(data.error || "");
+      return data;
+    },
+  };
+}
 
-/** Shows a name form only when this account or guest browser owns a top-ten score. */
-export default function LeaderboardClaim({ onChange }: { onChange?: () => void }) {
-  const claim = useLeaderboardClaim(transport, onChange);
+/**
+ * Shows a name form only when this account or guest browser owns a top-ten score.
+ * `settingsUrl` defaults to "Guess Who's Next"'s endpoint; GuessWhoPage.tsx passes
+ * "/api/guess-who/leaderboard-settings" for the new game's own separate opt-in.
+ */
+export default function LeaderboardClaim({
+  onChange,
+  settingsUrl = DEFAULT_SETTINGS_URL,
+}: {
+  onChange?: () => void;
+  settingsUrl?: string;
+}) {
+  const claim = useLeaderboardClaim(makeTransport(settingsUrl), onChange);
 
   if (!claim.settings)
     return claim.error ? (
