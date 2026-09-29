@@ -238,10 +238,11 @@ function GuessWhoPage() {
 
   const belowName = (
     <div className={styles.streakBadge} data-testid="guess-who-streak-badge">
-      {GUESS_WHO_STREAK_LABEL}: {displayedStreak}
+      <span className={styles.streakValue}>
+        {GUESS_WHO_STREAK_LABEL}: {displayedStreak}
+      </span>
       {typeof highScore === "number" && highScore > 0 && (
         <span className={styles.highScoreBadge} data-testid="guess-who-high-score-badge">
-          {" "}
           · Best: {highScore}
         </span>
       )}

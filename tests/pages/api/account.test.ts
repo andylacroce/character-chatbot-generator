@@ -15,8 +15,14 @@ jest.mock("../../../src/utils/userBlobs", () => ({
   deleteUserBlobs: (...args: unknown[]) => mockDeleteUserBlobs(...args),
 }));
 
-const { guessWhoNextGuestProfiles, guessWhoNextResults, users, verificationTokens } =
-  jest.requireActual("../../../src/db/schema");
+const {
+  guessWhoGuestProfiles,
+  guessWhoNextGuestProfiles,
+  guessWhoNextResults,
+  guessWhoResults,
+  users,
+  verificationTokens,
+} = jest.requireActual("../../../src/db/schema");
 
 const mockSelectWhere = jest.fn();
 const mockSelect = jest.fn(() => ({ from: () => ({ where: mockSelectWhere }) }));
@@ -89,6 +95,8 @@ describe("account API", () => {
         verificationTokens,
         guessWhoNextResults,
         guessWhoNextGuestProfiles,
+        guessWhoResults,
+        guessWhoGuestProfiles,
       ]),
     );
     expect(mockDeleteUserBlobs).toHaveBeenCalledWith("user-1", ["https://x/a.png", null]);

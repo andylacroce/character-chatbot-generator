@@ -115,6 +115,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // player, but never written back into this token — recompute it the same way here,
     // from the same trusted source value.
     const newStreak = state.streak + 1;
+    // Unlike guess-who-next (where usedNames only gains the just-revealed
+    // nextCharacterName here, since it's a distinct identity from currentCharacterName),
+    // this game's usedNames already contains state.hiddenName by construction — both
+    // start.ts and this handler's own signGuessWhoState call below add a round's
+    // hiddenName to usedNames the moment that round is created, since here the single
+    // chatted-with identity IS the mystery, not a separate hidden target. No extra
+    // exclusion needed here.
     const newUsedNames = [...state.usedNames];
 
     if (stream) {

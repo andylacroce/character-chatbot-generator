@@ -101,15 +101,28 @@
 
 /* --- Header slots (belowName / menuItems) fed into ChatShell --- */
 
+/* A flex row (not plain inline text) so that when the header's narrow center column
+   forces a wrap, the whole "· Best: N" segment moves to its own line instead of
+   breaking mid-phrase and orphaning the "·" at the end of line one — see
+   .streakValue/.highScoreBadge's `white-space: nowrap` below. */
 .streakBadge {
-  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.4em;
+  row-gap: 0.05em;
+  justify-content: center;
   font-weight: 700;
   font-size: 0.9rem;
   color: var(--color-primary);
   letter-spacing: 0.02em;
 }
 
+.streakValue {
+  white-space: nowrap;
+}
+
 .highScoreBadge {
+  white-space: nowrap;
   font-weight: 600;
   color: var(--color-text-secondary);
 }
@@ -223,6 +236,18 @@
     border-radius: 6px;
     margin-left: 0;
     min-width: 0;
+  }
+
+  /* AppHeader's mobile grid gives .headerCenter roughly 140-150px between the fixed
+     7rem-floor side columns (see AppHeader.module.css) — too narrow at the desktop
+     0.9rem size to fit "Streak: 0" and "· Best: 128" on one line even as whole,
+     non-breaking segments (see the flex-wrap fix above). Shrinking the badge text
+     lets both segments fit on one line at ordinary phone widths; on the very
+     narrowest real phones (~320px) they still wrap cleanly onto two lines as whole
+     segments instead of breaking mid-phrase. */
+  .streakBadge {
+    font-size: 0.76rem;
+    letter-spacing: 0;
   }
 }
 

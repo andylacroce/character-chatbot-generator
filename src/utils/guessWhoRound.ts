@@ -14,7 +14,7 @@ import gameCharacterNames from "../data/gameCharacterNames";
 import gameCharacterWork from "../data/gameCharacterWork";
 import { generateGuessWhoSelfCluePersonaPrompt } from "../config/serverConfig";
 import { getOrGenerateAvatar } from "./avatarGeneration";
-import { getOpeningReply } from "./guessWhoNextReply";
+import { getOpeningReply, SELF_CLUE_OPENING_INSTRUCTION } from "./guessWhoNextReply";
 import { getVoiceConfigForCharacter } from "./characterVoices";
 import type { CharacterVoiceConfig } from "./characterVoices";
 import { synthesizeReplyAudio } from "./ttsReply";
@@ -64,7 +64,7 @@ export async function generateSelfClueRound(
   // Likewise, the opening reply only needs personaPrompt and the voice config only needs
   // gender (from the avatar step above) — neither depends on the other's result.
   const [reply, voiceConfig] = await Promise.all([
-    getOpeningReply(personaPrompt).then((result) => {
+    getOpeningReply(personaPrompt, SELF_CLUE_OPENING_INSTRUCTION).then((result) => {
       onProgress?.("reply");
       return result;
     }),

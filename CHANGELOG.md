@@ -7,6 +7,7 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 - Rebuilt Guess Who from a static clue-list (5 pre-written hints revealed one at a time in a dedicated screen with a separate guess field) into a real chat: you converse with a mystery character who never says its own name, and it naturally drops real, escalating clues about itself as you talk — guesses go right into the same chat box, just like Guess Who's Next. One wrong guess is forgiven per round; a second reveals who it was.
 - The character's persona, avatar, and voice are all generated up front for full audio from the first line, but its name and portrait stay hidden in every response until a correct guess, a second wrong guess, or giving up reveals them.
 - Both games now share one tuned guess classifier and one SSE round-progress helper instead of near-duplicate copies, so a future fix to either applies to both.
+- Fixed the account deletion flow to also clear a guest's Guess Who leaderboard entry and public name on that browser, not just Guess Who's Next's — deleting your account now reliably erases both games' data on this device.
 
 ## v0.24.0 — 2026-09-29 — Established characters only
 

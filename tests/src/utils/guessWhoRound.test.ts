@@ -17,6 +17,7 @@ jest.mock("../../../src/utils/avatarGeneration", () => ({
 const mockGetOpeningReply = jest.fn();
 jest.mock("../../../src/utils/guessWhoNextReply", () => ({
   getOpeningReply: (...args: unknown[]) => mockGetOpeningReply(...args),
+  SELF_CLUE_OPENING_INSTRUCTION: "__SELF_CLUE_OPENING_INSTRUCTION__",
 }));
 
 const mockGetVoiceConfigForCharacter = jest.fn();
@@ -30,6 +31,7 @@ jest.mock("../../../src/utils/ttsReply", () => ({
 }));
 
 import { generateSelfClueRound } from "../../../src/utils/guessWhoRound";
+import { SELF_CLUE_OPENING_INSTRUCTION } from "../../../src/utils/guessWhoNextReply";
 import gameCharacterNames from "../../../src/data/gameCharacterNames";
 import gameCharacterWork from "../../../src/data/gameCharacterWork";
 
@@ -69,14 +71,17 @@ describe("guessWhoRound / generateSelfClueRound", () => {
     );
   });
 
-  it("generates the avatar as recognized: true for the picked name", async () => {
+  it("generates the avatar for the picked name", async () => {
     await generateSelfClueRound([]);
-    expect(mockGetOrGenerateAvatar).toHaveBeenCalledWith("Irene Adler", { recognized: true });
+    expect(mockGetOrGenerateAvatar).toHaveBeenCalledWith("Irene Adler");
   });
 
-  it("generates the opening reply from the persona prompt", async () => {
+  it("generates the opening reply using the self-clue opening instruction, not the guess-who-next one", async () => {
     await generateSelfClueRound([]);
-    expect(mockGetOpeningReply).toHaveBeenCalledWith("Irene Adler's self-clue persona prompt");
+    expect(mockGetOpeningReply).toHaveBeenCalledWith(
+      "Irene Adler's self-clue persona prompt",
+      SELF_CLUE_OPENING_INSTRUCTION,
+    );
   });
 
   it("casts voice using the hidden name, its gender, and its persona prompt", async () => {
