@@ -21,7 +21,7 @@ import {
 } from "character-chatbot-shared";
 import styles from "./styles/LandingCharacterCarousel.module.css";
 
-const WEB_CAROUSEL_ROTATE_MS = 7000;
+const WEB_CAROUSEL_ROTATE_MS = 6000;
 
 const cache: CarouselCache = {
   load: () =>
