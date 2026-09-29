@@ -96,7 +96,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const state = verifyGuessWhoState(guessWhoToken);
   if (!state) {
-    logEvent("info", "guess_who_continue_invalid_token", "Rejected an invalid or expired Guess Who token");
+    logEvent(
+      "info",
+      "guess_who_continue_invalid_token",
+      "Rejected an invalid or expired Guess Who token",
+    );
     res.status(400).json({ error: "Your game session has expired. Please start a new game." });
     return;
   }

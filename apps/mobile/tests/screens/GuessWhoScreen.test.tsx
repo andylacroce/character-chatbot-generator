@@ -167,9 +167,7 @@ describe("GuessWhoScreen", () => {
     expect(await utils.findByText("🎉 Correct! It was Cleopatra! Streak: 1.")).toBeTruthy();
     expect(utils.getByText("Streak: 1 · Best: 1")).toBeTruthy();
 
-    mockedContinue.mockResolvedValueOnce(
-      round({ reply: "A new voice greets you.", streak: 1 }),
-    );
+    mockedContinue.mockResolvedValueOnce(round({ reply: "A new voice greets you.", streak: 1 }));
     await fireEvent.press(utils.getByText("Continue"));
     expect(await utils.findByText("A new voice greets you.")).toBeTruthy();
     expect(mockedContinue).toHaveBeenCalledWith("token-1");
@@ -229,9 +227,7 @@ describe("GuessWhoScreen", () => {
       "chatbot-guess-who-transcript",
       JSON.stringify({
         streak: 0,
-        messages: [
-          { sender: "???", text: "Hail, mortal.", audioFileUrl: "/api/audio?file=z.mp3" },
-        ],
+        messages: [{ sender: "???", text: "Hail, mortal.", audioFileUrl: "/api/audio?file=z.mp3" }],
         roundStartIndex: 0,
         lastEvent: null,
       }),

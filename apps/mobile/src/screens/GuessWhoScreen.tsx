@@ -59,12 +59,21 @@ export default function GuessWhoScreen({ navigation }: Props) {
   const game = useGuessWhoController();
   const [showInstructions, setShowInstructions] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const { started, lastEvent, giveUpRequested, clearGiveUpRequest, giveUp, displayedStreak, highScore } =
-    game;
+  const {
+    started,
+    lastEvent,
+    giveUpRequested,
+    clearGiveUpRequest,
+    giveUp,
+    displayedStreak,
+    highScore,
+  } = game;
 
   const revealed =
     lastEvent?.type === "correct" || lastEvent?.type === "gameover" ? lastEvent : null;
-  const displayName = revealed ? displayCharacterName(revealed.revealedName) : GUESS_WHO_MYSTERY_NAME;
+  const displayName = revealed
+    ? displayCharacterName(revealed.revealedName)
+    : GUESS_WHO_MYSTERY_NAME;
   const displayAvatarUrl = revealed?.avatarUrl ?? GUESS_WHO_FALLBACK_AVATAR;
 
   useEffect(() => {
@@ -181,7 +190,9 @@ export default function GuessWhoScreen({ navigation }: Props) {
           </View>
         ) : (
           <Button
-            label={gameOver ? GUESS_WHO_SCREEN_COPY.playAgainLabel : GUESS_WHO_SCREEN_COPY.startLabel}
+            label={
+              gameOver ? GUESS_WHO_SCREEN_COPY.playAgainLabel : GUESS_WHO_SCREEN_COPY.startLabel
+            }
             onPress={() => void game.startGame()}
           />
         )}

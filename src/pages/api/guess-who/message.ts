@@ -200,7 +200,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           ? recordGuessWhoResult(eligibleUserId, eligibleGuestId, state.runId, newStreak)
           : Promise.resolve(),
       ]);
-      const reactionReply = await getGuessReactionReply(state.personaPrompt, "correct", revealedName);
+      const reactionReply = await getGuessReactionReply(
+        state.personaPrompt,
+        "correct",
+        revealedName,
+      );
       const reactionAudioFileUrl = await synthesizeReplyAudio(
         reactionReply,
         state.hiddenName,
@@ -273,7 +277,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return;
     }
 
-    const reactionReply = await getGuessReactionReply(state.personaPrompt, "wrong", state.hiddenName);
+    const reactionReply = await getGuessReactionReply(
+      state.personaPrompt,
+      "wrong",
+      state.hiddenName,
+    );
     const audioFileUrl = await synthesizeReplyAudio(
       reactionReply,
       state.hiddenName,

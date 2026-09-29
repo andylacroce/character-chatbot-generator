@@ -355,9 +355,9 @@ describe("useGuessWhoController", () => {
       await result.current.sendMessage();
     });
 
-    expect(
-      result.current.messages.some((m) => m.text === "That's an interesting question."),
-    ).toBe(true);
+    expect(result.current.messages.some((m) => m.text === "That's an interesting question.")).toBe(
+      true,
+    );
     expect(result.current.guessWhoToken).toBe("token-1");
     expect(result.current.lastEvent).toBeNull();
   });
@@ -413,9 +413,7 @@ describe("useGuessWhoController", () => {
     expect(result.current.guessWhoToken).toBe("judged-token");
     expect(result.current.streak).toBe(0);
     expect(result.current.messages.some((m) => m.text === "Brilliant, you got it!")).toBe(true);
-    expect(
-      result.current.messages.some((m) => m.text === "Ah, a new mystery begins."),
-    ).toBe(false);
+    expect(result.current.messages.some((m) => m.text === "Ah, a new mystery begins.")).toBe(false);
 
     mockAuthenticatedFetch.mockResolvedValueOnce(
       mockSseResponse([

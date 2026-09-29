@@ -27,7 +27,8 @@ jest.mock("../../../../src/utils/analytics", () => ({
 
 const mockUpdateHighScoreIfBeaten = jest.fn();
 jest.mock("../../../../src/utils/guessWhoHighScore", () => ({
-  updateHighScoreIfBeaten: (...args: unknown[]) => mockUpdateHighScoreIfBeaten(...(args as unknown[])),
+  updateHighScoreIfBeaten: (...args: unknown[]) =>
+    mockUpdateHighScoreIfBeaten(...(args as unknown[])),
 }));
 
 const mockRecordGuessWhoResult = jest.fn();

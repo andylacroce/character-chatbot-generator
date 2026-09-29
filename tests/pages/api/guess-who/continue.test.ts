@@ -139,11 +139,7 @@ describe("guess-who/continue API", () => {
     expect(state?.canContinue).toBe(false);
 
     expect(mockGenerateSelfClueRound).toHaveBeenCalledWith(["Irene Adler"], undefined);
-    expect(mockRecordEvent).toHaveBeenCalledWith(
-      "guess_who_round_continued",
-      { streak: 3 },
-      null,
-    );
+    expect(mockRecordEvent).toHaveBeenCalledWith("guess_who_round_continued", { streak: 3 }, null);
   });
 
   it("streams real progress frames as each round-generation step completes when stream: true", async () => {

@@ -98,9 +98,8 @@ export function useGuessWhoController() {
   const [continueProgressStages, setContinueProgressStages] =
     useState<LoadingStage[]>(initialRoundStages());
   const [startProgressMessage, setStartProgressMessage] = useState("Starting…");
-  const [startProgressStages, setStartProgressStages] = useState<LoadingStage[]>(
-    initialRoundStages(),
-  );
+  const [startProgressStages, setStartProgressStages] =
+    useState<LoadingStage[]>(initialRoundStages());
   const chatBoxRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -114,14 +113,10 @@ export function useGuessWhoController() {
         setStartProgressStages(stages);
       }),
     continueRound: (guessWhoToken) =>
-      fetchRoundWithProgress(
-        "/api/guess-who/continue",
-        { guessWhoToken },
-        (label, stages) => {
-          setContinueProgressMessage(label);
-          setContinueProgressStages(stages);
-        },
-      ),
+      fetchRoundWithProgress("/api/guess-who/continue", { guessWhoToken }, (label, stages) => {
+        setContinueProgressMessage(label);
+        setContinueProgressStages(stages);
+      }),
     sendMessage: (request) => postGuessWho("/api/guess-who/message", request),
     giveUp: (guessWhoToken) => postGuessWho("/api/guess-who/give-up", { guessWhoToken }),
     getHighScore: () => authenticatedFetch("/api/guess-who/high-score").then((res) => res.json()),
@@ -236,12 +231,7 @@ export function useGuessWhoController() {
       if (errName === "AbortError") {
         logEvent("info", "guess_who_audio_playback_aborted", "Audio playback aborted");
       } else {
-        logGuessWhoEvent(
-          "error",
-          "guess_who_audio_playback_error",
-          "Audio playback failed",
-          err,
-        );
+        logGuessWhoEvent("error", "guess_who_audio_playback_error", "Audio playback failed", err);
       }
     });
     return () => {

@@ -357,7 +357,9 @@ describe("api", () => {
 
     it("rejects a malformed round", async () => {
       mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
-      await expect(startGuessWhoRound()).rejects.toThrow("Invalid response from /api/guess-who/start");
+      await expect(startGuessWhoRound()).rejects.toThrow(
+        "Invalid response from /api/guess-who/start",
+      );
     });
 
     it("sends turns, give-ups and the high score to their routes", async () => {

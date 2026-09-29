@@ -88,7 +88,15 @@ describe("classifyGuess", () => {
 
   it("passes recent conversation history (last 6 entries) into the user message", async () => {
     mockClaudeResponse({ reasoning: "x", status: "none", correct: false });
-    const history = ["Bot: line1", "User: line2", "Bot: line3", "User: line4", "Bot: line5", "User: line6", "Bot: line7"];
+    const history = [
+      "Bot: line1",
+      "User: line2",
+      "Bot: line3",
+      "User: line4",
+      "Bot: line5",
+      "User: line6",
+      "Bot: line7",
+    ];
     await classifyGuess("Sherlock Holmes", "hello", history);
     const call = mockCreate.mock.calls[0][0];
     const userContent = call.messages[0].content as string;
@@ -112,7 +120,9 @@ describe("classifyGuess", () => {
     await classifyGuess("Not A Real Curated Name", "hello", []);
     const call = mockCreate.mock.calls[0][0];
     const userContent = call.messages[0].content as string;
-    expect(userContent).toContain('Hidden character (trusted, for judging only): "Not A Real Curated Name"');
+    expect(userContent).toContain(
+      'Hidden character (trusted, for judging only): "Not A Real Curated Name"',
+    );
     expect(userContent).not.toContain("specifically the one from");
   });
 

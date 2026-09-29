@@ -21,7 +21,10 @@ describe("applyGuessWhoMessageResponse", () => {
   });
 
   it("attributes an ordinary reply to the mystery sender and leaves the token alone", () => {
-    const outcome = applyGuessWhoMessageResponse({ reply: "Hmm, interesting guess.", audioFileUrl: "/a" });
+    const outcome = applyGuessWhoMessageResponse({
+      reply: "Hmm, interesting guess.",
+      audioFileUrl: "/a",
+    });
     expect(outcome.reply).toEqual({
       sender: GUESS_WHO_MYSTERY_NAME,
       text: "Hmm, interesting guess.",
@@ -96,9 +99,9 @@ describe("applyGuessWhoMessageResponse", () => {
   });
 
   it("throws when a game-over response has no revealedName", () => {
-    expect(() => applyGuessWhoMessageResponse({ reply: "No.", gameOver: true, finalStreak: 0 })).toThrow(
-      "Invalid response",
-    );
+    expect(() =>
+      applyGuessWhoMessageResponse({ reply: "No.", gameOver: true, finalStreak: 0 }),
+    ).toThrow("Invalid response");
   });
 
   it("tolerates a first wrong guess", () => {

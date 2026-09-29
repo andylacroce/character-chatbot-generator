@@ -114,9 +114,7 @@ export function useGuessWhoSession({
   useEffect(() => {
     if (!hydrated) return;
     void deps.current.storage.save(
-      guessWhoToken
-        ? { guessWhoToken, streak, messages, roundStartIndex, lastEvent }
-        : null,
+      guessWhoToken ? { guessWhoToken, streak, messages, roundStartIndex, lastEvent } : null,
     );
   }, [hydrated, guessWhoToken, streak, messages, roundStartIndex, lastEvent]);
 

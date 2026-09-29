@@ -298,7 +298,10 @@ export function saveLeaderboardSettings(
  * gameGuest.ts) — one anonymous player id, shared across both games.
  */
 export async function startGuessWhoRound(): Promise<GuessWhoRoundResult> {
-  return parseGuessWhoRoundResult(await gameFetch("/api/guess-who/start", {}), "/api/guess-who/start");
+  return parseGuessWhoRoundResult(
+    await gameFetch("/api/guess-who/start", {}),
+    "/api/guess-who/start",
+  );
 }
 
 /** Generates the next round after a correct guess (plain JSON, like startGuessWhoRound). */

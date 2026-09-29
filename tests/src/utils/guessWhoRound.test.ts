@@ -55,7 +55,10 @@ describe("guessWhoRound / generateSelfClueRound", () => {
 
   it("picks a hidden name excluding excludeNames, drawing from the game's curated pool", async () => {
     await generateSelfClueRound(["Sherlock Holmes"]);
-    expect(mockPickRandomCharacterName).toHaveBeenCalledWith(["Sherlock Holmes"], gameCharacterNames);
+    expect(mockPickRandomCharacterName).toHaveBeenCalledWith(
+      ["Sherlock Holmes"],
+      gameCharacterNames,
+    );
   });
 
   it("generates the self-clue persona prompt for the picked name, with work grounding when known", async () => {
