@@ -25,10 +25,6 @@ jest.mock("../../../../src/utils/analytics", () => ({
   recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
 }));
 
-jest.mock("../../../../src/utils/environment", () => ({
-  getCurrentEnvironment: () => "test",
-}));
-
 const mockUpdateHighScoreIfBeaten = jest.fn();
 jest.mock("../../../../src/utils/guessWhoHighScore", () => ({
   updateHighScoreIfBeaten: (...args: unknown[]) => mockUpdateHighScoreIfBeaten(...(args as unknown[])),
