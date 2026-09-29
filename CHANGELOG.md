@@ -2,11 +2,15 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
-## v0.23.0 — 2026-09-29 — Established characters only
+## v0.24.0 — 2026-09-29 — Established characters only
 
 - Removed original/invented character creation from web, mobile, shared state, and the personality/avatar API contracts. Unrecognized names now stop before generation with a clear established-character prompt.
 - Retired original-character description and appearance modals, copy, prompt handling, tests, and request fields. Existing local non-persistent sessions are removed instead of resumed.
-- Added the one-time `chars:scrub-unrecognized` maintenance command to reclassify legacy cache names and delete unrecognized cache rows, matching saved bots/messages, and unreferenced Blob portraits after a reviewed dry run.
+- Added the one-time `chars:scrub-unrecognized` maintenance command to conservatively identify and delete invented cache rows, matching saved bots/messages, and unreferenced Blob portraits after a reviewed dry run.
+
+## v0.23.0 — 2026-09-29 — Light mode by default
+
+- The web app and mobile app now default to light mode for a visitor/device with no stored theme preference yet. An explicit toggle choice is still remembered and always wins on return visits.
 
 ## v0.22.0 — 2026-09-28 — Guess Who and a clearer responsive landing page
 
