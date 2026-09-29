@@ -598,6 +598,31 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           {error && <div className={styles.error}>{error}</div>}
 
           {!isLaunchingFromUrl && !interstitial && (
+            <>
+              <div className={styles.gamesBandEyebrow}>Two ways to play</div>
+              <div className={styles.gamesBand} data-testid="games-invitation-band">
+                <Link href="/guess-who" className={styles.gamesBandHalf}>
+                  <span className={styles.gamesBandKicker}>Featured</span>
+                  <span className={styles.gamesBandTitleFeatured}>Guess Who</span>
+                  <span className={styles.gamesBandHook}>
+                    Clues reveal a hidden character. Can you guess who?
+                  </span>
+                  <span className={styles.gamesBandCta}>Play &rarr;</span>
+                </Link>
+                <span className={styles.gamesBandDivider} aria-hidden="true">
+                  &amp;
+                </span>
+                <Link href="/guess-who-next" className={styles.gamesBandHalf}>
+                  <span className={styles.gamesBandTitle}>Guess Who&apos;s Next</span>
+                  <span className={styles.gamesBandHook}>
+                    Chat with a character steering toward someone else.
+                  </span>
+                  <span className={styles.gamesBandCta}>Play &rarr;</span>
+                </Link>
+              </div>
+            </>
+          )}
+          {!isLaunchingFromUrl && !interstitial && (
             <div className={styles.footerLinks}>
               {sessionStatus === "authenticated" && (
                 <Link href="/history" className={styles.footerLink}>
@@ -623,26 +648,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
               <a href="/privacy" className={styles.footerLink}>
                 Privacy
               </a>
-            </div>
-          )}
-          {!isLaunchingFromUrl && !interstitial && (
-            <div className={styles.gamesBand} data-testid="games-invitation-band">
-              <Link href="/guess-who" className={styles.gamesBandHalf}>
-                <span className={styles.gamesBandKicker}>Featured</span>
-                <span className={styles.gamesBandTitleFeatured}>Guess Who</span>
-                <span className={styles.gamesBandHook}>
-                  Clues reveal a hidden character. Can you guess who?
-                </span>
-              </Link>
-              <span className={styles.gamesBandDivider} aria-hidden="true">
-                &amp;
-              </span>
-              <Link href="/guess-who-next" className={styles.gamesBandHalf}>
-                <span className={styles.gamesBandTitle}>Guess Who&apos;s Next</span>
-                <span className={styles.gamesBandHook}>
-                  Chat with a character steering toward someone else.
-                </span>
-              </Link>
             </div>
           )}
         </div>
