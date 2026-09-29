@@ -855,8 +855,7 @@
 
 @media (max-width: 380px) {
   .mosaic {
-    column-width: auto;
-    column-count: 1;
+    column-gap: 0.5rem;
   }
 
   .s1 .photoFrame {
