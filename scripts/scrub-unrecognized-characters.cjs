@@ -57,7 +57,16 @@ Return ONLY a valid JSON array, one entry per input in the same order, shaped {"
 
 /** Deletes an unreferenced Vercel Blob URL after its database rows are gone. */
 async function deleteBlobIfUnreferenced(url) {
-  if (!blobToken || !/^https:\/\/.+\.blob\.vercel-storage\.com\//.test(url)) return false;
+  if (!blobToken) return false;
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsedUrl.protocol !== "https:" || !parsedUrl.hostname.endsWith(".blob.vercel-storage.com")) {
+    return false;
+  }
   const cacheRefs = await sql`SELECT 1 FROM avatar_cache WHERE avatar_url = ${url} LIMIT 1`;
   const botRefs = await sql`SELECT 1 FROM bots WHERE avatar_url = ${url} LIMIT 1`;
   if (cacheRefs.length || botRefs.length) return false;
