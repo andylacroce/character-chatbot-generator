@@ -49,6 +49,7 @@ never be the thing that fails late), then runs, in order:
 | Secret Scan | `secret-scan.yml` | PR and push to `main` | `secret-scan` |
 | CodeQL | GitHub default setup (no file) | PR and push to `main` | Code scanning rule: no error-level or high-severity alerts |
 | Dependabot auto-merge | `dependabot-auto-merge.yml` | Dependabot PRs | None (it only turns on auto-merge) |
+| Tag release | `tag-release.yml` | Push to `main` | None (after a merge, it creates the annotated `v<package.json version>` tag if missing) |
 | Expo SDK upgrade | `expo-sdk-upgrade.yml` | Mondays 14:00 UTC, or manually | None (it opens a PR that goes through the checks above) |
 
 Differences from the local gate, all deliberate:

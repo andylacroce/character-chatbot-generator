@@ -1,0 +1,35 @@
+name: Tag release
+
+# Tags main with v<package.json version> once that version lands. Exists because
+# Claude Code cloud sessions can push branches but not tags (see CLAUDE.md,
+# "Versioning"); GITHUB_TOKEN has no such limit. Idempotent: a push that doesn't
+# bump the version finds the tag already there and does nothing.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create tag if missing
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            echo "$version already exists, nothing to do"
+            exit 0
+          fi
+          title=$(grep -m1 "^## $version " CHANGELOG.md | sed -E 's/^## [^ ]+ — [^ ]+ — //')
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$version" -m "${title:-$version}"
+          git push origin "$version"
