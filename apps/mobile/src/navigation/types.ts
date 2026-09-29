@@ -5,6 +5,7 @@ export type RootStackParamList = {
   CharWall: undefined;
   History: undefined;
   GuessWhoNext: undefined;
+  GuessWho: undefined;
   Leaderboard: undefined;
   Chat: { bot: Bot };
 };

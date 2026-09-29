@@ -17,6 +17,7 @@ import {
   type CharacterEntry,
   type ChatMessage,
   type PersistedGameState,
+  type PersistedGuessWhoState,
 } from "character-chatbot-shared";
 
 /** Persists the currently active character. */
@@ -108,6 +109,31 @@ export async function loadGameInstructionsSeen(): Promise<boolean> {
 /** Marks the "how to play" explainer as seen. */
 export async function saveGameInstructionsSeen(): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEYS.guessWhoNextInstructionsSeen, "true");
+}
+
+/** Loads an in-progress "Guess Who" run, or null if there isn't one. */
+export async function loadGuessWhoState(): Promise<PersistedGuessWhoState | null> {
+  const raw = await AsyncStorage.getItem(STORAGE_KEYS.guessWhoState);
+  return raw ? (JSON.parse(raw) as PersistedGuessWhoState) : null;
+}
+
+/** Persists the current "Guess Who" run, or clears it when `state` is null. */
+export async function saveGuessWhoState(state: PersistedGuessWhoState | null): Promise<void> {
+  if (!state) {
+    await AsyncStorage.removeItem(STORAGE_KEYS.guessWhoState);
+    return;
+  }
+  await AsyncStorage.setItem(STORAGE_KEYS.guessWhoState, JSON.stringify(state));
+}
+
+/** Whether "Guess Who"'s one-time "how to play" explainer has been shown on this device. */
+export async function loadGuessWhoInstructionsSeen(): Promise<boolean> {
+  return (await AsyncStorage.getItem(STORAGE_KEYS.guessWhoInstructionsSeen)) === "true";
+}
+
+/** Marks "Guess Who"'s "how to play" explainer as seen. */
+export async function saveGuessWhoInstructionsSeen(): Promise<void> {
+  await AsyncStorage.setItem(STORAGE_KEYS.guessWhoInstructionsSeen, "true");
 }
 
 /** The landing carousel's last portrait sample, repainted instantly on the next launch. */

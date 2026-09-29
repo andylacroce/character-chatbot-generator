@@ -8,6 +8,7 @@ import ChatScreen from "./src/screens/ChatScreen";
 import CharWallScreen from "./src/screens/CharWallScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
 import GuessWhoNextScreen from "./src/screens/GuessWhoNextScreen";
+import GuessWhoScreen from "./src/screens/GuessWhoScreen";
 import LeaderboardScreen from "./src/screens/LeaderboardScreen";
 import DarkModeButton from "./src/components/DarkModeButton";
 import AccountHeaderButton from "./src/components/AccountHeaderButton";
@@ -78,6 +79,7 @@ function AppNavigator() {
           component={GuessWhoNextScreen}
           options={{ title: "Guess Who's Next" }}
         />
+        <Stack.Screen name="GuessWho" component={GuessWhoScreen} options={{ title: "Guess Who" }} />
         <Stack.Screen
           name="Leaderboard"
           component={LeaderboardScreen}

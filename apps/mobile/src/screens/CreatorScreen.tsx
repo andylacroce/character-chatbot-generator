@@ -15,6 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   displayCharacterName,
   GUESS_WHO_NEXT_CTA_LABEL,
+  GUESS_WHO_CTA_LABEL,
   sanitizeCharacterName,
   useCharacterCreation,
   type Bot,
@@ -209,6 +210,14 @@ export default function CreatorScreen({ navigation }: Props) {
           >
             <Ionicons name="grid-outline" size={16} color={colors.secondary} />
             <Text style={styles.linkText}>Character Wall</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate("GuessWho")}
+            style={styles.link}
+            android_ripple={{ color: colors.secondaryContainer, borderless: true }}
+          >
+            <Ionicons name="sparkles-outline" size={16} color={colors.secondary} />
+            <Text style={styles.linkText}>{GUESS_WHO_CTA_LABEL}</Text>
           </Pressable>
           <Pressable
             onPress={() => navigation.navigate("GuessWhoNext")}

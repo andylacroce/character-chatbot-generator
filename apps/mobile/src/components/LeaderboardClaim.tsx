@@ -6,31 +6,56 @@ import {
   type LeaderboardClaimTransport,
   type ThemeColors,
 } from "character-chatbot-shared";
-import { apiErrorMessage, getLeaderboardSettings, saveLeaderboardSettings } from "../api";
+import {
+  apiErrorMessage,
+  getGuessWhoLeaderboardSettings,
+  getLeaderboardSettings,
+  saveGuessWhoLeaderboardSettings,
+  saveLeaderboardSettings,
+} from "../api";
 import { useTheme } from "../ThemeContext";
 import Button from "./Button";
 
-const transport: LeaderboardClaimTransport = {
-  load: getLeaderboardSettings,
-  save: async (request) => {
-    try {
-      return await saveLeaderboardSettings(request);
-    } catch (err) {
-      throw new Error(apiErrorMessage(err, ""));
-    }
-  },
-};
+/** Which game's leaderboard opt-in this instance manages — "guessWhoNext" (default) or "guessWho". */
+type Game = "guessWhoNext" | "guessWho";
+
+function makeTransport(game: Game): LeaderboardClaimTransport {
+  const [load, save] =
+    game === "guessWho"
+      ? [getGuessWhoLeaderboardSettings, saveGuessWhoLeaderboardSettings]
+      : [getLeaderboardSettings, saveLeaderboardSettings];
+  return {
+    load,
+    save: async (request) => {
+      try {
+        return await save(request);
+      } catch (err) {
+        throw new Error(apiErrorMessage(err, ""));
+      }
+    },
+  };
+}
 
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
 
 /**
  * Lets a top-ten player choose or remove their public leaderboard name. Same shared claim
  * flow and copy as the web app's LeaderboardClaim.tsx; renders nothing otherwise.
+ * `game` defaults to "Guess Who's Next" for existing callers.
  */
-export default function LeaderboardClaim({ onChange }: { onChange?: () => void }) {
+export default function LeaderboardClaim({
+  onChange,
+  game = "guessWhoNext",
+}: {
+  onChange?: () => void;
+  game?: Game;
+}) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const claim = useLeaderboardClaim(transport, onChange);
+  const claim = useLeaderboardClaim(
+    useMemo(() => makeTransport(game), [game]),
+    onChange,
+  );
 
   if (!claim.settings) return claim.error ? <Text style={styles.error}>{claim.error}</Text> : null;
   if (!claim.visible) return null;
