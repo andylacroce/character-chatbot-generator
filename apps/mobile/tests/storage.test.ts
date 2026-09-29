@@ -45,6 +45,19 @@ describe("storage", () => {
     await expect(loadBot()).resolves.toBeNull();
   });
 
+  it("removes a retired non-persistent session and its character-scoped data", async () => {
+    await saveBot({ ...bot, skipPersistence: true });
+    await AsyncStorage.setItem(chatHistoryKey(bot.name), "[]");
+    await AsyncStorage.setItem(`voiceConfig-${bot.name}`, "{}");
+    await AsyncStorage.setItem(`lastPlayedAudioHash-${bot.name}`, "hash");
+
+    await expect(loadBot()).resolves.toBeNull();
+    await expect(AsyncStorage.getItem(STORAGE_KEYS.bot)).resolves.toBeNull();
+    await expect(AsyncStorage.getItem(chatHistoryKey(bot.name))).resolves.toBeNull();
+    await expect(AsyncStorage.getItem(`voiceConfig-${bot.name}`)).resolves.toBeNull();
+    await expect(AsyncStorage.getItem(`lastPlayedAudioHash-${bot.name}`)).resolves.toBeNull();
+  });
+
   it("appends messages to a character's chat history in order", async () => {
     const first: ChatMessage = { sender: "Me", text: "Hello" };
     const second: ChatMessage = { sender: bot.name, text: "Greetings." };

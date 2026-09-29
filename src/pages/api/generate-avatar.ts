@@ -11,7 +11,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { sanitizeCharacterName, sanitizeDescription } from "../../utils/security";
+import { sanitizeCharacterName } from "../../utils/security";
 import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
 import { getOrGenerateAvatar } from "../../utils/avatarGeneration";
 import { withRequestLog } from "../../utils/withRequestLog";
@@ -66,25 +66,6 @@ const avatarRateLimit = createRateLimiter({
  *                   Vercel Blob upload, returning a base64 data URL instead of a
  *                   durable link — the image is generated fresh every time and never
  *                   persisted anywhere server-side.
- *               recognized:
- *                 type: boolean
- *                 default: true
- *                 description: >
- *                   Mirrors /api/validate-character's `recognized` field. When false
- *                   (an original character), the shared avatar_cache table (lookup and
- *                   write) is skipped — an OC's name/portrait means something only to
- *                   its own creator, so it's never reused across users by name and
- *                   never appears on the public /chars gallery. Blob upload still
- *                   happens normally (unlike skipPersistence) so the image still gets
- *                   a durable URL for this user's own saved character.
- *               appearanceDescription:
- *                 type: string
- *                 description: >
- *                   Optional free-form visual description, collected alongside the
- *                   personality description for an unrecognized/original character.
- *                   Used as the primary basis for the image prompt instead of
- *                   inventing an appearance from the name alone. Treated as untrusted
- *                   creative-writing content, never as instructions.
  *     responses:
  *       200:
  *         description: >
@@ -119,7 +100,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const { name, skipPersistence, recognized, appearanceDescription } = req.body;
+  const { name, skipPersistence } = req.body;
   if (!name || typeof name !== "string") {
     res.status(400).json({ error: "Valid name required" });
     return;
@@ -129,15 +110,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(400).json({ error: "Invalid character name" });
     return;
   }
-  const sanitizedAppearance =
-    typeof appearanceDescription === "string" && appearanceDescription.trim()
-      ? sanitizeDescription(appearanceDescription)
-      : undefined;
-
   const result = await getOrGenerateAvatar(sanitizedName, {
     skipPersistence: skipPersistence === true,
-    recognized: recognized !== false,
-    appearanceDescription: sanitizedAppearance,
   });
 
   res.status(200).json({ avatarUrl: result.avatarUrl, gender: result.gender });

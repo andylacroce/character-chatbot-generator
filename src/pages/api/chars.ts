@@ -111,9 +111,7 @@ async function getAllCharacters(): Promise<CharacterEntry[]> {
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
     return cache.entries;
   }
-  // Original characters (recognized: false — see src/db/schema.ts) are excluded: their
-  // name/portrait means something only to the person who made them up, unlike a name
-  // every visitor to this public gallery would actually recognize.
+  // Keep legacy unsupported rows hidden until the retirement scrub deletes them.
   const rows = await getDb()
     .select()
     .from(avatarCache)

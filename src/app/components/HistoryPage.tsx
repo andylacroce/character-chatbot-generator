@@ -96,7 +96,7 @@ export default function HistoryPage() {
   } else if (bots!.length === 0) {
     body = (
       <p>
-        No saved chats yet. <Link href="/">Create a character</Link> to get started.
+        No saved chats yet. <Link href="/">Choose a character</Link> to get started.
       </p>
     );
   } else {

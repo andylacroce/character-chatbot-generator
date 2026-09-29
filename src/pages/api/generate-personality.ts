@@ -5,7 +5,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { sanitizeCharacterName, sanitizeDescription } from "../../utils/security";
+import { sanitizeCharacterName } from "../../utils/security";
 import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
 import { generatePersonalityPrompt } from "../../config/serverConfig";
 import { getSessionUserId } from "../../utils/getSessionUserId";
@@ -16,7 +16,7 @@ import { avatarCache } from "../../db/schema";
 import { withRequestLog } from "../../utils/withRequestLog";
 
 // Capped so this stays a cheap, bounded addition to a call already being made — not a
-// full table dump on every character creation. Ordering by recency is an arbitrary but
+// full table dump on every character launch. Ordering by recency is an arbitrary but
 // reasonable bias (no principled way to guess which existing names a given typo is
 // closest to without the fuzzy-match step itself), and the cap is generous enough for
 // this app's hobby-scale character count.
@@ -27,7 +27,7 @@ const MAX_EXISTING_NAMES_FOR_MATCHING = 300;
  * fuzzy-match step — so "sherlok holmes" resolves to the same avatar_cache row as an
  * existing "Sherlock Holmes" instead of spawning a misspelled duplicate. Returns [] on
  * any error or when no DATABASE_URL is configured — fuzzy matching is a nice-to-have,
- * never a requirement for character creation to work.
+ * never a requirement for character selection to work.
  */
 async function fetchExistingCharacterNames(): Promise<string[]> {
   if (!process.env.DATABASE_URL) return [];
@@ -81,15 +81,6 @@ const personalityRateLimit = createRateLimiter({
  *               name:
  *                 type: string
  *                 example: Sherlock Holmes
- *               description:
- *                 type: string
- *                 description: >
- *                   Optional free-form character concept, collected from the user when
- *                   /api/validate-character flagged this name as unrecognized (not an
- *                   actual character/person Claude knows). Used as the primary basis
- *                   for personality generation instead of the name alone. Treated as
- *                   untrusted creative-writing content, never as instructions; unsafe
- *                   requests inside it are disregarded server-side.
  *     responses:
  *       200:
  *         description: Generated personality prompt
@@ -113,6 +104,8 @@ const personalityRateLimit = createRateLimiter({
  *         description: Valid name required, or invalid character name
  *       405:
  *         description: Method not allowed
+ *       422:
+ *         description: Name is not a recognized historical, mythological, literary, or fictional figure
  *       429:
  *         description: Rate limit exceeded
  *       500:
@@ -128,7 +121,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!(await applyRateLimit(personalityRateLimit, req, res))) {
     return;
   }
-  const { name: originalName, description: originalDescription } = req.body;
+  const { name: originalName } = req.body;
   if (!originalName || typeof originalName !== "string") {
     res.status(400).json({ error: "Valid name required" });
     return;
@@ -138,28 +131,31 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(400).json({ error: "Invalid character name" });
     return;
   }
-  const sanitizedDescription =
-    typeof originalDescription === "string" && originalDescription.trim()
-      ? sanitizeDescription(originalDescription)
-      : undefined;
-
   try {
     logEvent(
       "info",
       "personality_prompt_start",
       "Generating personality prompt",
-      sanitizeLogMeta({
-        name: sanitizedName,
-        hasDescription: Boolean(sanitizedDescription),
-      }),
+      sanitizeLogMeta({ name: sanitizedName }),
     );
 
     const existingNames = await fetchExistingCharacterNames();
-    const { prompt: concisePrompt, correctedName } = await generatePersonalityPrompt(
-      sanitizedName,
-      sanitizedDescription,
-      existingNames,
-    );
+    const {
+      prompt: concisePrompt,
+      correctedName,
+      recognized,
+    } = await generatePersonalityPrompt(sanitizedName, existingNames);
+
+    if (recognized === false) {
+      logEvent(
+        "info",
+        "personality_unrecognized_rejected",
+        "Unrecognized character rejected by personality generation",
+        sanitizeLogMeta({ name: sanitizedName }),
+      );
+      res.status(422).json({ error: "Choose a character or person from history or fiction." });
+      return;
+    }
 
     logEvent(
       "info",
@@ -174,11 +170,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Deliberately excludes name/personality text — this table is a small internal usage
     // log, not a place to accumulate user-supplied content (see analyticsEvents doc).
     const userId = await getSessionUserId(req);
-    void recordEvent(
-      "bot_created",
-      { hasDescription: Boolean(sanitizedDescription), guest: !userId },
-      userId,
-    );
+    void recordEvent("bot_created", { guest: !userId }, userId);
 
     res.status(200).json({ personality: concisePrompt, correctedName });
   } catch (err) {

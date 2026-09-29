@@ -1,6 +1,6 @@
 {
   "name": "portrayal",
-  "version": "0.23.0",
+  "version": "0.25.0",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -39,10 +39,10 @@
     "db:check": "node scripts/check-db-schema.cjs",
     "db:generate": "drizzle-kit generate --config config/drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config config/drizzle.config.ts",
-    "chars:reclassify": "node scripts/reclassify-avatar-cache.cjs",
     "chars:backfill-display-names": "node scripts/backfill-avatar-display-names.cjs",
     "chars:backfill-full-names": "node scripts/backfill-full-character-names.cjs",
     "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs",
+    "chars:scrub-unrecognized": "node scripts/scrub-unrecognized-characters.cjs",
     "logs:scrub-ips": "node scripts/scrub-chat-log-ips.cjs"
   },
   "dependencies": {
@@ -51,7 +51,7 @@
     "@google-cloud/text-to-speech": "^7.1.0",
     "@neondatabase/serverless": "^1.1.0",
     "@next/third-parties": "^16.3.6",
-    "@scalar/nextjs-api-reference": "^0.12.3",
+    "@scalar/nextjs-api-reference": "^0.12.4",
     "@trendmicro/react-toggle-switch": "^0.5.7",
     "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.0",

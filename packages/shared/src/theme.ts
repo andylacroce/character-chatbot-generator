@@ -59,7 +59,7 @@ export const fonts = fontTokens;
  * that file's own doc comment for why it isn't imported from here too) but both
  * should be kept in sync by eye if this value ever changes.
  */
-export const DEFAULT_DARK_MODE = true;
+export const DEFAULT_DARK_MODE = false;
 
 /** In-app wordmark/hero copy — mirrors BotCreator.tsx's hero section exactly. */
 export const BRAND = {

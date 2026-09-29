@@ -105,7 +105,7 @@ describe("AdminStatsView", () => {
     expect(screen.queryByText("Saved characters")).not.toBeInTheDocument();
     expect(screen.queryByText("Hover or focus a point for exact counts")).not.toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Chart and table date range" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "Character creation" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Character conversations" }));
     expect(screen.getByText("Saved characters")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Chart and table date range" })).toBeInTheDocument();
     expect(screen.getByText("5 avg per bot")).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe("AdminStatsView", () => {
     await screen.findByText("Guess accuracy");
     gameTab.focus();
     fireEvent.keyDown(gameTab, { key: "ArrowRight" });
-    expect(screen.getByRole("tab", { name: "Character creation" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "Character conversations" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
@@ -163,8 +163,8 @@ describe("AdminStatsView", () => {
       }),
     });
     render(<AdminStatsView />);
-    await screen.findByRole("tab", { name: "Character creation" });
-    fireEvent.click(screen.getByRole("tab", { name: "Character creation" }));
+    await screen.findByRole("tab", { name: "Character conversations" });
+    fireEvent.click(screen.getByRole("tab", { name: "Character conversations" }));
     await waitFor(() => expect(screen.getByText("Reused from cache")).toBeInTheDocument());
     expect(screen.queryByText(/fell back to the plain silhouette/)).not.toBeInTheDocument();
   });

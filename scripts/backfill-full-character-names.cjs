@@ -18,10 +18,9 @@
  *   2. `bots` (a signed-in user's own saved characters) — renamed to match, but ONLY
  *      when the bot's current name matches a name this script just confirmed above is a
  *      real, recognized character (i.e. it has a matching `avatar_cache` row with
- *      `recognized = true`). `bots` has no `recognized` flag of its own, so a user's
- *      original/invented character (never in avatar_cache by name) is never touched —
- *      expanding a made-up name risks Claude fabricating a surname for someone who was
- *      never real to begin with.
+ *      `recognized = true`). `bots` has no `recognized` flag of its own, so unsupported
+ *      legacy names are left for the separate conservative scrub-unrecognized command
+ *      instead of being renamed from model guesses.
  *
  * Usage:
  *   node scripts/backfill-full-character-names.cjs [--dry-run]

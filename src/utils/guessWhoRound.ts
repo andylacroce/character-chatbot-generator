@@ -55,7 +55,7 @@ export async function generateSelfClueRound(
       onProgress?.("personality");
       return result;
     }),
-    getOrGenerateAvatar(hiddenName, { recognized: true }).then((result) => {
+    getOrGenerateAvatar(hiddenName).then((result) => {
       onProgress?.("avatar");
       return result;
     }),

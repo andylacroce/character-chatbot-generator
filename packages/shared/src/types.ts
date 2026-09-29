@@ -111,7 +111,7 @@ export interface CharacterValidationResult {
   suggestions?: string[];
   /** Hard, non-overridable block (abusive name, or a seriously criminal living person). */
   blocked?: boolean;
-  /** False for an original character the model doesn't recognize: ask for a description. */
+  /** False when the name is not an established character/person; creation is rejected. */
   recognized?: boolean;
   /** Already blocklisted or just removed from the public cache: hard stop, no override. */
   scrubbed?: boolean;
@@ -120,8 +120,6 @@ export interface CharacterValidationResult {
 /** POST /api/generate-personality request body. */
 export interface GeneratePersonalityRequest {
   name: string;
-  /** Optional free-form character concept, collected when `recognized` is false. */
-  description?: string;
 }
 
 /** POST /api/generate-personality response. */
@@ -129,16 +127,12 @@ export interface GeneratePersonalityResponse {
   personality: string;
   /** `name` with spelling/casing corrected, or an existing similar character's exact name. */
   correctedName: string;
-  /** True unless Claude flagged the description itself as unsafe (see server docs). */
-  descriptionRejected?: boolean;
 }
 
 /** POST /api/generate-avatar request body. */
 export interface GenerateAvatarRequest {
   name: string;
   skipPersistence?: boolean;
-  recognized?: boolean;
-  appearanceDescription?: string;
 }
 
 /** POST /api/generate-avatar response. */

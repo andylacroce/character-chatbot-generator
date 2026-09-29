@@ -38,6 +38,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 
 - **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with conversation summarization
 - **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions, backed by a permanent allow/block list and an admin-only `/admin/moderation` panel
+- **Established Characters Only**: Unknown or invented names stop at validation; conversations are limited to identifiable historical, mythological, literary, religious, folklore, and fictional figures
 - **Two Guessing Games**: `Guess Who` reveals progressively easier clues, while `Guess Who's Next` is a conversation with a named character who hints at somebody else; both build streaks and have separate public leaderboards — see [Guessing Games](#guessing-games)
 - **Voice Responses**: Google Text-to-Speech API with character-specific voice configurations
 - **Avatar Generation**: Claude generates a detailed image prompt; a free image provider renders the portrait — Cloudflare Workers AI (Flux Schnell) first, falling back to Pollinations.ai if it's unconfigured or fails — returned as a base64 data URL (or a durable Vercel Blob URL, if configured)
@@ -45,12 +46,12 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - **Live Progress**: `Guess Who's Next` streams real, server-reported progress (Server-Sent Events) while it builds each new character
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
 - **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, presented as a responsive tattered-parchment mosaic — see [Character Wall](#character-wall-chars)
-- **Personalized Greeting**: Characters can greet you by name — a one-time, skippable prompt the first time you create a character, editable anytime from the account menu — see [Personalized Greeting](#personalized-greeting)
+- **Personalized Greeting**: Characters can greet you by name — a one-time, skippable prompt when you first start a conversation, editable anytime from the account menu — see [Personalized Greeting](#personalized-greeting)
 - **Privacy-conscious Analytics**: Cookie-free Vercel traffic metrics, consent-gated Google Analytics 4, and a small self-hosted product-usage log with an admin-only `/admin` stats view — see [Internal Analytics](#internal-analytics-admin)
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,400+ passing tests
 - **API Security**: Protected endpoints with origin validation and API key authentication
 - **Responsive Design**: A compact landing dashboard, phone-first layouts, and dark mode support
-- **Android/iOS App**: An Expo (React Native) client in `apps/mobile` with the same creation flow, chat, Character Wall, both guessing games, leaderboards, and Past chats, calling this app's API. Logic, copy, and types live once in `packages/shared` and both clients use them. See [`apps/mobile/README.md`](apps/mobile/README.md)
+- **Android/iOS App**: An Expo (React Native) client in `apps/mobile` with the same character-selection flow, chat, Character Wall, both guessing games, leaderboards, and Past chats, calling this app's API. Logic, copy, and types live once in `packages/shared` and both clients use them. See [`apps/mobile/README.md`](apps/mobile/README.md)
 - **Audio Replay**: Every character message has a speaker button to hear it again, on web and mobile
 
 ## Prerequisites
@@ -322,7 +323,7 @@ until the player loses or gives up.
 
 ## Personalized Greeting
 
-Characters can greet you by name. The first time you create a character without one
+Characters can greet you by name. The first time you start a conversation without one
 known yet, a small skippable prompt asks what to call you — decline and it just never
 asks again in that browser. Set anytime from the account menu (click your name, or
 "Guest", in the header) via "Add your name" / "Change your name".
@@ -353,7 +354,7 @@ acting as a general-purpose observability service.
   actually served an image, character-creation counts, and guessing-game starts, scored
   guesses, continued rounds, and endings. Game events store only guest status, numeric
   streaks, and fixed outcome labels. None record character names, guesses, or chat text.
-- **`/admin`** is an admin-only page with separate Guessing game and Character creation
+- **`/admin`** is an admin-only page with separate Guessing game and Character conversations
   tabs showing aggregate counts only — no per-user or
   per-guest detail. The access check runs server-side (`isAdminSession()`) and 404s
   anyone who isn't a confirmed admin before the stats view or its bundle ever renders,
@@ -424,7 +425,7 @@ src/
    pages/api/            # API routes (Pages Router; server handlers are authoritative)
       chat.ts            # Main chat endpoint with streaming & summarization
       audio.ts           # TTS audio generation (also regenerates replay audio on demand)
-      validate-character.ts, generate-personality.ts, generate-avatar.ts, get-voice-config.ts  # Character creation pipeline
+      validate-character.ts, generate-personality.ts, generate-avatar.ts, get-voice-config.ts  # Character conversation pipeline
       chars.ts           # Character Wall / carousel data
       random-character.ts  # Public domain character suggestions
       bots.ts, messages.ts, user-profile.ts  # A signed-in user's characters, chat history, and name (optional)
@@ -439,7 +440,7 @@ src/
    db/                   # Drizzle schema + client (optional account persistence)
    auth/                 # Auth.js configuration (Google sign-in)
 packages/shared/         # character-chatbot-shared: types, copy, storage keys, validation, and shared
-                         # hooks (character creation, both game sessions, carousel, ...)
+                         # hooks (character selection, both game sessions, carousel, ...)
 apps/mobile/             # Expo (React Native) client; see apps/mobile/README.md
    src/screens/          # Creator, Chat, CharWall, History, both games, Leaderboard
    src/components/       # ChatView, modals, carousel, header title, lightbox, ...
