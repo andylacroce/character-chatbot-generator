@@ -92,9 +92,9 @@ arbitrary commit.
 - **Claude Code cloud sessions can't push tags** (found 2026-09-29): the session's injected
   credential can write `refs/heads/*` but not `refs/tags/*`, so GitHub returns a 403 for any
   tag push (the repo has no tag rulesets or protection; this is purely the credential's
-  scope). A cloud session should do steps 1-5, push the branch, and tell the user the tag is
-  still owed; the tag is then created and pushed locally on `main` after the PR merges
-  (`git tag -a vX.Y.Z <merge-sha> -m "..."`, `git push origin vX.Y.Z`).
+  scope). `.github/workflows/tag-release.yml` covers it: on every push to `main` it creates
+  the annotated `v<package.json version>` tag if missing, so steps 6-7 are only needed when
+  shipping from a local machine, and a cloud session just does steps 1-5 and merges the PR.
 
 ## Web/mobile parity (standing goal)
 
