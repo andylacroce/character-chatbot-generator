@@ -21,6 +21,8 @@ import {
 } from "character-chatbot-shared";
 import styles from "./styles/LandingCharacterCarousel.module.css";
 
+const WEB_CAROUSEL_ROTATE_MS = 7000;
+
 const cache: CarouselCache = {
   load: () =>
     getJSON<{ characters: CharacterEntry[] }>(STORAGE_KEYS.landingCarouselCache)?.characters ??
@@ -42,7 +44,12 @@ async function fetchSample(): Promise<CharacterEntry[]> {
 const LandingCharacterCarousel: React.FC = () => {
   const router = useRouter();
   const [paused, setPaused] = useState(false);
-  const { characters, index } = useCharacterCarousel({ fetchSample, cache, paused });
+  const { characters, index } = useCharacterCarousel({
+    fetchSample,
+    cache,
+    paused,
+    rotationMs: WEB_CAROUSEL_ROTATE_MS,
+  });
 
   useEffect(() => {
     if (characters.length < 2) return;

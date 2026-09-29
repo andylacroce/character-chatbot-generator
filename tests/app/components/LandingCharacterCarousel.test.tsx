@@ -82,7 +82,10 @@ describe("LandingCharacterCarousel", () => {
     render(<LandingCharacterCarousel />);
     await screen.findByLabelText("View Sherlock Holmes on the Character Wall");
 
-    act(() => jest.advanceTimersByTime(4000));
+    act(() => jest.advanceTimersByTime(6000));
+    expect(screen.getByLabelText("View Sherlock Holmes on the Character Wall")).toBeInTheDocument();
+
+    act(() => jest.advanceTimersByTime(1000));
 
     expect(
       await screen.findByLabelText("View Cleopatra on the Character Wall"),
@@ -158,7 +161,7 @@ describe("LandingCharacterCarousel", () => {
     expect(screen.getByLabelText("View Sherlock Holmes on the Character Wall")).toBeInTheDocument();
 
     fireEvent.mouseLeave(button);
-    act(() => jest.advanceTimersByTime(4000));
+    act(() => jest.advanceTimersByTime(7000));
     expect(
       await screen.findByLabelText("View Cleopatra on the Character Wall"),
     ).toBeInTheDocument();
