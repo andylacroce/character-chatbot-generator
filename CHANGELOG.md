@@ -2,6 +2,12 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.23.0 — 2026-09-29 — Guess Who is a real conversation again
+
+- Rebuilt Guess Who from a static clue-list (5 pre-written hints revealed one at a time in a dedicated screen with a separate guess field) into a real chat: you converse with a mystery character who never says its own name, and it naturally drops real, escalating clues about itself as you talk — guesses go right into the same chat box, just like Guess Who's Next. One wrong guess is forgiven per round; a second reveals who it was.
+- The character's persona, avatar, and voice are all generated up front for full audio from the first line, but its name and portrait stay hidden in every response until a correct guess, a second wrong guess, or giving up reveals them.
+- Both games now share one tuned guess classifier and one SSE round-progress helper instead of near-duplicate copies, so a future fix to either applies to both.
+
 ## v0.22.0 — 2026-09-28 — Guess Who and a clearer responsive landing page
 
 - Added **Guess Who**, a faster clue-reveal game alongside the existing conversation game (now named **Guess Who's Next**). Wrong answers reveal progressively more specific clues; correct answers build a streak. Web and mobile share the same state machine, copy, encrypted-token model, score handling, and separate opt-in leaderboard.
