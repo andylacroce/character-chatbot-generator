@@ -25,6 +25,7 @@ const TABS: { id: LeaderboardTab; label: string }[] = [
   { id: "guess-who-next", label: "Guess Who's Next" },
 ];
 
+/** Loads the "Guess Who" public top ten. */
 async function fetchGuessWhoEntries(): Promise<LeaderboardEntry[]> {
   const res = await authenticatedFetch("/api/guess-who/leaderboard");
   if (!res.ok) throw new Error("Failed to load leaderboard");
@@ -32,6 +33,7 @@ async function fetchGuessWhoEntries(): Promise<LeaderboardEntry[]> {
   return Array.isArray(data.entries) ? data.entries : [];
 }
 
+/** Loads the "Guess Who's Next" public top ten. */
 async function fetchGuessWhoNextEntries(): Promise<LeaderboardEntry[]> {
   const res = await authenticatedFetch("/api/guess-who-next/leaderboard");
   if (!res.ok) throw new Error("Failed to load leaderboard");

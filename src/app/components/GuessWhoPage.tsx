@@ -46,7 +46,6 @@ function GuessWhoPage() {
     loading,
     error,
     lastEvent,
-    awaitingContinue,
     continueRound,
     continuing,
     startGame,

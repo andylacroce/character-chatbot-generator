@@ -59,6 +59,7 @@ ${IDENTITY_MATCH_EXAMPLES}
 
 Return ONLY valid JSON, in this field order: {"reasoning": "<one short sentence>", "correct": boolean}. Write "reasoning" first, before deciding "correct".`;
 
+/** Judges whether `guess` identifies `hiddenName`, failing closed to false on any error. */
 async function classifyGuessWhoGuess(hiddenName: string, guess: string): Promise<boolean> {
   try {
     const work = gameCharacterWork[hiddenName];

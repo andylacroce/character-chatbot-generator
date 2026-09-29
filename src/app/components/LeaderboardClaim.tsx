@@ -17,6 +17,7 @@ import styles from "./styles/Leaderboard.module.css";
 
 const DEFAULT_SETTINGS_URL = "/api/guess-who-next/leaderboard-settings";
 
+/** Builds a leaderboard-settings transport pointed at the given game's endpoint. */
 function makeTransport(settingsUrl: string): LeaderboardClaimTransport {
   return {
     load: async () => {
