@@ -80,7 +80,7 @@ function makeState(overrides: Partial<GuessWhoStatePayload> = {}): GuessWhoState
     personaPrompt: "Irene Adler's self-clue persona prompt",
     avatarUrl: "https://example.com/irene.png",
     gender: "female",
-    voiceConfig: { languageCodes: ["en-US"], name: "en-US-Wavenet-C", ssmlGender: "FEMALE" },
+    voiceConfig: { languageCodes: ["en-US"], name: "en-US-Wavenet-C", ssmlGender: 2 },
     usedNames: ["Irene Adler"],
     streak: 2,
     wrongGuessCount: 0,

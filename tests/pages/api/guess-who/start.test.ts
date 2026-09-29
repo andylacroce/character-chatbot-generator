@@ -55,7 +55,7 @@ function baseRound() {
     personaPrompt: "Irene Adler's self-clue persona prompt",
     avatarUrl: "https://example.com/irene.png",
     gender: "female",
-    voiceConfig: { languageCodes: ["en-US"], name: "en-US-Wavenet-C", ssmlGender: "FEMALE" },
+    voiceConfig: { languageCodes: ["en-US"], name: "en-US-Wavenet-C", ssmlGender: 2 },
     reply: "Hello, curious one.",
     audioFileUrl: "/api/audio?file=test.mp3",
   };
