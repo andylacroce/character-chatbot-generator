@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.25.1 — 2026-09-29 — Character Wall control styling fix
+
+- Fixed the Character Wall's sort dropdown and "Group by category" toggle rendering with no visible border or background, in both light and dark mode, not just on mobile. Both controls' translucency came from CSS custom properties that redeclared themselves in terms of themselves on the same element — a genuine cycle per the CSS spec, which silently computed to nothing rather than the intended translucent color.
+- Removed the "Featured" badge from Guess Who's card on the landing page's game-invitation band; both games now read as equally established rather than one being promoted over the other.
+
 ## v0.25.0 — 2026-09-29 — Guess Who is a real conversation again
 
 - Rebuilt Guess Who from a static clue-list (5 pre-written hints revealed one at a time in a dedicated screen with a separate guess field) into a real chat: you converse with a mystery character who never says its own name, and it naturally drops real, escalating clues about itself as you talk — guesses go right into the same chat box, just like Guess Who's Next. One wrong guess is forgiven per round; a second reveals who it was.

@@ -574,10 +574,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                 </h2>
                 <div className={styles.gamesBand} data-testid="games-invitation-band">
                   <Link href="/guess-who" className={styles.gamesBandHalf}>
-                    <span className={styles.gamesBandKicker}>Featured</span>
-                    <span className={styles.gamesBandTitleFeatured}>Guess Who</span>
+                    <span className={styles.gamesBandTitle}>Guess Who</span>
                     <span className={styles.gamesBandHook}>
-                      Reveal clues one at a time and name the hidden character.
+                      Chat with a mystery character and name who it is.
                     </span>
                     <span className={styles.gamesBandCta}>Play &rarr;</span>
                   </Link>

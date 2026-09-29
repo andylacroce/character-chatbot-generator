@@ -9,10 +9,24 @@
   /* text/text-secondary/primary/accent need no local override any more — the
      app-wide tokens (inherited from :root/.dark) already are this page's
      palette. Only outline/surface/background get a translucent version here,
-     so the mosaic tiles read through the sheet texture behind them. */
-  --color-outline: color-mix(in srgb, var(--color-outline) 55%, transparent);
-  --color-surface: color-mix(in srgb, var(--color-surface) 82%, transparent);
-  --color-background: color-mix(in srgb, var(--color-background) 84%, transparent);
+     so the mosaic tiles read through the sheet texture behind them.
+     Given their own --color-* names (not --wall-outline etc.), each of these
+     was silently invalid: redeclaring --color-outline as
+     `color-mix(..., var(--color-outline), ...)` on the SAME selector is a
+     self-reference, which the CSS custom-properties spec treats as a cycle —
+     it doesn't matter that the intent was "mix in the inherited value from
+     :root/.dark", CSS has no way to express "the value before this
+     declaration" for the same property name. A cyclic custom property
+     computes to the guaranteed-invalid value, which silently dropped every
+     consumer's `background`/`border` declaration to its initial value
+     (transparent) — found live as both the group-toggle switch's pill
+     background and the controls/select borders disappearing, in light and
+     dark mode alike, not just narrow viewports. Fixed by giving the
+     translucent versions their own name (--wall-*) so the right-hand side
+     resolves to the real, non-shadowed global token instead of itself. */
+  --wall-outline: color-mix(in srgb, var(--color-outline) 55%, transparent);
+  --wall-surface: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  --wall-background: color-mix(in srgb, var(--color-background) 84%, transparent);
   position: relative;
   isolation: isolate;
   width: min(100%, 1800px);
@@ -179,7 +193,7 @@
   min-height: 2rem;
   padding: 0.25rem 1.7rem 0.25rem 0.3rem;
   border: 0;
-  border-bottom: 1px solid var(--color-outline);
+  border-bottom: 1px solid var(--wall-outline);
   border-radius: 0;
   color: var(--color-text);
   background-color: transparent;
@@ -228,9 +242,9 @@
   flex: 0 0 auto;
   width: 2.15rem;
   height: 1.15rem;
-  border: 1px solid var(--color-outline);
+  border: 1px solid var(--wall-outline);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--color-text-secondary) 16%, var(--color-background));
+  background: color-mix(in srgb, var(--color-text-secondary) 16%, var(--wall-background));
   transition:
     border-color 160ms ease,
     background-color 160ms ease;
@@ -252,7 +266,7 @@
 
 .toggleInput:checked + .switchTrack {
   border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 28%, var(--color-background));
+  background: color-mix(in srgb, var(--color-primary) 28%, var(--wall-background));
 }
 
 .toggleInput:checked + .switchTrack span {

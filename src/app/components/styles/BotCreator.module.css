@@ -969,10 +969,11 @@
 /* ===== Games invitation band =====
    Below the character-creator form, never above it — character creation stays this
    page's primary element. Both games are shown as one unified bordered band split by a
-   quiet "&" divider rather than two equal-weight cards, with "Guess Who" (the new
-   clue-reveal game) featured: a small kicker label and a slightly larger heading, and
-   listed first (leftmost on desktop, top on mobile) — the standing "Guess Who first
-   everywhere both games are listed together" rule. */
+   quiet "&" divider, equal visual weight (an earlier draft gave "Guess Who" a "Featured"
+   kicker and a larger heading; removed per feedback — the two games are equally
+   established now, not one promoted over the other). "Guess Who" is still listed first
+   (leftmost on desktop, top on mobile) — the standing "Guess Who first everywhere both
+   games are listed together" rule, which is about list order, not visual prominence. */
 .gamesBandEyebrow {
   width: 100%;
   max-width: 560px;
@@ -1016,21 +1017,6 @@
 .gamesBandHalf:focus-visible {
   background: var(--color-primary-container);
   outline: none;
-}
-
-.gamesBandKicker {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-secondary);
-}
-
-.gamesBandTitleFeatured {
-  font-family: var(--font-secondary), serif;
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: var(--color-primary);
 }
 
 .gamesBandTitle {
@@ -1416,19 +1402,7 @@
   background: var(--color-primary-container);
 }
 
-.gamesBandKicker {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  padding: 0.12rem 0.4rem;
-  border-radius: 999px;
-  background: var(--color-secondary-container);
-  font-size: 0.57rem;
-}
-
-.gamesBandTitleFeatured,
 .gamesBandTitle {
-  padding-right: 3.6rem;
   font-size: clamp(1.05rem, 2vw, 1.25rem);
   color: var(--color-primary);
 }
@@ -1550,15 +1524,7 @@
     padding: 0.75rem;
   }
 
-  .gamesBandKicker {
-    position: static;
-    order: -1;
-    align-self: flex-start;
-  }
-
-  .gamesBandTitleFeatured,
   .gamesBandTitle {
-    padding-right: 0;
     font-size: 1rem;
   }
 
