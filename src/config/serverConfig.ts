@@ -1,5 +1,7 @@
 // Server-side runtime configuration shared by API handlers.
 
+import { NEVER_REVEAL_NAME_RULE } from "./characterIdentityRules";
+
 // Shared personality template constants
 export const RESPONSE_CONSTRAINTS = `Keep responses under 100 words. Always finish your current thought with proper punctuation before stopping.
 If telling a story, reach a natural pause point or cliffhanger. Never trail off mid-sentence.
@@ -235,7 +237,7 @@ export async function generateGameCluePersonaPrompt(
     : "";
 
   const clueRules = `GAME RULES YOU MUST FOLLOW, in addition to being ${currentCharacterName} above:${currentWorkLine}
-You are playing a "guess who" chain game with a player. You have a specific other figure in mind — they may be from a completely different era, culture, or even a different work of fiction than you — but you must NEVER say their name or an unambiguous unique title for them (that would give it away as surely as saying it outright).
+You are playing a "guess who" chain game with a player. You have a specific other figure in mind — they may be from a completely different era, culture, or even a different work of fiction than you — but ${NEVER_REVEAL_NAME_RULE}
 
 - You know this other figure well and can speak knowledgeably about their domain, era, deeds, and personality whenever asked. NEVER claim you don't know them, refuse to discuss them, or comment on them being from a different time/place/story than you — that breaks the game and confuses the player. Treat knowing about them as a given, no matter how mismatched your worlds are.
 - You MUST signal, unprompted and right from your very first message, that you have someone specific in mind — otherwise the player has no way of knowing there's anyone to guess at all. That first mention must include ONE real, narrowing detail: their broad era, culture, or domain (for example, "a queen from ancient Egypt," "a hero out of Greek myth," "a detective from Victorian London"). A hint with no actual content gives the player nothing to work with, so never open with pure mood alone — always pair the mention with at least that one concrete category.
@@ -250,4 +252,67 @@ You are playing a "guess who" chain game with a player. You have a specific othe
   }`;
 
   return { prompt: `${basePersona}\n\n${clueRules}` };
+}
+
+/**
+ * Generates the "Guess Who" (clue-reveal) game's five ordered clues about a hidden
+ * character, vague-to-specific — a single `text-simple` Claude call, unlike
+ * generateGameCluePersonaPrompt above which builds a whole in-character chat persona.
+ * There's no conversation here: the client shows clues one at a time on a wrong guess,
+ * so all five must be written up front and ordered so clue 1 alone is a fair opening
+ * (real but broad) and clue 5 is close to giving it away without literally naming them.
+ *
+ * `work`, when known (from gameCharacterWork.ts), grounds the clues in the specific
+ * individual rather than Claude's own default association for a name shared by several
+ * figures — same rationale as generateGameCluePersonaPrompt's work parameter.
+ */
+export async function generateCharacterClues(
+  name: string,
+  work?: string,
+): Promise<{ clues: string[] }> {
+  const { getClaudeModel } = await import("../utils/claudeModelSelector");
+  const { extractJson } = await import("../utils/parseClaudeJson");
+  const { default: anthropic } = await import("../utils/anthropicClient");
+
+  const workLine = work
+    ? ` Specifically the one from: ${work}. Write clues that identify this exact individual, not a generic or different figure who merely shares this name or a similar role/trait.`
+    : "";
+
+  const systemPrompt = `You write clues for a "guess who" game about a hidden character or real person. ${NEVER_REVEAL_NAME_RULE}
+
+Write exactly 5 clues about the hidden figure, ordered from vague to specific:
+1. Broad era, culture, domain, or category only (e.g. "A queen from ancient Egypt") — real but gives away very little.
+2. A real but still general trait, role, or association.
+3. A more specific, checkable fact: a defining deed, relationship, or well-known event.
+4. A close, memorable detail: a signature object, famous line, or specific achievement.
+5. The most identifying clue you can give without literally saying the name or an unambiguous unique title.
+
+Each clue is one short sentence. Never repeat the same fact across two clues, and never include the name itself, a part of it, or a title that names only this one individual.
+
+Return ONLY valid JSON: {"clues": ["<clue 1>", "<clue 2>", "<clue 3>", "<clue 4>", "<clue 5>"]}`;
+
+  const response = await anthropic.messages.create({
+    model: getClaudeModel("text-simple"),
+    system: systemPrompt,
+    messages: [
+      {
+        role: "user",
+        content: `Hidden figure: ${JSON.stringify(name)}.${workLine}\nWrite the 5 clues as JSON.`,
+      },
+    ],
+    max_tokens: 500,
+    temperature: 0.4,
+  });
+
+  const content = extractJson(
+    response.content[0]?.type === "text" ? response.content[0].text : "{}",
+  );
+  const parsed = JSON.parse(content);
+  const clues = Array.isArray(parsed.clues)
+    ? parsed.clues.filter((clue: unknown): clue is string => typeof clue === "string")
+    : [];
+  if (clues.length < 5) {
+    throw new Error(`generateCharacterClues returned ${clues.length} clues, expected 5`);
+  }
+  return { clues: clues.slice(0, 5) };
 }
