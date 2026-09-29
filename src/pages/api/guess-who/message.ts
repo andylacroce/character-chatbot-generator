@@ -1,31 +1,30 @@
 /**
- * API endpoint for every turn of the guessing game's chat, both ordinary questions and
- * guesses at the hidden figure, typed into the same box (see CLAUDE.md's "Guessing
- * game" section). Each call classifies whether the player's message is a clear guess
- * attempt, an ambiguous one, or an ordinary question, then responds accordingly:
+ * API endpoint for every turn of "Guess Who"'s chat, both ordinary questions and guesses
+ * at the mystery character's own identity, typed into the same box (see CLAUDE.md's
+ * "Guess Who" section). Each call classifies whether the player's message is a clear
+ * guess attempt, an ambiguous one, or an ordinary question, then responds accordingly:
  *
- * - Not a guess: the current (named) character replies in character as usual.
- * - Ambiguous: the character asks the player to confirm what they mean, in character,
- *   rather than guessing on their behalf or answering as if nothing happened.
- * - A clear, correct guess: the hidden figure is revealed, the streak advances, and
- *   they become the new chat partner (a fresh hidden target is picked for them).
+ * - Not a guess: the hidden character replies in character as usual, still never naming
+ *   itself.
+ * - Ambiguous: the character asks the player to confirm what they mean, in character.
+ * - A clear, correct guess: the character's identity (name + avatar) is revealed and the
+ *   streak advances.
  * - A clear, incorrect guess: a first miss is tolerated; a second ends the run and
- *   reveals the hidden figure.
- * - An explicit request to give up (typed into the same box, not just the menu's Give
- *   Up button): no reply is generated for this turn; the client shows its own give-up
- *   confirmation and, once confirmed, calls /game/give-up as usual.
+ *   reveals the character.
+ * - An explicit request to give up: no reply is generated for this turn; the client
+ *   shows its own give-up confirmation and, once confirmed, calls /guess-who/give-up.
  *
- * Audio is synthesized for every reply the same way ordinary chat does, so the game has
- * audio parity with the main app. No streaming, and no server-side message persistence
- * in this phase, the client resends its own truncated conversation history each turn,
- * the same pattern pages/api/chat.ts uses for a guest's conversation.
+ * Mirrors pages/api/guess-who-next/message.ts's shape exactly, except there's only one
+ * identity per round (the character chatting IS the mystery, not a different hidden
+ * target it's steering toward), so a correct guess or second wrong guess must also
+ * release the avatar/name this response otherwise always withholds.
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
-import { verifyGameState, signGameState } from "../../../utils/guessWhoNextToken";
-import { updateHighScoreIfBeaten } from "../../../utils/guessWhoNextHighScore";
-import { recordGameResult } from "../../../utils/guessWhoNextLeaderboard";
+import { verifyGuessWhoState, signGuessWhoState } from "../../../utils/guessWhoToken";
+import { updateHighScoreIfBeaten } from "../../../utils/guessWhoHighScore";
+import { recordGuessWhoResult } from "../../../utils/guessWhoLeaderboard";
 import { getCurrentEnvironment } from "../../../utils/environment";
 import { getGuestId } from "../../../utils/gameGuestIdentity";
 import { recordEvent } from "../../../utils/analytics";
@@ -40,41 +39,38 @@ import { getSessionUserId } from "../../../utils/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { withRequestLog } from "../../../utils/withRequestLog";
 
-/** Rate limiter: 10 requests per minute per IP, same tier as /api/chat. */
-const gameMessageRateLimit = createRateLimiter({
-  name: "guess-who-next-message",
+/** Rate limiter: 10 requests per minute per IP, same tier as guess-who-next-message. */
+const guessWhoMessageRateLimit = createRateLimiter({
+  name: "guess-who-message",
   max: 10,
   message: "Too many game requests from this IP, please try again later.",
 });
 
 /**
- * Next.js API route handler for one turn of the guessing game's chat.
+ * Next.js API route handler for one turn of "Guess Who"'s chat.
  *
  * @swagger
- * /game/message:
+ * /guess-who/message:
  *   post:
- *     summary: Send a question or a guess to the current chat partner
+ *     summary: Send a question or a guess to the hidden character
  *     description: >
- *       Verifies the caller's `gameToken` (rejecting an invalid/tampered/expired one
- *       with 400), classifies whether the message is a guess at the hidden figure the
- *       current partner is describing, and responds in character either way. A correct
- *       guess reveals the hidden figure and advances the streak, but deliberately does
- *       NOT generate the next character here — that's deferred to POST /game/continue,
- *       called once the player clicks "Continue" client-side, so judging a guess stays
- *       fast instead of blocking on a full persona+avatar+voice+reply+TTS pipeline before
- *       the player even sees they got it right. The existing `gameToken` stays valid and
- *       unchanged; /game/continue reads the still-hidden `nextCharacterName` from it. A
- *       second wrong guess ends the run. Rate limited to 10 requests/minute/IP.
- *     tags: [Game]
+ *       Verifies the caller's `guessWhoToken` (rejecting an invalid/tampered/expired one
+ *       with 400), classifies whether the message is a guess at the character's own
+ *       hidden identity, and responds in character either way. A correct guess or a
+ *       second wrong guess reveals the character's name and avatar. On a correct guess,
+ *       the client should call POST /guess-who/continue (with the same guessWhoToken)
+ *       once the player clicks "Continue" to generate the next round. Rate limited to 10
+ *       requests/minute/IP.
+ *     tags: [GuessWho]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required: [gameToken, message]
+ *             required: [guessWhoToken, message]
  *             properties:
- *               gameToken:
+ *               guessWhoToken:
  *                 type: string
  *               message:
  *                 type: string
@@ -92,31 +88,29 @@ const gameMessageRateLimit = createRateLimiter({
  *               properties:
  *                 giveUpRequested:
  *                   type: boolean
- *                   description: >
- *                     Set when the player asked to give up via chat rather than via the
- *                     menu's Give Up button. No reply/audio is generated for this turn;
- *                     the client shows its own give-up confirmation instead, then calls
- *                     /game/give-up to actually end the run.
  *                 reply:
  *                   type: string
  *                 audioFileUrl:
  *                   type: string
  *                 correct:
  *                   type: boolean
- *                   description: On true, the client should call POST /game/continue (with the same gameToken) once the player clicks "Continue" to generate the next character.
  *                 gameOver:
  *                   type: boolean
  *                 revealedName:
  *                   type: string
+ *                 avatarUrl:
+ *                   type: string
+ *                 gender:
+ *                   type: string
+ *                   nullable: true
  *                 streak:
  *                   type: integer
  *                 finalStreak:
  *                   type: integer
  *                 wrongGuessesRemaining:
  *                   type: integer
- *                 gameToken:
+ *                 guessWhoToken:
  *                   type: string
- *                   description: Only present when a wrong-but-tolerated guess bumped the token's internal wrong-guess count. Absent on a correct guess — that token stays valid as-is for /game/continue.
  *       400:
  *         description: Missing message, or invalid/expired game token
  *       405:
@@ -127,7 +121,7 @@ const gameMessageRateLimit = createRateLimiter({
  *         description: Failed to generate a reply
  */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(gameMessageRateLimit, req, res))) return;
+  if (!(await applyRateLimit(guessWhoMessageRateLimit, req, res))) return;
 
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
@@ -135,16 +129,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const { gameToken, message, conversationHistory } = req.body ?? {};
+  const { guessWhoToken, message, conversationHistory } = req.body ?? {};
 
   if (!message || typeof message !== "string") {
     res.status(400).json({ error: "Message is required" });
     return;
   }
 
-  const state = verifyGameState(gameToken);
+  const state = verifyGuessWhoState(guessWhoToken);
   if (!state) {
-    logEvent("info", "game_invalid_token", "Rejected an invalid or expired game token");
+    logEvent("info", "guess_who_invalid_token", "Rejected an invalid or expired Guess Who token");
     res.status(400).json({ error: "Your game session has expired. Please start a new game." });
     return;
   }
@@ -155,10 +149,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const clueRound = Math.floor(history.length / 2) + 1;
 
   try {
-    const classification = await classifyGuess(state.nextCharacterName, message, history);
+    const classification = await classifyGuess(state.hiddenName, message, history);
 
     if (classification.status === "giveUp") {
-      logEvent("info", "game_give_up_requested_via_chat", "Player asked to give up via chat");
+      logEvent("info", "guess_who_give_up_requested_via_chat", "Player asked to give up via chat");
       res.status(200).json({ giveUpRequested: true });
       return;
     }
@@ -173,7 +167,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       );
       const audioFileUrl = await synthesizeReplyAudio(
         reply,
-        state.currentCharacterName,
+        state.hiddenName,
         state.gender,
         state.voiceConfig,
       );
@@ -184,12 +178,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userId = await getSessionUserId(req);
 
     if (classification.correct) {
-      const revealedName = state.nextCharacterName;
+      const revealedName = state.hiddenName;
       const newStreak = state.streak + 1;
       // Fire-and-forget: a streak only ever increases within a run, so the moment it's
-      // incremented is also the moment it might be a new personal best — never throws
-      // (see gameHighScore.ts), and a guest (userId null) is simply skipped.
-      // A token issued to a guest or another account cannot credit this account.
+      // incremented is also the moment it might be a new personal best. A token issued
+      // to a guest or another account cannot credit this account.
       const eligibleUserId =
         userId && state.issuedForUserId === userId && state.environment === getCurrentEnvironment()
           ? userId
@@ -203,8 +196,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           : null;
       const scoreWrite = Promise.all([
         eligibleUserId ? updateHighScoreIfBeaten(eligibleUserId, newStreak) : Promise.resolve(),
-        state.runId && (eligibleUserId || eligibleGuestId)
-          ? recordGameResult(eligibleUserId, eligibleGuestId, state.runId, newStreak)
+        eligibleUserId || eligibleGuestId
+          ? recordGuessWhoResult(eligibleUserId, eligibleGuestId, state.runId, newStreak)
           : Promise.resolve(),
       ]);
       const reactionReply = await getGuessReactionReply(
@@ -214,7 +207,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       );
       const reactionAudioFileUrl = await synthesizeReplyAudio(
         reactionReply,
-        state.currentCharacterName,
+        state.hiddenName,
         state.gender,
         state.voiceConfig,
       );
@@ -222,30 +215,32 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       logEvent(
         "info",
-        "guess_who_next_guess_correct",
+        "guess_who_guess_correct",
         "Correct guess, advancing streak",
         sanitizeLogMeta({ streak: newStreak }),
       );
-      void recordEvent("guess_who_next_guess_correct", { streak: newStreak }, userId);
+      void recordEvent("guess_who_guess_correct", { streak: newStreak }, userId);
 
-      // Deliberately not generating the next character here — see this handler's own
-      // doc comment above. The existing gameToken is untouched and still decodes
-      // `revealedName` (as nextCharacterName) and `usedNames`, which is exactly what
-      // POST /game/continue needs once the player actually clicks "Continue".
+      // Deliberately not generating the next round here — see pages/api/guess-who/continue.ts,
+      // called once the player clicks "Continue". The existing guessWhoToken is
+      // re-signed with canContinue:true but otherwise unchanged, so /guess-who/continue
+      // can still read state.hiddenName/usedNames from it.
       res.status(200).json({
         reply: reactionReply,
         audioFileUrl: reactionAudioFileUrl,
-        gameToken: signGameState({ ...state, canContinue: true }),
+        guessWhoToken: signGuessWhoState({ ...state, canContinue: true }),
         correct: true,
         gameOver: false,
         revealedName,
+        avatarUrl: state.avatarUrl,
+        gender: state.gender,
         streak: newStreak,
       });
       return;
     }
 
     if (state.wrongGuessCount >= 1) {
-      const revealedName = state.nextCharacterName;
+      const revealedName = state.hiddenName;
       const reactionReply = await getGuessReactionReply(
         state.personaPrompt,
         "finalWrong",
@@ -253,19 +248,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       );
       const audioFileUrl = await synthesizeReplyAudio(
         reactionReply,
-        state.currentCharacterName,
+        state.hiddenName,
         state.gender,
         state.voiceConfig,
       );
       logEvent(
         "info",
-        "game_over",
-        "Guessing-game run ended on a second wrong guess",
+        "guess_who_run_ended",
+        "Guess Who run ended on a second wrong guess",
         sanitizeLogMeta({ finalStreak: state.streak }),
       );
-      void recordEvent("guess_who_next_guess_wrong", undefined, userId);
+      void recordEvent("guess_who_guess_wrong", undefined, userId);
       void recordEvent(
-        "guess_who_next_run_ended",
+        "guess_who_run_ended",
         { reason: "second_wrong", finalStreak: state.streak },
         userId,
       );
@@ -275,6 +270,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         correct: false,
         gameOver: true,
         revealedName,
+        avatarUrl: state.avatarUrl,
+        gender: state.gender,
         finalStreak: state.streak,
       });
       return;
@@ -283,29 +280,29 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const reactionReply = await getGuessReactionReply(
       state.personaPrompt,
       "wrong",
-      state.nextCharacterName,
+      state.hiddenName,
     );
     const audioFileUrl = await synthesizeReplyAudio(
       reactionReply,
-      state.currentCharacterName,
+      state.hiddenName,
       state.gender,
       state.voiceConfig,
     );
-    const newToken = signGameState({ ...state, wrongGuessCount: 1 });
-    void recordEvent("guess_who_next_guess_wrong", undefined, userId);
+    const newToken = signGuessWhoState({ ...state, wrongGuessCount: 1 });
+    void recordEvent("guess_who_guess_wrong", undefined, userId);
     res.status(200).json({
       reply: reactionReply,
       audioFileUrl,
       correct: false,
       gameOver: false,
       wrongGuessesRemaining: 1,
-      gameToken: newToken,
+      guessWhoToken: newToken,
     });
   } catch (err) {
     logEvent(
       "error",
-      "game_message_failed",
-      "Failed to generate a guessing-game reply",
+      "guess_who_message_failed",
+      "Failed to generate a Guess Who reply",
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
     res.status(500).json({ error: "Failed to generate a reply" });

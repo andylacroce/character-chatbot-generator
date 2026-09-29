@@ -231,64 +231,38 @@ You are playing a "guess who" chain game with a player. You have a specific othe
 }
 
 /**
- * Generates the "Guess Who" (clue-reveal) game's five ordered clues about a hidden
- * character, vague-to-specific — a single `text-simple` Claude call, unlike
- * generateGameCluePersonaPrompt above which builds a whole in-character chat persona.
- * There's no conversation here: the client shows clues one at a time on a wrong guess,
- * so all five must be written up front and ordered so clue 1 alone is a fair opening
- * (real but broad) and clue 5 is close to giving it away without literally naming them.
+ * Builds the "Guess Who" (self-describing chat game)'s persona prompt: the hidden
+ * character `name` itself, talking to the player in first person, never revealing its
+ * own name — the inverse of generateGameCluePersonaPrompt above, which has a NAMED
+ * character hint about a DIFFERENT hidden figure. Here there's only one identity: the
+ * character being chatted with *is* the mystery. Reuses generatePersonalityPrompt for
+ * the character's own voice/personality, same as generateGameCluePersonaPrompt does,
+ * then layers on self-clue rules instead of steering-toward-someone-else rules.
  *
- * `work`, when known (from gameCharacterWork.ts), grounds the clues in the specific
- * individual rather than Claude's own default association for a name shared by several
- * figures — same rationale as generateGameCluePersonaPrompt's work parameter.
+ * `work`, when known (from gameCharacterWork.ts), grounds the character in its specific
+ * source individual — same rationale, and same structural fix for the long run of
+ * identity-drift incidents, as generateGameCluePersonaPrompt's work parameter.
  */
-export async function generateCharacterClues(
+export async function generateGuessWhoSelfCluePersonaPrompt(
   name: string,
   work?: string,
-): Promise<{ clues: string[] }> {
-  const { getClaudeModel } = await import("../utils/claudeModelSelector");
-  const { extractJson } = await import("../utils/parseClaudeJson");
-  const { default: anthropic } = await import("../utils/anthropicClient");
+): Promise<{ prompt: string }> {
+  const { prompt: basePersona } = await generatePersonalityPrompt(name);
 
   const workLine = work
-    ? ` Specifically the one from: ${work}. Write clues that identify this exact individual, not a generic or different figure who merely shares this name or a similar role/trait.`
+    ? `\nYou are specifically drawn from: ${work}. Answer in-character questions about yourself consistently with that specific origin, not a generic or different version of a similarly-named figure.`
     : "";
 
-  const systemPrompt = `You write clues for a "guess who" game about a hidden character or real person. ${NEVER_REVEAL_NAME_RULE}
+  const selfClueRules = `GAME RULES YOU MUST FOLLOW, in addition to being ${name} above:${workLine}
+You are the hidden mystery figure in a "guess who" game. The player is trying to figure out who you are by talking with you. ${NEVER_REVEAL_NAME_RULE}
 
-Write exactly 5 clues about the hidden figure, ordered from vague to specific:
-1. Broad era, culture, domain, or category only (e.g. "A queen from ancient Egypt") — real but gives away very little.
-2. A real but still general trait, role, or association.
-3. A more specific, checkable fact: a defining deed, relationship, or well-known event.
-4. A close, memorable detail: a signature object, famous line, or specific achievement.
-5. The most identifying clue you can give without literally saying the name or an unambiguous unique title.
+- Speak entirely in first person, in character, the whole time. Never refer to yourself in the third person or slip out of character to explain the game.
+- You MUST signal, unprompted and right from your very first message, that there's a mystery to solve — introduce yourself the way you normally would, but without your name, and pair it with ONE real, narrowing detail about yourself: your broad era, culture, or domain (for example, "I ruled as a queen in ancient Egypt," "I'm a hero out of Greek myth," "I did my detective work in Victorian London"). A hint with no actual content gives the player nothing to work with, so never open with pure mood or personality alone.
+- When asked about yourself, keep giving REAL, SPECIFIC facts: your concrete deeds, relationships, famous events, defining objects, or well-known lines — not moods or riddles. Escalate quickly, not gradually: by your second or third answer you should be sharing a specific, checkable fact about yourself (what you're famous for, who you're closely associated with, a defining event or trait) even though you still never say your own name.
+- Calibrate for a player with general knowledge to have a genuine shot at guessing correctly within a handful of exchanges, not needing expert-level trivia. Getting this right and feeling smart, and building a long streak of correct guesses, is a better outcome than a round nobody can solve — favor that over making it harder.
+- If asked to just say your name outright, deflect playfully and in character. Never break character, never say you're an AI, and never confirm or deny whether a name the player mentions is correct — a separate system judges guesses, not you.
 
-Each clue is one short sentence. Never repeat the same fact across two clues, and never include the name itself, a part of it, or a title that names only this one individual.
+(For your own internal reference only — never say this name in any reply): ${name}`;
 
-Return ONLY valid JSON: {"clues": ["<clue 1>", "<clue 2>", "<clue 3>", "<clue 4>", "<clue 5>"]}`;
-
-  const response = await anthropic.messages.create({
-    model: getClaudeModel("text-simple"),
-    system: systemPrompt,
-    messages: [
-      {
-        role: "user",
-        content: `Hidden figure: ${JSON.stringify(name)}.${workLine}\nWrite the 5 clues as JSON.`,
-      },
-    ],
-    max_tokens: 500,
-    temperature: 0.4,
-  });
-
-  const content = extractJson(
-    response.content[0]?.type === "text" ? response.content[0].text : "{}",
-  );
-  const parsed = JSON.parse(content);
-  const clues = Array.isArray(parsed.clues)
-    ? parsed.clues.filter((clue: unknown): clue is string => typeof clue === "string")
-    : [];
-  if (clues.length < 5) {
-    throw new Error(`generateCharacterClues returned ${clues.length} clues, expected 5`);
-  }
-  return { clues: clues.slice(0, 5) };
+  return { prompt: `${basePersona}\n\n${selfClueRules}` };
 }

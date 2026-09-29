@@ -17,6 +17,19 @@ import { logEvent, sanitizeLogMeta } from "./logger";
 const OPENING_INSTRUCTION =
   "Introduce yourself to the player in 1-2 sentences, the way you normally would. Stay in character. Your greeting must also include a vague, atmospheric hint that someone else is on your mind, so the player knows there's someone to figure out, but don't give away anything concrete or identifying about them yet. Save specifics for when the player actually asks.";
 
+/**
+ * The self-describing "Guess Who" game's opening instruction — deliberately NOT
+ * `OPENING_INSTRUCTION` above. That instruction tells a "Guess Who's Next" character
+ * (which is always named/revealed) to "introduce yourself the way you normally would,"
+ * i.e. by name; reusing it here directly contradicted the self-clue persona's own
+ * "never say your own name" rule, and Claude followed the more explicit instruction and
+ * gave the name away in its very first message. This variant never asks for a normal
+ * self-introduction and has no "someone else" framing at all, since here the character
+ * being chatted with is itself the mystery.
+ */
+export const SELF_CLUE_OPENING_INSTRUCTION =
+  "Send your opening message for this round now, following the game rules above exactly: greet the player without ever stating or hinting at your own name, and pair it with the one real, narrowing detail about yourself the rules describe (your broad era, culture, or domain). Do not introduce yourself by name the way you normally would in an ordinary conversation — that would give the game away immediately.";
+
 /** Generic, always-available opening line used when the real Claude call fails, see getOpeningReply below. */
 const FALLBACK_OPENING_REPLY = "Hello there! Great to meet you, ask me anything.";
 
@@ -91,9 +104,12 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
  * getOrGenerateAvatar, which this pairs with at every round start/advance (see
  * pages/api/guess-who-next/start.ts and pages/api/guess-who-next/message.ts).
  */
-export async function getOpeningReply(personaPrompt: string): Promise<string> {
+export async function getOpeningReply(
+  personaPrompt: string,
+  openingInstruction: string = OPENING_INSTRUCTION,
+): Promise<string> {
   try {
-    return await getGameReply(personaPrompt, [], OPENING_INSTRUCTION, 1);
+    return await getGameReply(personaPrompt, [], openingInstruction, 1);
   } catch (err) {
     logEvent(
       "warn",

@@ -53,26 +53,29 @@ export const GUESS_WHO_NEXT_SCREEN_COPY = {
 export const GUESS_WHO_NEXT_CTA_LABEL = "Play Guess Who's Next";
 export const CHARACTER_WALL_CTA_LABEL = "Pick from the Character Wall";
 
-/** Short, scannable "how to play" copy for "Guess Who" (the clue-reveal game). */
+/** Short, scannable "how to play" copy for "Guess Who" (the self-describing chat game). */
 export const GUESS_WHO_INSTRUCTIONS = {
   title: "How to play Guess Who",
-  premise: "You'll see clues about a hidden character, one at a time.",
+  premise: "You're chatting with a mystery character who won't say their own name.",
   bullets: [
-    "Type your guess anytime",
-    "A wrong guess reveals the next clue",
-    "Run out of clues, or give up, and the answer's revealed",
-    "Guess right and a new hidden character begins",
+    "Ask questions to narrow it down",
+    "Type your guess anytime, right in the chat box",
+    "One wrong guess is OK, a second ends the run",
+    "Guess right and a new mystery character begins",
   ],
   goal: "Keep guessing right to build your streak.",
   closeLabel: "Got it, let's play",
 } as const;
 
 export const GUESS_WHO_GIVE_UP_CONFIRM = {
-  title: "Give up this round?",
-  body: "The hidden character will be revealed and the run will end. Your streak will stay as it is.",
+  title: "Give up this run?",
+  body: "The mystery character will be revealed and the run will end. Your streak will stay as it is.",
   confirmLabel: "Yes, give up",
   cancelLabel: "Cancel",
 } as const;
+
+/** `{revealedName}`/`{streak}` are template placeholders — substitute before display. */
+export const GUESS_WHO_CORRECT_BANNER = "🎉 Correct! It was {revealedName}! Streak: {streak}.";
 
 export const GUESS_WHO_STREAK_LABEL = "Streak";
 
@@ -80,7 +83,7 @@ export const GUESS_WHO_STREAK_LABEL = "Streak";
 export const GUESS_WHO_SCREEN_COPY = {
   headline: "Guess Who?",
   subhead:
-    "You'll see a clue about a hidden character. Type your guess anytime — a wrong guess reveals another clue. Run out of clues (or give up) and the answer's revealed. Guess right and a new hidden character begins, building your streak.",
+    "You'll start chatting with a mystery character who never says their own name. Ask questions, and they'll naturally drop real clues about themselves as you talk. Type your guess right in the chat. Guess right and a new mystery character begins, building your streak. One wrong guess is forgiven, but a second ends the run.",
   gameOverHeadline: "Game Over",
   gameOverSubhead: "It was {name}. Final streak: {streak}.",
   startLabel: "Start Game",
@@ -88,15 +91,9 @@ export const GUESS_WHO_SCREEN_COPY = {
   continueLabel: "Continue",
   leaderboardLabel: "View leaderboard",
   startingLabel: "Starting new game…",
-  continuingLabel: "Loading next round…",
-  clueLabel: "Clue",
-  guessPlaceholder: "Who is it?",
-  guessButtonLabel: "Guess",
-  giveUpLabel: "Give Up",
+  continuingLabel: "Loading next mystery character…",
+  wrongBanner: "Not quite. You have one more guess before this run ends.",
 } as const;
-
-/** `{revealedName}`/`{streak}` are template placeholders — substitute before display. */
-export const GUESS_WHO_CORRECT_BANNER = "🎉 Correct! It was {revealedName}! Streak: {streak}.";
 
 export const GUESS_WHO_CTA_LABEL = "Play Guess Who";
 

@@ -12,7 +12,7 @@ import {
   CONTENT_GUIDELINES,
   generatePersonalityPrompt,
   generateGameCluePersonaPrompt,
-  generateCharacterClues,
+  generateGuessWhoSelfCluePersonaPrompt,
 } from "../../../src/config/serverConfig";
 import { getClaudeModel } from "../../../src/utils/claudeModelSelector";
 
@@ -249,32 +249,47 @@ describe("serverConfig", () => {
     });
   });
 
-  describe("generateCharacterClues", () => {
-    it("returns the 5 clues Claude returns as JSON", async () => {
-      claudeReturns(JSON.stringify({ clues: ["c1", "c2", "c3", "c4", "c5"] }));
-      const { clues } = await generateCharacterClues("Irene Adler");
-      expect(clues).toEqual(["c1", "c2", "c3", "c4", "c5"]);
-      expect(getClaudeModel).toHaveBeenCalledWith("text-simple");
-    });
+  describe("generateGuessWhoSelfCluePersonaPrompt", () => {
+    it("builds the base persona plus the self-clue rules block, referencing the character's own name only for internal reference", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
 
-    it("includes work grounding in the user message when supplied", async () => {
-      claudeReturns(JSON.stringify({ clues: ["c1", "c2", "c3", "c4", "c5"] }));
-      await generateCharacterClues("Irene Adler", "Sherlock Holmes canon");
-      const call = mockCreate.mock.calls[0][0];
-      expect(call.messages[0].content).toContain("Sherlock Holmes canon");
-    });
+      const { prompt } = await generateGuessWhoSelfCluePersonaPrompt("Irene Adler");
 
-    it("truncates to 5 clues when Claude returns more", async () => {
-      claudeReturns(JSON.stringify({ clues: ["c1", "c2", "c3", "c4", "c5", "c6"] }));
-      const { clues } = await generateCharacterClues("Irene Adler");
-      expect(clues).toHaveLength(5);
-    });
-
-    it("throws when Claude returns fewer than 5 clues", async () => {
-      claudeReturns(JSON.stringify({ clues: ["c1", "c2"] }));
-      await expect(generateCharacterClues("Irene Adler")).rejects.toThrow(
-        "generateCharacterClues returned 2 clues, expected 5",
+      expect(prompt).toContain("You are Irene Adler.");
+      expect(prompt).toContain("GAME RULES YOU MUST FOLLOW");
+      expect(prompt).toContain("hidden mystery figure");
+      expect(prompt).toContain(
+        "(For your own internal reference only — never say this name in any reply): Irene Adler",
       );
+    });
+
+    it("grounds the character's own identity when work is supplied", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+
+      const { prompt } = await generateGuessWhoSelfCluePersonaPrompt(
+        "Beauty (Beauty and the Beast)",
+        "The fairy tale Beauty and the Beast",
+      );
+
+      expect(prompt).toContain(
+        "You are specifically drawn from: The fairy tale Beauty and the Beast.",
+      );
+    });
+
+    it("omits work grounding when no work is supplied", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+
+      const { prompt } = await generateGuessWhoSelfCluePersonaPrompt("Zeus");
+
+      expect(prompt).not.toContain("specifically drawn from");
+    });
+
+    it("reuses generatePersonalityPrompt's own text-simple tier call for the base persona", async () => {
+      claudeReturns(JSON.stringify(fullConfig));
+
+      await generateGuessWhoSelfCluePersonaPrompt("Irene Adler");
+
+      expect(getClaudeModel).toHaveBeenCalledWith("text-simple");
     });
   });
 });

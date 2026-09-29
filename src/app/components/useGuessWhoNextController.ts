@@ -21,6 +21,10 @@ import { useAudioEnabled } from "./useAudioEnabled";
 import { useSpeechRecognition } from "./useSpeechRecognition";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
 import type { LoadingStage } from "./CharacterLoadingOverlay";
+import {
+  fetchRoundWithProgress as sharedFetchRoundWithProgress,
+  initialRoundStages,
+} from "./useGameRoundProgress";
 
 export type { GameEvent } from "character-chatbot-shared";
 
@@ -71,114 +75,13 @@ async function postGame<T>(url: string, body: unknown): Promise<T> {
   return res.json();
 }
 
-/**
- * The real stages src/utils/gameRound.ts's generateGameRound reports as it runs, in
- * display order, plus a trailing synthetic "greeting" entry standing in for the final
- * TTS-synthesis step (the server never reports it by name — it's simply whatever's left
- * once the other four are done, right up until the last frame arrives). Used to compute
- * an honest progress checklist from genuine server-reported "done" events (see
- * fetchRoundWithProgress below) rather than a client-side timer simulating stages that
- * may not match what's actually happening.
- */
-const ROUND_STAGE_ORDER: { stage: string; label: string }[] = [
-  { stage: "personality", label: "Creating personality…" },
-  { stage: "avatar", label: "Generating portrait…" },
-  { stage: "reply", label: "Writing opening line…" },
-  { stage: "voice", label: "Selecting voice…" },
-  { stage: "greeting", label: "Preparing greeting…" },
-];
-
-/** The checklist's starting state: nothing done yet, the first stage active. */
-function initialRoundStages(): LoadingStage[] {
-  return ROUND_STAGE_ORDER.map((entry, index) => ({
-    ...entry,
-    done: false,
-    active: index === 0,
-  }));
-}
-
-/**
- * Reads a `text/event-stream` response of `data: {...}\n\n` frames, calling `onFrame` for
- * each as it arrives. A malformed frame is skipped rather than aborting the whole stream.
- */
-async function readSseFrames(
-  response: Response,
-  onFrame: (frame: Record<string, unknown>) => void,
-): Promise<void> {
-  const reader = response.body?.getReader();
-  if (!reader) return;
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const parts = buffer.split("\n\n");
-    buffer = parts.pop() ?? "";
-    for (const part of parts) {
-      const line = part.trim();
-      if (!line.startsWith("data:")) continue;
-      try {
-        onFrame(JSON.parse(line.slice("data:".length).trim()));
-      } catch {
-        // Skip a malformed frame rather than aborting the whole stream.
-      }
-    }
-  }
-}
-
-/**
- * Calls a round-generation endpoint (/api/guess-who-next/start or /api/guess-who-next/continue) in streamed
- * mode, reporting REAL progress to `onProgress` as each named step of
- * src/utils/gameRound.ts's generateGameRound genuinely completes — not a client-side
- * timer simulating stages. `completedStages` accumulates as real "done" events arrive;
- * the active stage is always the first one in ROUND_STAGE_ORDER not yet completed, which
- * naturally reflects personality/avatar (and reply/voice, which run concurrently in
- * pairs server-side) resolving in either order — whichever of a pair is still
- * outstanding is what's displayed, never a guess. The synthetic trailing "greeting"
- * stage is never in `completedStages` (the server doesn't report it by name), so it
- * naturally becomes "active" once the real four are done and stays that way until the
- * final frame resolves the whole call. The mobile app can't read a streamed body, so it
- * calls the same endpoints in plain JSON mode instead.
- */
-async function fetchRoundWithProgress(
+/** Calls a guess-who-next round-generation endpoint with real staged SSE progress — see useGameRoundProgress.ts. */
+function fetchRoundWithProgress(
   url: string,
   body: Record<string, unknown>,
   onProgress: (label: string, stages: LoadingStage[]) => void,
 ): Promise<GameRoundResult> {
-  const completedStages = new Set<string>();
-  const updateProgress = () => {
-    const activeIndex = ROUND_STAGE_ORDER.findIndex((entry) => !completedStages.has(entry.stage));
-    const stages = ROUND_STAGE_ORDER.map((entry, index) => ({
-      ...entry,
-      done: completedStages.has(entry.stage),
-      active: index === activeIndex,
-    }));
-    onProgress(stages[activeIndex]?.label ?? "Preparing greeting…", stages);
-  };
-  updateProgress();
-
-  const res = await authenticatedFetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, stream: true }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-  let finalFrame: Record<string, unknown> | null = null;
-  await readSseFrames(res, (frame) => {
-    if (frame.done) {
-      finalFrame = frame;
-      return;
-    }
-    if (typeof frame.stage === "string") {
-      completedStages.add(frame.stage);
-      updateProgress();
-    }
-  });
-
-  if (!finalFrame) throw new Error(`Stream from ${url} ended without a final frame`);
-  return parseGameRoundResult(finalFrame, url);
+  return sharedFetchRoundWithProgress(url, body, onProgress, parseGameRoundResult);
 }
 
 /**

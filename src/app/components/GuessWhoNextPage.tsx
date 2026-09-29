@@ -250,10 +250,11 @@ function GuessWhoNextPage() {
   // never disagrees with the banner in front of it.
   const belowName = (
     <div className={styles.streakBadge} data-testid="game-streak-badge">
-      {GUESS_WHO_NEXT_STREAK_LABEL}: {displayedStreak}
+      <span className={styles.streakValue}>
+        {GUESS_WHO_NEXT_STREAK_LABEL}: {displayedStreak}
+      </span>
       {typeof highScore === "number" && highScore > 0 && (
         <span className={styles.highScoreBadge} data-testid="game-high-score-badge">
-          {" "}
           · Best: {highScore}
         </span>
       )}

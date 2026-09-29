@@ -15,6 +15,31 @@ never the public. Removed rather than left dark behind a flag — see `authOptio
 doc comment and git history around the removal for the exact prior shape if it's ever
 worth revisiting (e.g. after completing EIN-based verification).
 
+## Guess Who: clue-list mechanic replaced by a self-describing chat (2026-09-29)
+
+The original "Guess Who" shipped as a static, non-chat mechanic: a single Claude call
+generated 5 ordered clues (vague to specific) about a hidden character up front, shown
+one at a time in a dedicated "clue card" UI with a separate guess text input and Give Up
+button — no persona, no avatar, no TTS during play (an avatar was only ever generated at
+the reveal moment, so it could never spoil the guess). This didn't match the game's
+original intent: a mystery character the player actually *converses with*, which drops
+real clues about itself naturally as the conversation continues, the same way "Guess
+Who's Next" already worked except steering toward a *different* hidden figure instead of
+describing itself.
+
+Rebuilt on "Guess Who's Next"'s proven chat architecture: the character being chatted
+with *is* the mystery (never a separate current/next pair), never states its own name,
+and gives escalating real clues about itself as the player asks questions — guesses go
+into the same chat box as ordinary messages, classified server-side exactly like the
+sibling game. This required generating the full persona/avatar/voice/TTS pipeline eagerly
+at round start (for full audio/persona parity with ordinary chat) while withholding the
+name and avatar URL from every API response until a reveal — a real design constraint the
+old game never had, since it simply never generated an avatar until reveal time. See
+CLAUDE.md's "Guess Who (self-describing chat game)" section for the current design; the
+shared guess-classifier logic (`classifyGuess`, with all its hard-won identity-matching
+rules) was extracted out of "Guess Who's Next" into `src/utils/classifyGuess.ts` as part
+of this rework so both games share one implementation instead of risking drift.
+
 ## Guessing-game leaderboard: per-run "locked name" mechanism, shipped then removed
 
 A per-run "locked name" mechanism (a `leaderboard_name` column on `game_results`, a

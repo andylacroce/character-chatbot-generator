@@ -3,19 +3,24 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Alert } from "react-native";
 import { useMemo, useState, type ReactElement } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAudioPlayer } from "expo-audio";
 import GuessWhoScreen from "../../src/screens/GuessWhoScreen";
 import { ThemeProvider } from "../../src/ThemeContext";
 
 jest.mock("../../src/api", () => ({
   ...jest.requireActual("../../src/api"),
   startGuessWhoRound: jest.fn(),
-  submitGuessWhoGuess: jest.fn(),
+  continueGuessWho: jest.fn(),
+  sendGuessWhoMessage: jest.fn(),
   giveUpGuessWho: jest.fn(),
   getGuessWhoHighScore: jest.fn(),
   getGuessWhoLeaderboardSettings: jest.fn(),
 }));
 jest.mock("../../src/AuthContext", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut" })),
+}));
+jest.mock("../../src/useUserName", () => ({
+  useUserName: jest.fn(() => ({ name: "Andy" })),
 }));
 jest.mock("@react-navigation/elements", () => ({
   useHeaderHeight: () => 0,
@@ -26,32 +31,33 @@ jest.mock("expo-haptics", () => ({
 }));
 
 import {
-  giveUpGuessWho,
+  continueGuessWho,
   getGuessWhoHighScore,
   getGuessWhoLeaderboardSettings,
+  giveUpGuessWho,
+  sendGuessWhoMessage,
   startGuessWhoRound,
-  submitGuessWhoGuess,
 } from "../../src/api";
 
 const mockedStart = startGuessWhoRound as jest.Mock;
-const mockedGuess = submitGuessWhoGuess as jest.Mock;
+const mockedContinue = continueGuessWho as jest.Mock;
+const mockedSend = sendGuessWhoMessage as jest.Mock;
 const mockedGiveUp = giveUpGuessWho as jest.Mock;
 
 function round(overrides: Record<string, unknown> = {}) {
   return {
     guessWhoToken: "token-1",
-    clue: "Clue 1",
-    clueNumber: 1,
-    totalClues: 5,
+    reply: "I once met a queen in a river of gold.",
     streak: 0,
     ...overrides,
   };
 }
 
-type HeaderOptions = { headerRight?: () => ReactElement };
+type HeaderOptions = { headerTitle?: () => ReactElement; headerRight?: () => ReactElement };
 
 async function renderScreen() {
   const navigate = jest.fn();
+  // Renders the header options in the same tree, the way the navigator would.
   function Harness() {
     const [options, setOptions] = useState<HeaderOptions>({});
     const navigation = useMemo(
@@ -63,6 +69,7 @@ async function renderScreen() {
     );
     return (
       <>
+        {options.headerTitle?.()}
         {options.headerRight?.()}
         <GuessWhoScreen navigation={navigation as never} route={{} as never} />
       </>
@@ -86,7 +93,12 @@ async function renderScreen() {
 async function startRun(utils: Awaited<ReturnType<typeof renderScreen>>) {
   mockedStart.mockResolvedValueOnce(round());
   await fireEvent.press(await utils.findByText("Start Game"));
-  await utils.findByText("Clue 1");
+  await utils.findByText("I once met a queen in a river of gold.");
+}
+
+async function send(utils: Awaited<ReturnType<typeof renderScreen>>, text: string) {
+  await fireEvent.changeText(utils.getByPlaceholderText("Message ???"), text);
+  await fireEvent.press(utils.getByLabelText("Send"));
 }
 
 describe("GuessWhoScreen", () => {
@@ -116,11 +128,20 @@ describe("GuessWhoScreen", () => {
     expect(utils.getByText("Got it, let's play")).toBeTruthy();
   });
 
-  it("starts a run and shows the first clue with the streak", async () => {
+  it("starts a run, chats with the mystery character, and shows the streak in the header", async () => {
     (getGuessWhoHighScore as jest.Mock).mockResolvedValue({ highScore: 4 });
     const utils = await renderScreen();
     await startRun(utils);
     expect(utils.getByText("Streak: 0 · Best: 4")).toBeTruthy();
+
+    mockedSend.mockResolvedValueOnce({ reply: "I've solved a few mysteries myself." });
+    await send(utils, "Are you a detective?");
+    expect(await utils.findByText("I've solved a few mysteries myself.")).toBeTruthy();
+    expect(mockedSend).toHaveBeenCalledWith({
+      guessWhoToken: "token-1",
+      message: "Are you a detective?",
+      conversationHistory: ["Bot: I once met a queen in a river of gold."],
+    });
   });
 
   it("reports a failed start", async () => {
@@ -130,44 +151,36 @@ describe("GuessWhoScreen", () => {
     expect(await utils.findByText("Failed to start a new game. Please try again.")).toBeTruthy();
   });
 
-  it("submits a correct guess and shows the reveal banner with a Continue button", async () => {
+  it("holds a correct guess on the Continue banner, reveals the header, then brings in a new mystery character", async () => {
     const utils = await renderScreen();
     await startRun(utils);
 
-    mockedGuess.mockResolvedValueOnce({
+    mockedSend.mockResolvedValueOnce({
+      reply: "You got it!",
       correct: true,
-      gameOver: false,
-      revealedName: "Irene Adler",
-      avatarUrl: "https://example.com/irene.png",
+      revealedName: "Cleopatra",
+      avatarUrl: "https://example.com/cleopatra.png",
       gender: "female",
       streak: 1,
-      usedNames: ["Irene Adler"],
     });
-    await fireEvent.changeText(utils.getByPlaceholderText("Who is it?"), "Irene Adler");
-    await fireEvent.press(utils.getByText("Guess"));
+    await send(utils, "Cleopatra");
+    expect(await utils.findByText("🎉 Correct! It was Cleopatra! Streak: 1.")).toBeTruthy();
+    expect(utils.getByText("Streak: 1 · Best: 1")).toBeTruthy();
 
-    expect(await utils.findByText(/Correct! It was Irene Adler/)).toBeTruthy();
-
-    mockedStart.mockResolvedValueOnce(round({ guessWhoToken: "token-2", streak: 1 }));
+    mockedContinue.mockResolvedValueOnce(round({ reply: "A new voice greets you.", streak: 1 }));
     await fireEvent.press(utils.getByText("Continue"));
-    await waitFor(() => expect(mockedStart).toHaveBeenCalledTimes(2));
+    expect(await utils.findByText("A new voice greets you.")).toBeTruthy();
+    expect(mockedContinue).toHaveBeenCalledWith("token-1");
   });
 
-  it("reveals the next clue on a wrong guess", async () => {
+  it("shows the wrong-guess banner", async () => {
     const utils = await renderScreen();
     await startRun(utils);
-    mockedGuess.mockResolvedValueOnce({
-      correct: false,
-      gameOver: false,
-      clue: "Clue 2",
-      clueNumber: 2,
-      totalClues: 5,
-      streak: 0,
-      guessWhoToken: "token-2",
-    });
-    await fireEvent.changeText(utils.getByPlaceholderText("Who is it?"), "Sherlock Holmes");
-    await fireEvent.press(utils.getByText("Guess"));
-    expect(await utils.findByText("Clue 2")).toBeTruthy();
+    mockedSend.mockResolvedValueOnce({ reply: "No.", wrongGuessesRemaining: 1 });
+    await send(utils, "Watson");
+    expect(
+      await utils.findByText("Not quite. You have one more guess before this run ends."),
+    ).toBeTruthy();
   });
 
   it("confirms a give-up from the header, then shows the game-over screen", async () => {
@@ -188,6 +201,44 @@ describe("GuessWhoScreen", () => {
 
     expect(await utils.findByText("Game Over")).toBeTruthy();
     expect(utils.getByText("It was Moriarty. Final streak: 0.")).toBeTruthy();
+    expect(utils.getByText("Play Again")).toBeTruthy();
+  });
+
+  it("asks for the same confirmation when the player gives up in chat", async () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const utils = await renderScreen();
+    await startRun(utils);
+    mockedSend.mockResolvedValueOnce({ giveUpRequested: true });
+    await send(utils, "I give up");
+    await waitFor(() =>
+      expect(alert).toHaveBeenCalledWith(
+        "Give up this run?",
+        expect.any(String),
+        expect.any(Array),
+      ),
+    );
+  });
+
+  it("replays a past message from its stored audio URL", async () => {
+    const player = { play: jest.fn(), pause: jest.fn(), replace: jest.fn(), seekTo: jest.fn() };
+    (useAudioPlayer as jest.Mock).mockReturnValue(player);
+    await AsyncStorage.setItem("chatbot-guess-who-token", "stored-token");
+    await AsyncStorage.setItem(
+      "chatbot-guess-who-transcript",
+      JSON.stringify({
+        streak: 0,
+        messages: [{ sender: "???", text: "Hail, mortal.", audioFileUrl: "/api/audio?file=z.mp3" }],
+        roundStartIndex: 0,
+        lastEvent: null,
+      }),
+    );
+    const utils = await renderScreen();
+    await fireEvent.press(await utils.findByLabelText("Replay audio for ???'s message"));
+    await waitFor(() =>
+      expect(player.replace).toHaveBeenLastCalledWith(
+        expect.stringContaining("/api/audio?file=z.mp3"),
+      ),
+    );
   });
 
   it("resumes a stored run and links to the leaderboard from the start screen", async () => {
@@ -195,20 +246,18 @@ describe("GuessWhoScreen", () => {
     await fireEvent.press(await utils.findByText("View leaderboard"));
     expect(utils.navigate).toHaveBeenCalledWith("Leaderboard");
 
+    await AsyncStorage.setItem("chatbot-guess-who-token", "stored-token");
     await AsyncStorage.setItem(
-      "chatbot-guess-who-state",
+      "chatbot-guess-who-transcript",
       JSON.stringify({
-        guessWhoToken: "stored-token",
-        clue: "A queen from ancient Egypt.",
-        clueNumber: 1,
-        totalClues: 5,
         streak: 2,
-        usedNames: [],
+        messages: [{ sender: "???", text: "Hail, mortal." }],
+        roundStartIndex: 0,
         lastEvent: null,
       }),
     );
     utils.unmount();
     const resumed = await renderScreen();
-    expect(await resumed.findByText("A queen from ancient Egypt.")).toBeTruthy();
+    expect(await resumed.findByText("Hail, mortal.")).toBeTruthy();
   });
 });

@@ -12,13 +12,18 @@ import {
   apiErrorMessage,
   apiFetch,
   continueGame,
+  continueGuessWho,
   getGameHighScore,
+  getGuessWhoHighScore,
   getLeaderboard,
   getLeaderboardSettings,
   giveUpGame,
+  giveUpGuessWho,
   saveLeaderboardSettings,
   sendGameMessage,
+  sendGuessWhoMessage,
   startGame,
+  startGuessWhoRound,
   generateAvatar,
   generatePersonality,
   getChars,
@@ -316,6 +321,60 @@ describe("api", () => {
       expect(apiErrorMessage(new ApiError(400, '{"error":"Bad name"}'), "x")).toBe("Bad name");
       expect(apiErrorMessage(new ApiError(500, "<html>"), "fallback")).toBe("fallback");
       expect(apiErrorMessage(new Error("net"), "fallback")).toBe("fallback");
+    });
+  });
+
+  describe("Guess Who", () => {
+    const round = {
+      guessWhoToken: "t1",
+      reply: "I once met a queen in a river of gold.",
+      streak: 0,
+    };
+
+    function lastCall() {
+      const calls = (globalThis.fetch as jest.Mock).mock.calls;
+      const [url, options] = calls[calls.length - 1];
+      return { url, options, headers: options.headers as Record<string, string> };
+    }
+
+    it("starts and continues rounds in plain JSON mode with the guest identity", async () => {
+      mockFetchOnce({ ok: true, json: async () => round } as Response);
+      await expect(startGuessWhoRound()).resolves.toMatchObject({
+        guessWhoToken: "t1",
+        reply: round.reply,
+      });
+      let call = lastCall();
+      expect(call.url).toBe(`${API_BASE_URL}/api/guess-who/start`);
+      expect(JSON.parse(call.options.body)).toEqual({});
+      expect(call.headers["x-game-guest"]).toBe("g".repeat(43));
+
+      mockFetchOnce({ ok: true, json: async () => round } as Response);
+      await continueGuessWho("t1");
+      call = lastCall();
+      expect(call.url).toBe(`${API_BASE_URL}/api/guess-who/continue`);
+      expect(JSON.parse(call.options.body)).toEqual({ guessWhoToken: "t1" });
+    });
+
+    it("rejects a malformed round", async () => {
+      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
+      await expect(startGuessWhoRound()).rejects.toThrow(
+        "Invalid response from /api/guess-who/start",
+      );
+    });
+
+    it("sends turns, give-ups and the high score to their routes", async () => {
+      mockFetchOnce({ ok: true, json: async () => ({ reply: "Hi" }) } as Response);
+      await sendGuessWhoMessage({ guessWhoToken: "t1", message: "Hi" });
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/guess-who/message`);
+
+      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
+      await giveUpGuessWho("t1");
+      expect(JSON.parse(lastCall().options.body)).toEqual({ guessWhoToken: "t1" });
+
+      mockFetchOnce({ ok: true, json: async () => ({ highScore: 3 }) } as Response);
+      await expect(getGuessWhoHighScore()).resolves.toEqual({ highScore: 3 });
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/guess-who/high-score`);
+      expect(lastCall().headers["x-game-guest"]).toBe("g".repeat(43));
     });
   });
 });
