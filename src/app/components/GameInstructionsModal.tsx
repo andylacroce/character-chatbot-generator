@@ -50,7 +50,7 @@ const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
       testId={testId}
     >
       <p className={styles.disclaimerText}>{copy.premise}</p>
-      <ul className={styles.disclaimerText}>
+      <ul className={`${styles.disclaimerText} ${styles.disclaimerList}`}>
         {copy.bullets.map((bullet) => (
           <li key={bullet}>{bullet}</li>
         ))}

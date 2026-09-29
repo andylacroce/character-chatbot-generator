@@ -508,6 +508,22 @@
   color: var(--color-text);
 }
 
+/* The `* { margin: 0; padding: 0; }` reset in globals.css strips a <ul>'s default
+   left padding, which otherwise leaves bullet markers with no indentation (or
+   clipped against the modal's edge). Applied alongside .disclaimerText on the
+   game instructions modals' bullet list (GameInstructionsModal.tsx). */
+.disclaimerList {
+  padding-left: 1.4rem;
+}
+
+.disclaimerList li {
+  margin-bottom: 0.35rem;
+}
+
+.disclaimerList li:last-child {
+  margin-bottom: 0;
+}
+
 .disclaimerCloseButton {
   position: absolute;
   top: 0.7rem;
