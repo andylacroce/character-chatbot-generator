@@ -217,6 +217,15 @@
     align-items: flex-start !important;
     text-align: left !important;
   }
+  .headerLeft {
+    /* Recenter against the container's mobile-only `align-items: start` (set so
+       .headerCenter's text can start at the top when it wraps to multiple lines).
+       .headerLeft's own content (BackHomeLink, on the guessing game's start screen —
+       see GuessWhoPage.tsx) is single-line and shorter than the hamburger button, so
+       top-aligning it against .headerRight left their vertical centers mismatched:
+       the back button sat visibly higher than the dark-mode toggle/hamburger. */
+    align-self: center;
+  }
   .headerRight {
     grid-column: 3;
     align-self: start;
