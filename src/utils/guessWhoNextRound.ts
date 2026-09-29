@@ -66,7 +66,7 @@ export async function generateGameRound(
       onProgress?.("personality");
       return result;
     }),
-    getOrGenerateAvatar(currentCharacterName, { recognized: true }).then((result) => {
+    getOrGenerateAvatar(currentCharacterName).then((result) => {
       onProgress?.("avatar");
       return result;
     }),

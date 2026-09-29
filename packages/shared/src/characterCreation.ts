@@ -1,5 +1,5 @@
 /**
- * Character creation shared by the web app and the mobile app: the personality -> portrait
+ * Character conversation setup shared by web and mobile: the personality -> portrait
  * -> voice pipeline, and the platform-agnostic pieces of the creation flow around it (see
  * useCharacterCreation.ts). Each platform supplies a CreationTransport for its requests.
  */
@@ -28,13 +28,10 @@ export interface CreationTransport {
   randomName(): Promise<string>;
   generatePersonality(request: {
     name: string;
-    description?: string;
   }): Promise<{ personality?: string; correctedName?: string } | null>;
   generateAvatar(request: {
     name: string;
     skipPersistence: boolean;
-    recognized: boolean;
-    appearanceDescription?: string;
   }): Promise<{ avatarUrl?: string; gender?: string | null } | null>;
   getVoiceConfig(
     name: string,
@@ -53,12 +50,6 @@ export interface GenerateCharacterOptions {
    * cache and durable storage, and the character is never saved to their account.
    */
   skipPersistence?: boolean;
-  /** Free-form concept for an original (unrecognized) character. */
-  description?: string;
-  /** Companion appearance text for an original character's portrait. */
-  appearance?: string;
-  /** validate-character's `recognized`; false keeps the portrait out of the public gallery. */
-  recognized?: boolean;
   log?: CreationLogger;
 }
 
@@ -82,9 +73,6 @@ export async function generateCharacter(
     setLoadingMessage,
     cancelToken,
     skipPersistence = false,
-    description,
-    appearance,
-    recognized = true,
     log = () => {},
   }: GenerateCharacterOptions,
 ): Promise<Bot> {
@@ -98,7 +86,7 @@ export async function generateCharacter(
   setLoadingMessage("Creating personality");
   checkCancelled();
   try {
-    const data = await transport.generatePersonality({ name: originalName, description });
+    const data = await transport.generatePersonality({ name: originalName });
     checkCancelled();
     if (data) {
       if (data.personality) personality = data.personality;
@@ -130,8 +118,6 @@ export async function generateCharacter(
     const data = await transport.generateAvatar({
       name: correctedName,
       skipPersistence,
-      recognized,
-      appearanceDescription: appearance,
     });
     checkCancelled();
     if (data) {

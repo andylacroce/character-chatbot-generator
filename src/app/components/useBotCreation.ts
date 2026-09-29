@@ -26,7 +26,7 @@ async function postJsonOrNull<T>(url: string, body: unknown): Promise<T | null> 
   return res.ok ? res.json() : null;
 }
 
-/** The web app's requests for character creation. */
+/** The web app's requests for launching an established-character conversation. */
 const transport: CreationTransport = {
   async validate(name) {
     const failOpen = {
@@ -110,18 +110,12 @@ export async function generateBotDataWithProgressCancelable(
   setLoadingMessage: (msg: string | null) => void,
   cancelToken: { cancelled: boolean } | null,
   skipPersistence: boolean = false,
-  description?: string,
-  appearance?: string,
-  recognized: boolean = true,
 ): Promise<Bot> {
   const bot = await generateCharacter(transport, originalInputName, {
     onProgress,
     setLoadingMessage,
     cancelToken,
     skipPersistence,
-    description,
-    appearance,
-    recognized,
     log,
   });
   try {

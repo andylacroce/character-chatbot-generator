@@ -56,11 +56,10 @@ export default function DataDeletionPage() {
         </ul>
         <div className={styles.callout}>
           Deletion happens immediately once you confirm, and can&apos;t be undone. It erases your
-          account record, every character you saved (including portraits made only for your own
-          original characters), your full chat history, your preferred name, and your guessing-game
-          scores and leaderboard name, and your chat troubleshooting logs. On the browser or device
-          you delete from, it also clears your saved chats and the anonymous guessing-game identity,
-          and signs you out.
+          account record, every character you saved, your full chat history, your preferred name,
+          and your guessing-game scores and leaderboard name, and your chat troubleshooting logs. On
+          the browser or device you delete from, it also clears your saved chats and the anonymous
+          guessing-game identity, and signs you out.
         </div>
         <p>
           Can&apos;t sign in anymore? Email{" "}

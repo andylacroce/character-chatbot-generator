@@ -937,40 +937,6 @@
   box-shadow: 0 4px 12px rgba(184, 134, 63, 0.4);
 }
 
-/* --- Description Textarea (original-character description modal) --- */
-.descriptionTextarea {
-  width: 100%;
-  padding: 0.75rem;
-  margin-top: 0.5rem;
-  border: 1px solid var(--color-text-secondary);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-family: var(--font-primary);
-  font-size: 0.95rem;
-  line-height: 1.5;
-  resize: vertical;
-  box-sizing: border-box;
-}
-
-.descriptionTextarea::placeholder {
-  color: var(--input-placeholder);
-  font-style: italic;
-}
-
-.descriptionTextarea:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
-}
-
-.charCount {
-  font-size: 0.75rem;
-  color: var(--color-text-secondary);
-  text-align: right;
-  margin-top: 0.25rem;
-  margin-bottom: 0.75rem;
-}
-
 /* --- Disclaimer --- */
 .modalDisclaimer {
   font-size: 0.75rem;

@@ -78,9 +78,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
-    const { avatarUrl, gender } = await getOrGenerateAvatar(state.hiddenName, {
-      recognized: true,
-    });
+    const { avatarUrl, gender } = await getOrGenerateAvatar(state.hiddenName);
     logEvent(
       "info",
       "guess_who_gave_up",

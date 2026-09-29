@@ -77,7 +77,7 @@ describe("ChatPage header content (moved from ChatHeader into AppHeader's slots)
     const onBack = jest.fn();
     render(<ChatPage bot={mockBot} onBackToCharacterCreation={onBack} />);
     fireEvent.click(screen.getByLabelText(/open menu/i));
-    fireEvent.click(screen.getByLabelText(/back to character creation/i));
+    fireEvent.click(screen.getByLabelText(/back to character selection/i));
     expect(onBack).toHaveBeenCalled();
   });
 

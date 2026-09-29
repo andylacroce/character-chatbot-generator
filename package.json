@@ -1,6 +1,6 @@
 {
   "name": "portrayal",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -39,10 +39,10 @@
     "db:check": "node scripts/check-db-schema.cjs",
     "db:generate": "drizzle-kit generate --config config/drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config config/drizzle.config.ts",
-    "chars:reclassify": "node scripts/reclassify-avatar-cache.cjs",
     "chars:backfill-display-names": "node scripts/backfill-avatar-display-names.cjs",
     "chars:backfill-full-names": "node scripts/backfill-full-character-names.cjs",
     "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs",
+    "chars:scrub-unrecognized": "node scripts/scrub-unrecognized-characters.cjs",
     "logs:scrub-ips": "node scripts/scrub-chat-log-ips.cjs"
   },
   "dependencies": {

@@ -287,7 +287,7 @@ export default function AdminStatsView() {
                 className={`${styles.viewTab} ${activeView === "characters" ? styles.viewTabActive : ""}`}
                 onClick={() => setActiveView("characters")}
               >
-                Character creation
+                Character conversations
               </button>
             </div>
             {activeView === "game" && (
@@ -391,8 +391,8 @@ export default function AdminStatsView() {
               >
                 <div className={styles.gameSectionHeading}>
                   <div>
-                    <h2 className={styles.groupHeading}>Character creation</h2>
-                    <p className={styles.sectionHint}>Creation activity and saved conversations</p>
+                    <h2 className={styles.groupHeading}>Character conversations</h2>
+                    <p className={styles.sectionHint}>Conversation launches and saved chats</p>
                   </div>
                 </div>
                 <div className={styles.statGrid}>
@@ -407,12 +407,12 @@ export default function AdminStatsView() {
                     <p className={styles.statSub}>{stats.totals.avgMessagesPerBot} avg per bot</p>
                   </div>
                   <div className={styles.statTile}>
-                    <p className={styles.statLabel}>Created today</p>
+                    <p className={styles.statLabel}>Started today</p>
                     <p className={styles.statValue}>{stats.activity.createdToday}</p>
                     <p className={styles.statSub}>Guests + signed-in</p>
                   </div>
                   <div className={styles.statTile}>
-                    <p className={styles.statLabel}>Created last 7 days</p>
+                    <p className={styles.statLabel}>Started last 7 days</p>
                     <p className={styles.statValue}>{stats.activity.createdLast7Days}</p>
                     <p className={styles.statSub}>Guests + signed-in</p>
                   </div>
@@ -452,7 +452,7 @@ export default function AdminStatsView() {
                         as abusive ({formatPct(pct(stats.funnel.blocked, stats.funnel.validated))})
                       </span>
                       <span className={styles.callout}>
-                        {stats.validation.unrecognizedCount} original character
+                        {stats.validation.unrecognizedCount} unsupported name
                         {stats.validation.unrecognizedCount === 1 ? "" : "s"} (
                         {formatPct(stats.validation.unrecognizedPct)} of validated names)
                       </span>
@@ -488,7 +488,7 @@ export default function AdminStatsView() {
                   </div>
 
                   <div className={styles.section}>
-                    <h2 className={styles.sectionTitle}>Who&apos;s creating characters</h2>
+                    <h2 className={styles.sectionTitle}>Who&apos;s starting conversations</h2>
                     <div
                       className={styles.splitBar}
                       role="img"

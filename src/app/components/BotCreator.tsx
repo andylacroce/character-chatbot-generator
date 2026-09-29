@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Portrayal - Character creation form component.
+ * Portrayal - Character conversation launcher.
  *
- * Allows users to create a new chatbot persona by entering a name or choosing a random character.
+ * Lets users select an established character by name or choose a random one.
  * Handles personality, avatar, and voice generation with progress feedback.
  *
  * @module BotCreator
@@ -26,7 +26,6 @@ import { useSpeechRecognition } from "./useSpeechRecognition";
 import { useAccountMenu } from "./useAccountMenu";
 import { NameCaptureModal } from "./NameCaptureModal";
 import { CopyrightWarningModal } from "./CopyrightWarningModal";
-import { CharacterDescriptionModal } from "./CharacterDescriptionModal";
 import CharacterLoadingOverlay, { type LoadingStage } from "./CharacterLoadingOverlay";
 
 interface Bot {
@@ -94,7 +93,7 @@ const progressSteps = [
   },
 ];
 
-/** Landing-page character creation form: name entry, random pick, and the Character Wall CTA. */
+/** Landing-page character picker: name entry, random pick, and the Character Wall CTA. */
 const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreator = false }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -118,7 +117,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     validating,
     validationResult,
     showValidationModal,
-    showDescriptionModal,
     showNameGateModal,
     handleCreate,
     handleCancel,
@@ -126,8 +124,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     handleValidationContinue,
     handleValidationCancel,
     handleValidationSuggestion,
-    handleDescriptionSubmit,
-    handleDescriptionCancel,
     handleNameGateSave,
     handleNameGateSkip,
   } = useBotCreation(onBotCreated, userNameCtx);
@@ -394,7 +390,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                     Who will you bring to life?
                   </h1>
                   <p className={styles.heroCopy}>
-                    Choose a familiar figure or invent someone entirely your own.
+                    Talk with someone from history, mythology, or fiction.
                   </p>
                 </div>
 
@@ -510,9 +506,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                         className={styles.textLinkPrimary}
                         disabled={isBusy}
                         data-testid="bot-creator-button"
-                        aria-label="Create character"
+                        aria-label="Start conversation"
                       >
-                        Create character
+                        Start conversation
                         <svg
                           width="15"
                           height="15"
@@ -561,8 +557,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                       />
                     </svg>
                     <span>
-                      <strong>Browse the Character Wall</strong>
-                      <small>Choose from portraits already in the collection</small>
+                      <strong>Character Wall</strong>
+                      <small>Pick a portrait to chat</small>
                     </span>
                     <span aria-hidden="true">&rarr;</span>
                   </Link>
@@ -678,14 +674,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           onContinue={handleValidationContinue}
           onCancel={handleValidationCancel}
           onSelectSuggestion={handleValidationSuggestion}
-        />
-      )}
-
-      {showDescriptionModal && (
-        <CharacterDescriptionModal
-          characterName={input.trim()}
-          onSubmit={handleDescriptionSubmit}
-          onCancel={handleDescriptionCancel}
         />
       )}
 

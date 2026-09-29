@@ -132,13 +132,21 @@ describe("serverConfig", () => {
       expect(correctedName).toBe("Ada Lovelace");
     });
 
+    it("returns Claude's recognition decision and asks it not to invent unknown figures", async () => {
+      claudeReturns(JSON.stringify({ ...fullConfig, recognized: false }));
+
+      const { recognized } = await generatePersonalityPrompt("Captain Moonbeam");
+      const { system } = mockCreate.mock.calls[0][0];
+
+      expect(recognized).toBe(false);
+      expect(system).toContain("Set recognized to false");
+      expect(system).toContain("Never invent facts");
+    });
+
     it("passes existingNames through to the prompt for fuzzy matching", async () => {
       claudeReturns(JSON.stringify(fullConfig));
 
-      await generatePersonalityPrompt("sherlok holmes", undefined, [
-        "Sherlock Holmes",
-        "Cleopatra",
-      ]);
+      await generatePersonalityPrompt("sherlok holmes", ["Sherlock Holmes", "Cleopatra"]);
 
       const { system } = mockCreate.mock.calls[0][0];
       expect(system).toContain("EXISTING_NAMES: Sherlock Holmes, Cleopatra");
@@ -154,7 +162,7 @@ describe("serverConfig", () => {
 
       jest.clearAllMocks();
       claudeReturns(JSON.stringify(fullConfig));
-      await generatePersonalityPrompt("Einstein", undefined, ["Cleopatra"]);
+      await generatePersonalityPrompt("Einstein", ["Cleopatra"]);
       const { system: systemWithExisting } = mockCreate.mock.calls[0][0];
       expect(systemWithExisting).toContain("fullest commonly recognized name");
     });
