@@ -13,7 +13,7 @@ type Props = {
   onPress: () => void;
 };
 
-/** Tappable avatar + name for a chat screen's header, shared by ChatScreen and GameScreen. */
+/** Tappable avatar + name for a chat screen's header, shared by ChatScreen and GuessWhoNextScreen. */
 export default function CharacterHeaderTitle({ name, avatarUrl, subtitle, onPress }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);

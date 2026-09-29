@@ -1,48 +1,64 @@
 "use client";
 
 /**
- * "How to play" lightbox for the guessing game — shown automatically the first time a
- * visitor reaches /game (gated by STORAGE_KEYS.gameInstructionsSeen so it never repeats
- * uninvited in that browser), and reopenable anytime from GamePage's menu. Reuses
- * DisclaimerStyleModal and BotCreator.module.css's disclaimer* classes, the same shared
- * small-lightbox shell NameCaptureModal uses, rather than a bespoke modal + CSS module.
- * The copy itself lives in character-chatbot-shared's GAME_INSTRUCTIONS, shared with mobile.
+ * Generic "How to play" lightbox shared by both guessing games — "Guess Who's Next"
+ * (shown the first time a visitor reaches /guess-who-next, gated by
+ * STORAGE_KEYS.guessWhoNextInstructionsSeen) and "Guess Who" (its own gated key),
+ * reopenable anytime from either game's menu. Reuses DisclaimerStyleModal and
+ * BotCreator.module.css's disclaimer* classes, the same shared small-lightbox shell
+ * NameCaptureModal uses, rather than a bespoke modal + CSS module per game.
  *
- * Copy here must accurately describe the actual mechanic: the player's chat partner is
- * always a real, named character, not a mystery — what's hidden is a *different* figure
- * that partner steers the conversation toward. Getting this backwards in the UI (as an
- * earlier draft of this feature did internally) would make the game genuinely
- * unplayable, since the player would be guessing the wrong target entirely.
+ * Each caller supplies its own `copy` (GUESS_WHO_NEXT_INSTRUCTIONS or
+ * GUESS_WHO_INSTRUCTIONS, both from character-chatbot-shared) — kept short and
+ * scannable by design (one-line premise, a handful of short bullets, one goal line)
+ * rather than a dense paragraph, so it reads well in this modal's compact width.
  */
 
 import React from "react";
-import { GAME_INSTRUCTIONS } from "character-chatbot-shared";
 import styles from "./styles/BotCreator.module.css";
 import DisclaimerStyleModal from "./DisclaimerStyleModal";
+
+/** The short, scannable instructions shape both games' copy constants share. */
+export interface GameInstructionsCopy {
+  title: string;
+  premise: string;
+  bullets: readonly string[];
+  goal: string;
+  closeLabel: string;
+}
 
 interface GameInstructionsModalProps {
   show: boolean;
   onClose: () => void;
+  copy: GameInstructionsCopy;
+  testId?: string;
 }
 
-/** "How to play" lightbox explaining the guessing game's rules. */
-const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({ show, onClose }) => {
+/** "How to play" lightbox explaining a guessing game's rules, generic over which game. */
+const GameInstructionsModal: React.FC<GameInstructionsModalProps> = ({
+  show,
+  onClose,
+  copy,
+  testId = "game-instructions-modal-backdrop",
+}) => {
   return (
     <DisclaimerStyleModal
       show={show}
       onClose={onClose}
-      title={GAME_INSTRUCTIONS.title}
+      title={copy.title}
       closeLabel="Close"
-      testId="game-instructions-modal-backdrop"
+      testId={testId}
     >
-      {GAME_INSTRUCTIONS.paragraphs.map((paragraph) => (
-        <p key={paragraph} className={styles.disclaimerText}>
-          {paragraph}
-        </p>
-      ))}
+      <p className={styles.disclaimerText}>{copy.premise}</p>
+      <ul className={styles.disclaimerText}>
+        {copy.bullets.map((bullet) => (
+          <li key={bullet}>{bullet}</li>
+        ))}
+      </ul>
+      <p className={styles.disclaimerText}>{copy.goal}</p>
       <div className={styles.nameCaptureActions}>
         <button type="button" className={styles.nameCaptureSaveButton} onClick={onClose}>
-          {GAME_INSTRUCTIONS.closeLabel}
+          {copy.closeLabel}
         </button>
       </div>
     </DisclaimerStyleModal>

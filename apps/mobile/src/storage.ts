@@ -77,8 +77,8 @@ export async function saveAudioEnabled(enabled: boolean): Promise<void> {
 /** Loads an in-progress guessing-game run, or null if there isn't one. */
 export async function loadGameState(): Promise<PersistedGameState | null> {
   const [gameToken, rest] = await Promise.all([
-    AsyncStorage.getItem(STORAGE_KEYS.gameToken),
-    AsyncStorage.getItem(STORAGE_KEYS.gameTranscript),
+    AsyncStorage.getItem(STORAGE_KEYS.guessWhoNextToken),
+    AsyncStorage.getItem(STORAGE_KEYS.guessWhoNextTranscript),
   ]);
   if (!gameToken || !rest) return null;
   return { gameToken, ...(JSON.parse(rest) as Omit<PersistedGameState, "gameToken">) };
@@ -88,26 +88,26 @@ export async function loadGameState(): Promise<PersistedGameState | null> {
 export async function saveGameState(state: PersistedGameState | null): Promise<void> {
   if (!state) {
     await Promise.all([
-      AsyncStorage.removeItem(STORAGE_KEYS.gameToken),
-      AsyncStorage.removeItem(STORAGE_KEYS.gameTranscript),
+      AsyncStorage.removeItem(STORAGE_KEYS.guessWhoNextToken),
+      AsyncStorage.removeItem(STORAGE_KEYS.guessWhoNextTranscript),
     ]);
     return;
   }
   const { gameToken, ...rest } = state;
   await Promise.all([
-    AsyncStorage.setItem(STORAGE_KEYS.gameToken, gameToken),
-    AsyncStorage.setItem(STORAGE_KEYS.gameTranscript, JSON.stringify(rest)),
+    AsyncStorage.setItem(STORAGE_KEYS.guessWhoNextToken, gameToken),
+    AsyncStorage.setItem(STORAGE_KEYS.guessWhoNextTranscript, JSON.stringify(rest)),
   ]);
 }
 
 /** Whether the one-time "how to play" explainer has been shown on this device. */
 export async function loadGameInstructionsSeen(): Promise<boolean> {
-  return (await AsyncStorage.getItem(STORAGE_KEYS.gameInstructionsSeen)) === "true";
+  return (await AsyncStorage.getItem(STORAGE_KEYS.guessWhoNextInstructionsSeen)) === "true";
 }
 
 /** Marks the "how to play" explainer as seen. */
 export async function saveGameInstructionsSeen(): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEYS.gameInstructionsSeen, "true");
+  await AsyncStorage.setItem(STORAGE_KEYS.guessWhoNextInstructionsSeen, "true");
 }
 
 /** The landing carousel's last portrait sample, repainted instantly on the next launch. */

@@ -7,7 +7,7 @@ import CreatorScreen from "./src/screens/CreatorScreen";
 import ChatScreen from "./src/screens/ChatScreen";
 import CharWallScreen from "./src/screens/CharWallScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
-import GameScreen from "./src/screens/GameScreen";
+import GuessWhoNextScreen from "./src/screens/GuessWhoNextScreen";
 import LeaderboardScreen from "./src/screens/LeaderboardScreen";
 import DarkModeButton from "./src/components/DarkModeButton";
 import AccountHeaderButton from "./src/components/AccountHeaderButton";
@@ -19,7 +19,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 /**
  * Every screen's default headerRight: the account/sign-in entry point plus the dark-mode
- * toggle, side by side. A screen that needs its own headerRight (currently just GameScreen)
+ * toggle, side by side. A screen that needs its own headerRight (currently just GuessWhoNextScreen)
  * re-renders both alongside its own icons rather than overriding this away. Takes
  * `navigation` as a prop (from screenOptions' own `{ navigation }`, not `useNavigation()`)
  * so AccountHeaderButton can navigate to History without requiring a NavigationContainer
@@ -73,7 +73,11 @@ function AppNavigator() {
           options={{ title: "Character Wall" }}
         />
         <Stack.Screen name="History" component={HistoryScreen} options={{ title: "Past Chats" }} />
-        <Stack.Screen name="Game" component={GameScreen} options={{ title: "Guessing Game" }} />
+        <Stack.Screen
+          name="GuessWhoNext"
+          component={GuessWhoNextScreen}
+          options={{ title: "Guess Who's Next" }}
+        />
         <Stack.Screen
           name="Leaderboard"
           component={LeaderboardScreen}

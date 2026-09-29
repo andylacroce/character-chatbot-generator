@@ -4,7 +4,7 @@
  * Shared "account" bundle for a page's AppHeader hamburger: menu items leading with a
  * non-interactive identity label ("Guest" or the visitor's name), then change-name and
  * sign in/out and (signed in) account deletion — plus the modals those items open. Used
- * by every page's header (BotCreator.tsx, CharsGallery.tsx, ChatPage.tsx, GamePage.tsx)
+ * by every page's header (BotCreator.tsx, CharsGallery.tsx, ChatPage.tsx, GuessWhoNextPage.tsx)
  * — each appends its own page-specific items first, then this hook's `menuItems`, so
  * this logic lives in exactly one place instead of being copy-pasted per page.
  *

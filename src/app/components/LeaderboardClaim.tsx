@@ -15,7 +15,7 @@ import {
 import { authenticatedFetch } from "../../utils/api";
 import styles from "./styles/Leaderboard.module.css";
 
-const SETTINGS_URL = "/api/game/leaderboard-settings";
+const SETTINGS_URL = "/api/guess-who-next/leaderboard-settings";
 
 const transport: LeaderboardClaimTransport = {
   load: async () => {

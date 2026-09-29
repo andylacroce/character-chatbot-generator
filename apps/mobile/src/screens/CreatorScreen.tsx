@@ -14,7 +14,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import {
   displayCharacterName,
-  GAME_CTA_LABEL,
+  GUESS_WHO_NEXT_CTA_LABEL,
   sanitizeCharacterName,
   useCharacterCreation,
   type Bot,
@@ -211,12 +211,12 @@ export default function CreatorScreen({ navigation }: Props) {
             <Text style={styles.linkText}>Character Wall</Text>
           </Pressable>
           <Pressable
-            onPress={() => navigation.navigate("Game")}
+            onPress={() => navigation.navigate("GuessWhoNext")}
             style={styles.link}
             android_ripple={{ color: colors.secondaryContainer, borderless: true }}
           >
             <Ionicons name="help-circle-outline" size={16} color={colors.secondary} />
-            <Text style={styles.linkText}>{GAME_CTA_LABEL}</Text>
+            <Text style={styles.linkText}>{GUESS_WHO_NEXT_CTA_LABEL}</Text>
           </Pressable>
           {auth.status === "signedIn" ? (
             <Pressable

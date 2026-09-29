@@ -46,7 +46,10 @@ export default function LeaderboardScreen({ navigation }: Props) {
       {body}
       <LeaderboardClaim onChange={reload} />
       <View style={styles.play}>
-        <Button label={LEADERBOARD_COPY.playLabel} onPress={() => navigation.navigate("Game")} />
+        <Button
+          label={LEADERBOARD_COPY.playLabel}
+          onPress={() => navigation.navigate("GuessWhoNext")}
+        />
       </View>
     </ScrollView>
   );

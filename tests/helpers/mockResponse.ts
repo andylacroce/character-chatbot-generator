@@ -17,7 +17,7 @@ export function mockResponse(data: unknown, status = 200) {
 
 /**
  * Builds a fetch-Response-shaped object whose body is a `text/event-stream` of
- * `data: {...}\n\n` frames — for testing code (e.g. useGameController.ts's
+ * `data: {...}\n\n` frames — for testing code (e.g. useGuessWhoNextController.ts's
  * fetchRoundWithProgress) that reads a streamed response via
  * `response.body.getReader()` instead of `.json()`. All `frames` are queued upfront;
  * use `mockControlledSseResponse` instead when a test needs to inspect state between

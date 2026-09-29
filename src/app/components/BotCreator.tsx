@@ -184,7 +184,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   } = useSpeechRecognition();
 
   // Live-updates the name field with the in-progress dictation, mirroring
-  // useChatController.ts/useGameController.ts's own mic wiring. Overwrites rather than
+  // useChatController.ts/useGuessWhoNextController.ts's own mic wiring. Overwrites rather than
   // appends (see useSpeechRecognition.ts's doc comment). Synchronizes React state from
   // useSpeechRecognition's own external browser-API state, which can't be derived
   // during render. Unlike those two hooks, `setInput`/`setError` here come from
@@ -388,7 +388,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                 <span className={styles.betaBadge}>{BRAND.betaLabel}</span>
                 <h1 className={styles.headline}>Who will you bring to life?</h1>
                 <p className={styles.kicker}>Begin a conversation</p>
-                <Link href="/game" className={styles.wallCta}>
+                <Link href="/guess-who-next" className={styles.wallCta}>
                   <svg
                     width="16"
                     height="16"

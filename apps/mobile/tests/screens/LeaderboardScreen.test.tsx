@@ -46,7 +46,7 @@ describe("LeaderboardScreen", () => {
     expect(utils.getByText("9")).toBeTruthy();
     expect(utils.queryByText("You made the top 10!")).toBeNull();
     await fireEvent.press(utils.getByText("Play Guessing Game"));
-    expect(utils.navigate).toHaveBeenCalledWith("Game");
+    expect(utils.navigate).toHaveBeenCalledWith("GuessWhoNext");
   });
 
   it("shows the empty state", async () => {

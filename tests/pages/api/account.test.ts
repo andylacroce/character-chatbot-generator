@@ -15,7 +15,7 @@ jest.mock("../../../src/utils/userBlobs", () => ({
   deleteUserBlobs: (...args: unknown[]) => mockDeleteUserBlobs(...args),
 }));
 
-const { gameGuestProfiles, gameResults, users, verificationTokens } =
+const { guessWhoNextGuestProfiles, guessWhoNextResults, users, verificationTokens } =
   jest.requireActual("../../../src/db/schema");
 
 const mockSelectWhere = jest.fn();
@@ -84,7 +84,12 @@ describe("account API", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ deleted: true });
     expect(deletedTables).toEqual(
-      expect.arrayContaining([users, verificationTokens, gameResults, gameGuestProfiles]),
+      expect.arrayContaining([
+        users,
+        verificationTokens,
+        guessWhoNextResults,
+        guessWhoNextGuestProfiles,
+      ]),
     );
     expect(mockDeleteUserBlobs).toHaveBeenCalledWith("user-1", ["https://x/a.png", null]);
     expect(res.getHeader("Set-Cookie")).toContain("Max-Age=0");

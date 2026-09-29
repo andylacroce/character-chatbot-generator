@@ -270,26 +270,26 @@ describe("api", () => {
         avatarUrl: "/silhouette.svg",
       });
       let call = lastCall();
-      expect(call.url).toBe(`${API_BASE_URL}/api/game/start`);
+      expect(call.url).toBe(`${API_BASE_URL}/api/guess-who-next/start`);
       expect(JSON.parse(call.options.body)).toEqual({});
       expect(call.headers["x-game-guest"]).toBe("g".repeat(43));
 
       mockFetchOnce({ ok: true, json: async () => round } as Response);
       await continueGame("t1");
       call = lastCall();
-      expect(call.url).toBe(`${API_BASE_URL}/api/game/continue`);
+      expect(call.url).toBe(`${API_BASE_URL}/api/guess-who-next/continue`);
       expect(JSON.parse(call.options.body)).toEqual({ gameToken: "t1" });
     });
 
     it("rejects a malformed round", async () => {
       mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
-      await expect(startGame()).rejects.toThrow("Invalid response from /api/game/start");
+      await expect(startGame()).rejects.toThrow("Invalid response from /api/guess-who-next/start");
     });
 
     it("sends turns, give-ups and settings to their routes", async () => {
       mockFetchOnce({ ok: true, json: async () => ({ reply: "Hi" }) } as Response);
       await sendGameMessage({ gameToken: "t1", message: "Hi" });
-      expect(lastCall().url).toBe(`${API_BASE_URL}/api/game/message`);
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/guess-who-next/message`);
 
       mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
       await giveUpGame("t1");
@@ -301,7 +301,7 @@ describe("api", () => {
 
       mockFetchOnce({ ok: true, json: async () => ({ entries: [] }) } as Response);
       await getLeaderboard();
-      expect(lastCall().url).toBe(`${API_BASE_URL}/api/game/leaderboard`);
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/guess-who-next/leaderboard`);
 
       mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
       await getLeaderboardSettings();

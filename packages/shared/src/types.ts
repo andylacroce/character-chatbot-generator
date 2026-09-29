@@ -279,7 +279,7 @@ export interface GameMessageRequest {
 
 /**
  * POST /game/message response. Which fields are present depends on how the message was
- * classified server-side (see pages/api/game/message.ts's own doc comment):
+ * classified server-side (see pages/api/guess-who-next/message.ts's own doc comment):
  * - `giveUpRequested`: the player asked to give up via chat — no reply/audio this turn; show
  *   the give-up confirmation, then call POST /game/give-up if confirmed.
  * - an ordinary reply: just `reply`/`audioFileUrl`.

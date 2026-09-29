@@ -317,11 +317,11 @@ export const analyticsEvents = pgTable(
  * the primary key rather than a surrogate id: there is exactly one current best per
  * user per environment, upserted in place (see src/utils/gameHighScore.ts) rather than
  * appended to as a history. Guests have no row here at all — the game is fully
- * client-authoritative for them, same as everywhere else in this app (see gameToken.ts's
+ * client-authoritative for them, same as everywhere else in this app (see guessWhoNextToken.ts's
  * module doc) — so "no row" is exactly how the UI knows not to show a personal best.
  */
-export const gameHighScores = pgTable(
-  "game_high_scores",
+export const guessWhoNextHighScores = pgTable(
+  "guess_who_next_high_scores",
   {
     userId: text("user_id")
       .notNull()
@@ -334,8 +334,8 @@ export const gameHighScores = pgTable(
 );
 
 /** One run's highest verified streak; retries can only increase its score. */
-export const gameResults = pgTable(
-  "game_results",
+export const guessWhoNextResults = pgTable(
+  "guess_who_next_results",
   {
     id: text("id").primaryKey(),
     userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
@@ -346,17 +346,75 @@ export const gameResults = pgTable(
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   },
   (table) => [
-    index("game_results_environment_user_idx").on(table.environment, table.userId),
-    index("game_results_environment_guest_idx").on(table.environment, table.guestId),
+    index("guess_who_next_results_environment_user_idx").on(table.environment, table.userId),
+    index("guess_who_next_results_environment_guest_idx").on(table.environment, table.guestId),
     check(
-      "game_results_one_owner",
+      "guess_who_next_results_one_owner",
       sql`(${table.userId} is not null) <> (${table.guestId} is not null)`,
     ),
   ],
 );
 
 /** Public-name setting for a guest browser's anonymous, cookie-bound game identity. */
-export const gameGuestProfiles = pgTable("game_guest_profiles", {
+export const guessWhoNextGuestProfiles = pgTable("guess_who_next_guest_profiles", {
+  guestId: text("guest_id").primaryKey(),
+  leaderboardName: text("leaderboard_name"),
+  showOnLeaderboard: boolean("show_on_leaderboard").default(false).notNull(),
+});
+
+/**
+ * "Guess Who" (the clue-reveal game)'s own personal-best table — mirrors
+ * `guessWhoNextHighScores` exactly, under its own prefix, for the "Guess Who's Next"
+ * (chat-steering) game. Kept as a wholly separate, additive table rather than adding a
+ * `game` discriminator column to the existing one: the two games are structurally
+ * different (no chat turns, no persona, no TTS/voice in this one) and this app's
+ * standing DB-change convention is additive/rollback-safe — dropping these three new
+ * tables alone reverts the schema with zero risk to the existing game's data or
+ * queries. See CLAUDE.md's "Second game mode" plan for the full rationale.
+ */
+export const guessWhoHighScores = pgTable(
+  "guess_who_high_scores",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    environment: text("environment").notNull(),
+    highScore: integer("high_score").notNull().default(0),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.environment] })],
+);
+
+/** One "Guess Who" run's highest verified streak; mirrors `guessWhoNextResults`. */
+export const guessWhoResults = pgTable(
+  "guess_who_results",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    guestId: text("guest_id"),
+    environment: text("environment").notNull(),
+    bestStreak: integer("best_streak").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("guess_who_results_environment_user_idx").on(table.environment, table.userId),
+    index("guess_who_results_environment_guest_idx").on(table.environment, table.guestId),
+    check(
+      "guess_who_results_one_owner",
+      sql`(${table.userId} is not null) <> (${table.guestId} is not null)`,
+    ),
+  ],
+);
+
+/**
+ * Public-name setting for a guest browser's "Guess Who" leaderboard identity. A
+ * separate table from `guessWhoNextGuestProfiles` (rather than reusing it) so a player can opt
+ * into one game's leaderboard without the other, and set a different public name per
+ * game if they want — the underlying anonymous guest id (`gameGuestIdentity.ts`) is
+ * shared across both games, only the per-game visibility/name profile is not.
+ */
+export const guessWhoGuestProfiles = pgTable("guess_who_guest_profiles", {
   guestId: text("guest_id").primaryKey(),
   leaderboardName: text("leaderboard_name"),
   showOnLeaderboard: boolean("show_on_leaderboard").default(false).notNull(),

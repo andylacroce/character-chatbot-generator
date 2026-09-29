@@ -5,7 +5,7 @@ import { STORAGE_KEYS } from "character-chatbot-shared";
 /**
  * Shared "is audio enabled" preference: initial value read from localStorage, a ref kept
  * in sync for useAudioPlayer's synchronous mute checks, and a toggle that persists the
- * change. Used identically by useChatController.ts and useGameController.ts so the mute
+ * change. Used identically by useChatController.ts and useGuessWhoNextController.ts so the mute
  * preference (and its storage key) can't drift between the two chat surfaces — extracted
  * after they'd each grown their own near-identical copy of this logic.
  */

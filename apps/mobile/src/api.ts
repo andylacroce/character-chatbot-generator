@@ -236,45 +236,48 @@ async function gameFetch<T>(path: string, body?: unknown): Promise<T> {
  * read a streamed body, so mobile waits for the plain JSON result instead of SSE progress.
  */
 export async function startGame(): Promise<GameRoundResult> {
-  return parseGameRoundResult(await gameFetch("/api/game/start", {}), "/api/game/start");
+  return parseGameRoundResult(
+    await gameFetch("/api/guess-who-next/start", {}),
+    "/api/guess-who-next/start",
+  );
 }
 
 /** Generates the next round after a correct guess (plain JSON, like startGame). */
 export async function continueGame(gameToken: string): Promise<GameRoundResult> {
   return parseGameRoundResult(
-    await gameFetch("/api/game/continue", { gameToken }),
-    "/api/game/continue",
+    await gameFetch("/api/guess-who-next/continue", { gameToken }),
+    "/api/guess-who-next/continue",
   );
 }
 
 /** Sends one game turn; the server decides whether it's a question or a guess. */
 export function sendGameMessage(body: GameMessageRequest): Promise<GameMessageResponse> {
-  return gameFetch("/api/game/message", body);
+  return gameFetch("/api/guess-who-next/message", body);
 }
 
 /** Gives up the current run, revealing the hidden character. */
 export function giveUpGame(gameToken: string): Promise<GameGiveUpResponse> {
-  return gameFetch("/api/game/give-up", { gameToken });
+  return gameFetch("/api/guess-who-next/give-up", { gameToken });
 }
 
 /** This account's or device's best streak (null when none is on record). */
 export function getGameHighScore(): Promise<GameHighScoreResponse> {
-  return gameFetch("/api/game/high-score");
+  return gameFetch("/api/guess-who-next/high-score");
 }
 
 /** The public top-ten leaderboard. */
 export function getLeaderboard(): Promise<GameLeaderboardResponse> {
-  return apiFetch("/api/game/leaderboard");
+  return apiFetch("/api/guess-who-next/leaderboard");
 }
 
 /** Whether this account or device can (and does) appear on the leaderboard. */
 export function getLeaderboardSettings(): Promise<LeaderboardSettingsResponse> {
-  return gameFetch("/api/game/leaderboard-settings");
+  return gameFetch("/api/guess-who-next/leaderboard-settings");
 }
 
 /** Joins the leaderboard under a moderated `name`, or leaves it. */
 export function saveLeaderboardSettings(
   body: LeaderboardSettingsRequest,
 ): Promise<LeaderboardSettingsResponse> {
-  return gameFetch("/api/game/leaderboard-settings", body);
+  return gameFetch("/api/guess-who-next/leaderboard-settings", body);
 }

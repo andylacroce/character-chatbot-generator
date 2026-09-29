@@ -15,7 +15,7 @@ import styles from "./styles/Leaderboard.module.css";
 
 /** Loads the public top ten (list state lives in the shared useLeaderboard hook). */
 async function fetchEntries(): Promise<LeaderboardEntry[]> {
-  const res = await authenticatedFetch("/api/game/leaderboard");
+  const res = await authenticatedFetch("/api/guess-who-next/leaderboard");
   if (!res.ok) throw new Error("Failed to load leaderboard");
   const data = await res.json();
   return Array.isArray(data.entries) ? data.entries : [];
@@ -74,7 +74,7 @@ export default function LeaderboardPage() {
           </table>
         )}
         <LeaderboardClaim onChange={reload} />
-        <Link href="/game" className={styles.playLink}>
+        <Link href="/guess-who-next" className={styles.playLink}>
           {LEADERBOARD_COPY.playLabel}
         </Link>
       </main>
