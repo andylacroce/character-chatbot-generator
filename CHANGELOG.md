@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.23.0 — 2026-09-29 — Light mode by default
+
+- The web app and mobile app now default to light mode for a visitor/device with no stored theme preference yet. An explicit toggle choice is still remembered and always wins on return visits.
+
 ## v0.22.0 — 2026-09-28 — Guess Who and a clearer responsive landing page
 
 - Added **Guess Who**, a faster clue-reveal game alongside the existing conversation game (now named **Guess Who's Next**). Wrong answers reveal progressively more specific clues; correct answers build a streak. Web and mobile share the same state machine, copy, encrypted-token model, score handling, and separate opt-in leaderboard.

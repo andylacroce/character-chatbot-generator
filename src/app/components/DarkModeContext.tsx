@@ -25,7 +25,7 @@ interface DarkModeContextType {
  * matching this file's not-yet-migrated-to-shared status (see that package's
  * `theme.ts` doc comment).
  */
-export const DEFAULT_DARK_MODE = true;
+export const DEFAULT_DARK_MODE = false;
 
 export const DarkModeContext = React.createContext<DarkModeContextType>({
   darkMode: DEFAULT_DARK_MODE,
