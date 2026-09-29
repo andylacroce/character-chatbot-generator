@@ -9,12 +9,16 @@ import {
   loadChatHistory,
   loadGameInstructionsSeen,
   loadGameState,
+  loadGuessWhoInstructionsSeen,
+  loadGuessWhoState,
   loadUserName,
   loadUserNameGateSkipped,
   saveAudioEnabled,
   saveBot,
   saveGameInstructionsSeen,
   saveGameState,
+  saveGuessWhoInstructionsSeen,
+  saveGuessWhoState,
   saveUserName,
   saveUserNameGateSkipped,
 } from "../src/storage";
@@ -115,6 +119,27 @@ describe("storage", () => {
     expect(await loadGameInstructionsSeen()).toBe(false);
     await saveGameInstructionsSeen();
     expect(await loadGameInstructionsSeen()).toBe(true);
+  });
+
+  it("saves, loads and clears an in-progress Guess Who run", async () => {
+    const state = {
+      guessWhoToken: "t1",
+      streak: 2,
+      messages: [{ sender: "???", text: "Hail." }],
+      roundStartIndex: 0,
+      lastEvent: null,
+    };
+    expect(await loadGuessWhoState()).toBeNull();
+    await saveGuessWhoState(state);
+    expect(await loadGuessWhoState()).toEqual(state);
+    await saveGuessWhoState(null);
+    expect(await loadGuessWhoState()).toBeNull();
+  });
+
+  it("remembers that the Guess Who instructions were seen", async () => {
+    expect(await loadGuessWhoInstructionsSeen()).toBe(false);
+    await saveGuessWhoInstructionsSeen();
+    expect(await loadGuessWhoInstructionsSeen()).toBe(true);
   });
 
   it("clearPersonalData removes chats and identity but keeps device preferences", async () => {

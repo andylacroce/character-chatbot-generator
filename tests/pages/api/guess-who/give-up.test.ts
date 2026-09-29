@@ -20,11 +20,6 @@ jest.mock("../../../../src/utils/rateLimit", () => ({
   applyRateLimit: () => Promise.resolve(true),
 }));
 
-const mockGetOrGenerateAvatar = jest.fn();
-jest.mock("../../../../src/utils/avatarGeneration", () => ({
-  getOrGenerateAvatar: (...args: unknown[]) => mockGetOrGenerateAvatar(...args),
-}));
-
 process.env.API_SECRET = "test-api-secret";
 
 function makeRes() {
@@ -44,10 +39,13 @@ function makeState(overrides: Partial<GuessWhoStatePayload> = {}): GuessWhoState
   return {
     runId: "run-1",
     hiddenName: "Irene Adler",
-    clues: ["1", "2", "3", "4", "5"],
-    revealedCount: 2,
+    personaPrompt: "Irene Adler's self-clue persona prompt",
+    avatarUrl: "https://example.com/irene.png",
+    gender: "female",
+    voiceConfig: { languageCodes: ["en-US"], name: "en-US-Wavenet-C", ssmlGender: "FEMALE" },
     usedNames: [],
     streak: 3,
+    wrongGuessCount: 0,
     environment: "test",
     issuedForUserId: null,
     issuedForGuestId: null,
@@ -58,10 +56,6 @@ function makeState(overrides: Partial<GuessWhoStatePayload> = {}): GuessWhoState
 describe("guess-who/give-up API", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetOrGenerateAvatar.mockResolvedValue({
-      avatarUrl: "https://example.com/irene.png",
-      gender: "female",
-    });
   });
 
   it("returns 405 for non-POST methods", async () => {
@@ -78,9 +72,11 @@ describe("guess-who/give-up API", () => {
     const res = makeRes();
     await handler(req, res);
     expect(res.status).toHaveBeenCalledWith(400);
+    const json = (res.json as jest.Mock).mock.calls[0][0];
+    expect(json.error).toMatch(/expired|new game/i);
   });
 
-  it("reveals the hidden name with its avatar and ends the run", async () => {
+  it("reveals the hidden name and its already-generated avatar directly from the token, with no avatar generation call", async () => {
     const token = signGuessWhoState(makeState());
     const handler = require("../../../../src/pages/api/guess-who/give-up").default;
     const req = makeReq({ guessWhoToken: token });
@@ -100,15 +96,24 @@ describe("guess-who/give-up API", () => {
       { reason: "give_up", finalStreak: 3 },
       null,
     );
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      "info",
+      "guess_who_gave_up",
+      expect.any(String),
+      expect.anything(),
+    );
   });
 
-  it("returns 500 when avatar generation fails", async () => {
-    mockGetOrGenerateAvatar.mockRejectedValueOnce(new Error("boom"));
-    const token = signGuessWhoState(makeState());
+  it("credits the run-end event to the token's issuedForUserId", async () => {
+    const token = signGuessWhoState(makeState({ issuedForUserId: "user-1" }));
     const handler = require("../../../../src/pages/api/guess-who/give-up").default;
     const req = makeReq({ guessWhoToken: token });
     const res = makeRes();
     await handler(req, res);
-    expect(res.status).toHaveBeenCalledWith(500);
+    expect(mockRecordEvent).toHaveBeenCalledWith(
+      "guess_who_run_ended",
+      { reason: "give_up", finalStreak: 3 },
+      "user-1",
+    );
   });
 });
