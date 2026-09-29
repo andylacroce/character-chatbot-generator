@@ -1,9 +1,9 @@
 /**
  * The character-creation flow shared by the web app (app/components/useBotCreation.ts) and
  * the mobile app (apps/mobile/src/screens/CreatorScreen.tsx): a one-time "what should we
- * call you" gate, validation (hard blocks, the copyright warning/caution modal, and the
- * "describe your character" prompt for an unrecognized name), the generation pipeline with
- * progress, random names, and cancellation that works at any step. Each platform supplies
+ * call you" gate, validation (hard blocks, unsupported names, and the copyright
+ * warning/caution modal), the generation pipeline with progress, random names, and
+ * cancellation that works at any step. Each platform supplies
  * its requests (CreationTransport), a logger, and what to do with the finished character.
  */
 
@@ -28,6 +28,8 @@ export interface UseCharacterCreationOptions {
 
 const BLOCKED_MESSAGE = "That name isn't allowed. Please choose a different name.";
 const SCRUBBED_MESSAGE = "This character is no longer available. Please choose a different name.";
+const UNRECOGNIZED_MESSAGE =
+  "We couldn't identify that character. Choose an established historical, mythological, literary, or fictional figure.";
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 /** Shared creation flow, see module doc above. */
@@ -47,7 +49,6 @@ export function useCharacterCreation({
   const [validationResult, setValidationResult] = useState<CharacterValidationResult | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showNameGateModal, setShowNameGateModal] = useState(false);
   // One token object per run, so cancelling one run never affects a later one.
   const cancelRequested = useRef<{ cancelled: boolean } | null>(null);
@@ -56,11 +57,6 @@ export function useCharacterCreation({
   const proceedWithoutValidationRef = useRef(false);
   // Set by the name gate's save/skip so the resumed run doesn't show the gate again.
   const skipNameGateRef = useRef(false);
-  // validate-character's `recognized` for the run in flight (fail open: true).
-  const recognizedRef = useRef(true);
-  // Description text from the "describe your character" prompt, used once by the next run.
-  const pendingDescriptionRef = useRef("");
-  const pendingAppearanceRef = useRef("");
   // A name to create that hasn't landed in `input` state yet (see createNamed).
   const pendingNameRef = useRef<string | null>(null);
 
@@ -100,8 +96,6 @@ export function useCharacterCreation({
       try {
         const validation = await transport.validate(name);
         if (thisRunToken.cancelled) return;
-        recognizedRef.current = validation.recognized !== false;
-
         // Never overridable: created characters end up on the public gallery.
         if (validation.blocked) {
           setError(BLOCKED_MESSAGE);
@@ -135,16 +129,14 @@ export function useCharacterCreation({
           });
           return;
         }
-        // An original character: ask who they are instead of improvising from a name.
+        // Original-character creation is no longer supported. Recognition remains part
+        // of validation so both clients reject unknown names before generation.
         if (validation.recognized === false) {
-          setShowDescriptionModal(true);
+          setError(UNRECOGNIZED_MESSAGE);
           setValidating(false);
-          log(
-            "info",
-            "bot_description_prompt_shown",
-            "Prompted for character description (unrecognized name)",
-            { characterName: name },
-          );
+          log("info", "bot_validation_unrecognized", "Unrecognized character rejected", {
+            characterName: name,
+          });
           return;
         }
         setValidating(false);
@@ -160,9 +152,8 @@ export function useCharacterCreation({
 
     if (thisRunToken.cancelled) return;
 
-    // True when this run resumed from a modal (a copyright override, or a described
-    // original character): such a character skips the shared cache, durable storage, and
-    // the user's saved characters.
+    // A copyright override skips the shared cache, durable storage, and the user's
+    // saved characters.
     const bypassedCopyrightWarning = proceedWithoutValidationRef.current;
     proceedWithoutValidationRef.current = false;
 
@@ -177,9 +168,6 @@ export function useCharacterCreation({
         setLoadingMessage,
         cancelToken: thisRunToken,
         skipPersistence: bypassedCopyrightWarning,
-        description: pendingDescriptionRef.current || undefined,
-        appearance: pendingAppearanceRef.current || undefined,
-        recognized: recognizedRef.current,
         log,
       });
       if (!thisRunToken.cancelled) {
@@ -209,8 +197,6 @@ export function useCharacterCreation({
       }
     } finally {
       setLoading(false);
-      pendingDescriptionRef.current = "";
-      pendingAppearanceRef.current = "";
     }
   };
 
@@ -274,26 +260,6 @@ export function useCharacterCreation({
     });
   };
 
-  const handleDescriptionSubmit = (description: string, appearance: string) => {
-    setShowDescriptionModal(false);
-    pendingDescriptionRef.current = description.trim();
-    pendingAppearanceRef.current = appearance.trim();
-    proceedWithoutValidationRef.current = true;
-    log("info", "bot_description_submitted", "User submitted character description", {
-      characterName: input.trim(),
-      descriptionLength: description.trim().length,
-      hasAppearance: Boolean(appearance.trim()),
-    });
-    void handleCreate();
-  };
-
-  const handleDescriptionCancel = () => {
-    setShowDescriptionModal(false);
-    log("info", "bot_description_cancelled", "User cancelled description prompt", {
-      characterName: input.trim(),
-    });
-  };
-
   const handleRandomCharacter = async () => {
     setRandomizing(true);
     setError("");
@@ -330,7 +296,6 @@ export function useCharacterCreation({
     validating,
     validationResult,
     showValidationModal,
-    showDescriptionModal,
     showNameGateModal,
     cancelRequested,
     lastRandomNameRef,
@@ -341,8 +306,6 @@ export function useCharacterCreation({
     handleValidationContinue,
     handleValidationCancel,
     handleValidationSuggestion,
-    handleDescriptionSubmit,
-    handleDescriptionCancel,
     handleNameGateSave,
     handleNameGateSkip,
   };

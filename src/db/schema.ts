@@ -160,16 +160,11 @@ export const messages = pgTable("messages", {
  * because it's produced by the same Claude prompt-generation step that a cache hit
  * skips entirely, and callers need it for voice selection.
  *
- * `recognized` mirrors /api/validate-character's field of the same name: false when the
- * name isn't an actual character/person Claude has knowledge of (an original character,
- * described via the /api/generate-personality `description` flow instead). pages/api/chars.ts
- * filters the public gallery to `recognized = true` rows only — an original character's
- * name/portrait means something only to its own creator, unlike a famous name every visitor
- * would recognize, so it doesn't belong on a public "characters anyone can chat with" wall.
- * Defaults true so rows written before this column existed (all pre-dating the recognized/
- * unrecognized distinction) keep showing on the gallery rather than silently vanishing;
- * scripts/reclassify-avatar-cache.cjs can re-run the recognized classification over
- * existing rows for anyone who wants that historical cleanup.
+ * `recognized` mirrors /api/validate-character's support gate. New generation only reaches
+ * this table for recognized names, so new rows are always true. The column remains while
+ * the v0.23.0 retirement cleanup identifies and deletes legacy unsupported rows;
+ * pages/api/chars.ts filters to true as defense-in-depth until that cleanup is complete.
+ * Defaults true for compatibility with rows written before recognition existed.
  *
  * `displayName` is the properly-cased name as Claude itself produced it (generate-
  * personality's `correctedName`, e.g. "Richard III", "Joan of Arc") — captured once at

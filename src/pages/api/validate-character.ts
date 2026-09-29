@@ -52,12 +52,9 @@ export interface CharacterValidationResult {
   // wall at /chars is public, so a name like this can't be allowed to exist at all,
   // not just flagged with a warning.
   blocked?: boolean;
-  // True when this is an actual character/person Claude has real knowledge of
-  // (fictional or historical) — false when the name doesn't correspond to anything
-  // Claude recognizes, i.e. it looks like an original character. Defaults to true
-  // (fail open, same as the other fields) so a validation error never blocks
-  // creation. useBotCreation.ts uses `=== false` specifically to prompt for a
-  // description, so leaving this true/undefined preserves the direct-create path.
+  // True when this is an established character/person Claude has real knowledge of.
+  // False is a non-overridable unsupported-name result in both clients. Defaults true
+  // (fail open) so a transient validation failure does not disable all conversations.
   recognized?: boolean;
   // Set two ways: (1) this name is already on the persistent blocklist
   // (src/utils/characterBlocklist.ts — a prior "warning" or a manual admin block),
@@ -85,7 +82,7 @@ export interface CharacterValidationResult {
  *     description: >
  *       A name on the curated public-domain allowlist (src/utils/characterAllowlist.ts)
  *       or the persistent blocklist (src/utils/characterBlocklist.ts) short-circuits
- *       straight to a result without ever calling Claude. Otherwise uses Claude for two
+ *       straight to a result without ever calling Claude. Otherwise uses Claude for three
  *       independent checks: whether the name is public-domain-safe, cautionary, or a
  *       clear copyright/trademark violation (warningLevel — always overridable), and
  *       whether the name must be hard-blocked (blocked — never overridable, since
@@ -99,8 +96,9 @@ export interface CharacterValidationResult {
  *       user to their own account), that's also deleted/scrubbed and scrubbed: true is
  *       set on a "warning"-driven scrub (never overridable either way — `blocked: true`
  *       is already never-overridable regardless). Rate limited to 30 requests/minute/IP.
- *       On an internal error, responds 200 with warningLevel "none" and blocked false
- *       rather than blocking creation.
+ *       The third check determines whether this is an established, supported figure;
+ *       unrecognized names are rejected by both clients before generation. On an internal
+ *       error, responds 200 with warningLevel "none", blocked false, and recognized true.
  *     tags: [Character]
  *     requestBody:
  *       required: true
@@ -147,11 +145,9 @@ export interface CharacterValidationResult {
  *                 recognized:
  *                   type: boolean
  *                   description: >
- *                     False when the name doesn't correspond to any character/person
- *                     Claude actually knows about (an original character). The client
- *                     prompts for a free-form description in that case, sent to
- *                     /generate-personality to build the personality instead of
- *                     relying on Claude to invent one from the name alone.
+ *                     False when the name doesn't correspond to an established
+ *                     character/person Claude actually knows. Both clients reject the
+ *                     name before personality, portrait, or voice generation.
  *                 scrubbed:
  *                   type: boolean
  *                   description: >

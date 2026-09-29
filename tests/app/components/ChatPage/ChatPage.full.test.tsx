@@ -189,7 +189,7 @@ describe("ChatPage full feature coverage", () => {
     const menuBtn = await screen.findByLabelText(/open menu/i, {}, { timeout: 2000 });
     await userEvent.click(menuBtn);
     const backBtn = await screen.findByLabelText(
-      /back to character creation/i,
+      /back to character selection/i,
       {},
       { timeout: 2000 },
     );
@@ -233,7 +233,7 @@ describe("ChatPage full feature coverage", () => {
     render(<ChatPage bot={mockBot} onBackToCharacterCreation={onBack} />);
     const menuBtn = await screen.findByLabelText(/open menu/i);
     await userEvent.click(menuBtn);
-    const backBtn = await screen.findByLabelText(/back to character creation/i);
+    const backBtn = await screen.findByLabelText(/back to character selection/i);
     await userEvent.click(backBtn);
     await waitFor(() => expect(onBack).toHaveBeenCalled());
   });

@@ -1814,8 +1814,7 @@ describe("useBotCreation tests", () => {
 
   // cancelled-mid-flow behavior assertions added above in the in-flight cancel test
 
-  // Unrecognized-name description prompt
-  it("handleCreate shows the description modal when validation returns recognized: false", async () => {
+  it("handleCreate rejects an unrecognized name without starting generation", async () => {
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === "/api/validate-character") {
         return Promise.resolve({
@@ -1840,13 +1839,13 @@ describe("useBotCreation tests", () => {
       await result.current.handleCreate();
     });
 
-    expect(result.current.showDescriptionModal).toBe(true);
+    expect(result.current.error).toContain("couldn't identify that character");
     expect(onBotCreated).not.toHaveBeenCalled();
     expect(result.current.validating).toBe(false);
     expect(mockLogEvent).toHaveBeenCalledWith(
       "info",
-      "bot_description_prompt_shown",
-      "Prompted for character description (unrecognized name)",
+      "bot_validation_unrecognized",
+      "Unrecognized character rejected",
       expect.any(Object),
     );
   });
@@ -1884,104 +1883,7 @@ describe("useBotCreation tests", () => {
       await result.current.handleCreate();
     });
 
-    expect(result.current.showDescriptionModal).toBe(false);
     await waitFor(() => expect(onBotCreated).toHaveBeenCalled());
-  });
-
-  it("handleDescriptionSubmit proceeds with the description/appearance and clears the modal", async () => {
-    mockAuthFetch.mockImplementation((url: string) => {
-      if (url === "/api/validate-character") {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ warningLevel: "none", recognized: false }),
-        });
-      }
-      if (url === "/api/generate-personality") {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ personality: "p", correctedName: "Zorblax" }),
-        });
-      }
-      if (url === "/api/generate-avatar") {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ avatarUrl: "/img.png", gender: "male" }),
-        });
-      }
-      return Promise.resolve({ ok: true, json: async () => ({}) });
-    });
-    const voiceCfg: VoiceCfg = { name: "en-US-Wavenet-A", languageCodes: ["en-US"] };
-    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
-
-    const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
-
-    act(() => result.current.setInput("Zorblax"));
-    await act(async () => {
-      await result.current.handleCreate();
-    });
-    expect(result.current.showDescriptionModal).toBe(true);
-
-    await act(async () => {
-      result.current.handleDescriptionSubmit(
-        "A grumpy retired dragon-slayer.",
-        "Tall and scarred.",
-      );
-    });
-
-    await waitFor(() => expect(onBotCreated).toHaveBeenCalled());
-    expect(result.current.showDescriptionModal).toBe(false);
-
-    const personalityCall = mockAuthFetch.mock.calls.find(
-      (c) => c[0] === "/api/generate-personality",
-    );
-    expect(JSON.parse((personalityCall as unknown as [string, { body: string }])[1].body)).toEqual(
-      expect.objectContaining({ description: "A grumpy retired dragon-slayer." }),
-    );
-    const avatarCall = mockAuthFetch.mock.calls.find((c) => c[0] === "/api/generate-avatar");
-    expect(JSON.parse((avatarCall as unknown as [string, { body: string }])[1].body)).toEqual(
-      expect.objectContaining({ recognized: false, appearanceDescription: "Tall and scarred." }),
-    );
-    expect(mockLogEvent).toHaveBeenCalledWith(
-      "info",
-      "bot_description_submitted",
-      "User submitted character description",
-      expect.any(Object),
-    );
-  });
-
-  it("handleDescriptionCancel closes the modal without creating a bot", async () => {
-    mockAuthFetch.mockImplementation((url: string) => {
-      if (url === "/api/validate-character") {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({ warningLevel: "none", recognized: false }),
-        });
-      }
-      return Promise.resolve({ ok: true, json: async () => ({}) });
-    });
-
-    const onBotCreated = jest.fn();
-    const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
-
-    act(() => result.current.setInput("Zorblax"));
-    await act(async () => {
-      await result.current.handleCreate();
-    });
-    expect(result.current.showDescriptionModal).toBe(true);
-
-    act(() => {
-      result.current.handleDescriptionCancel();
-    });
-
-    expect(result.current.showDescriptionModal).toBe(false);
-    expect(onBotCreated).not.toHaveBeenCalled();
-    expect(mockLogEvent).toHaveBeenCalledWith(
-      "info",
-      "bot_description_cancelled",
-      "User cancelled description prompt",
-      expect.any(Object),
-    );
   });
 
   it("passes null gender to voice config when avatar response omits gender", async () => {

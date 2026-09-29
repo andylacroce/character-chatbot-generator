@@ -1,9 +1,4 @@
-import {
-  displayCharacterName,
-  sanitizeCharacterName,
-  sanitizeDescription,
-  sanitizeUserName,
-} from "./validation";
+import { displayCharacterName, sanitizeCharacterName, sanitizeUserName } from "./validation";
 
 describe("sanitizeCharacterName", () => {
   it("strips HTML/script injection characters and trims", () => {
@@ -18,16 +13,6 @@ describe("sanitizeCharacterName", () => {
 
   it("returns empty string for non-string input", () => {
     expect(sanitizeCharacterName(undefined as unknown as string)).toBe("");
-  });
-});
-
-describe("sanitizeDescription", () => {
-  it("preserves quotes and punctuation but strips angle brackets/backticks", () => {
-    expect(sanitizeDescription(`A "brave" knight <script>`)).toBe('A "brave" knight script');
-  });
-
-  it("caps length at 500", () => {
-    expect(sanitizeDescription("a".repeat(600))).toHaveLength(500);
   });
 });
 

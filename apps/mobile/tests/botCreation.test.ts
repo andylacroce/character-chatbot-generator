@@ -51,7 +51,7 @@ describe("mobileTransport", () => {
     (generateAvatar as jest.Mock).mockRejectedValue(new Error("down"));
     await expect(mobileTransport.generatePersonality({ name: "Zeus" })).resolves.toBeNull();
     await expect(
-      mobileTransport.generateAvatar({ name: "Zeus", skipPersistence: false, recognized: true }),
+      mobileTransport.generateAvatar({ name: "Zeus", skipPersistence: false }),
     ).resolves.toBeNull();
   });
 

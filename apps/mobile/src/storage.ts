@@ -28,7 +28,15 @@ export async function saveBot(bot: Bot): Promise<void> {
 /** Loads the currently active character, or null if none is saved. */
 export async function loadBot(): Promise<Bot | null> {
   const raw = await AsyncStorage.getItem(STORAGE_KEYS.bot);
-  return raw ? (JSON.parse(raw) as Bot) : null;
+  if (!raw) return null;
+  const bot = JSON.parse(raw) as Bot;
+  // Original characters and copyright-warning overrides used the same deliberately
+  // ephemeral marker. Remove those retired sessions and their character-scoped data.
+  if (bot.skipPersistence) {
+    await AsyncStorage.multiRemove([...chatStorageKeys(bot.name), STORAGE_KEYS.bot]);
+    return null;
+  }
+  return bot;
 }
 
 /** Appends one message to a character's stored chat history. */

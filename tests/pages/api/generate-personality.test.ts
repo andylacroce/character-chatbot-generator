@@ -91,17 +91,13 @@ describe("generate-personality API", () => {
 
     // No DATABASE_URL configured in this test env, so fetchExistingCharacterNames
     // degrades to [] rather than touching a real DB.
-    expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("Ada Lovelace", undefined, []);
+    expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("Ada Lovelace", []);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({
       personality: "You are Ada Lovelace.",
       correctedName: "Ada Lovelace",
     });
-    expect(mockRecordEvent).toHaveBeenCalledWith(
-      "bot_created",
-      { hasDescription: false, guest: true },
-      null,
-    );
+    expect(mockRecordEvent).toHaveBeenCalledWith("bot_created", { guest: true }, null);
   });
 
   it("returns Claude's fuzzy-matched correctedName when it differs from the input", async () => {
@@ -118,6 +114,22 @@ describe("generate-personality API", () => {
     });
   });
 
+  it("rejects an unrecognized name without recording a created bot", async () => {
+    mockGeneratePersonalityPrompt.mockResolvedValueOnce({
+      prompt: "unused",
+      correctedName: "Captain Moonbeam",
+      recognized: false,
+    });
+    const res = makeRes();
+    await handler(makeReq({ name: "Captain Moonbeam" }), res);
+
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Choose a character or person from history or fiction.",
+    });
+    expect(mockRecordEvent).not.toHaveBeenCalled();
+  });
+
   it("records the creator as signed-in when a session is present", async () => {
     mockGetSessionUserId.mockResolvedValueOnce("user-1");
     mockGeneratePersonalityPrompt.mockResolvedValueOnce({
@@ -125,13 +137,9 @@ describe("generate-personality API", () => {
       correctedName: "Ada Lovelace",
     });
     const res = makeRes();
-    await handler(makeReq({ name: "Ada Lovelace", description: "A mathematician" }), res);
+    await handler(makeReq({ name: "Ada Lovelace" }), res);
 
-    expect(mockRecordEvent).toHaveBeenCalledWith(
-      "bot_created",
-      { hasDescription: true, guest: false },
-      "user-1",
-    );
+    expect(mockRecordEvent).toHaveBeenCalledWith("bot_created", { guest: false }, "user-1");
   });
 
   it("returns 500 and logs when generation throws", async () => {
@@ -180,7 +188,7 @@ describe("generate-personality API", () => {
       const res = makeRes();
       await handler(makeReq({ name: "sherlok holmes" }), res);
 
-      expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("sherlok holmes", undefined, [
+      expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("sherlok holmes", [
         "Sherlock Holmes",
         "cleopatra",
       ]);
@@ -195,7 +203,7 @@ describe("generate-personality API", () => {
       const res = makeRes();
       await handler(makeReq({ name: "Ada Lovelace" }), res);
 
-      expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("Ada Lovelace", undefined, []);
+      expect(mockGeneratePersonalityPrompt).toHaveBeenCalledWith("Ada Lovelace", []);
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });

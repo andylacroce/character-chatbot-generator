@@ -7,10 +7,10 @@ backend at the repo root, and this app renders them natively over HTTPS.
 
 ## Features
 
-- **Create a character**: name a person, real or fictional, and the backend
-  generates their personality, portrait, and voice — same pipeline as the web
-  app, including copyright/trademark validation and an original-character
-  description flow for names it doesn't recognize.
+- **Start a character conversation**: choose an established historical,
+  mythological, literary, religious, folklore, or fictional figure and the backend
+  generates their personality, portrait, and voice. Unknown/invented names are not
+  supported.
 - **Chat**: text conversation with Claude-powered replies and Google
   Text-to-Speech audio playback (`expo-audio`), with history persisted locally.
   Tap the speaker next to any character message to hear it again.
@@ -79,7 +79,7 @@ src/
   screens/               # Creator, Chat, CharWall, History, Game, Leaderboard
   components/            # ChatView, modals, carousel, header title, wordmark, avatar, lightbox
   api.ts                 # Backend HTTP calls
-  botCreation.ts         # mobileTransport: this app's adapter for the shared creation pipeline
+  botCreation.ts         # mobileTransport: this app's adapter for the shared conversation pipeline
   useGameController.ts   # Wraps the shared useGameSession with AsyncStorage + native audio
   useReplyAudio.ts       # TTS playback, replay, and the persisted mute toggle
   AuthContext.tsx, auth.ts, authToken.ts  # Optional Google sign-in via the backend's mobile bridge
@@ -89,7 +89,7 @@ src/
 ```
 
 Shared types, copy, storage keys, validation, and client state machines
-(character creation, the guessing game, the carousel) live in `packages/shared`
+(character selection, the guessing game, the carousel) live in `packages/shared`
 (`character-chatbot-shared`), an npm workspace that the web app imports too.
 This app supplies only thin adapters: transport, storage, and native audio.
 

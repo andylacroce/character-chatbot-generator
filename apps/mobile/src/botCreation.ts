@@ -47,7 +47,7 @@ export const mobileTransport: CreationTransport = {
  * which itself no-ops server-side for guests) — fire-and-forget, matching the web
  * app's handleBotCreated exactly, so a persistence failure never blocks or fails an
  * otherwise-successful bot creation. Never called for a `skipPersistence` bot (a
- * copyright-warning override or original character), same as the web app.
+ * copyright-warning override), same as the web app.
  */
 export function persistBotIfSignedIn(bot: Bot): void {
   if (bot.skipPersistence || !getCachedAuthToken()) return;

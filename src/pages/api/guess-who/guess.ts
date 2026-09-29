@@ -172,9 +172,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     if (correct) {
       const newStreak = state.streak + 1;
-      const { avatarUrl, gender } = await getOrGenerateAvatar(state.hiddenName, {
-        recognized: true,
-      });
+      const { avatarUrl, gender } = await getOrGenerateAvatar(state.hiddenName);
       logEvent(
         "info",
         "guess_who_guess_correct",
@@ -209,9 +207,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // All clues exhausted on a wrong guess — the run ends, mirroring "Guess Who's
       // Next"'s tolerate-then-end shape, just gated on clues-exhausted instead of a
       // second miss (this game has no separate wrong-guess tolerance count).
-      const { avatarUrl, gender } = await getOrGenerateAvatar(state.hiddenName, {
-        recognized: true,
-      });
+      const { avatarUrl, gender } = await getOrGenerateAvatar(state.hiddenName);
       logEvent(
         "info",
         "guess_who_run_ended",

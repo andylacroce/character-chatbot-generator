@@ -16,7 +16,6 @@ import {
   displayCharacterName,
   GUESS_WHO_NEXT_CTA_LABEL,
   GUESS_WHO_CTA_LABEL,
-  sanitizeCharacterName,
   useCharacterCreation,
   type Bot,
   type ThemeColors,
@@ -32,7 +31,6 @@ import Avatar from "../components/Avatar";
 import CharacterCarousel, { CAROUSEL_MAX_SIZE } from "../components/CharacterCarousel";
 import Wordmark from "../components/Wordmark";
 import CopyrightWarningModal from "../components/CopyrightWarningModal";
-import CharacterDescriptionModal from "../components/CharacterDescriptionModal";
 import NameCaptureModal from "../components/NameCaptureModal";
 import ModalCard from "../components/ModalCard";
 
@@ -45,10 +43,10 @@ const CAROUSEL_MIN_SIZE = 110;
 const CAROUSEL_CHROME = 66;
 
 /**
- * Character creation: name in → validate-character → personality → avatar → voice.
+ * Character selection: established name → validation → personality → avatar → voice.
  * Uses character-chatbot-shared's useCharacterCreation, mirroring the web app's
  * useBotCreation. Signed-in users additionally get a link to HistoryScreen, and a
- * newly created character is persisted to their account.
+ * newly selected character is persisted to their account.
  */
 export default function CreatorScreen({ navigation }: Props) {
   const { colors } = useTheme();
@@ -187,7 +185,7 @@ export default function CreatorScreen({ navigation }: Props) {
               <Text style={styles.createButtonText}>{busyMessage}</Text>
             </View>
           ) : (
-            <Text style={styles.createButtonText}>Create</Text>
+            <Text style={styles.createButtonText}>Start chat</Text>
           )}
         </Pressable>
 
@@ -257,12 +255,6 @@ export default function CreatorScreen({ navigation }: Props) {
           onSelectSuggestion={creation.handleValidationSuggestion}
         />
       ) : null}
-      <CharacterDescriptionModal
-        visible={creation.showDescriptionModal}
-        characterName={sanitizeCharacterName(creation.input)}
-        onSubmit={creation.handleDescriptionSubmit}
-        onCancel={creation.handleDescriptionCancel}
-      />
       <NameCaptureModal
         visible={creation.showNameGateModal}
         mode="gate"

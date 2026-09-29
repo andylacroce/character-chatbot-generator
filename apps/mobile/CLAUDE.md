@@ -243,9 +243,9 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
    (`CharWallScreen.tsx`, paginated `/api/chars`, tap a portrait → same
    personality/avatar/voice pipeline as Creator → Chat), and light/dark theming
    (`ThemeContext.tsx`).
-2. **Parity pass:** Done — `validate-character` + copyright/caution/blocked handling
-   (`CopyrightWarningModal.tsx`), the original-character description flow
-   (`CharacterDescriptionModal.tsx`), resume-saved-bot (Creator screen's "Continue
+2. **Parity pass:** Done — `validate-character` + copyright/caution/blocked and
+   unsupported-name handling (`CopyrightWarningModal.tsx` for copyright only),
+   resume-saved-bot (Creator screen's "Continue
    chatting with X" card, backed by local storage for guests and `GET /api/bots` for
    signed-in users), the landing carousel (`CharacterCarousel.tsx`, in the Creator
    screen body rather than a header slot), Google sign-in + account persistence
@@ -289,7 +289,7 @@ just a sanity-check surface for someone without a device/emulator handy. Browser
    in AsyncStorage. A guest's identity is a random secret in SecureStore (`src/gameGuest.ts`),
    sent as the `x-game-guest` header in place of web's HttpOnly cookie. Correct and wrong
    guesses trigger haptics, a native-only extra. `ChatScreen` and `GameScreen` share
-   `components/ChatView.tsx`, mirroring web's `ChatShell.tsx`. Character creation
+   `components/ChatView.tsx`, mirroring web's `ChatShell.tsx`. Character selection
    (`CreatorScreen`, and the Character Wall's tap-to-chat) likewise runs on shared
    `useCharacterCreation`/`generateCharacter` over `src/botCreation.ts`'s `mobileTransport`.
 4. **Store-ready:** icon/splash now reuse the web app's real brand mark (see Status

@@ -75,7 +75,7 @@ function ChatPage({
         <button
           className={`${styles.menuItemLink} ${styles.stackedAbove}`}
           type="button"
-          aria-label="Back to character creation"
+          aria-label="Back to character selection"
           onClick={handleBackToCharacterCreation}
         >
           <FaArrowLeft size={18} className="menuIcon" />

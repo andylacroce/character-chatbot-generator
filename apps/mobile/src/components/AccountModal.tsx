@@ -36,7 +36,7 @@ const SIGN_IN_ERROR_MESSAGES: Record<string, string> = {
 
 /**
  * Sign in / sign out / delete account — mirrors the visual family of CopyrightWarningModal/
- * CharacterDescriptionModal. Rendered by AccountHeaderButton, every screen's default
+ * the shared modal shell. Rendered by AccountHeaderButton, every screen's default
  * headerLeft (see App.tsx), so it's reachable from anywhere, not just CreatorScreen.
  */
 export default function AccountModal({ visible, onClose, userNameCtx, onOpenHistory }: Props) {

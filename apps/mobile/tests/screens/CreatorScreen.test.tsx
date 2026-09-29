@@ -99,7 +99,7 @@ async function renderScreen() {
 
 async function typeAndCreate(utils: Awaited<ReturnType<typeof renderScreen>>, name: string) {
   await fireEvent.changeText(utils.getByPlaceholderText("e.g. Sherlock Holmes"), name);
-  await fireEvent.press(utils.getByText("Create"));
+  await fireEvent.press(utils.getByText("Start chat"));
 }
 
 describe("CreatorScreen", () => {
@@ -128,7 +128,7 @@ describe("CreatorScreen", () => {
 
   it("requires a name before creating", async () => {
     const utils = await renderScreen();
-    await fireEvent.press(utils.getByText("Create"));
+    await fireEvent.press(utils.getByText("Start chat"));
 
     expect(await utils.findByText("Please enter a name or character.")).toBeTruthy();
     expect(mockedValidate).not.toHaveBeenCalled();
@@ -157,7 +157,7 @@ describe("CreatorScreen", () => {
 
     expect(await utils.findByText("Creating personality")).toBeTruthy();
     await fireEvent.press(utils.getByText("Cancel"));
-    expect(await utils.findByText("Create")).toBeTruthy();
+    expect(await utils.findByText("Start chat")).toBeTruthy();
 
     finishPersonality();
     await waitFor(() => expect(mockedGeneratePersonality).toHaveBeenCalled());
@@ -242,39 +242,20 @@ describe("CreatorScreen", () => {
     await fireEvent.press(await utils.findByText("Hercules"));
     expect(utils.getByDisplayValue("Hercules")).toBeTruthy();
 
-    await fireEvent.press(utils.getByText("Create"));
+    await fireEvent.press(utils.getByText("Start chat"));
     await fireEvent.press(await utils.findByText("Cancel"));
     await waitFor(() => expect(utils.queryByText("Continue Anyway")).toBeNull());
     expect(mockedGeneratePersonality).not.toHaveBeenCalled();
   });
 
-  it("asks for a description for an unrecognized name, then creates it as an original", async () => {
+  it("rejects an unrecognized name without starting generation", async () => {
     mockedValidate.mockResolvedValue({ ...okValidation, recognized: false });
 
     const utils = await renderScreen();
     await typeAndCreate(utils, "Grumbold");
-    await fireEvent.changeText(
-      await utils.findByPlaceholderText(/grumpy retired dragon-slayer/),
-      "A baker.",
-    );
-    await fireEvent.press(utils.getByText("Create Character"));
-
-    await waitFor(() => expect(utils.navigate).toHaveBeenCalledWith("Chat", expect.anything()));
-    expect(mockedGeneratePersonality).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "Grumbold", description: "A baker." }),
-    );
-  });
-
-  it("closes the description modal on cancel without creating", async () => {
-    mockedValidate.mockResolvedValue({ ...okValidation, recognized: false });
-
-    const utils = await renderScreen();
-    await typeAndCreate(utils, "Grumbold");
-    await utils.findByText("Create Character");
-    await fireEvent.press(utils.getByText("Cancel"));
-
-    await waitFor(() => expect(utils.queryByText("Create Character")).toBeNull());
+    expect(await utils.findByText(/couldn't identify that character/i)).toBeTruthy();
     expect(mockedGeneratePersonality).not.toHaveBeenCalled();
+    expect(utils.navigate).not.toHaveBeenCalledWith("Chat", expect.anything());
   });
 
   it("fills the input with a random character, falling back to a default on failure", async () => {

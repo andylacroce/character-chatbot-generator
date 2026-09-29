@@ -18,8 +18,6 @@ production. Once a script's one-time job is fully done and confirmed (check CLAU
 a "ran on \<date\>, N rows filled" note), delete it — don't leave fully-consumed scripts
 sitting here indefinitely.
 
-- `chars:reclassify` (`reclassify-avatar-cache.cjs`) — re-run the `recognized` classification
-  over already-cached names. Not run as of this writing.
 - `chars:backfill-display-names` (`backfill-avatar-display-names.cjs`) — fill `display_name`
   for legacy rows missing one.
 - `chars:backfill-full-names` (`backfill-full-character-names.cjs`) — expand legacy names to
@@ -27,5 +25,8 @@ sitting here indefinitely.
 - `chars:scrub-copyrighted` (`scrub-copyrighted-avatar-cache.cjs`) — retroactive sweep to
   blocklist/delete existing copyrighted `avatar_cache` rows. Held pending prompt fixes as of
   this writing — see CLAUDE.md's copyright-validation section.
+- `chars:scrub-unrecognized` (`scrub-unrecognized-characters.cjs`) — delete legacy
+  `recognized = false` cache rows, matching saved bots/messages, and unreferenced Blob images
+  after original-character creation was retired. Run once, verify, then remove the script.
 - `logs:scrub-ips` (`scrub-chat-log-ips.cjs`) — strip IP addresses from chat logs written
   before IP logging was removed.
