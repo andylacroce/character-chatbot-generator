@@ -12,6 +12,7 @@ import {
   CONTENT_GUIDELINES,
   generatePersonalityPrompt,
   generateGameCluePersonaPrompt,
+  generateCharacterClues,
 } from "../../../src/config/serverConfig";
 import { getClaudeModel } from "../../../src/utils/claudeModelSelector";
 
@@ -237,6 +238,35 @@ describe("serverConfig", () => {
       });
       expect(currentOnly).toContain("You are specifically drawn from: Greek mythology");
       expect(currentOnly).not.toContain("specifically the one from");
+    });
+  });
+
+  describe("generateCharacterClues", () => {
+    it("returns the 5 clues Claude returns as JSON", async () => {
+      claudeReturns(JSON.stringify({ clues: ["c1", "c2", "c3", "c4", "c5"] }));
+      const { clues } = await generateCharacterClues("Irene Adler");
+      expect(clues).toEqual(["c1", "c2", "c3", "c4", "c5"]);
+      expect(getClaudeModel).toHaveBeenCalledWith("text-simple");
+    });
+
+    it("includes work grounding in the user message when supplied", async () => {
+      claudeReturns(JSON.stringify({ clues: ["c1", "c2", "c3", "c4", "c5"] }));
+      await generateCharacterClues("Irene Adler", "Sherlock Holmes canon");
+      const call = mockCreate.mock.calls[0][0];
+      expect(call.messages[0].content).toContain("Sherlock Holmes canon");
+    });
+
+    it("truncates to 5 clues when Claude returns more", async () => {
+      claudeReturns(JSON.stringify({ clues: ["c1", "c2", "c3", "c4", "c5", "c6"] }));
+      const { clues } = await generateCharacterClues("Irene Adler");
+      expect(clues).toHaveLength(5);
+    });
+
+    it("throws when Claude returns fewer than 5 clues", async () => {
+      claudeReturns(JSON.stringify({ clues: ["c1", "c2"] }));
+      await expect(generateCharacterClues("Irene Adler")).rejects.toThrow(
+        "generateCharacterClues returned 2 clues, expected 5",
+      );
     });
   });
 });
