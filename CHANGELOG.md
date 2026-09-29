@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.25.2 — 2026-09-29 — Character Wall stayed one column on smaller phones
+
+- Fixed the Character Wall collapsing to a single-column scroll on phones at or below 380px wide (iPhone SE, iPhone 12 mini) — the mosaic now keeps 2 columns down to the narrowest real device widths instead of dropping to 1.
+
 ## v0.25.1 — 2026-09-29 — Character Wall control styling fix
 
 - Fixed the Character Wall's sort dropdown and "Group by category" toggle rendering with no visible border or background, in both light and dark mode, not just on mobile. Both controls' translucency came from CSS custom properties that redeclared themselves in terms of themselves on the same element — a genuine cycle per the CSS spec, which silently computed to nothing rather than the intended translucent color.
