@@ -388,33 +388,6 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                 <span className={styles.betaBadge}>{BRAND.betaLabel}</span>
                 <h1 className={styles.headline}>Who will you bring to life?</h1>
                 <p className={styles.kicker}>Begin a conversation</p>
-                <Link href="/guess-who-next" className={styles.wallCta}>
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    aria-hidden="true"
-                    focusable="false"
-                  >
-                    <circle
-                      cx="10"
-                      cy="10"
-                      r="7.2"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeDasharray="2.2 2.2"
-                    />
-                    <path
-                      d="M8 8.3c0-1.1.9-1.9 2-1.9s2 .7 2 1.7c0 1.3-2 1.4-2 2.9"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                    />
-                    <circle cx="10" cy="13.6" r="0.9" fill="currentColor" />
-                  </svg>
-                  Play the Guessing Game
-                </Link>
                 <Link href="/chars" className={styles.wallCta}>
                   <svg
                     width="16"
@@ -654,6 +627,26 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
           )}
         </div>
       </form>
+      {!isLaunchingFromUrl && !interstitial && (
+        <div className={styles.gamesBand} data-testid="games-invitation-band">
+          <Link href="/guess-who" className={styles.gamesBandHalf}>
+            <span className={styles.gamesBandKicker}>Featured</span>
+            <span className={styles.gamesBandTitleFeatured}>Guess Who</span>
+            <span className={styles.gamesBandHook}>
+              Clues reveal a hidden character. Can you guess who?
+            </span>
+          </Link>
+          <span className={styles.gamesBandDivider} aria-hidden="true">
+            &amp;
+          </span>
+          <Link href="/guess-who-next" className={styles.gamesBandHalf}>
+            <span className={styles.gamesBandTitle}>Guess Who&apos;s Next</span>
+            <span className={styles.gamesBandHook}>
+              Chat with a character steering toward someone else.
+            </span>
+          </Link>
+        </div>
+      )}
       <DisclaimerModal show={showDisclaimerModal} onClose={() => setShowDisclaimerModal(false)} />
       <CharacterInfoModal
         show={showCharacterInfoModal}

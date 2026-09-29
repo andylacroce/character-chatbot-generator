@@ -1,20 +1,38 @@
 "use client";
 
-/** Public top-ten guessing-game scores and the signed-in player's claim form. */
+/**
+ * Public top-ten scores for both guessing games, as tabs on one page — "Guess Who" is
+ * the first/default-active tab everywhere both games are listed together (a standing
+ * product rule, see CLAUDE.md's "Second game mode" plan), "Guess Who's Next" second.
+ */
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LEADERBOARD_COPY, useLeaderboard, type LeaderboardEntry } from "character-chatbot-shared";
+import { LEADERBOARD_COPY, type LeaderboardEntry } from "character-chatbot-shared";
 import { authenticatedFetch } from "../../utils/api";
 import { hasNavigatedWithinSession } from "../../utils/clientNavigationState";
 import AppHeader from "./AppHeader";
 import BackHomeLink from "./BackHomeLink";
-import LeaderboardClaim from "./LeaderboardClaim";
+import LeaderboardTable from "./LeaderboardTable";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/Leaderboard.module.css";
 
-/** Loads the public top ten (list state lives in the shared useLeaderboard hook). */
-async function fetchEntries(): Promise<LeaderboardEntry[]> {
+type LeaderboardTab = "guess-who" | "guess-who-next";
+
+const TABS: { id: LeaderboardTab; label: string }[] = [
+  { id: "guess-who", label: "Guess Who" },
+  { id: "guess-who-next", label: "Guess Who's Next" },
+];
+
+async function fetchGuessWhoEntries(): Promise<LeaderboardEntry[]> {
+  const res = await authenticatedFetch("/api/guess-who/leaderboard");
+  if (!res.ok) throw new Error("Failed to load leaderboard");
+  const data = await res.json();
+  return Array.isArray(data.entries) ? data.entries : [];
+}
+
+async function fetchGuessWhoNextEntries(): Promise<LeaderboardEntry[]> {
   const res = await authenticatedFetch("/api/guess-who-next/leaderboard");
   if (!res.ok) throw new Error("Failed to load leaderboard");
   const data = await res.json();
@@ -25,7 +43,7 @@ async function fetchEntries(): Promise<LeaderboardEntry[]> {
 export default function LeaderboardPage() {
   const router = useRouter();
   const { menuItems, modals } = useAccountMenu();
-  const { entries, loading, error, reload } = useLeaderboard(fetchEntries);
+  const [activeTab, setActiveTab] = useState<LeaderboardTab>("guess-who");
 
   return (
     <div className={styles.page}>
@@ -46,36 +64,39 @@ export default function LeaderboardPage() {
       {modals}
       <main className={styles.main}>
         <h1>{LEADERBOARD_COPY.title}</h1>
-        {loading ? (
-          <p role="status">{LEADERBOARD_COPY.loading}</p>
-        ) : error ? (
-          <p role="alert">{error}</p>
-        ) : entries.length === 0 ? (
-          <p>{LEADERBOARD_COPY.empty}</p>
+        <div className={styles.tabs} role="tablist" aria-label="Leaderboard game">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              className={activeTab === tab.id ? styles.tabActive : styles.tab}
+              onClick={() => setActiveTab(tab.id)}
+              data-testid={`leaderboard-tab-${tab.id}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {activeTab === "guess-who" ? (
+          <LeaderboardTable
+            key="guess-who"
+            fetchEntries={fetchGuessWhoEntries}
+            settingsUrl="/api/guess-who/leaderboard-settings"
+          />
         ) : (
-          <table className={styles.table}>
-            <caption>{LEADERBOARD_COPY.tableCaption}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{LEADERBOARD_COPY.rankLabel}</th>
-                <th scope="col">{LEADERBOARD_COPY.playerLabel}</th>
-                <th scope="col">{LEADERBOARD_COPY.streakLabel}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => (
-                <tr key={entry.rank}>
-                  <td>{entry.rank}</td>
-                  <td>{entry.name}</td>
-                  <td>{entry.streak}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <LeaderboardTable
+            key="guess-who-next"
+            fetchEntries={fetchGuessWhoNextEntries}
+            settingsUrl="/api/guess-who-next/leaderboard-settings"
+          />
         )}
-        <LeaderboardClaim onChange={reload} />
-        <Link href="/guess-who-next" className={styles.playLink}>
-          {LEADERBOARD_COPY.playLabel}
+        <Link
+          href={activeTab === "guess-who" ? "/guess-who" : "/guess-who-next"}
+          className={styles.playLink}
+        >
+          {activeTab === "guess-who" ? "Play Guess Who" : LEADERBOARD_COPY.playLabel}
         </Link>
       </main>
     </div>
