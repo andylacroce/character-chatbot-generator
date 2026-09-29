@@ -89,6 +89,12 @@ arbitrary commit.
   6. `git tag -a vX.Y.Z -m "<one-line summary>"` — annotated, not lightweight, so the tag
      carries its own message independent of the commit it points to.
   7. `git push --follow-tags` — pushes the commit and the new tag together in one step.
+- **Claude Code cloud sessions can't push tags** (found 2026-09-29): the session's injected
+  credential can write `refs/heads/*` but not `refs/tags/*`, so GitHub returns a 403 for any
+  tag push (the repo has no tag rulesets or protection; this is purely the credential's
+  scope). A cloud session should do steps 1-5, push the branch, and tell the user the tag is
+  still owed; the tag is then created and pushed locally on `main` after the PR merges
+  (`git tag -a vX.Y.Z <merge-sha> -m "..."`, `git push origin vX.Y.Z`).
 
 ## Web/mobile parity (standing goal)
 
