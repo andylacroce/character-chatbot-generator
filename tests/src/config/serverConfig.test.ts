@@ -12,7 +12,7 @@ import {
   CONTENT_GUIDELINES,
   generatePersonalityPrompt,
   generateGameCluePersonaPrompt,
-  generateCharacterClues,
+  generateGuessWhoSelfCluePersonaPrompt,
 } from "../../../src/config/serverConfig";
 import { getClaudeModel } from "../../../src/utils/claudeModelSelector";
 

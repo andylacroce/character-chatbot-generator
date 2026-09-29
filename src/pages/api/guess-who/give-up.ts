@@ -1,13 +1,14 @@
 /**
  * API endpoint for voluntarily giving up a "Guess Who" run. Decodes the token (which
- * alone is enough to know the hidden character), generates its avatar for the reveal,
- * and ends the run. Mirrors guess-who-next/give-up.ts's shape.
+ * already carries the hidden character's name, avatar, and gender — generated eagerly
+ * at round start for full audio from turn one, see guessWhoRound.ts), reveals them, and
+ * ends the run. No Claude call or avatar generation needed here. Mirrors
+ * pages/api/guess-who-next/give-up.ts's shape.
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
 import { verifyGuessWhoState } from "../../../utils/guessWhoToken";
-import { getOrGenerateAvatar } from "../../../utils/avatarGeneration";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { recordEvent } from "../../../utils/analytics";
 import { withRequestLog } from "../../../utils/withRequestLog";
@@ -28,7 +29,7 @@ const guessWhoGiveUpRateLimit = createRateLimiter({
  *     summary: Give up the current Guess Who run
  *     description: >
  *       Verifies the caller's `guessWhoToken` (rejecting an invalid/tampered one with
- *       400), reveals the hidden character with its avatar, and ends the run. Rate
+ *       400), reveals the hidden character's name and avatar, and ends the run. Rate
  *       limited to 10 requests/minute/IP.
  *     tags: [GuessWho]
  *     requestBody:
@@ -39,7 +40,8 @@ const guessWhoGiveUpRateLimit = createRateLimiter({
  *             type: object
  *             required: [guessWhoToken]
  *             properties:
- *               guessWhoToken: { type: string }
+ *               guessWhoToken:
+ *                 type: string
  *     responses:
  *       200:
  *         description: The run is over and the hidden character is revealed
@@ -77,37 +79,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  try {
-    const { avatarUrl, gender } = await getOrGenerateAvatar(state.hiddenName, {
-      recognized: true,
-    });
-    logEvent(
-      "info",
-      "guess_who_gave_up",
-      "Player gave up the Guess Who run",
-      sanitizeLogMeta({ finalStreak: state.streak }),
-    );
-    void recordEvent(
-      "guess_who_run_ended",
-      { reason: "give_up", finalStreak: state.streak },
-      state.issuedForUserId,
-    );
-    res.status(200).json({
-      revealedName: state.hiddenName,
-      avatarUrl,
-      gender,
-      finalStreak: state.streak,
-      gameOver: true,
-    });
-  } catch (err) {
-    logEvent(
-      "error",
-      "guess_who_give_up_failed",
-      "Failed to reveal the hidden character on give-up",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    res.status(500).json({ error: "Failed to end the run" });
-  }
+  logEvent(
+    "info",
+    "guess_who_gave_up",
+    "Player gave up the Guess Who run",
+    sanitizeLogMeta({ finalStreak: state.streak }),
+  );
+  void recordEvent(
+    "guess_who_run_ended",
+    { reason: "give_up", finalStreak: state.streak },
+    state.issuedForUserId,
+  );
+
+  res.status(200).json({
+    revealedName: state.hiddenName,
+    avatarUrl: state.avatarUrl,
+    gender: state.gender,
+    finalStreak: state.streak,
+    gameOver: true,
+  });
 }
 
 export default withRequestLog(handler);

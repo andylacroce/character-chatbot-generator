@@ -346,51 +346,64 @@ export interface LeaderboardSettingsRequest {
 }
 
 /**
- * "Guess Who" (the clue-reveal game) types. Deliberately not shaped like the
- * GameRoundResult/GameMessage* family above — there's no chat turn or persona here, just
- * a hidden name's ordered clues and a dedicated guess/give-up flow. See
+ * "Guess Who" (the self-describing chat game) types. Shaped like the
+ * GameRoundResult/GameMessage* family above — a real chat turn with a persona — except
+ * the character being chatted with IS the mystery, so `currentCharacterName`/`avatarUrl`
+ * never appear in a round result or an ordinary reply; only a reveal (a correct guess,
+ * a second wrong guess, or a give-up) carries `revealedName`/`avatarUrl`/`gender`. See
  * src/pages/api/guess-who/*.ts and packages/shared/src/guessWho.ts.
  */
 
-/** POST /guess-who/start request body — empty for a run's first round, or the current run's progress to continue past a correct guess. */
+/** POST /guess-who/start request body — `stream` is a web-only SSE progress mode; mobile omits it. */
 export interface GuessWhoStartRequest {
-  usedNames?: string[];
-  streak?: number;
+  stream?: boolean;
 }
 
-/** POST /guess-who/start response: a new round's first clue. */
+/** POST /guess-who/continue request body. */
+export interface GuessWhoContinueRequest {
+  guessWhoToken: string;
+  stream?: boolean;
+}
+
+/** POST /guess-who/start or /guess-who/continue response — the hidden character's opening reply. Identity is withheld. */
 export interface GuessWhoRoundResult {
   guessWhoToken: string;
-  clue: string;
-  clueNumber: number;
-  totalClues: number;
+  reply: string;
+  audioFileUrl?: string;
   streak: number;
 }
 
-/** POST /guess-who/guess request body. */
-export interface GuessWhoGuessRequest {
+/** POST /guess-who/message request body — one turn of chat, or a guess, in the same field. */
+export interface GuessWhoMessageRequest {
   guessWhoToken: string;
-  guess: string;
+  message: string;
+  conversationHistory?: string[];
 }
 
 /**
- * POST /guess-who/guess response. Which fields are present depends on the outcome: a
- * correct guess carries `revealedName`/`avatarUrl`/`gender`/`usedNames` (no more
- * `guessWhoToken` — the round is over); a wrong guess with clues remaining carries the
- * next `clue`/`clueNumber`/`totalClues` and a fresh `guessWhoToken`; a wrong guess with
- * no clues left (`gameOver: true`) carries the same reveal fields as a correct guess.
+ * POST /guess-who/message response. Which fields are present depends on how the message
+ * was classified server-side (see pages/api/guess-who/message.ts's own doc comment):
+ * - `giveUpRequested`: the player asked to give up via chat — no reply/audio this turn.
+ * - an ordinary reply: just `reply`/`audioFileUrl`.
+ * - a correct guess: `correct: true`, `revealedName`/`avatarUrl`/`gender`, `streak`, plus
+ *   a reaction `reply`; call POST /guess-who/continue once the player clicks "Continue".
+ * - a wrong-but-tolerated guess: `correct: false`, `gameOver: false`,
+ *   `wrongGuessesRemaining`, and a bumped `guessWhoToken` to echo back next turn.
+ * - a second wrong guess or give-up: `gameOver: true` plus the same reveal fields as a
+ *   correct guess, under `finalStreak` instead of `streak`.
  */
-export interface GuessWhoGuessResponse {
-  correct: boolean;
-  gameOver: boolean;
+export interface GuessWhoMessageResponse {
+  giveUpRequested?: boolean;
+  reply?: string;
+  audioFileUrl?: string;
+  correct?: boolean;
+  gameOver?: boolean;
   revealedName?: string;
   avatarUrl?: string;
   gender?: string | null;
-  streak: number;
-  usedNames?: string[];
-  clue?: string;
-  clueNumber?: number;
-  totalClues?: number;
+  streak?: number;
+  finalStreak?: number;
+  wrongGuessesRemaining?: number;
   guessWhoToken?: string;
 }
 

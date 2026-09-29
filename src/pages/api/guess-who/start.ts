@@ -1,21 +1,15 @@
 /**
- * API endpoint that starts (or continues) a "Guess Who" run: picks a hidden character
- * (excluding names already met this streak) and generates its 5 ordered clues via a
- * single fast Claude call. No avatar, voice, or persona here — deliberately cheaper than
- * "Guess Who's Next" (see CLAUDE.md's "Second game mode" plan) since there's no chat, no
- * TTS, and the hidden character's avatar is only ever generated at the reveal moment
- * (POST /guess-who/guess on a correct answer, or /guess-who/give-up), never during the
- * clue phase, so it can never spoil the guess.
- *
- * Reused for BOTH a run's first round (empty `usedNames`/`streak`) and every round after
- * a correct guess (the client passes the current `usedNames`/`streak` forward from the
- * guess response) — there's no separate /continue endpoint, unlike "Guess Who's Next",
- * since round generation here is a single fast call rather than a multi-stage pipeline.
+ * API endpoint that starts a new "Guess Who" run: picks a hidden character and generates
+ * its self-describing persona, avatar, opening greeting, voice, and TTS audio — full
+ * audio parity with ordinary chat from turn one. The name and avatar are withheld from
+ * this response (and every other response until a reveal) — they live only inside the
+ * encrypted `guessWhoToken`, never sent to the client while the round is live. See
+ * CLAUDE.md's "Guess Who" section.
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
-import { generateGuessWhoRound } from "../../../utils/guessWhoRound";
+import { generateSelfClueRound } from "../../../utils/guessWhoRound";
 import { signGuessWhoState } from "../../../utils/guessWhoToken";
 import { getSessionUserId } from "../../../utils/getSessionUserId";
 import { ensureGuestId } from "../../../utils/gameGuestIdentity";
@@ -23,8 +17,12 @@ import { getCurrentEnvironment } from "../../../utils/environment";
 import { recordEvent } from "../../../utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { withRequestLog } from "../../../utils/withRequestLog";
+import { setSseHeaders, writeSseFrame } from "../../../utils/sse";
 
-/** Rate limiter: 10 requests per minute per IP, same tier as guess-who-next-start. */
+/**
+ * Rate limiter: 10 requests per minute per IP. A run start costs a personality
+ * generation plus an avatar generation combined, same reasoning as guess-who-next-start.
+ */
 const guessWhoStartRateLimit = createRateLimiter({
   name: "guess-who-start",
   max: 10,
@@ -32,17 +30,18 @@ const guessWhoStartRateLimit = createRateLimiter({
 });
 
 /**
- * Next.js API route handler that starts or continues a "Guess Who" run.
+ * Next.js API route handler that starts a new "Guess Who" run.
  *
  * @swagger
  * /guess-who/start:
  *   post:
- *     summary: Start a new "Guess Who" round, or the next round after a correct guess
+ *     summary: Start a new "Guess Who" round
  *     description: >
- *       Picks a hidden character (excluding `usedNames`) and generates its 5 ordered
- *       clues. Round state is an opaque, encrypted `guessWhoToken` the client must echo
- *       back on every subsequent /guess-who/guess or /guess-who/give-up call. Rate
- *       limited to 10 requests/minute/IP.
+ *       Picks a hidden character and generates its persona, avatar, opening greeting,
+ *       voice, and TTS audio. The name and avatar are NOT returned here — they live only
+ *       inside the opaque, encrypted `guessWhoToken`, which the client must echo back on
+ *       every subsequent /guess-who/message, /guess-who/continue, or /guess-who/give-up
+ *       call. Rate limited to 10 requests/minute/IP.
  *     tags: [GuessWho]
  *     requestBody:
  *       required: false
@@ -51,24 +50,33 @@ const guessWhoStartRateLimit = createRateLimiter({
  *           schema:
  *             type: object
  *             properties:
- *               usedNames:
- *                 type: array
- *                 items: { type: string }
- *               streak:
- *                 type: integer
+ *               stream:
+ *                 type: boolean
+ *                 default: false
  *     responses:
  *       200:
- *         description: A new round started
+ *         description: >
+ *           JSON result (default), or a text/event-stream of real progress frames when
+ *           `stream: true` — `data: {"stage": "personality"|"avatar"|"reply"|"voice",
+ *           "done": false}` fired the instant each named step actually finishes, followed
+ *           by a final frame carrying the same fields as the JSON response plus
+ *           `"done": true`.
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 guessWhoToken: { type: string }
- *                 clue: { type: string }
- *                 clueNumber: { type: integer }
- *                 totalClues: { type: integer }
- *                 streak: { type: integer }
+ *                 guessWhoToken:
+ *                   type: string
+ *                 reply:
+ *                   type: string
+ *                 audioFileUrl:
+ *                   type: string
+ *                 streak:
+ *                   type: integer
+ *           text/event-stream:
+ *             schema:
+ *               type: string
  *       405:
  *         description: Method not allowed
  *       429:
@@ -85,49 +93,61 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const usedNames: string[] = Array.isArray(req.body?.usedNames)
-    ? req.body.usedNames.filter((name: unknown): name is string => typeof name === "string")
-    : [];
-  const streak = typeof req.body?.streak === "number" && req.body.streak > 0 ? req.body.streak : 0;
-  const isNewRun = usedNames.length === 0;
+  const stream = req.body?.stream === true;
 
   try {
     const userId = await getSessionUserId(req);
     const guestId = userId ? null : ensureGuestId(req, res);
-    const { hiddenName, clues } = await generateGuessWhoRound(usedNames);
+
+    if (stream) {
+      setSseHeaders(res);
+    }
+
+    const { hiddenName, personaPrompt, avatarUrl, gender, voiceConfig, reply, audioFileUrl } =
+      await generateSelfClueRound(
+        [],
+        stream ? (stage) => writeSseFrame(res, { stage, done: false }) : undefined,
+      );
 
     const runId = crypto.randomUUID();
     const guessWhoToken = signGuessWhoState({
       runId,
       hiddenName,
-      clues,
-      revealedCount: 1,
-      usedNames: [...usedNames, hiddenName],
-      streak,
+      personaPrompt,
+      avatarUrl,
+      gender,
+      voiceConfig,
+      usedNames: [hiddenName],
+      streak: 0,
+      wrongGuessCount: 0,
       environment: getCurrentEnvironment(),
       issuedForUserId: userId,
       issuedForGuestId: guestId,
+      canContinue: false,
     });
 
-    if (isNewRun) {
-      logEvent("info", "guess_who_start_new_run", "Started a new Guess Who run");
-      void recordEvent("guess_who_started", { guest: !userId }, userId);
+    logEvent("info", "guess_who_start_new_run", "Started a new Guess Who run");
+    void recordEvent("guess_who_started", { guest: !userId }, userId);
+
+    const result = { guessWhoToken, reply, audioFileUrl, streak: 0 };
+    if (stream) {
+      writeSseFrame(res, { ...result, done: true });
+      res.end();
+      return;
     }
-
-    res.status(200).json({
-      guessWhoToken,
-      clue: clues[0],
-      clueNumber: 1,
-      totalClues: clues.length,
-      streak,
-    });
+    res.status(200).json(result);
   } catch (err) {
     logEvent(
       "error",
       "guess_who_start_failed",
-      "Failed to start a Guess Who round",
+      "Failed to start a new Guess Who run",
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
+    if (stream) {
+      writeSseFrame(res, { error: "Failed to start a new round", done: true });
+      res.end();
+      return;
+    }
     res.status(500).json({ error: "Failed to start a new round" });
   }
 }

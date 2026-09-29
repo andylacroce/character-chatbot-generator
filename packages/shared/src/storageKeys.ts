@@ -26,12 +26,12 @@ export const STORAGE_KEYS = {
   landingCarouselCache: "chatbot-landing-carousel-cache",
   /** Web-only opt-in preference for loading Google Analytics. */
   googleAnalyticsConsent: "portrayal-google-analytics-consent",
-  /** One-time "how to play" gate for "Guess Who" (the clue-reveal game), mirrors the web's own key. */
+  /** One-time "how to play" gate for "Guess Who" (the self-describing chat game), mirrors the web's own key. */
   guessWhoInstructionsSeen: "chatbot-guess-who-instructions-seen",
   /** "Guess Who"'s opaque round token (never decoded client-side). */
   guessWhoToken: "chatbot-guess-who-token",
-  /** "Guess Who"'s clue-reveal state, stored alongside `guessWhoToken`. */
-  guessWhoState: "chatbot-guess-who-state",
+  /** "Guess Who"'s transcript and round state, stored alongside `guessWhoToken`. */
+  guessWhoTranscript: "chatbot-guess-who-transcript",
 } as const;
 
 /** Prefixes for keys that are suffixed per-character by bot name. */

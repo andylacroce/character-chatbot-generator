@@ -1,29 +1,29 @@
 /* =============================
    GuessWhoPage.module.css
-   Own file per this repo's no-shared-CSS-modules rule (a page-specific descendant
-   selector living in a shared module can reach into and break an unrelated component
-   that happens to share the same DOM shape — see CLAUDE.md's "Unified header" section
-   for the CSS-specificity bug this convention exists to prevent). Some rules
-   deliberately mirror GuessWhoNextPage.module.css's start-screen/modal treatment for a
-   consistent look between the two games, duplicated rather than imported.
+   - Only "Guess Who"'s own pieces: the standalone start/game-over screen, the streak
+     badge and round-result banner layered into ChatShell's slots, and the hamburger menu
+     items. The shared chat chrome itself (header, avatar lightbox, transcript, input,
+     spinner) lives once in ChatShell.tsx/ChatPage.module.css — see ChatShell.tsx's doc
+     comment for why. Kept as its own file per this repo's no-shared-CSS-modules rule —
+     near-identical to GuessWhoNextPage.module.css since both games share the same chat
+     UI shape, just with a different mystery/reveal identity model.
    ============================= */
 
-.page {
-  min-height: 100vh;
-  background: var(--color-background);
-  color: var(--color-text);
-  font-family: var(--font-primary);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+/* --- Standalone start / game-over screen (shown before ChatShell renders) --- */
 
+/* No explicit width here — same scrollbar-gutter reasoning as ChatPage.module.css's
+   .chatLayout (this is that screen's equivalent, shown before ChatShell renders): a
+   normal-flow block already fills its containing block's actual width, which
+   `width: 100vw` would override with the full viewport width including any reserved
+   scrollbar gutter. */
 .standaloneScreen {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 60px);
-  width: 100%;
+  height: 100vh;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-primary);
 }
 
 .startScreen {
@@ -94,17 +94,12 @@
   background: var(--color-primary-container);
 }
 
-/* --- Round screen: clue card + guess input --- */
-
-.roundScreen {
-  width: 100%;
-  max-width: 560px;
-  padding: 1.5rem 1rem 3rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.25rem;
+.leaderboardButton:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
 }
+
+/* --- Header slots (belowName / menuItems) fed into ChatShell --- */
 
 .streakBadge {
   text-align: center;
@@ -117,171 +112,6 @@
 .highScoreBadge {
   font-weight: 600;
   color: var(--color-text-secondary);
-}
-
-.clueCard {
-  width: 100%;
-  background: var(--color-surface);
-  border: 1px solid var(--color-outline);
-  border-radius: 16px;
-  padding: 1.5rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.clueLabel {
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-secondary);
-}
-
-.clueText {
-  font-size: 1.15rem;
-  line-height: 1.5;
-  font-family: var(--font-secondary), serif;
-}
-
-.clueDots {
-  display: flex;
-  justify-content: center;
-  gap: 0.4rem;
-}
-
-.clueDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-outline);
-}
-
-.clueDotFilled {
-  background: var(--color-primary);
-}
-
-.guessForm {
-  width: 100%;
-  display: flex;
-  gap: 0.6rem;
-}
-
-.guessInput {
-  flex: 1;
-  padding: 0.7rem 1rem;
-  border-radius: 999px;
-  border: 1px solid var(--color-outline);
-  background: var(--color-background);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 1rem;
-}
-
-.guessInput:focus-visible {
-  outline: 3px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.guessButton {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  font-family: var(--font-primary), sans-serif;
-  font-weight: 700;
-  border: none;
-  border-radius: 999px;
-  padding: 0.7rem 1.4rem;
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-
-.guessButton:hover:not(:disabled),
-.guessButton:focus-visible:not(:disabled) {
-  opacity: 0.85;
-}
-
-.guessButton:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.giveUpButton {
-  background: none;
-  border: none;
-  color: var(--color-text-secondary);
-  font: inherit;
-  font-size: 0.85rem;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0.4rem;
-}
-
-.wrongBanner {
-  width: 100%;
-  text-align: center;
-  padding: 0.6rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: var(--color-primary-container);
-  border-radius: 999px;
-}
-
-.errorBanner {
-  width: 100%;
-  text-align: center;
-  padding: 0.6rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-error, #b3261e);
-}
-
-/* --- Reveal banner with avatar (shown on correct guess, or game over) --- */
-
-.revealBanner {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border-radius: 16px;
-  padding: 1.25rem;
-  text-align: center;
-  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.22);
-}
-
-.revealAvatar {
-  width: 88px;
-  height: 88px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 3px solid var(--color-on-primary);
-}
-
-.revealText {
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.revealContinueButton {
-  background: var(--color-on-primary);
-  color: var(--color-primary);
-  font-family: var(--font-primary), sans-serif;
-  font-weight: 700;
-  font-size: 0.95rem;
-  border: none;
-  border-radius: 999px;
-  padding: 0.5rem 1.4rem;
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-
-.revealContinueButton:hover,
-.revealContinueButton:focus-visible {
-  opacity: 0.85;
 }
 
 .menuItemLink {
@@ -306,6 +136,94 @@
   background: var(--color-primary-container);
   color: var(--color-primary);
   outline: none;
+}
+
+/* --- Round-result banner fed into ChatShell's bannerContent slot --- */
+
+.eventBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-container);
+}
+
+/* A correct guess awaiting "Continue" needs the player's explicit action — there's no
+   other way to advance, the chat input is disabled underneath it — so it gets a more
+   attention-grabbing treatment than the plain .eventBanner variants above. Still an
+   inline banner (not a modal): this slot sits above the scrollable transcript, so it
+   never obscures the character's own last message the way an overlay would. */
+.correctGuessBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.9rem;
+  text-align: center;
+  padding: 0.85rem 1.2rem;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.22);
+  animation: gameCorrectBannerPulse 1.8s ease-in-out infinite;
+}
+
+.correctGuessText {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.correctGuessContinueButton {
+  background: var(--color-on-primary);
+  color: var(--color-primary);
+  font-family: var(--font-primary), sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 1.4rem;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.correctGuessContinueButton:hover,
+.correctGuessContinueButton:focus-visible {
+  opacity: 0.85;
+}
+
+@keyframes gameCorrectBannerPulse {
+  0%,
+  100% {
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.22);
+  }
+  50% {
+    box-shadow: 0 2px 22px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .correctGuessBanner {
+    animation: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .startHeadline {
+    font-size: 1.5rem;
+  }
+
+  .menuItemLink {
+    font-size: 0.78rem;
+    padding: 0.5em 0.6em;
+    border-radius: 6px;
+    margin-left: 0;
+    min-width: 0;
+  }
 }
 
 /* --- Give-up confirmation modal --- */
@@ -368,6 +286,10 @@
   transition: opacity 0.15s ease;
 }
 
+.modalCancelButton:hover {
+  opacity: 0.85;
+}
+
 .modalConfirmButton {
   flex: 1;
   background: var(--color-primary);
@@ -382,24 +304,11 @@
   transition: opacity 0.15s ease;
 }
 
-.modalCancelButton:hover,
 .modalConfirmButton:hover {
   opacity: 0.85;
 }
 
 @media (max-width: 600px) {
-  .startHeadline {
-    font-size: 1.5rem;
-  }
-
-  .roundScreen {
-    padding: 1rem 0.75rem 2rem;
-  }
-
-  .guessForm {
-    flex-direction: column;
-  }
-
   .modalBox {
     padding: 1rem;
   }

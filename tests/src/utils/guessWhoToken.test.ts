@@ -6,10 +6,13 @@ function makePayload(overrides: Partial<GuessWhoStatePayload> = {}): GuessWhoSta
   return {
     runId: "run-1",
     hiddenName: "Irene Adler",
-    clues: ["Clue 1", "Clue 2", "Clue 3", "Clue 4", "Clue 5"],
-    revealedCount: 1,
+    personaPrompt: "You are Irene Adler, a brilliant opera singer and adventuress.",
+    avatarUrl: "https://example.com/avatar.png",
+    gender: "female",
+    voiceConfig: { languageCodes: ["en-US"], name: "en-US-Studio-O", ssmlGender: 1 },
     usedNames: ["Sherlock Holmes"],
     streak: 2,
+    wrongGuessCount: 0,
     environment: "development",
     issuedForUserId: null,
     issuedForGuestId: null,
@@ -36,6 +39,14 @@ describe("guessWhoToken", () => {
     const payload = makePayload();
     const token = signGuessWhoState(payload);
     expect(typeof token).toBe("string");
+    expect(verifyGuessWhoState(token)).toEqual(payload);
+  });
+
+  it("round-trips a payload with canContinue set", async () => {
+    const { signGuessWhoState, verifyGuessWhoState } =
+      await import("../../../src/utils/guessWhoToken");
+    const payload = makePayload({ canContinue: true, wrongGuessCount: 1 });
+    const token = signGuessWhoState(payload);
     expect(verifyGuessWhoState(token)).toEqual(payload);
   });
 
@@ -72,15 +83,51 @@ describe("guessWhoToken", () => {
     });
   });
 
-  it("returns null when revealedCount is out of range for clues.length", async () => {
+  it("returns null for a token with an unsupported version byte", async () => {
+    const { signGuessWhoState, verifyGuessWhoState } =
+      await import("../../../src/utils/guessWhoToken");
+    const token = signGuessWhoState(makePayload());
+    const raw = Buffer.from(token, "base64url");
+    raw[0] = 99;
+    expect(verifyGuessWhoState(raw.toString("base64url"))).toBeNull();
+  });
+
+  it("returns null for a syntactically valid but wrong-shaped decrypted payload (old clues/revealedCount shape)", async () => {
     const crypto = await import("crypto");
     const { verifyGuessWhoState } = await import("../../../src/utils/guessWhoToken");
     const key = crypto.createHash("sha256").update("test-api-secret").digest();
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-    const badPayload = { ...makePayload(), revealedCount: 99 };
+    // The pre-redesign shape: clues/revealedCount instead of personaPrompt/avatarUrl/gender/voiceConfig.
+    const oldShapedPayload = {
+      runId: "run-1",
+      hiddenName: "Irene Adler",
+      clues: ["1", "2", "3", "4", "5"],
+      revealedCount: 2,
+      usedNames: [],
+      streak: 3,
+      environment: "test",
+      issuedForUserId: null,
+      issuedForGuestId: null,
+    };
     const encrypted = Buffer.concat([
-      cipher.update(Buffer.from(JSON.stringify(badPayload), "utf8")),
+      cipher.update(Buffer.from(JSON.stringify(oldShapedPayload), "utf8")),
+      cipher.final(),
+    ]);
+    const authTag = cipher.getAuthTag();
+    const versioned = Buffer.concat([Buffer.from([1]), iv, authTag, encrypted]);
+    expect(verifyGuessWhoState(versioned.toString("base64url"))).toBeNull();
+  });
+
+  it("returns null for a payload missing required fields", async () => {
+    const crypto = await import("crypto");
+    const { verifyGuessWhoState } = await import("../../../src/utils/guessWhoToken");
+    const key = crypto.createHash("sha256").update("test-api-secret").digest();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+    const missingFieldsPayload = { foo: "bar" };
+    const encrypted = Buffer.concat([
+      cipher.update(Buffer.from(JSON.stringify(missingFieldsPayload), "utf8")),
       cipher.final(),
     ]);
     const authTag = cipher.getAuthTag();

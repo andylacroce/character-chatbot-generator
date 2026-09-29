@@ -19,9 +19,10 @@ import type {
   GameMessageResponse,
   GameRoundResult,
   GuessWhoGiveUpResponse,
-  GuessWhoGuessResponse,
   GuessWhoHighScoreResponse,
   GuessWhoLeaderboardResponse,
+  GuessWhoMessageRequest,
+  GuessWhoMessageResponse,
   GuessWhoRoundResult,
   GenerateAvatarRequest,
   GenerateAvatarResponse,
@@ -296,22 +297,23 @@ export function saveLeaderboardSettings(
  * Reuses the same `x-game-guest` guest identity as "Guess Who's Next" (see
  * gameGuest.ts) — one anonymous player id, shared across both games.
  */
-export async function startGuessWhoRound(
-  usedNames: string[],
-  streak: number,
-): Promise<GuessWhoRoundResult> {
+export async function startGuessWhoRound(): Promise<GuessWhoRoundResult> {
+  return parseGuessWhoRoundResult(await gameFetch("/api/guess-who/start", {}), "/api/guess-who/start");
+}
+
+/** Generates the next round after a correct guess (plain JSON, like startGuessWhoRound). */
+export async function continueGuessWho(guessWhoToken: string): Promise<GuessWhoRoundResult> {
   return parseGuessWhoRoundResult(
-    await gameFetch("/api/guess-who/start", { usedNames, streak }),
-    "/api/guess-who/start",
+    await gameFetch("/api/guess-who/continue", { guessWhoToken }),
+    "/api/guess-who/continue",
   );
 }
 
-/** Submits a guess for the current round's hidden character. */
-export function submitGuessWhoGuess(
-  guessWhoToken: string,
-  guess: string,
-): Promise<GuessWhoGuessResponse> {
-  return gameFetch("/api/guess-who/guess", { guessWhoToken, guess });
+/** Sends one turn of "Guess Who"'s chat; the server decides whether it's a question or a guess. */
+export function sendGuessWhoMessage(
+  body: GuessWhoMessageRequest,
+): Promise<GuessWhoMessageResponse> {
+  return gameFetch("/api/guess-who/message", body);
 }
 
 /** Gives up the current "Guess Who" run, revealing the hidden character. */
