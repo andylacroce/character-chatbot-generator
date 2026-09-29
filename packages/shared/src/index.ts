@@ -6,6 +6,8 @@ export * from "./gameCopy";
 export * from "./formatRelativeTime";
 export * from "./guessWhoNext";
 export * from "./useGuessWhoNextSession";
+export * from "./guessWho";
+export * from "./useGuessWhoSession";
 export * from "./useLeaderboard";
 export * from "./useUserNameState";
 export * from "./useCharacterCarousel";
