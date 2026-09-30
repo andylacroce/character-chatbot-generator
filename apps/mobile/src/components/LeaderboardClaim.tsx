@@ -3,32 +3,21 @@ import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import {
   LEADERBOARD_COPY,
   useLeaderboardClaim,
+  type GameDefinition,
   type LeaderboardClaimTransport,
   type ThemeColors,
 } from "character-chatbot-shared";
-import {
-  apiErrorMessage,
-  getGuessWhoLeaderboardSettings,
-  getLeaderboardSettings,
-  saveGuessWhoLeaderboardSettings,
-  saveLeaderboardSettings,
-} from "../api";
+import { apiErrorMessage, getLeaderboardSettings, saveLeaderboardSettings } from "../api";
 import { useTheme } from "../ThemeContext";
 import Button from "./Button";
 
-/** Which game's leaderboard opt-in this instance manages — "guessWhoNext" (default) or "guessWho". */
-type Game = "guessWhoNext" | "guessWho";
-
-function makeTransport(game: Game): LeaderboardClaimTransport {
-  const [load, save] =
-    game === "guessWho"
-      ? [getGuessWhoLeaderboardSettings, saveGuessWhoLeaderboardSettings]
-      : [getLeaderboardSettings, saveLeaderboardSettings];
+/** Builds the claim transport for one game's leaderboard opt-in. */
+function makeTransport(game: GameDefinition): LeaderboardClaimTransport {
   return {
-    load,
+    load: () => getLeaderboardSettings(game),
     save: async (request) => {
       try {
-        return await save(request);
+        return await saveLeaderboardSettings(game, request);
       } catch (err) {
         throw new Error(apiErrorMessage(err, ""));
       }
@@ -41,14 +30,13 @@ const serif = Platform.select({ ios: "Georgia", android: "serif", default: "seri
 /**
  * Lets a top-ten player choose or remove their public leaderboard name. Same shared claim
  * flow and copy as the web app's LeaderboardClaim.tsx; renders nothing otherwise.
- * `game` defaults to "Guess Who's Next" for existing callers.
  */
 export default function LeaderboardClaim({
   onChange,
-  game = "guessWhoNext",
+  game,
 }: {
   onChange?: () => void;
-  game?: Game;
+  game: GameDefinition;
 }) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);

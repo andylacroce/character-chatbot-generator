@@ -1,5 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { STORAGE_KEYS, chatHistoryKey, type Bot, type ChatMessage } from "character-chatbot-shared";
+import {
+  GUESS_WHO,
+  GUESS_WHO_NEXT,
+  STORAGE_KEYS,
+  chatHistoryKey,
+  type Bot,
+  type ChatMessage,
+} from "character-chatbot-shared";
 import {
   appendChatMessage,
   clearLocalChats,
@@ -9,16 +16,12 @@ import {
   loadChatHistory,
   loadGameInstructionsSeen,
   loadGameState,
-  loadGuessWhoInstructionsSeen,
-  loadGuessWhoState,
   loadUserName,
   loadUserNameGateSkipped,
   saveAudioEnabled,
   saveBot,
   saveGameInstructionsSeen,
   saveGameState,
-  saveGuessWhoInstructionsSeen,
-  saveGuessWhoState,
   saveUserName,
   saveUserNameGateSkipped,
 } from "../src/storage";
@@ -110,49 +113,45 @@ describe("storage", () => {
     await expect(AsyncStorage.getItem(STORAGE_KEYS.userName)).resolves.toBe("Jane");
   });
 
-  it("saves, loads and clears an in-progress game run", async () => {
+  describe.each([GUESS_WHO, GUESS_WHO_NEXT])("$title run persistence", (game) => {
     const state = {
-      gameToken: "t1",
-      currentCharacterName: "Zeus",
-      avatarUrl: "/silhouette.svg",
-      gender: null,
+      token: "t1",
+      ...(game.hidesSpeaker
+        ? {}
+        : { currentCharacterName: "Zeus", avatarUrl: "/silhouette.svg", gender: null }),
       streak: 2,
-      messages: [{ sender: "Zeus", text: "Hail." }],
+      messages: [{ sender: game.hidesSpeaker ? "???" : "Zeus", text: "Hail." }],
       roundStartIndex: 0,
       lastEvent: null,
     };
-    expect(await loadGameState()).toBeNull();
-    await saveGameState(state);
-    expect(await loadGameState()).toEqual(state);
-    await saveGameState(null);
-    expect(await loadGameState()).toBeNull();
-  });
 
-  it("remembers that the game instructions were seen", async () => {
-    expect(await loadGameInstructionsSeen()).toBe(false);
-    await saveGameInstructionsSeen();
-    expect(await loadGameInstructionsSeen()).toBe(true);
-  });
+    it("saves, loads and clears an in-progress run", async () => {
+      expect(await loadGameState(game)).toBeNull();
+      await saveGameState(game, state);
+      expect(await loadGameState(game)).toEqual(state);
+      await saveGameState(game, null);
+      expect(await loadGameState(game)).toBeNull();
+    });
 
-  it("saves, loads and clears an in-progress Guess Who run", async () => {
-    const state = {
-      guessWhoToken: "t1",
-      streak: 2,
-      messages: [{ sender: "???", text: "Hail." }],
-      roundStartIndex: 0,
-      lastEvent: null,
-    };
-    expect(await loadGuessWhoState()).toBeNull();
-    await saveGuessWhoState(state);
-    expect(await loadGuessWhoState()).toEqual(state);
-    await saveGuessWhoState(null);
-    expect(await loadGuessWhoState()).toBeNull();
-  });
+    it("keeps the token and transcript under this game's own keys, the layout earlier builds wrote", async () => {
+      await saveGameState(game, state);
+      expect(await AsyncStorage.getItem(game.storageKeys.token)).toBe("t1");
+      const { token, ...rest } = state;
+      expect(token).toBe("t1");
+      expect(JSON.parse((await AsyncStorage.getItem(game.storageKeys.transcript))!)).toEqual(rest);
+    });
 
-  it("remembers that the Guess Who instructions were seen", async () => {
-    expect(await loadGuessWhoInstructionsSeen()).toBe(false);
-    await saveGuessWhoInstructionsSeen();
-    expect(await loadGuessWhoInstructionsSeen()).toBe(true);
+    it("never touches the other game's run", async () => {
+      const other = game === GUESS_WHO ? GUESS_WHO_NEXT : GUESS_WHO;
+      await saveGameState(game, state);
+      expect(await loadGameState(other)).toBeNull();
+    });
+
+    it("remembers that the instructions were seen, per game", async () => {
+      expect(await loadGameInstructionsSeen(game)).toBe(false);
+      await saveGameInstructionsSeen(game);
+      expect(await loadGameInstructionsSeen(game)).toBe(true);
+    });
   });
 
   it("clearPersonalData removes chats and identity but keeps device preferences", async () => {

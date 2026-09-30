@@ -1,12 +1,10 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { GUESS_WHO, GUESS_WHO_NEXT } from "character-chatbot-shared";
 import LeaderboardScreen from "../../src/screens/LeaderboardScreen";
 import { ThemeProvider } from "../../src/ThemeContext";
 
 jest.mock("../../src/api", () => ({
   ...jest.requireActual("../../src/api"),
-  getGuessWhoLeaderboard: jest.fn(),
-  getGuessWhoLeaderboardSettings: jest.fn(),
-  saveGuessWhoLeaderboardSettings: jest.fn(),
   getLeaderboard: jest.fn(),
   getLeaderboardSettings: jest.fn(),
   saveLeaderboardSettings: jest.fn(),
@@ -14,16 +12,14 @@ jest.mock("../../src/api", () => ({
 
 import {
   ApiError,
-  getGuessWhoLeaderboard,
-  getGuessWhoLeaderboardSettings,
-  saveGuessWhoLeaderboardSettings,
+  getLeaderboard,
+  getLeaderboardSettings,
+  saveLeaderboardSettings,
 } from "../../src/api";
 
-// The "Guess Who" tab is the default/active one on mount (see LeaderboardScreen.tsx's
-// standing "featured first" rule), so these tests exercise its own API functions.
-const mockedList = getGuessWhoLeaderboard as jest.Mock;
-const mockedSettings = getGuessWhoLeaderboardSettings as jest.Mock;
-const mockedSave = saveGuessWhoLeaderboardSettings as jest.Mock;
+const mockedList = getLeaderboard as jest.Mock;
+const mockedSettings = getLeaderboardSettings as jest.Mock;
+const mockedSave = saveLeaderboardSettings as jest.Mock;
 
 const eligible = { available: true, eligible: true, showOnLeaderboard: false, name: null };
 
@@ -37,6 +33,8 @@ async function renderScreen() {
   return { ...utils, navigate };
 }
 
+// The "Guess Who" tab is the default/active one on mount (the standing "featured first"
+// rule), so these tests exercise it first and then switch tabs.
 describe("LeaderboardScreen", () => {
   beforeEach(() => {
     // Reset (not just clear) so a leftover one-time value can't leak between tests.
@@ -49,8 +47,9 @@ describe("LeaderboardScreen", () => {
     const utils = await renderScreen();
     expect(await utils.findByText("Ada")).toBeTruthy();
     expect(utils.getByText("9")).toBeTruthy();
+    expect(mockedList).toHaveBeenCalledWith(GUESS_WHO);
     expect(utils.queryByText("You made the top 10!")).toBeNull();
-    await fireEvent.press(utils.getByText("Play Guess Who"));
+    await fireEvent.press(utils.getByText(GUESS_WHO.copy.ctaLabel));
     expect(utils.navigate).toHaveBeenCalledWith("GuessWho");
   });
 
@@ -77,7 +76,7 @@ describe("LeaderboardScreen", () => {
     mockedSave.mockResolvedValueOnce({ ...eligible, showOnLeaderboard: true, name: "Ada" });
     await fireEvent.press(utils.getByText("Join leaderboard"));
     expect(await utils.findByText("Update name")).toBeTruthy();
-    expect(mockedSave).toHaveBeenCalledWith({ showOnLeaderboard: true, name: "Ada" });
+    expect(mockedSave).toHaveBeenCalledWith(GUESS_WHO, { showOnLeaderboard: true, name: "Ada" });
     expect(mockedList).toHaveBeenCalledTimes(2);
 
     mockedSave.mockRejectedValueOnce(
@@ -98,17 +97,16 @@ describe("LeaderboardScreen", () => {
     expect(await utils.findByText("Could not load your leaderboard settings.")).toBeTruthy();
   });
 
-  it("switches to the Guess Who's Next tab and loads its own leaderboard", async () => {
-    mockedList.mockResolvedValue({ entries: [] });
-    const { getLeaderboard, getLeaderboardSettings } = jest.requireMock("../../src/api");
-    (getLeaderboard as jest.Mock).mockResolvedValue({
-      entries: [{ rank: 1, name: "Zeus", streak: 4 }],
-    });
-    (getLeaderboardSettings as jest.Mock).mockResolvedValue({ ...eligible, eligible: false });
+  it("switches to the Guess Who's Next tab and loads its own leaderboard and settings", async () => {
+    mockedList.mockImplementation(async (game) => ({
+      entries: game.id === "guessWho" ? [] : [{ rank: 1, name: "Zeus", streak: 4 }],
+    }));
     const utils = await renderScreen();
     await fireEvent.press(utils.getByText("Guess Who's Next"));
     expect(await utils.findByText("Zeus")).toBeTruthy();
-    await fireEvent.press(utils.getByText("Play Guessing Game"));
+    expect(mockedList).toHaveBeenLastCalledWith(GUESS_WHO_NEXT);
+    expect(mockedSettings).toHaveBeenLastCalledWith(GUESS_WHO_NEXT);
+    await fireEvent.press(utils.getByText(GUESS_WHO_NEXT.copy.ctaLabel));
     expect(utils.navigate).toHaveBeenCalledWith("GuessWhoNext");
   });
 });

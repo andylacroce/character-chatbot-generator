@@ -1,8 +1,7 @@
 /**
- * Generic AES-256-GCM encrypt/decrypt for this app's opaque, client-held game tokens —
- * extracted out of `guessWhoNextToken.ts` so the chat-steering game ("Guess Who's Next") and the
- * clue-reveal game ("Guess Who") share one key-derivation chain and wire format instead
- * of two independent copies. See `guessWhoNextToken.ts`'s module doc for the full rationale
+ * Generic AES-256-GCM encrypt/decrypt for this app's opaque, client-held game tokens, kept
+ * apart from `game/token.ts` (which owns the payload shape) so the crypto and key-derivation
+ * chain stay one small, separately testable unit. See `game/token.ts`'s module doc for the full rationale
  * (why a client-held encrypted token instead of a DB-backed session, why key derivation
  * never falls back to a per-process random key, why verification fails closed) — none of
  * that changed by this extraction, it's a byte-identical refactor.

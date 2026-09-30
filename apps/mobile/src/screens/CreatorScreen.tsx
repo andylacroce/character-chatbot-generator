@@ -14,8 +14,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import {
   displayCharacterName,
-  GUESS_WHO_NEXT_CTA_LABEL,
-  GUESS_WHO_CTA_LABEL,
+  GUESS_WHO,
+  GUESS_WHO_NEXT,
   useCharacterCreation,
   type Bot,
   type ThemeColors,
@@ -215,7 +215,7 @@ export default function CreatorScreen({ navigation }: Props) {
             android_ripple={{ color: colors.secondaryContainer, borderless: true }}
           >
             <Ionicons name="sparkles-outline" size={16} color={colors.secondary} />
-            <Text style={styles.linkText}>{GUESS_WHO_CTA_LABEL}</Text>
+            <Text style={styles.linkText}>{GUESS_WHO.copy.ctaLabel}</Text>
           </Pressable>
           <Pressable
             onPress={() => navigation.navigate("GuessWhoNext")}
@@ -223,7 +223,7 @@ export default function CreatorScreen({ navigation }: Props) {
             android_ripple={{ color: colors.secondaryContainer, borderless: true }}
           >
             <Ionicons name="help-circle-outline" size={16} color={colors.secondary} />
-            <Text style={styles.linkText}>{GUESS_WHO_NEXT_CTA_LABEL}</Text>
+            <Text style={styles.linkText}>{GUESS_WHO_NEXT.copy.ctaLabel}</Text>
           </Pressable>
           {auth.status === "signedIn" ? (
             <Pressable

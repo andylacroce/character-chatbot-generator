@@ -1,6 +1,6 @@
 /**
  * Claude reply post-processing shared by pages/api/chat.ts and the guessing game's
- * pages/api/guess-who-next/message.ts (via src/utils/gameReply.ts) — extracted so both call sites
+ * the guessing games (via src/utils/gameReply.ts) — extracted so both call sites
  * apply identical cleanup instead of copy-pasting it.
  */
 

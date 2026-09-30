@@ -8,9 +8,8 @@
  * BotCreator.module.css's disclaimer* classes, the same shared small-lightbox shell
  * NameCaptureModal uses, rather than a bespoke modal + CSS module per game.
  *
- * Each caller supplies its own `copy` (GUESS_WHO_NEXT_INSTRUCTIONS or
- * GUESS_WHO_INSTRUCTIONS, both from character-chatbot-shared) — kept short and
- * scannable by design (one-line premise, a handful of short bullets, one goal line)
+ * Each caller supplies its own `copy` (a game's `copy.instructions`, from
+ * character-chatbot-shared) — kept short and scannable by design (one-line premise, a handful of short bullets, one goal line)
  * rather than a dense paragraph, so it reads well in this modal's compact width.
  */
 

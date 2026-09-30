@@ -7,15 +7,15 @@
 
 import type { FormEvent } from "react";
 import {
+  gameApiUrl,
   LEADERBOARD_COPY,
   useLeaderboardClaim,
+  type GameDefinition,
   type LeaderboardClaimTransport,
   type LeaderboardSettingsResponse,
 } from "character-chatbot-shared";
 import { authenticatedFetch } from "../../utils/api";
 import styles from "./styles/Leaderboard.module.css";
-
-const DEFAULT_SETTINGS_URL = "/api/guess-who-next/leaderboard-settings";
 
 /** Builds a leaderboard-settings transport pointed at the given game's endpoint. */
 function makeTransport(settingsUrl: string): LeaderboardClaimTransport {
@@ -39,18 +39,20 @@ function makeTransport(settingsUrl: string): LeaderboardClaimTransport {
 }
 
 /**
- * Shows a name form only when this account or guest browser owns a top-ten score.
- * `settingsUrl` defaults to "Guess Who's Next"'s endpoint; GuessWhoPage.tsx passes
- * "/api/guess-who/leaderboard-settings" for the new game's own separate opt-in.
+ * Shows a name form only when this account or guest browser owns a top-ten score in `game`.
+ * Each game keeps its own guest opt-in, so the transport points at that game's endpoint.
  */
 export default function LeaderboardClaim({
+  game,
   onChange,
-  settingsUrl = DEFAULT_SETTINGS_URL,
 }: {
+  game: GameDefinition;
   onChange?: () => void;
-  settingsUrl?: string;
 }) {
-  const claim = useLeaderboardClaim(makeTransport(settingsUrl), onChange);
+  const claim = useLeaderboardClaim(
+    makeTransport(gameApiUrl(game, "leaderboard-settings")),
+    onChange,
+  );
 
   if (!claim.settings)
     return claim.error ? (

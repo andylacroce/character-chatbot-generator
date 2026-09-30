@@ -1,16 +1,15 @@
 "use client";
 
 /**
- * Public top-ten scores for both guessing games, as tabs on one page — "Guess Who" is
- * the first/default-active tab everywhere both games are listed together (a standing
- * product rule, see CLAUDE.md's "Second game mode" plan), "Guess Who's Next" second.
+ * Public top-ten scores for both guessing games, as tabs on one page. "Guess Who" is the
+ * first/default-active tab everywhere both games are listed together (a standing product
+ * rule, GAME_LIST's order), "Guess Who's Next" second.
  */
 
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LEADERBOARD_COPY, type LeaderboardEntry } from "character-chatbot-shared";
-import { authenticatedFetch } from "../../utils/api";
+import { GAME_LIST, GAMES, LEADERBOARD_COPY, type GameId } from "character-chatbot-shared";
 import { hasNavigatedWithinSession } from "../../utils/clientNavigationState";
 import AppHeader from "./AppHeader";
 import BackHomeLink from "./BackHomeLink";
@@ -18,34 +17,12 @@ import LeaderboardTable from "./LeaderboardTable";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/Leaderboard.module.css";
 
-type LeaderboardTab = "guess-who" | "guess-who-next";
-
-const TABS: { id: LeaderboardTab; label: string }[] = [
-  { id: "guess-who", label: "Guess Who" },
-  { id: "guess-who-next", label: "Guess Who's Next" },
-];
-
-/** Loads the "Guess Who" public top ten. */
-async function fetchGuessWhoEntries(): Promise<LeaderboardEntry[]> {
-  const res = await authenticatedFetch("/api/guess-who/leaderboard");
-  if (!res.ok) throw new Error("Failed to load leaderboard");
-  const data = await res.json();
-  return Array.isArray(data.entries) ? data.entries : [];
-}
-
-/** Loads the "Guess Who's Next" public top ten. */
-async function fetchGuessWhoNextEntries(): Promise<LeaderboardEntry[]> {
-  const res = await authenticatedFetch("/api/guess-who-next/leaderboard");
-  if (!res.ok) throw new Error("Failed to load leaderboard");
-  const data = await res.json();
-  return Array.isArray(data.entries) ? data.entries : [];
-}
-
 /** Lists public entries without revealing the names or scores of players who did not opt in. */
 export default function LeaderboardPage() {
   const router = useRouter();
   const { menuItems, modals } = useAccountMenu();
-  const [activeTab, setActiveTab] = useState<LeaderboardTab>("guess-who");
+  const [activeId, setActiveId] = useState<GameId>(GAME_LIST[0].id);
+  const active = GAMES[activeId];
 
   return (
     <div className={styles.page}>
@@ -67,38 +44,23 @@ export default function LeaderboardPage() {
       <main className={styles.main}>
         <h1>{LEADERBOARD_COPY.title}</h1>
         <div className={styles.tabs} role="tablist" aria-label="Leaderboard game">
-          {TABS.map((tab) => (
+          {GAME_LIST.map((game) => (
             <button
-              key={tab.id}
+              key={game.id}
               type="button"
               role="tab"
-              aria-selected={activeTab === tab.id}
-              className={activeTab === tab.id ? styles.tabActive : styles.tab}
-              onClick={() => setActiveTab(tab.id)}
-              data-testid={`leaderboard-tab-${tab.id}`}
+              aria-selected={activeId === game.id}
+              className={activeId === game.id ? styles.tabActive : styles.tab}
+              onClick={() => setActiveId(game.id)}
+              data-testid={`leaderboard-tab-${game.slug}`}
             >
-              {tab.label}
+              {game.title}
             </button>
           ))}
         </div>
-        {activeTab === "guess-who" ? (
-          <LeaderboardTable
-            key="guess-who"
-            fetchEntries={fetchGuessWhoEntries}
-            settingsUrl="/api/guess-who/leaderboard-settings"
-          />
-        ) : (
-          <LeaderboardTable
-            key="guess-who-next"
-            fetchEntries={fetchGuessWhoNextEntries}
-            settingsUrl="/api/guess-who-next/leaderboard-settings"
-          />
-        )}
-        <Link
-          href={activeTab === "guess-who" ? "/guess-who" : "/guess-who-next"}
-          className={styles.playLink}
-        >
-          {activeTab === "guess-who" ? "Play Guess Who" : LEADERBOARD_COPY.playLabel}
+        <LeaderboardTable key={active.id} game={active} />
+        <Link href={`/${active.slug}`} className={styles.playLink}>
+          {active.copy.ctaLabel}
         </Link>
       </main>
     </div>

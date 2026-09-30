@@ -1,25 +1,33 @@
 "use client";
 
 /**
- * Presentational rank/name/streak table, extracted out of LeaderboardPage.tsx so both
- * "Guess Who" and "Guess Who's Next"'s leaderboard tabs render identical markup instead
- * of two copy-pasted `<table>` blocks. Owns its own data loading via `useLeaderboard`
- * (given the two games' distinct `fetchEntries` functions) so each tab remounts with a
- * fresh load when switched to (see LeaderboardPage.tsx's `key`-per-tab).
+ * Presentational rank/name/streak table, so both games' leaderboard tabs render identical
+ * markup. Owns its own data loading via `useLeaderboard` so each tab remounts with a fresh
+ * load when switched to (see LeaderboardPage.tsx's `key`-per-tab).
  */
 
-import { LEADERBOARD_COPY, useLeaderboard, type LeaderboardEntry } from "character-chatbot-shared";
+import {
+  gameApiUrl,
+  LEADERBOARD_COPY,
+  useLeaderboard,
+  type GameDefinition,
+  type LeaderboardEntry,
+} from "character-chatbot-shared";
+import { authenticatedFetch } from "../../utils/api";
 import LeaderboardClaim from "./LeaderboardClaim";
 import styles from "./styles/Leaderboard.module.css";
 
-interface LeaderboardTableProps {
-  fetchEntries: () => Promise<LeaderboardEntry[]>;
-  settingsUrl: string;
+/** Loads a game's public top ten. */
+async function fetchEntries(game: GameDefinition): Promise<LeaderboardEntry[]> {
+  const res = await authenticatedFetch(gameApiUrl(game, "leaderboard"));
+  if (!res.ok) throw new Error("Failed to load leaderboard");
+  const data = await res.json();
+  return Array.isArray(data.entries) ? data.entries : [];
 }
 
 /** One game's public top-ten table plus its own top-ten name-claim form. */
-export default function LeaderboardTable({ fetchEntries, settingsUrl }: LeaderboardTableProps) {
-  const { entries, loading, error, reload } = useLeaderboard(fetchEntries);
+export default function LeaderboardTable({ game }: { game: GameDefinition }) {
+  const { entries, loading, error, reload } = useLeaderboard(() => fetchEntries(game));
 
   return (
     <>
@@ -50,7 +58,7 @@ export default function LeaderboardTable({ fetchEntries, settingsUrl }: Leaderbo
           </tbody>
         </table>
       )}
-      <LeaderboardClaim onChange={reload} settingsUrl={settingsUrl} />
+      <LeaderboardClaim game={game} onChange={reload} />
     </>
   );
 }

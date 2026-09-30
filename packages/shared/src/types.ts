@@ -238,155 +238,56 @@ export interface MobileSessionResponse {
 }
 
 /**
- * Guessing-game round state, returned by both POST /game/start and POST /game/continue —
- * they share one pipeline (persona+avatar+voice+reply+TTS) and one response shape. `gameToken`
- * is an opaque, signed blob the client must echo back on every subsequent /game/* call; never
- * decode or inspect it client-side, it's meaningless without the server's signing key.
+ * Guessing-game types, shared by "Guess Who" and "Guess Who's Next" (see game.ts's
+ * `GameDefinition`). These are the NORMALIZED client-side shapes: the round token is always
+ * `token` here. On the wire it keeps its historical per-game name (`GameDefinition.tokenField`,
+ * `guessWhoToken` or `gameToken`) so already-released mobile builds keep working; the
+ * parse/request helpers in game.ts translate at the boundary.
+ */
+
+/** One speaker's display identity: the header name/portrait and a voice-selection hint. */
+export interface GameSpeaker {
+  name: string;
+  avatarUrl: string;
+  gender: string | null;
+}
+
+/**
+ * Round state returned by POST /api/{game}/start and /continue — they share one pipeline
+ * and one response shape. `token` is an opaque, signed blob the client echoes back on every
+ * later call; never decode it client-side. `speaker` is present only when the game shows
+ * its chat partner up front ("Guess Who's Next"); in "Guess Who" the round's speaker is the
+ * mystery itself, so identity is withheld until a reveal.
  */
 export interface GameRoundResult {
-  gameToken: string;
-  currentCharacterName: string;
-  avatarUrl: string;
-  gender?: string | null;
+  token: string;
+  speaker: GameSpeaker | null;
   reply: string;
   audioFileUrl?: string;
   streak: number;
 }
 
-/** POST /game/start request body — `stream` is a web-only SSE progress mode; mobile omits it. */
-export interface GameStartRequest {
-  stream?: boolean;
-}
-
-/** POST /game/continue request body. */
-export interface GameContinueRequest {
-  gameToken: string;
-  stream?: boolean;
-}
-
-/** POST /game/message request body — one turn of chat, or a guess, in the same field. */
+/** POST /api/{game}/message request — one turn of chat, or a guess, in the same field. */
 export interface GameMessageRequest {
-  gameToken: string;
+  token: string;
   message: string;
   conversationHistory?: string[];
 }
 
 /**
- * POST /game/message response. Which fields are present depends on how the message was
- * classified server-side (see pages/api/guess-who-next/message.ts's own doc comment):
+ * POST /api/{game}/message response. Which fields are present depends on how the message
+ * was classified server-side (see utils/game/message.ts):
  * - `giveUpRequested`: the player asked to give up via chat — no reply/audio this turn; show
- *   the give-up confirmation, then call POST /game/give-up if confirmed.
+ *   the give-up confirmation, then call POST /give-up if confirmed.
  * - an ordinary reply: just `reply`/`audioFileUrl`.
  * - a correct guess: `correct: true`, `revealedName`, `streak`, plus a reaction `reply`; call
- *   POST /game/continue (with the same `gameToken`) once the player clicks "Continue".
+ *   POST /continue (with the same token) once the player clicks "Continue".
  * - a wrong-but-tolerated guess: `correct: false`, `gameOver: false`, `wrongGuessesRemaining`,
- *   and a bumped `gameToken` to echo back next turn.
+ *   and a bumped `token` to echo back next turn.
  * - a second wrong guess: `correct: false`, `gameOver: true`, `revealedName`, `finalStreak`.
+ * A game whose speaker is the mystery also sends `avatarUrl`/`gender` with a reveal.
  */
 export interface GameMessageResponse {
-  giveUpRequested?: boolean;
-  reply?: string;
-  audioFileUrl?: string;
-  correct?: boolean;
-  gameOver?: boolean;
-  revealedName?: string;
-  streak?: number;
-  finalStreak?: number;
-  wrongGuessesRemaining?: number;
-  gameToken?: string;
-}
-
-/** POST /game/give-up request body. */
-export interface GameGiveUpRequest {
-  gameToken: string;
-}
-
-/** POST /game/give-up response. */
-export interface GameGiveUpResponse {
-  revealedName: string;
-  finalStreak: number;
-  gameOver: true;
-}
-
-/** GET /game/high-score response — null for a guest/no-database deployment. */
-export interface GameHighScoreResponse {
-  highScore: number | null;
-}
-
-/** One row of GET /game/leaderboard. */
-export interface LeaderboardEntry {
-  rank: number;
-  name: string;
-  streak: number;
-}
-
-/** GET /game/leaderboard response — top ten opted-in scores. */
-export interface GameLeaderboardResponse {
-  entries: LeaderboardEntry[];
-}
-
-/** GET/POST /game/leaderboard-settings — this account or guest browser's public visibility. */
-export interface LeaderboardSettingsResponse {
-  available: boolean;
-  showOnLeaderboard: boolean;
-  eligible: boolean;
-  name: string | null;
-}
-
-/** POST /game/leaderboard-settings request body. `name` is required when opting in. */
-export interface LeaderboardSettingsRequest {
-  showOnLeaderboard: boolean;
-  name?: string;
-}
-
-/**
- * "Guess Who" (the self-describing chat game) types. Shaped like the
- * GameRoundResult/GameMessage* family above — a real chat turn with a persona — except
- * the character being chatted with IS the mystery, so `currentCharacterName`/`avatarUrl`
- * never appear in a round result or an ordinary reply; only a reveal (a correct guess,
- * a second wrong guess, or a give-up) carries `revealedName`/`avatarUrl`/`gender`. See
- * src/pages/api/guess-who/*.ts and packages/shared/src/guessWho.ts.
- */
-
-/** POST /guess-who/start request body — `stream` is a web-only SSE progress mode; mobile omits it. */
-export interface GuessWhoStartRequest {
-  stream?: boolean;
-}
-
-/** POST /guess-who/continue request body. */
-export interface GuessWhoContinueRequest {
-  guessWhoToken: string;
-  stream?: boolean;
-}
-
-/** POST /guess-who/start or /guess-who/continue response — the hidden character's opening reply. Identity is withheld. */
-export interface GuessWhoRoundResult {
-  guessWhoToken: string;
-  reply: string;
-  audioFileUrl?: string;
-  streak: number;
-}
-
-/** POST /guess-who/message request body — one turn of chat, or a guess, in the same field. */
-export interface GuessWhoMessageRequest {
-  guessWhoToken: string;
-  message: string;
-  conversationHistory?: string[];
-}
-
-/**
- * POST /guess-who/message response. Which fields are present depends on how the message
- * was classified server-side (see pages/api/guess-who/message.ts's own doc comment):
- * - `giveUpRequested`: the player asked to give up via chat — no reply/audio this turn.
- * - an ordinary reply: just `reply`/`audioFileUrl`.
- * - a correct guess: `correct: true`, `revealedName`/`avatarUrl`/`gender`, `streak`, plus
- *   a reaction `reply`; call POST /guess-who/continue once the player clicks "Continue".
- * - a wrong-but-tolerated guess: `correct: false`, `gameOver: false`,
- *   `wrongGuessesRemaining`, and a bumped `guessWhoToken` to echo back next turn.
- * - a second wrong guess or give-up: `gameOver: true` plus the same reveal fields as a
- *   correct guess, under `finalStreak` instead of `streak`.
- */
-export interface GuessWhoMessageResponse {
   giveUpRequested?: boolean;
   reply?: string;
   audioFileUrl?: string;
@@ -398,29 +299,45 @@ export interface GuessWhoMessageResponse {
   streak?: number;
   finalStreak?: number;
   wrongGuessesRemaining?: number;
-  guessWhoToken?: string;
+  token?: string;
 }
 
-/** POST /guess-who/give-up request body. */
-export interface GuessWhoGiveUpRequest {
-  guessWhoToken: string;
-}
-
-/** POST /guess-who/give-up response. */
-export interface GuessWhoGiveUpResponse {
+/** POST /api/{game}/give-up response; `avatarUrl`/`gender` only when the speaker was the mystery. */
+export interface GameGiveUpResponse {
   revealedName: string;
-  avatarUrl: string;
-  gender: string | null;
+  avatarUrl?: string;
+  gender?: string | null;
   finalStreak: number;
   gameOver: true;
 }
 
-/** GET /guess-who/high-score response — null for a guest/no-database deployment. */
-export interface GuessWhoHighScoreResponse {
+/** GET /api/{game}/high-score response — null for a guest/no-database deployment. */
+export interface GameHighScoreResponse {
   highScore: number | null;
 }
 
-/** GET /guess-who/leaderboard response — top ten opted-in scores. */
-export interface GuessWhoLeaderboardResponse {
+/** One row of GET /api/{game}/leaderboard. */
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  streak: number;
+}
+
+/** GET /api/{game}/leaderboard response — top ten opted-in scores. */
+export interface GameLeaderboardResponse {
   entries: LeaderboardEntry[];
+}
+
+/** GET/POST /api/{game}/leaderboard-settings — this account or guest browser's public visibility. */
+export interface LeaderboardSettingsResponse {
+  available: boolean;
+  showOnLeaderboard: boolean;
+  eligible: boolean;
+  name: string | null;
+}
+
+/** POST /api/{game}/leaderboard-settings request body. `name` is required when opting in. */
+export interface LeaderboardSettingsRequest {
+  showOnLeaderboard: boolean;
+  name?: string;
 }

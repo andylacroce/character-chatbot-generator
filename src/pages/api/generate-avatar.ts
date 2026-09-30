@@ -6,7 +6,7 @@
  * with a character name and returns either a durable Vercel Blob URL (when a Blob
  * token is configured) or a base64 data URL (fallback). The generation/caching
  * pipeline itself lives in src/utils/avatarGeneration.ts, shared with the guessing
- * game (pages/api/guess-who-next/start.ts, guess.ts), which calls it in-process instead of
+ * games (src/utils/game/round.ts), which calls it in-process instead of
  * over HTTP.
  */
 

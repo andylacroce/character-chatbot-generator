@@ -1,6 +1,6 @@
 /**
  * Shared "same individual vs. different individual" guess-matching rules, extracted
- * from the guessing game's `classifyGuess` system prompt (src/pages/api/guess-who-next/message.ts)
+ * from the guessing game's `classifyGuess` system prompt (src/utils/classifyGuess.ts)
  * so a future fix to this hard-won logic applies to every game that judges a free-text
  * guess against a hidden character name, not just the one that first needed it.
  *

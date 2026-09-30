@@ -419,7 +419,7 @@ the mobile app import.
 ```text
 src/
    app/                  # Next.js App Router UI
-      components/        # Client components and hooks (ChatShell, GuessWhoPage, useBotCreation, ...)
+      components/        # Client components and hooks (ChatShell, GamePage, useBotCreation, ...)
       chars/, guess-who/, guess-who-next/, leaderboard/, history/, admin/, auth/
       privacy/, data-deletion/, reference/  # Privacy policy, data deletion, API reference (Scalar)
    pages/api/            # API routes (Pages Router; server handlers are authoritative)

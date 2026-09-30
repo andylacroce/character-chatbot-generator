@@ -126,6 +126,15 @@ describe("classifyGuess", () => {
     expect(userContent).not.toContain("specifically the one from");
   });
 
+  it("tells the classifier that mythological counterparts (Aphrodite/Venus) are distinct characters", async () => {
+    mockClaudeResponse({ reasoning: "x", status: "clear", correct: false });
+    await classifyGuess("Venus", "Aphrodite", []);
+    const system = mockCreate.mock.calls[0][0].system as string;
+    expect(system).toMatch(/Name leniency is never identity leniency/);
+    expect(system).toMatch(/Aphrodite is not Venus/);
+    expect(system).toMatch(/counterpart or analogue[\s\S]*not a match/);
+  });
+
   it("logs the classifier's reasoning only for a clear classification", async () => {
     mockClaudeResponse({ reasoning: "matches", status: "clear", correct: true });
     await classifyGuess("Sherlock Holmes", "It's Sherlock Holmes!", []);

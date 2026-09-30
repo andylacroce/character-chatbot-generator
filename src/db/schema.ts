@@ -312,7 +312,7 @@ export const analyticsEvents = pgTable(
  * the primary key rather than a surrogate id: there is exactly one current best per
  * user per environment, upserted in place (see src/utils/gameHighScore.ts) rather than
  * appended to as a history. Guests have no row here at all — the game is fully
- * client-authoritative for them, same as everywhere else in this app (see guessWhoNextToken.ts's
+ * client-authoritative for them, same as everywhere else in this app (see utils/game/token.ts's
  * module doc) — so "no row" is exactly how the UI knows not to show a personal best.
  */
 export const guessWhoNextHighScores = pgTable(

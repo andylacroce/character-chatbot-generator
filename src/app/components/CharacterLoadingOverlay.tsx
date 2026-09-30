@@ -3,7 +3,7 @@
 /**
  * The one shared lightbox for every "a character is being generated/loaded, please
  * wait" moment in the app — the guessing game's start-a-run and next-round generation
- * (GuessWhoNextPage.tsx's `starting`/`continuing`, driven by useGuessWhoNextController.ts's
+ * (GamePage.tsx's `starting`/`continuing`, driven by useGameController.ts's
  * fetchRoundWithProgress) and the landing page's own character-creation flow
  * (BotCreator.tsx's URL auto-launch, resume/new-chat interstitial, validation, and
  * personality/avatar/voice generation steps). Introduced so every "character loading"

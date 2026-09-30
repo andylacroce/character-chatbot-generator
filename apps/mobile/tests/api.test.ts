@@ -5,25 +5,17 @@ jest.mock("../src/gameGuest", () => ({
   getGameGuestId: jest.fn(() => Promise.resolve("g".repeat(43))),
 }));
 
+import { GUESS_WHO, GUESS_WHO_NEXT } from "character-chatbot-shared";
 import { getCachedAuthToken } from "../src/authToken";
 import {
   ApiError,
   API_BASE_URL,
   apiErrorMessage,
   apiFetch,
-  continueGame,
-  continueGuessWho,
-  getGameHighScore,
-  getGuessWhoHighScore,
+  gameTransport,
   getLeaderboard,
   getLeaderboardSettings,
-  giveUpGame,
-  giveUpGuessWho,
   saveLeaderboardSettings,
-  sendGameMessage,
-  sendGuessWhoMessage,
-  startGame,
-  startGuessWhoRound,
   generateAvatar,
   generatePersonality,
   getChars,
@@ -254,9 +246,11 @@ describe("api", () => {
     });
   });
 
-  describe("guessing game", () => {
+  describe.each([GUESS_WHO, GUESS_WHO_NEXT])("$title requests", (game) => {
+    const { slug, tokenField } = game;
+    const transport = gameTransport(game);
     const round = {
-      gameToken: "t1",
+      [tokenField]: "t1",
       currentCharacterName: "Zeus",
       reply: "Hail.",
       streak: 0,
@@ -268,113 +262,66 @@ describe("api", () => {
       return { url, options, headers: options.headers as Record<string, string> };
     }
 
-    it("starts and continues rounds in plain JSON mode with the guest identity", async () => {
+    it("starts and continues rounds in plain JSON mode with the guest identity and the game's wire token name", async () => {
       mockFetchOnce({ ok: true, json: async () => round } as Response);
-      await expect(startGame()).resolves.toMatchObject({
-        currentCharacterName: "Zeus",
-        avatarUrl: "/silhouette.svg",
-      });
+      await expect(transport.start()).resolves.toMatchObject({ token: "t1", reply: "Hail." });
       let call = lastCall();
-      expect(call.url).toBe(`${API_BASE_URL}/api/guess-who-next/start`);
+      expect(call.url).toBe(`${API_BASE_URL}/api/${slug}/start`);
       expect(JSON.parse(call.options.body)).toEqual({});
       expect(call.headers["x-game-guest"]).toBe("g".repeat(43));
 
       mockFetchOnce({ ok: true, json: async () => round } as Response);
-      await continueGame("t1");
+      await transport.continueRound("t1");
       call = lastCall();
-      expect(call.url).toBe(`${API_BASE_URL}/api/guess-who-next/continue`);
-      expect(JSON.parse(call.options.body)).toEqual({ gameToken: "t1" });
+      expect(call.url).toBe(`${API_BASE_URL}/api/${slug}/continue`);
+      expect(JSON.parse(call.options.body)).toEqual({ [tokenField]: "t1" });
     });
 
     it("rejects a malformed round", async () => {
       mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
-      await expect(startGame()).rejects.toThrow("Invalid response from /api/guess-who-next/start");
+      await expect(transport.start()).rejects.toThrow(`Invalid response from /api/${slug}/start`);
     });
 
-    it("sends turns, give-ups and settings to their routes", async () => {
+    it("sends turns, give-ups and the high score to this game's routes", async () => {
       mockFetchOnce({ ok: true, json: async () => ({ reply: "Hi" }) } as Response);
-      await sendGameMessage({ gameToken: "t1", message: "Hi" });
-      expect(lastCall().url).toBe(`${API_BASE_URL}/api/guess-who-next/message`);
+      await transport.sendMessage({ token: "t1", message: "Hi" });
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/${slug}/message`);
+      expect(JSON.parse(lastCall().options.body)).toMatchObject({
+        [tokenField]: "t1",
+        message: "Hi",
+      });
 
       mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
-      await giveUpGame("t1");
-      expect(JSON.parse(lastCall().options.body)).toEqual({ gameToken: "t1" });
+      await transport.giveUp("t1");
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/${slug}/give-up`);
+      expect(JSON.parse(lastCall().options.body)).toEqual({ [tokenField]: "t1" });
 
       mockFetchOnce({ ok: true, json: async () => ({ highScore: 3 }) } as Response);
-      await expect(getGameHighScore()).resolves.toEqual({ highScore: 3 });
+      await expect(transport.getHighScore()).resolves.toEqual({ highScore: 3 });
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/${slug}/high-score`);
       expect(lastCall().headers["x-game-guest"]).toBe("g".repeat(43));
-
-      mockFetchOnce({ ok: true, json: async () => ({ entries: [] }) } as Response);
-      await getLeaderboard();
-      expect(lastCall().url).toBe(`${API_BASE_URL}/api/guess-who-next/leaderboard`);
-
-      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
-      await getLeaderboardSettings();
-      expect(lastCall().options.method).toBeUndefined();
-
-      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
-      await saveLeaderboardSettings({ showOnLeaderboard: false });
-      expect(lastCall().options.method).toBe("POST");
     });
 
-    it("apiErrorMessage extracts the server's reason, else falls back", () => {
-      expect(apiErrorMessage(new ApiError(400, '{"error":"Bad name"}'), "x")).toBe("Bad name");
-      expect(apiErrorMessage(new ApiError(500, "<html>"), "fallback")).toBe("fallback");
-      expect(apiErrorMessage(new Error("net"), "fallback")).toBe("fallback");
+    it("reads the public leaderboard without the guest header, and reads/saves leaderboard settings with it", async () => {
+      mockFetchOnce({ ok: true, json: async () => ({ entries: [] }) } as Response);
+      await getLeaderboard(game);
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/${slug}/leaderboard`);
+
+      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
+      await getLeaderboardSettings(game);
+      expect(lastCall().url).toBe(`${API_BASE_URL}/api/${slug}/leaderboard-settings`);
+      expect(lastCall().options.method).toBeUndefined();
+      expect(lastCall().headers["x-game-guest"]).toBe("g".repeat(43));
+
+      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
+      await saveLeaderboardSettings(game, { showOnLeaderboard: false });
+      expect(lastCall().options.method).toBe("POST");
     });
   });
 
-  describe("Guess Who", () => {
-    const round = {
-      guessWhoToken: "t1",
-      reply: "I once met a queen in a river of gold.",
-      streak: 0,
-    };
-
-    function lastCall() {
-      const calls = (globalThis.fetch as jest.Mock).mock.calls;
-      const [url, options] = calls[calls.length - 1];
-      return { url, options, headers: options.headers as Record<string, string> };
-    }
-
-    it("starts and continues rounds in plain JSON mode with the guest identity", async () => {
-      mockFetchOnce({ ok: true, json: async () => round } as Response);
-      await expect(startGuessWhoRound()).resolves.toMatchObject({
-        guessWhoToken: "t1",
-        reply: round.reply,
-      });
-      let call = lastCall();
-      expect(call.url).toBe(`${API_BASE_URL}/api/guess-who/start`);
-      expect(JSON.parse(call.options.body)).toEqual({});
-      expect(call.headers["x-game-guest"]).toBe("g".repeat(43));
-
-      mockFetchOnce({ ok: true, json: async () => round } as Response);
-      await continueGuessWho("t1");
-      call = lastCall();
-      expect(call.url).toBe(`${API_BASE_URL}/api/guess-who/continue`);
-      expect(JSON.parse(call.options.body)).toEqual({ guessWhoToken: "t1" });
-    });
-
-    it("rejects a malformed round", async () => {
-      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
-      await expect(startGuessWhoRound()).rejects.toThrow(
-        "Invalid response from /api/guess-who/start",
-      );
-    });
-
-    it("sends turns, give-ups and the high score to their routes", async () => {
-      mockFetchOnce({ ok: true, json: async () => ({ reply: "Hi" }) } as Response);
-      await sendGuessWhoMessage({ guessWhoToken: "t1", message: "Hi" });
-      expect(lastCall().url).toBe(`${API_BASE_URL}/api/guess-who/message`);
-
-      mockFetchOnce({ ok: true, json: async () => ({}) } as Response);
-      await giveUpGuessWho("t1");
-      expect(JSON.parse(lastCall().options.body)).toEqual({ guessWhoToken: "t1" });
-
-      mockFetchOnce({ ok: true, json: async () => ({ highScore: 3 }) } as Response);
-      await expect(getGuessWhoHighScore()).resolves.toEqual({ highScore: 3 });
-      expect(lastCall().url).toBe(`${API_BASE_URL}/api/guess-who/high-score`);
-      expect(lastCall().headers["x-game-guest"]).toBe("g".repeat(43));
-    });
+  it("apiErrorMessage extracts the server's reason, else falls back", () => {
+    expect(apiErrorMessage(new ApiError(400, '{"error":"Bad name"}'), "x")).toBe("Bad name");
+    expect(apiErrorMessage(new ApiError(500, "<html>"), "fallback")).toBe("fallback");
+    expect(apiErrorMessage(new Error("net"), "fallback")).toBe("fallback");
   });
 });

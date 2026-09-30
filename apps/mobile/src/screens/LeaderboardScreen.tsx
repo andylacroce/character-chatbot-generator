@@ -1,18 +1,22 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { LEADERBOARD_COPY, useLeaderboard, type ThemeColors } from "character-chatbot-shared";
-import { getGuessWhoLeaderboard, getLeaderboard } from "../api";
+import {
+  GAME_LIST,
+  GAMES,
+  LEADERBOARD_COPY,
+  useLeaderboard,
+  type GameDefinition,
+  type GameId,
+  type ThemeColors,
+} from "character-chatbot-shared";
+import { getLeaderboard } from "../api";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
 import LeaderboardClaim from "../components/LeaderboardClaim";
 import Button from "../components/Button";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Leaderboard">;
-type Tab = "guessWho" | "guessWhoNext";
-
-const fetchGuessWhoEntries = async () => (await getGuessWhoLeaderboard()).entries ?? [];
-const fetchGuessWhoNextEntries = async () => (await getLeaderboard()).entries ?? [];
 
 /**
  * One tab's table + claim form. A separate component (rather than inline in
@@ -22,17 +26,17 @@ const fetchGuessWhoNextEntries = async () => (await getLeaderboard()).entries ??
  * already-mounted instance would silently keep showing the previous tab's stale data.
  */
 function LeaderboardBody({
-  tab,
-  fetchEntries,
+  game,
   colors,
   styles,
 }: {
-  tab: Tab;
-  fetchEntries: () => Promise<{ rank: number; name: string; streak: number }[]>;
+  game: GameDefinition;
   colors: ThemeColors;
   styles: ReturnType<typeof makeStyles>;
 }) {
-  const { entries, loading, error, reload } = useLeaderboard(fetchEntries);
+  const { entries, loading, error, reload } = useLeaderboard(
+    async () => (await getLeaderboard(game)).entries ?? [],
+  );
 
   let body: React.ReactNode;
   if (loading) body = <ActivityIndicator color={colors.secondary} style={styles.spinner} />;
@@ -60,7 +64,7 @@ function LeaderboardBody({
   return (
     <>
       {body}
-      <LeaderboardClaim onChange={reload} game={tab} />
+      <LeaderboardClaim onChange={reload} game={game} />
     </>
   );
 }
@@ -73,49 +77,31 @@ function LeaderboardBody({
 export default function LeaderboardScreen({ navigation }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const [tab, setTab] = useState<Tab>("guessWho");
+  const [activeId, setActiveId] = useState<GameId>(GAME_LIST[0].id);
+  const active = GAMES[activeId];
 
   return (
     <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
       <View style={styles.tabs}>
-        <Pressable
-          onPress={() => setTab("guessWho")}
-          style={[styles.tab, tab === "guessWho" && styles.tabActive]}
-        >
-          <Text style={[styles.tabText, tab === "guessWho" && styles.tabTextActive]}>
-            Guess Who
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => setTab("guessWhoNext")}
-          style={[styles.tab, tab === "guessWhoNext" && styles.tabActive]}
-        >
-          <Text style={[styles.tabText, tab === "guessWhoNext" && styles.tabTextActive]}>
-            Guess Who&apos;s Next
-          </Text>
-        </Pressable>
+        {GAME_LIST.map((game) => (
+          <Pressable
+            key={game.id}
+            onPress={() => setActiveId(game.id)}
+            style={[styles.tab, activeId === game.id && styles.tabActive]}
+          >
+            <Text style={[styles.tabText, activeId === game.id && styles.tabTextActive]}>
+              {game.title}
+            </Text>
+          </Pressable>
+        ))}
       </View>
-      {tab === "guessWho" ? (
-        <LeaderboardBody
-          key="guessWho"
-          tab="guessWho"
-          fetchEntries={fetchGuessWhoEntries}
-          colors={colors}
-          styles={styles}
-        />
-      ) : (
-        <LeaderboardBody
-          key="guessWhoNext"
-          tab="guessWhoNext"
-          fetchEntries={fetchGuessWhoNextEntries}
-          colors={colors}
-          styles={styles}
-        />
-      )}
+      <LeaderboardBody key={active.id} game={active} colors={colors} styles={styles} />
       <View style={styles.play}>
         <Button
-          label={tab === "guessWho" ? "Play Guess Who" : LEADERBOARD_COPY.playLabel}
-          onPress={() => navigation.navigate(tab === "guessWho" ? "GuessWho" : "GuessWhoNext")}
+          label={active.copy.ctaLabel}
+          onPress={() =>
+            navigation.navigate(active.id === "guessWho" ? "GuessWho" : "GuessWhoNext")
+          }
         />
       </View>
     </ScrollView>

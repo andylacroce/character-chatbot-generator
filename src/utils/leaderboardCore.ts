@@ -1,9 +1,7 @@
 /**
- * Pure account-rows + guest-rows merge/rank logic shared by every per-game leaderboard
- * (`gameLeaderboard.ts` for "Guess Who's Next", `guessWhoLeaderboard.ts` for "Guess
- * Who") — extracted out of `gameLeaderboard.ts` so a future ranking-rule change applies
- * to both games at once. Each game's own module still does its own DB queries (they hit
- * different Drizzle tables), only the merge/sort/top-ten slice is shared here.
+ * Pure account-rows + guest-rows merge/rank logic for the guessing-game leaderboards, kept
+ * apart from game/scores.ts (which does the DB queries, against whichever game's tables) so
+ * the ranking rule itself stays a small, pure, directly testable function.
  */
 
 export interface RankedScore {
