@@ -1,7 +1,9 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import GameInstructionsModal from "@/src/app/components/GameInstructionsModal";
-import { GUESS_WHO_NEXT_INSTRUCTIONS } from "character-chatbot-shared";
+import { GUESS_WHO_NEXT } from "character-chatbot-shared";
+
+const GUESS_WHO_NEXT_INSTRUCTIONS = GUESS_WHO_NEXT.copy.instructions;
 
 describe("GameInstructionsModal", () => {
   it("renders nothing when show is false", () => {

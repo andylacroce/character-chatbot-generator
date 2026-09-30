@@ -5,6 +5,8 @@
  * to the API-key branch for this client (see .env.example).
  */
 import type {
+  GameDefinition,
+  GameTransport,
   CharacterValidationResult,
   CharacterVoiceConfig,
   ChatRequest,
@@ -12,18 +14,7 @@ import type {
   CharsGroup,
   CharsResponse,
   CharsSort,
-  GameGiveUpResponse,
-  GameHighScoreResponse,
   GameLeaderboardResponse,
-  GameMessageRequest,
-  GameMessageResponse,
-  GameRoundResult,
-  GuessWhoGiveUpResponse,
-  GuessWhoHighScoreResponse,
-  GuessWhoLeaderboardResponse,
-  GuessWhoMessageRequest,
-  GuessWhoMessageResponse,
-  GuessWhoRoundResult,
   GenerateAvatarRequest,
   GenerateAvatarResponse,
   GeneratePersonalityRequest,
@@ -37,11 +28,7 @@ import type {
   UserProfile,
   ValidateCharacterRequest,
 } from "character-chatbot-shared";
-import {
-  CAROUSEL_SAMPLE_PATH,
-  parseGameRoundResult,
-  parseGuessWhoRoundResult,
-} from "character-chatbot-shared";
+import { CAROUSEL_SAMPLE_PATH, createGameTransport, gameApiUrl } from "character-chatbot-shared";
 import { getCachedAuthToken } from "./authToken";
 import { getGameGuestId } from "./gameGuest";
 
@@ -242,106 +229,32 @@ async function gameFetch<T>(path: string, body?: unknown): Promise<T> {
 }
 
 /**
- * Starts a new guessing-game run. Called without `stream: true`: React Native's fetch can't
- * read a streamed body, so mobile waits for the plain JSON result instead of SSE progress.
+ * A game's requests, on the same shared `createGameTransport` the web app uses. Round
+ * generation is plain JSON: React Native's fetch can't read a streamed body, so mobile waits
+ * for the result instead of SSE progress. Both games share one `x-game-guest` identity.
  */
-export async function startGame(): Promise<GameRoundResult> {
-  return parseGameRoundResult(
-    await gameFetch("/api/guess-who-next/start", {}),
-    "/api/guess-who-next/start",
-  );
+export function gameTransport(game: GameDefinition): GameTransport {
+  return createGameTransport(game, {
+    get: (url) => gameFetch(url),
+    post: (url, body) => gameFetch(url, body),
+    round: (_kind, url, body) => gameFetch(url, body),
+  });
 }
 
-/** Generates the next round after a correct guess (plain JSON, like startGame). */
-export async function continueGame(gameToken: string): Promise<GameRoundResult> {
-  return parseGameRoundResult(
-    await gameFetch("/api/guess-who-next/continue", { gameToken }),
-    "/api/guess-who-next/continue",
-  );
+/** A game's public top-ten leaderboard. */
+export function getLeaderboard(game: GameDefinition): Promise<GameLeaderboardResponse> {
+  return apiFetch(gameApiUrl(game, "leaderboard"));
 }
 
-/** Sends one game turn; the server decides whether it's a question or a guess. */
-export function sendGameMessage(body: GameMessageRequest): Promise<GameMessageResponse> {
-  return gameFetch("/api/guess-who-next/message", body);
+/** Whether this account or device can (and does) appear on a game's leaderboard. */
+export function getLeaderboardSettings(game: GameDefinition): Promise<LeaderboardSettingsResponse> {
+  return gameFetch(gameApiUrl(game, "leaderboard-settings"));
 }
 
-/** Gives up the current run, revealing the hidden character. */
-export function giveUpGame(gameToken: string): Promise<GameGiveUpResponse> {
-  return gameFetch("/api/guess-who-next/give-up", { gameToken });
-}
-
-/** This account's or device's best streak (null when none is on record). */
-export function getGameHighScore(): Promise<GameHighScoreResponse> {
-  return gameFetch("/api/guess-who-next/high-score");
-}
-
-/** The public top-ten leaderboard. */
-export function getLeaderboard(): Promise<GameLeaderboardResponse> {
-  return apiFetch("/api/guess-who-next/leaderboard");
-}
-
-/** Whether this account or device can (and does) appear on the leaderboard. */
-export function getLeaderboardSettings(): Promise<LeaderboardSettingsResponse> {
-  return gameFetch("/api/guess-who-next/leaderboard-settings");
-}
-
-/** Joins the leaderboard under a moderated `name`, or leaves it. */
+/** Joins a game's leaderboard under a moderated `name`, or leaves it. */
 export function saveLeaderboardSettings(
+  game: GameDefinition,
   body: LeaderboardSettingsRequest,
 ): Promise<LeaderboardSettingsResponse> {
-  return gameFetch("/api/guess-who-next/leaderboard-settings", body);
-}
-
-/**
- * Starts (or continues, carrying `usedNames`/`streak` forward) a "Guess Who" round.
- * Reuses the same `x-game-guest` guest identity as "Guess Who's Next" (see
- * gameGuest.ts) — one anonymous player id, shared across both games.
- */
-export async function startGuessWhoRound(): Promise<GuessWhoRoundResult> {
-  return parseGuessWhoRoundResult(
-    await gameFetch("/api/guess-who/start", {}),
-    "/api/guess-who/start",
-  );
-}
-
-/** Generates the next round after a correct guess (plain JSON, like startGuessWhoRound). */
-export async function continueGuessWho(guessWhoToken: string): Promise<GuessWhoRoundResult> {
-  return parseGuessWhoRoundResult(
-    await gameFetch("/api/guess-who/continue", { guessWhoToken }),
-    "/api/guess-who/continue",
-  );
-}
-
-/** Sends one turn of "Guess Who"'s chat; the server decides whether it's a question or a guess. */
-export function sendGuessWhoMessage(
-  body: GuessWhoMessageRequest,
-): Promise<GuessWhoMessageResponse> {
-  return gameFetch("/api/guess-who/message", body);
-}
-
-/** Gives up the current "Guess Who" run, revealing the hidden character. */
-export function giveUpGuessWho(guessWhoToken: string): Promise<GuessWhoGiveUpResponse> {
-  return gameFetch("/api/guess-who/give-up", { guessWhoToken });
-}
-
-/** This account's or device's best "Guess Who" streak (null when none is on record). */
-export function getGuessWhoHighScore(): Promise<GuessWhoHighScoreResponse> {
-  return gameFetch("/api/guess-who/high-score");
-}
-
-/** The public "Guess Who" top-ten leaderboard. */
-export function getGuessWhoLeaderboard(): Promise<GuessWhoLeaderboardResponse> {
-  return apiFetch("/api/guess-who/leaderboard");
-}
-
-/** Whether this account or device can (and does) appear on the "Guess Who" leaderboard. */
-export function getGuessWhoLeaderboardSettings(): Promise<LeaderboardSettingsResponse> {
-  return gameFetch("/api/guess-who/leaderboard-settings");
-}
-
-/** Joins the "Guess Who" leaderboard under a moderated `name`, or leaves it. */
-export function saveGuessWhoLeaderboardSettings(
-  body: LeaderboardSettingsRequest,
-): Promise<LeaderboardSettingsResponse> {
-  return gameFetch("/api/guess-who/leaderboard-settings", body);
+  return gameFetch(gameApiUrl(game, "leaderboard-settings"), body);
 }

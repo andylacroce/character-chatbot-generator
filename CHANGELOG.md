@@ -2,6 +2,12 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.25.3 — 2026-09-30 — One engine behind both guessing games
+
+- Refactor, no user-visible change: Guess Who and Guess Who's Next now run on one shared game engine (routes under `/api/[game]/`, one token, one round pipeline, one client state machine, one page, one mobile screen, one stylesheet) instead of two parallel copies of every layer. Web and mobile moved together.
+- Compatibility kept deliberately: the wire format, URLs, analytics event names, rate-limit names, and on-disk saved runs are unchanged, so released mobile builds keep working, and round tokens issued before this change still verify. A token now also never verifies against the other game's routes.
+- Tests run each shared flow once per game instead of duplicating suites, and gained coverage for the reveal paths, cross-game token rejection, and legacy-token compatibility.
+
 ## v0.25.2 — 2026-09-29 — Character Wall stayed one column on smaller phones
 
 - Fixed the Character Wall collapsing to a single-column scroll on phones at or below 380px wide (iPhone SE, iPhone 12 mini) — the mosaic now keeps 2 columns down to the narrowest real device widths instead of dropping to 1.

@@ -16,8 +16,8 @@ import {
   type CarouselCache,
   type CharacterEntry,
   type ChatMessage,
+  type GameDefinition,
   type PersistedGameState,
-  type PersistedGuessWhoState,
 } from "character-chatbot-shared";
 
 /** Persists the currently active character. */
@@ -83,79 +83,42 @@ export async function saveAudioEnabled(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEYS.audioEnabled, String(enabled));
 }
 
-/** Loads an in-progress guessing-game run, or null if there isn't one. */
-export async function loadGameState(): Promise<PersistedGameState | null> {
-  const [gameToken, rest] = await Promise.all([
-    AsyncStorage.getItem(STORAGE_KEYS.guessWhoNextToken),
-    AsyncStorage.getItem(STORAGE_KEYS.guessWhoNextTranscript),
+/** Loads a game's in-progress run, or null if there isn't one. */
+export async function loadGameState(game: GameDefinition): Promise<PersistedGameState | null> {
+  const { token: tokenKey, transcript } = game.storageKeys;
+  const [token, rest] = await Promise.all([
+    AsyncStorage.getItem(tokenKey),
+    AsyncStorage.getItem(transcript),
   ]);
-  if (!gameToken || !rest) return null;
-  return { gameToken, ...(JSON.parse(rest) as Omit<PersistedGameState, "gameToken">) };
+  if (!token || !rest) return null;
+  return { token, ...(JSON.parse(rest) as Omit<PersistedGameState, "token">) };
 }
 
-/** Persists the current run, or clears it when `state` is null. */
-export async function saveGameState(state: PersistedGameState | null): Promise<void> {
+/** Persists a game's current run, or clears it when `state` is null. */
+export async function saveGameState(
+  game: GameDefinition,
+  state: PersistedGameState | null,
+): Promise<void> {
+  const { token: tokenKey, transcript } = game.storageKeys;
   if (!state) {
-    await Promise.all([
-      AsyncStorage.removeItem(STORAGE_KEYS.guessWhoNextToken),
-      AsyncStorage.removeItem(STORAGE_KEYS.guessWhoNextTranscript),
-    ]);
+    await Promise.all([AsyncStorage.removeItem(tokenKey), AsyncStorage.removeItem(transcript)]);
     return;
   }
-  const { gameToken, ...rest } = state;
+  const { token, ...rest } = state;
   await Promise.all([
-    AsyncStorage.setItem(STORAGE_KEYS.guessWhoNextToken, gameToken),
-    AsyncStorage.setItem(STORAGE_KEYS.guessWhoNextTranscript, JSON.stringify(rest)),
+    AsyncStorage.setItem(tokenKey, token),
+    AsyncStorage.setItem(transcript, JSON.stringify(rest)),
   ]);
 }
 
-/** Whether the one-time "how to play" explainer has been shown on this device. */
-export async function loadGameInstructionsSeen(): Promise<boolean> {
-  return (await AsyncStorage.getItem(STORAGE_KEYS.guessWhoNextInstructionsSeen)) === "true";
+/** Whether a game's one-time "how to play" explainer has been shown on this device. */
+export async function loadGameInstructionsSeen(game: GameDefinition): Promise<boolean> {
+  return (await AsyncStorage.getItem(game.storageKeys.instructionsSeen)) === "true";
 }
 
-/** Marks the "how to play" explainer as seen. */
-export async function saveGameInstructionsSeen(): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEYS.guessWhoNextInstructionsSeen, "true");
-}
-
-/** Loads an in-progress "Guess Who" run, or null if there isn't one. */
-export async function loadGuessWhoState(): Promise<PersistedGuessWhoState | null> {
-  const [guessWhoToken, rest] = await Promise.all([
-    AsyncStorage.getItem(STORAGE_KEYS.guessWhoToken),
-    AsyncStorage.getItem(STORAGE_KEYS.guessWhoTranscript),
-  ]);
-  if (!guessWhoToken || !rest) return null;
-  return {
-    guessWhoToken,
-    ...(JSON.parse(rest) as Omit<PersistedGuessWhoState, "guessWhoToken">),
-  };
-}
-
-/** Persists the current "Guess Who" run, or clears it when `state` is null. */
-export async function saveGuessWhoState(state: PersistedGuessWhoState | null): Promise<void> {
-  if (!state) {
-    await Promise.all([
-      AsyncStorage.removeItem(STORAGE_KEYS.guessWhoToken),
-      AsyncStorage.removeItem(STORAGE_KEYS.guessWhoTranscript),
-    ]);
-    return;
-  }
-  const { guessWhoToken, ...rest } = state;
-  await Promise.all([
-    AsyncStorage.setItem(STORAGE_KEYS.guessWhoToken, guessWhoToken),
-    AsyncStorage.setItem(STORAGE_KEYS.guessWhoTranscript, JSON.stringify(rest)),
-  ]);
-}
-
-/** Whether "Guess Who"'s one-time "how to play" explainer has been shown on this device. */
-export async function loadGuessWhoInstructionsSeen(): Promise<boolean> {
-  return (await AsyncStorage.getItem(STORAGE_KEYS.guessWhoInstructionsSeen)) === "true";
-}
-
-/** Marks "Guess Who"'s "how to play" explainer as seen. */
-export async function saveGuessWhoInstructionsSeen(): Promise<void> {
-  await AsyncStorage.setItem(STORAGE_KEYS.guessWhoInstructionsSeen, "true");
+/** Marks a game's "how to play" explainer as seen. */
+export async function saveGameInstructionsSeen(game: GameDefinition): Promise<void> {
+  await AsyncStorage.setItem(game.storageKeys.instructionsSeen, "true");
 }
 
 /** The landing carousel's last portrait sample, repainted instantly on the next launch. */

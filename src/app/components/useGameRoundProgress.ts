@@ -1,11 +1,8 @@
 /**
- * Shared SSE staged-progress plumbing for the two guessing games' round-generation
- * calls (POST /guess-who-next/{start,continue} and POST /guess-who/{start,continue}).
- * Both endpoints stream the exact same `data: {"stage": ..., "done": false}` frames from
- * src/utils/guessWhoNextRound.ts's/guessWhoRound.ts's shared progress-stage shape, so this
- * lived as near-identical copies in useGuessWhoNextController.ts and
- * useGuessWhoController.ts before being extracted here — see CLAUDE.md's web/mobile
- * parity note on moving logic that exists on both sides into one shared place.
+ * Shared SSE staged-progress plumbing for the guessing games' round-generation calls
+ * (POST /api/{game}/start and /continue). Both games' endpoints stream the same
+ * `data: {"stage": ..., "done": false}` frames from utils/game/round.ts's progress-stage
+ * shape, so one implementation serves both (see useGameController.ts).
  */
 
 import type { LoadingStage } from "./CharacterLoadingOverlay";
@@ -73,16 +70,15 @@ export async function readSseFrames(
  * pairs server-side) resolving in either order. The synthetic trailing "greeting" stage
  * is never in `completedStages` (the server doesn't report it by name), so it naturally
  * becomes "active" once the real four are done and stays that way until the final frame
- * resolves the whole call. `parse` turns the final frame into the caller's own result
- * type (each game validates a slightly different shape). The mobile app can't read a
- * streamed body, so it calls the same endpoints in plain JSON mode instead.
+ * resolves the whole call, returning that final frame for the caller to validate
+ * (createGameTransport's parseGameRoundResult). The mobile app can't read a streamed
+ * body, so it calls the same endpoints in plain JSON mode instead.
  */
-export async function fetchRoundWithProgress<T>(
+export async function fetchRoundWithProgress(
   url: string,
   body: Record<string, unknown>,
   onProgress: (label: string, stages: LoadingStage[]) => void,
-  parse: (raw: unknown, source: string) => T,
-): Promise<T> {
+): Promise<Record<string, unknown>> {
   const completedStages = new Set<string>();
   const updateProgress = () => {
     const activeIndex = ROUND_STAGE_ORDER.findIndex((entry) => !completedStages.has(entry.stage));
@@ -115,5 +111,5 @@ export async function fetchRoundWithProgress<T>(
   });
 
   if (!finalFrame) throw new Error(`Stream from ${url} ended without a final frame`);
-  return parse(finalFrame, url);
+  return finalFrame;
 }

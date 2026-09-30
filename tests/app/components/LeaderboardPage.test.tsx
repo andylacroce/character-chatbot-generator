@@ -68,7 +68,7 @@ describe("LeaderboardPage", () => {
     expect(screen.getByText("Play Guess Who").closest("a")).toHaveAttribute("href", "/guess-who");
     fireEvent.click(screen.getByTestId("leaderboard-tab-guess-who-next"));
     await screen.findByText("Ada");
-    expect(screen.getByText("Play Guessing Game").closest("a")).toHaveAttribute(
+    expect(screen.getByText("Play Guess Who's Next").closest("a")).toHaveAttribute(
       "href",
       "/guess-who-next",
     );

@@ -27,6 +27,17 @@ const spec = swaggerJsdoc({
     },
     servers: [{ url: "/api" }],
     components: {
+      parameters: {
+        Game: {
+          name: "game",
+          in: "path",
+          required: true,
+          description:
+            'Which guessing game: "guess-who" (chat with a mystery character) or ' +
+            '"guess-who-next" (chat with a named character who steers toward a hidden one).',
+          schema: { type: "string", enum: ["guess-who", "guess-who-next"] },
+        },
+      },
       securitySchemes: {
         ApiKeyAuth: {
           type: "apiKey",

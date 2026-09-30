@@ -1,7 +1,7 @@
 /**
  * Classifies a player's chat message against a hidden character's name, shared by every
  * "guess who"-shaped game that puts both ordinary chat and guesses into one input box
- * (src/pages/api/guess-who-next/message.ts and src/pages/api/guess-who/message.ts). Extracted so
+ * (src/pages/api/[game]/message.ts). Extracted so
  * the carefully-tuned classifier prompt (worked counter-examples for the Edward/Edmund,
  * Hamlet/Laertes, Beauty/Cleopatra, and Venus/Aphrodite incidents — see CLAUDE.md's
  * "Guessing game" section) lives in exactly one place and can't drift between games.
