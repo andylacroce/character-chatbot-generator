@@ -39,7 +39,7 @@ Coverage is enforced globally at 80% in `jest.config.cjs`.
   markdownlint; npm scripts pass `--config`/`--options`). Prettier's config is the `"prettier"` key
   in `package.json`. Jest's setup and node-module mocks live in `tests/` (`tests/setup.js`,
   `tests/__mocks__/`). There is no PostCSS config (Next's default already runs autoprefixer).
-  `config/gcp-key.json` is a local, gitignored credential.
+  The GCP key is never a file: it's inline JSON in `GOOGLE_APPLICATION_CREDENTIALS_JSON`.
 
 ## Versioning
 
@@ -1013,7 +1013,7 @@ Jest (`jest-expo`) plus React Native Testing Library, tests under `apps/mobile/t
 ## Environment variables
 
 **Required:** `ANTHROPIC_API_KEY`, `API_SECRET` (checked by `proxy.ts`),
-`GOOGLE_APPLICATION_CREDENTIALS_JSON` (path or raw JSON, for TTS).
+`GOOGLE_APPLICATION_CREDENTIALS_JSON` (inline service-account JSON, for TTS; in `.env.local` keep it on one line in single quotes, since dotenv expands escapes in double quotes and corrupts the private key).
 
 **Optional** (each degrades gracefully when unset; the app is fully functional as a guest with none):
 

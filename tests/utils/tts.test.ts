@@ -130,34 +130,19 @@ describe("tts", () => {
       );
     });
 
-    it("parses inline JSON on Vercel", () => {
-      process.env.VERCEL_ENV = "production";
+    it("parses inline JSON, on Vercel or locally", () => {
       process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = JSON.stringify(CREDS);
 
+      process.env.VERCEL_ENV = "production";
       expect(tts.getGoogleAuthCredentials()).toEqual(CREDS);
-      expect(mockReadFileSync).not.toHaveBeenCalled();
+      delete process.env.VERCEL_ENV;
+      expect(tts.getGoogleAuthCredentials()).toEqual(CREDS);
     });
 
-    it("reads an absolute credentials path locally", () => {
-      delete process.env.VERCEL_ENV;
-      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = "/secrets/sa.json";
-      mockReadFileSync.mockReturnValueOnce(JSON.stringify(CREDS));
+    it("rejects a value that isn't inline JSON (e.g. a key-file path)", () => {
+      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = "config/gcp-key.json";
 
-      expect(tts.getGoogleAuthCredentials()).toEqual(CREDS);
-      expect(mockReadFileSync).toHaveBeenCalledWith(path.normalize("/secrets/sa.json"), "utf8");
-    });
-
-    it("resolves a relative credentials path against the working directory", () => {
-      delete process.env.VERCEL_ENV;
-      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = "secrets/sa.json";
-      mockReadFileSync.mockReturnValueOnce(JSON.stringify(CREDS));
-
-      tts.getGoogleAuthCredentials();
-
-      expect(mockReadFileSync).toHaveBeenCalledWith(
-        path.join(process.cwd(), "secrets/sa.json"),
-        "utf8",
-      );
+      expect(() => tts.getGoogleAuthCredentials()).toThrow();
     });
   });
 

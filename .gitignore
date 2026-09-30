@@ -9,7 +9,6 @@ dist/
 # Environment files and secrets
 .env*
 !.env.example
-config/gcp-key.json
 
 # Logs
 npm-debug.log*
