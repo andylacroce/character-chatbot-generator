@@ -96,7 +96,7 @@ Create `.env.local` at project root with required secrets:
 ```ini
 ANTHROPIC_API_KEY=sk-ant-...
 API_SECRET=your_server_api_secret
-GOOGLE_APPLICATION_CREDENTIALS_JSON=config/gcp-key.json
+GOOGLE_APPLICATION_CREDENTIALS_JSON='{"type":"service_account",...}'
 # Optional:
 NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
 CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
@@ -115,7 +115,7 @@ ADMIN_EMAILS=you@example.com
 
    - Create a GCP service account with the Text-to-Speech API enabled
    - Download the JSON key file
-   - Place it at `config/gcp-key.json` or paste contents into `GOOGLE_APPLICATION_CREDENTIALS_JSON`
+   - Paste its contents, compacted to one line, into `GOOGLE_APPLICATION_CREDENTIALS_JSON` in single quotes
 
 1. **Start Development Server**:
 
@@ -165,7 +165,7 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 
 - `ANTHROPIC_API_KEY` — Anthropic API key for chat and avatar prompt generation
 - `API_SECRET` — Server-side API secret for request authorization
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON` — Path to GCP JSON key or full JSON content (for Text-to-Speech)
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON` — Full GCP service-account JSON key, inline (for Text-to-Speech)
 
 ### Optional
 

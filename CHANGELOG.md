@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.25.6 — 2026-09-30 — Local text-to-speech credentials
+
+- Fixed audio silently failing in local dev: outside Vercel, `GOOGLE_APPLICATION_CREDENTIALS_JSON` was only accepted as a file path, so inline JSON (what `vercel env pull` writes) fell back to Google's default credentials and every reply came back without audio. It is now inline JSON only, everywhere, which matches how Vercel stores it.
+
 ## v0.25.5 — 2026-09-30 — Character Wall filter retired
 
 - Removed the `recognized = true` filter from the Character Wall query now that the last two legacy unsupported cache rows are deleted; every cached portrait is a supported character.

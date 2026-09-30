@@ -48,17 +48,10 @@ function getGoogleAuthCredentials(): GoogleCredentials | unknown {
   if (!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
     throw new Error("Missing GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable");
   }
-  let credentials: GoogleCredentials;
-  if (process.env.VERCEL_ENV) {
-    credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-  } else {
-    const credRaw = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON as string;
-    const credentialsPath = path.isAbsolute(credRaw)
-      ? path.normalize(credRaw)
-      : path.join(/*turbopackIgnore: true*/ process.cwd(), credRaw);
-    credentials = JSON.parse(fs.readFileSync(credentialsPath, "utf8"));
-  }
-
+  // Inline service-account JSON only (what Vercel stores and `vercel env pull` writes locally).
+  const credentials: GoogleCredentials = JSON.parse(
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+  );
   return credentials;
 }
 
