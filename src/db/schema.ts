@@ -161,9 +161,8 @@ export const messages = pgTable("messages", {
  * skips entirely, and callers need it for voice selection.
  *
  * `recognized` mirrors /api/validate-character's support gate. New generation only reaches
- * this table for recognized names, so new rows are always true. The column remains while
- * the v0.23.0 retirement cleanup identifies and deletes legacy unsupported rows;
- * pages/api/chars.ts filters to true as defense-in-depth until that cleanup is complete.
+ * this table for recognized names, so every row is true (the last legacy unsupported rows were
+ * deleted 2026-09-30). The column is retained so a drop stays an explicit, separate migration.
  * Defaults true for compatibility with rows written before recognition existed.
  *
  * `displayName` is the properly-cased name as Claude itself produced it (generate-

@@ -7,7 +7,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { desc, eq } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { avatarCache } from "../../db/schema";
 import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
@@ -106,17 +106,12 @@ interface CharacterEntry {
 const CACHE_TTL_MS = 60_000;
 let cache: { entries: CharacterEntry[]; fetchedAt: number } | null = null;
 
-/** Returns every recognized character's name/avatar, backed by the module-level TTL cache above. */
+/** Returns every cached character's name/avatar, backed by the module-level TTL cache above. */
 async function getAllCharacters(): Promise<CharacterEntry[]> {
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
     return cache.entries;
   }
-  // Keep legacy unsupported rows hidden until the retirement scrub deletes them.
-  const rows = await getDb()
-    .select()
-    .from(avatarCache)
-    .where(eq(avatarCache.recognized, true))
-    .orderBy(desc(avatarCache.createdAt));
+  const rows = await getDb().select().from(avatarCache).orderBy(desc(avatarCache.createdAt));
   const entries = rows.map((row) => ({
     // Prefer the properly-cased name captured at generation time (see
     // src/db/schema.ts's avatarCache.displayName doc comment) — the regex-based
