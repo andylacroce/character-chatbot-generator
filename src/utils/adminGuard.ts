@@ -32,3 +32,16 @@ export async function requireAdmin(
   }
   return userId;
 }
+
+/**
+ * Reads and trims the required `name` from an admin mutation's JSON body. Sends the 400 and
+ * returns `null` when it's missing or blank; callers should `return` immediately in that case.
+ */
+export function readAdminName(req: NextApiRequest, res: NextApiResponse): string | null {
+  const name: unknown = req.body?.name;
+  if (typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "Valid name required" });
+    return null;
+  }
+  return name.trim();
+}

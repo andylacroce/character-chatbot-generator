@@ -2,6 +2,14 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.25.4 — 2026-09-30 — Code cleanup
+
+- Refactor, no user-visible change: web and mobile now share one copy of `formatRelativeTime` and the character-category taxonomy in `packages/shared` instead of hand-synced duplicates.
+- The character allowlist, blocklist, and warning-log helpers share one best-effort DB wrapper (`safeDb`), and the two admin moderation routes share name validation.
+- Removed the finished one-time data-migration scripts and the pre-unification game-token compatibility branch (an old in-flight game run now restarts).
+- Merged six cache test files into one with stronger assertions, and two audio-error test files into one.
+- Merged the mobile `CLAUDE.md` into the root one and condensed it into a topic-grouped reference (about half the size).
+
 ## v0.25.3 — 2026-09-30 — One engine behind both guessing games
 
 - Refactor, no user-visible change: Guess Who and Guess Who's Next now run on one shared game engine (routes under `/api/[game]/`, one token, one round pipeline, one client state machine, one page, one mobile screen, one stylesheet) instead of two parallel copies of every layer. Web and mobile moved together.

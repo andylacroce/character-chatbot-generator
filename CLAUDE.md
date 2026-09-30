@@ -14,7 +14,7 @@ npm run lint:md              # markdownlint over **/*.md
 npm run format                # prettier --write . (excludes *.md — markdownlint owns that)
 npm run format:check           # prettier --check .
 npm run type-check               # tsc --noEmit
-npm run docs:code                 # typedoc -> docs-generated/ (gitignored); regenerate on demand, see "Code documentation standard" below
+npm run docs:code                 # typedoc -> docs-generated/ (gitignored); see "Code documentation standard"
 npm run test                       # jest
 npm run test:watch
 npm run test:coverage               # jest --coverage (enforces 80% global threshold — see jest.config.cjs)
@@ -24,735 +24,1013 @@ npm run db:check                       # read-only check that schema.ts matches 
 npm run ci                             # format (auto-fix) && lint --max-warnings=0 && lint:md && type-check && mobile ci && shared tests && db:check && docs:code && test:coverage && build — run this before considering work done
 ```
 
-`npm run ci`'s local composite deliberately runs `format` (auto-`--write`) as its very
-first step, not `format:check` — added 2026-09-17 after formatting drift on files
-untouched by Prettier during a session kept surfacing only at the very end of a full
-`npm run ci` run (after lint/type-check/the full test suite had already passed),
-forcing a wasted second full run just to fix formatting. Auto-fixing first means every
-later step in the local gate runs against already-correctly-formatted code, so it can
-never fail on formatting again. `.github/workflows/ci.yml`'s own "Check formatting"
-step stays a `format:check` (not `--write`) and was moved to run first there too (fail
-fast, cheapest check first) — that workflow can't push a fix back to the PR it's
-checking, so it must fail loudly on drift rather than silently paper over it. The
-pre-commit hook (`.githooks/pre-commit`, wired via `npm run prepare`) is the third
-layer: it auto-formats whatever's staged before a commit even exists, so drift
-ideally never reaches either `npm run ci` or GitHub Actions in the first place.
+Run a single test file: `npx jest tests/api/chat.test.ts`. Run tests matching a name: `npx jest -t "some test description"`.
+Coverage is enforced globally at 80% in `jest.config.cjs`.
 
-Tool configs that don't have to sit at the repo root live in `config/` (TypeDoc, Drizzle,
-markdownlint; npm scripts pass `--config`/`--options`). Prettier's config is the `"prettier"`
-key in `package.json`. Jest's setup file and node-module mocks live in `tests/`
-(`tests/setup.js`, `tests/__mocks__/`). There is no PostCSS config: Next.js's built-in
-default already runs autoprefixer. `config/gcp-key.json` is a local, gitignored credential.
-
-GitHub Actions workflows, required checks, Dependabot/Expo upgrade flow, and the
-`EXPO_UPGRADE_TOKEN` secret are documented in `.github/CONTRIBUTING.md`. Any step added to a `ci`
-script must also be added to the matching workflow; the workflows list steps one by one
-rather than calling `npm run ci`.
-
-Run a single test file: `npx jest tests/api/chat.test.ts`
-Run tests matching a name: `npx jest -t "some test description"`
-
-Coverage is enforced globally at 80% (branches/functions/lines/statements) in `jest.config.cjs` — `npm run test:coverage` fails the build if it drops below that.
+- **`npm run ci` runs `format` (auto `--write`) first, not `format:check`,** so every later step runs
+  against already-formatted code and can't fail on formatting after a long run.
+  `.github/workflows/ci.yml` uses `format:check` first instead (fail fast; a workflow can't push a
+  fix back). The pre-commit hook (`.githooks/pre-commit`, wired via `npm run prepare`) auto-formats
+  staged files, so drift ideally never reaches either.
+- **Any step added to a `ci` script must also be added to the matching workflow;** the workflows
+  list steps one by one rather than calling `npm run ci`. Workflows, required checks, the
+  Dependabot/Expo upgrade flow, and the `EXPO_UPGRADE_TOKEN` secret are in `.github/CONTRIBUTING.md`.
+- **Tool configs that needn't sit at the repo root live in `config/`** (TypeDoc, Drizzle,
+  markdownlint; npm scripts pass `--config`/`--options`). Prettier's config is the `"prettier"` key
+  in `package.json`. Jest's setup and node-module mocks live in `tests/` (`tests/setup.js`,
+  `tests/__mocks__/`). There is no PostCSS config (Next's default already runs autoprefixer).
+  `config/gcp-key.json` is a local, gitignored credential.
 
 ## Versioning
 
-Introduced 2026-09-22 — no tags exist before that date, and nothing before it should be
-back-tagged. Git tags (`vX.Y.Z`, matching `package.json`'s `version`) mark shipped points
-in history, so a regression can be bisected against a known-good release instead of an
-arbitrary commit.
+Git tags (`vX.Y.Z`, matching `package.json`'s `version`) mark shipped points so a regression can
+be bisected against a known-good release. Tagging began 2026-09-22; never back-tag earlier history.
 
-- **Scheme is semver-shaped but sized for a single-maintainer hobby app, not a public API
-  contract:**
-  - **PATCH** (`0.5.0` → `0.5.1`): bug fixes, refactors, internal cleanup — anything with
-    no user-visible new capability.
-  - **MINOR** (`0.5.x` → `0.6.0`): a new user-facing feature or behavior change.
-  - **MAJOR:** reserved, essentially never used here — only for a break that demands
-    manual action from anyone depending on this app (e.g. a non-backward-compatible
-    schema change with no migration path). Bump only by explicit agreement, never as
-    part of routine work.
-- **Docs-only or pure-chore commits (README/CLAUDE.md wording, comment cleanup, a
-  dependency bump with no behavior change) don't get a bump or a tag at all** — tags mark
-  shipped functional/user-facing change, not every commit.
-- **Tag only at a "ship it" moment** (see the global git workflow rule in
-  `~/.claude/CLAUDE.md`) that ships a real change meeting the bar above — never
-  speculatively, never mid-task.
-- **Mechanics, each time a tag-worthy change ships:**
-  1. `npm run ci` must already be green (already required before any ship).
-  2. Decide patch vs. minor using the rule above.
-  3. Bump `package.json`'s `version`: `npm version patch --no-git-tag-version` (or
-     `minor`) — the flag stops npm from making its own commit/tag, so the bump folds
-     into the normal commit instead.
-  4. Give the shipped `CHANGELOG.md` entry's heading the new version, e.g.
-     `## v0.6.0 — 2026-09-22 — Title`.
-  5. Commit the version bump + CHANGELOG entry together with (or immediately after) the
-     shipped change.
-  6. `git tag -a vX.Y.Z -m "<one-line summary>"` — annotated, not lightweight, so the tag
-     carries its own message independent of the commit it points to.
-  7. `git push --follow-tags` — pushes the commit and the new tag together in one step.
-- **Claude Code cloud sessions can't push tags** (found 2026-09-29): the session's injected
-  credential can write `refs/heads/*` but not `refs/tags/*`, so GitHub returns a 403 for any
-  tag push (the repo has no tag rulesets or protection; this is purely the credential's
-  scope). `.github/workflows/tag-release.yml` covers it: on every push to `main` it creates
-  the annotated `v<package.json version>` tag if missing, so steps 6-7 are only needed when
-  shipping from a local machine, and a cloud session just does steps 1-5 and merges the PR.
+- **PATCH:** bug fixes, refactors, internal cleanup (no new user-visible capability).
+  **MINOR:** a new user-facing feature or behavior change. **MAJOR:** essentially never; only for
+  a break needing manual action from anyone depending on this app, and only by explicit agreement.
+- **Docs-only or pure-chore commits (wording, comments, a no-behavior dependency bump) get no bump
+  or tag.**
+- **Tag only at a "ship it" moment** (see the global git workflow rule in `~/.claude/CLAUDE.md`)
+  that ships a real change, never speculatively or mid-task. Mechanics:
+  1. `npm run ci` is already green.
+  2. Choose patch vs. minor, then `npm version patch --no-git-tag-version` (or `minor`); the flag
+     folds the bump into the normal commit.
+  3. Head the shipped `CHANGELOG.md` entry with the version, e.g. `## v0.6.0 — 2026-09-22 — Title`.
+  4. Commit the bump and changelog entry with the change.
+  5. `git tag -a vX.Y.Z -m "<one-line summary>"` (annotated), then `git push --follow-tags`.
+- **Claude Code cloud sessions can't push tags** (their credential can write `refs/heads/*` but not
+  `refs/tags/*`). `.github/workflows/tag-release.yml` creates the annotated `v<package.json
+  version>` tag on every push to `main` if missing, so a cloud session only does steps 1-4 and
+  merges the PR.
 
 ## Web/mobile parity (standing goal)
 
-Keep the web app and the mobile app (`apps/mobile`) sharing as much as possible and in sync
-with **every commit**. Logic, copy, types, and client state machines live once in
-`packages/shared` (`character-chatbot-shared`, which web imports directly via
-`next.config.mjs`'s `transpilePackages`), and each platform supplies only a thin adapter:
-its own request transport, storage, and logging. The guessing game is the model:
-`useGameSession`/`game.ts` in shared, wrapped by `src/app/components/useGameController.ts`
-(SSE progress, localStorage) and `apps/mobile/src/useGameController.ts` (plain JSON,
-AsyncStorage). For every change, ship the other platform's side in the same commit, and
-move logic that exists on both sides into shared rather than editing two copies. Mobile
-diverges only where it has to (React Native's fetch can't read an SSE stream; Android
-keyboard handling) or where native features genuinely improve mobile UX (haptics). A
-feature that exists on one platform only is a parity gap to call out, not a default.
+Keep the web app and the mobile app (`apps/mobile`) sharing as much as possible and in sync with
+**every commit**. Logic, copy, types, and client state machines live once in `packages/shared`
+(`character-chatbot-shared`, which web imports directly via `next.config.mjs`'s
+`transpilePackages`); each platform supplies only a thin adapter: its own request transport,
+storage, and logging. The guessing game is the model: `useGameSession`/`game.ts` in shared,
+wrapped by `src/app/components/useGameController.ts` (SSE progress, localStorage) and
+`apps/mobile/src/useGameController.ts` (plain JSON, AsyncStorage). For every change, ship the
+other platform's side in the same commit, and move logic that exists on both sides into shared
+rather than editing two copies. Mobile diverges only where it has to (React Native's fetch can't
+read an SSE stream; Android keyboard handling) or where native features genuinely improve mobile
+UX (haptics). A feature that exists on one platform only is a parity gap to call out, not a
+default. Mobile-specific notes are in "Mobile app" below.
 
 ## Architecture
 
-Next.js 16 (Pages Router API + App Router UI) app. UI in `src/app/`, API routes in `src/pages/api/`, auth/origin gate in `src/proxy.ts` (Next.js resolves `app/`, `pages/`, and `proxy.ts` from `src/`; they must stay siblings there) (deliberately Pages Router, not App Router route handlers — server handlers are authoritative here).
-
 ### Request flow
 
-`src/app/components/useChatController.ts` → `authenticatedFetch()` (`src/utils/api.ts`) → `src/pages/api/chat.ts`. Every client→server call should go through `authenticatedFetch`, not raw `fetch`, so it passes through `proxy.ts` auth and so tests can mock it consistently.
+`src/app/components/useChatController.ts` → `authenticatedFetch()` (`src/utils/api.ts`) →
+`src/pages/api/chat.ts`. Every client→server call goes through `authenticatedFetch`, not raw
+`fetch`, so it passes through `proxy.ts` auth and tests can mock it consistently.
 
-`proxy.ts` is the single choke point for API auth: it validates request origin (localhost, Vercel production/preview auto-pass) and enforces a constant-time-compared `x-api-key` against `API_SECRET` for external origins. Adding a new deployment domain means updating `allowedHosts` in `proxy.ts` — nowhere else. Host matching is exact (never prefix or substring), and a request with no `Origin`/`Referer` only passes on a safe method (GET/HEAD/OPTIONS) from a first-party host — everything else needs the API key. `tests/proxy.test.ts` pins both directions. **Important caveat, see "Security posture" below:** the Origin/Referer check is real CSRF protection against a browser (JS can't override `Origin`), but is not authentication against a non-browser client, which can set that header to anything it wants.
+`proxy.ts` is the single choke point for API auth: it validates request origin (localhost, Vercel
+production/preview auto-pass) and enforces a constant-time-compared `x-api-key` against
+`API_SECRET` for external origins. A new deployment domain means updating `allowedHosts` in
+`proxy.ts` and nowhere else. Host matching is exact (never prefix/substring), and a request with no
+`Origin`/`Referer` passes only on a safe method (GET/HEAD/OPTIONS) from a first-party host;
+everything else needs the API key. `tests/proxy.test.ts` pins both directions. The Origin/Referer
+check is real CSRF protection against a browser but not authentication against a non-browser
+client (see "Security posture").
 
 ### Chat + streaming (`src/pages/api/chat.ts`)
 
-The most complex endpoint: calls Claude, summarizes conversation history once it exceeds 20 messages (`src/utils/conversationSummarizer.ts` — see phase 3c below for how this differs for a signed-in user's saved character), streams via SSE when the client passes `{ stream: true }`, and does "smart continuation" — detects a truncated model response, appends a "Would you like me to continue?" prompt, and resumes seamlessly if the user says yes.
+The most complex endpoint: calls Claude, summarizes history once it exceeds 20 messages
+(`src/utils/conversationSummarizer.ts`; a signed-in user's saved character differs, see "Account
+persistence"), streams via SSE when the client passes `{ stream: true }`, and does "smart
+continuation": it detects a truncated reply, appends "Would you like me to continue?", and resumes
+if the user says yes.
 
-SSE frames are plain `data: JSON\n\n` — not a custom binary protocol. Final payload shape consumed by the client: `{ reply: string, audioFileUrl?: string, done: true }`. Changing that shape requires updating `useChatController.ts` and every test that parses stream frames.
+SSE frames are plain `data: JSON\n\n`. The final payload is
+`{ reply: string, audioFileUrl?: string, done: true }`; changing it requires updating
+`useChatController.ts` and every test that parses stream frames.
 
-If a reply requests TTS, the handler calls `src/utils/tts.ts` (`synthesizeSpeechToFile`), keyed by a stable `getAudioCacheKey` hash to avoid re-synthesizing identical audio. A TTS failure (cache-hit, non-streaming, and streaming paths) never fails the chat request — it degrades to a text-only reply (`audioFileUrl` omitted) rather than the 500 it used to be, since losing audio is much better than resurfacing a stale error and discarding an already-generated reply. Persisted configs intentionally use Google's `Voice` response shape (`languageCodes`), but synthesis constructs the separate v1 `VoiceSelectionParams` request explicitly (`languageCode` plus exact `name`). It does not send redundant `ssmlGender` with a named voice, so stale pre-fix gender metadata cannot make Google reject an otherwise valid selection; the legacy mismatch self-heal remains only for an unnamed fallback request.
-
-Voice casting (`src/utils/characterVoices.ts`) receives the generated character personality, asks the text-simple model to infer a provider-neutral vocal profile (age impression, timbre, accent, energy, rhythm, and delivery), and requires its final `voiceName` to come from the deployment's live `google.cloud.texttospeech.v1.ListVoices` inventory. The existing Studio, Neural2, WaveNet, Standard, News, Journey, and Polyglot families remain eligible; their mature v1/SSML controls are preferred over automatically migrating characters to a newer but less configurable model family. The catalog is cached once per warm process, the selected name's Google metadata is authoritative, and casting never calls `SynthesizeSpeech` merely to validate a name. The in-memory result cache includes a hash of the personality context so a corrected or disambiguated name cannot silently reuse an incompatible cast voice.
+- **TTS** (`src/utils/tts.ts`, `synthesizeSpeechToFile`) is keyed by a stable `getAudioCacheKey`
+  hash to avoid re-synthesizing identical audio. A TTS failure on any path (cache hit,
+  non-streaming, streaming) never fails the chat request: it degrades to a text-only reply
+  (`audioFileUrl` omitted), since losing audio beats discarding a generated reply.
+- **Voice shapes:** persisted configs use Google's `Voice` response shape (`languageCodes`), but
+  synthesis builds the separate v1 `VoiceSelectionParams` explicitly (`languageCode` plus exact
+  `name`), and sends no `ssmlGender` with a named voice, so stale gender metadata can't make Google
+  reject a valid selection. The legacy mismatch self-heal remains only for an unnamed fallback.
+- **Voice casting** (`src/utils/characterVoices.ts`) asks the `text-simple` model to infer a
+  provider-neutral vocal profile from the personality, then requires the final `voiceName` to come
+  from the deployment's live `ListVoices` inventory (cached once per warm process; Google's
+  metadata for the chosen name is authoritative; casting never calls `SynthesizeSpeech` just to
+  validate). Studio, Neural2, WaveNet, Standard, News, Journey, and Polyglot stay eligible; mature
+  v1/SSML controls are preferred over migrating to a newer, less configurable family. The result
+  cache includes a hash of the personality context so a corrected or disambiguated name can't
+  reuse an incompatible voice.
 
 ### Model selection (`src/utils/claudeModelSelector.ts`)
 
-Three tiers, chosen by call site, not by any runtime cost heuristic:
+Three tiers, chosen by call site, never by a runtime cost heuristic:
 
-- `"text"` — chat replies only. `claude-sonnet-4-6` in prod, `claude-haiku-4-5-20251001` in dev.
-- `"text-simple"` — one-shot structured JSON tasks (personality generation, character validation, voice config, suggestion lists). Always `claude-haiku-4-5-20251001`, prod or dev.
-- `"image"` — avatar prompts render via `gemini-3.1-flash-lite-image` on Google Cloud's Gemini Enterprise Agent Platform (formerly Vertex AI; not Claude).
+- `"text"`: chat replies only. `claude-sonnet-4-6` in prod, `claude-haiku-4-5-20251001` in dev.
+- `"text-simple"`: one-shot structured JSON tasks (personality generation, character validation,
+  voice config, suggestion lists). Always `claude-haiku-4-5-20251001`.
+- `"image"`: avatar prompts render via `gemini-3.1-flash-lite-image` on Google Cloud's Gemini
+  Enterprise Agent Platform (formerly Vertex AI; not Claude).
 
 All Claude calls go through the singleton client in `src/utils/anthropicClient.ts`.
 
-### Prompt engineering conventions
+### Avatar generation (`src/pages/api/generate-avatar.ts`)
 
-Distilled from Anthropic's own prompting-best-practices reference (`platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices`) and applied here 2026-09-19 while hardening `classifyGuess` (see the guessing game's "Beauty"/Cleopatra incident above). Apply these to any *new or edited* system prompt in this app — not a mandate to rewrite every existing one on sight.
+**Free image providers only; no payment method is required.** Claude (`text-simple`) writes an
+SFW image prompt from the established name, then the first provider that succeeds renders it:
 
-- **`"text-simple"` (always Haiku) is the tier most sensitive to prompt quality.** It's used for judgment/classification calls (`classifyGuess`, `validate-character.ts`, voice config, avatar image-prompt generation) where a smaller/faster model infers less reliably than `"text"` (Sonnet in prod) does for freeform conversational replies. Before ever moving a call from `"text-simple"` to a larger tier for accuracy reasons, tighten the prompt first with the techniques below — it's cheaper and faster, and usually closes most of the gap.
-- **Few-shot examples are the highest-leverage fix for a judgment call going wrong on Haiku.** 3-5 concrete examples, each wrapped in `<example>` tags (multiple examples inside one `<examples>` block), beat a longer prose description of the rule. Make them diverse and adversarial — cover the near-miss cases that actually broke in production (see `classifyGuess`'s worked counter-examples: Edward/Edmund for the "clear" vs "ambiguous" line, Hamlet/Laertes and Beauty/Cleopatra for "correct" identity judgments), not just the easy/obvious case.
-- **Structure a multi-part system prompt with XML tags** (`<character_persona>`, `<examples>`, etc.) rather than one prose paragraph — it lets the model (and the next person editing the prompt) tell instructions, context, and untrusted input apart unambiguously. Already the convention for persona-wrapping in `gameReply.ts`; extend it to any new prompt that mixes rules, examples, and variable input.
-- **For a structured-JSON judgment call, order the schema so an explanation field comes before the decision field** (e.g. `{"reasoning": ..., "status": ..., "correct": ...}`, not the reverse). This gives the model a lightweight, embedded chain-of-thought without violating a "return ONLY JSON" constraint or meaningfully increasing latency at a small `max_tokens` cap — worth trying before reaching for a bigger model on an accuracy problem.
-- **Prefer telling the model what *to* do over what *not* to do**, and add a one-line "why" behind a constraint when it's non-obvious (Claude generalizes better from a reason than a bare rule) — both already the dominant style in this app's existing prompts (e.g. `characterVoices.ts`'s voice-casting prompt explains *why* gender must match the chosen voice, not just that it must).
-- **Known gap, not yet applied:** Anthropic's current guidance prefers constraining output via tool-use/Structured Outputs over a freeform "return ONLY JSON" instruction plus manual regex extraction (`src/utils/parseClaudeJson.ts`'s `extractJson`, used almost everywhere in this app). Not migrated here — it would touch most Claude call sites for a reliability upside that hasn't actually caused a production bug yet — but worth reaching for if a *new* structured-output call proves flaky under `extractJson`, rather than adding another one-off parsing workaround.
-- **Ordinary character dialogue never uses an em dash — a deliberate exception to "prefer what *to* do over what *not* to do" above, added 2026-09-22.** Every in-character system prompt (`src/pages/api/chat.ts`'s ordinary chat replies, and every call in `src/utils/gameReply.ts` — the guessing game's ordinary turns, opening greetings, and guess-reaction replies) appends a trailing `FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, period, colon, or parentheses instead.` instruction. Stated as an explicit negative rather than reframed positively, since Claude's own prose defaults lean on em dashes far more than natural character dialogue does — there's no single positive phrasing ("use short sentences," "write conversationally") that reliably suppresses it. Not applied to the `"text-simple"` judgment/classification prompts above, only to prompts generating dialogue actually shown to the player.
+1. **Cloudflare Workers AI** (`cloudflareImageGen.ts`, `@cf/black-forest-labs/flux-1-schnell`) when
+   `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are set. Free 10,000 neurons/day; requests
+   just fail once exhausted (no paid plan configured).
+2. **Pollinations.ai** (`pollinationsImageGen.ts`), anonymous, no key, no daily cap, may render a
+   small watermark. Used whenever Cloudflare is unset, errors, or trips its safety filter.
+
+Each provider returns `null` on any failure instead of throwing, so the handler's `if (!avatarUrl)`
+fallthrough chains them. **Both `fetch()` calls carry `AbortSignal.timeout(25000)`:** plain
+`fetch` has no timeout, and a stalled Pollinations request once hung the game's `start`/`continue`
+forever. With `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN`, the image uploads to Vercel
+Blob (`avatars/<uuid>.<ext>`, public) and a durable URL is returned; otherwise, or on upload
+failure, a base64 data URL. Rate-limited to 5/min/IP.
+
+- **`avatar_cache`** (global, deliberately not environment-scoped, or the cost savings vanish) is
+  keyed by lowercased name and checked before any generation. Only real generations are cached,
+  never the `/silhouette.svg` fallback. `gender` is cached too (callers need it for voice
+  selection). `category` comes from the same Claude response that writes the image prompt (see
+  Character Wall). Reads and writes no-op without `DATABASE_URL` or on error.
+- **Fuzzy name matching happens earlier, in `generate-personality.ts`.** `generatePersonalityPrompt`
+  (`src/config/serverConfig.ts`) folds up to 300 existing `avatar_cache` names into the same Claude
+  call and asks for `correctedName`: the input with spelling and casing fixed, or an existing name
+  when it's clearly a misspelling of one. `correctedName` flows unchanged to `/api/generate-avatar`,
+  so "sherlok holmes" hits the "Sherlock Holmes" row rather than a duplicate.
+- **`correctedName` also expands to the fullest commonly recognized name** ("Einstein" → "Albert
+  Einstein"), via `fullNameGuidance`. Conservative on purpose: (1) never invent a surname for a
+  one-name figure (Zeus, Gandalf); (2) an expansion must add real identifying information that
+  resolves to one individual, never swap one vague epithet for another or produce a still-ambiguous
+  title ("Buckingham" → "Duke of Buckingham"); (3) never replace a pen or stage name that is itself
+  the recognized form with a birth name (Molière); (4) never guess between two similarly famous
+  people (Brutus). Every downstream store inherits it: `avatarCache.displayName`/`characterName`,
+  `bots.name`, and the versioned localStorage keys.
+- **`avatarCache.displayName`** stores the properly-cased `correctedName` at write time, the only
+  place the casing is known. `chars.ts` prefers it over its lossy regex `toDisplayName` fallback
+  (which can't know "III" stays uppercase or "of"/"van" stay lowercase); it is nullable for older rows.
 
 ### Copyright/trademark validation
 
-Bot creation is gated by a validation round-trip, not just a client-side check:
+Bot creation is gated by a server round-trip, not just a client check:
 
-1. `useBotCreation.ts` calls `POST /api/validate-character` with `{ characterName }` before creating the bot.
-2. `src/pages/api/validate-character.ts` uses Claude (rate-limited 30 req/min) to classify `{ level: "warning" | "caution" | "none", message?, suggestions? }` — "warning" = clear violation (Mickey Mouse), "caution" = possible trademark concern (Superman), "none" = safe.
-3. On warning/caution, `CopyrightWarningModal.tsx` displays the message plus public-domain alternatives pulled from `GET /api/random-character` (pre-1928/mythology/historical figures, with explicit prompt guardrails against modern copyrighted names).
+1. `useBotCreation.ts` calls `POST /api/validate-character` with `{ characterName }`.
+2. `src/pages/api/validate-character.ts` (Claude, rate-limited 30/min, `temperature: 0`) classifies
+   `{ level: "warning" | "caution" | "none", message?, suggestions?, blocked, recognized }`:
+   "warning" = clear violation (Mickey Mouse), "caution" = possible concern (Superman), "none" = safe.
+3. On warning/caution, `CopyrightWarningModal.tsx` shows the message plus public-domain
+   alternatives from `GET /api/random-character`.
 
-Changing this flow touches both the API and modal, plus `tests/api/validateCharacter.test.ts` and `tests/app/components/CopyrightWarningModal.test.tsx` — keep coverage ≥80%.
+Changing this flow touches the API, the modal, `tests/api/validateCharacter.test.ts`, and
+`tests/app/components/CopyrightWarningModal.test.tsx`.
 
-**A "warning" is checked against, and written to, three persistent tables before/after the Claude call — added 2026-09-17 after a live report that an already-cached, already-public character (Alice Munro) popped a fresh copyright warning on a later launch.** The root cause: `validate-character.ts` re-classifies every name from scratch via a non-deterministic Claude call (`temperature: 0`, tuned down from `0.3` as part of this fix) with zero awareness of what's already publicly cached — unlike `generate-personality.ts`'s fuzzy name-matching against `avatar_cache`.
+**A name is checked against three persistent tables around the Claude call,** because a
+non-deterministic classifier must never override what the app already hand-vetted (a cached,
+public character once popped a fresh warning on a later launch):
 
-- **`src/utils/characterAllowlist.ts`** (`character_allowlist` table) — a fast, *permanent* circuit-breaker checked first, before Claude is ever called. Backed by two sources: the static curated list reused from `src/data/characterNames.ts` (the same "1000+ public domain characters" list already trusted for random character selection and the guessing game's pool) plus an admin-managed DB table for anything not on that list. Added after a live sweep showed Claude flagging `"warning"` on names from that static list (Sherlock Holmes, Thor, Winnie-the-Pooh) purely because a studio also made a popular adaptation of a mythological/historical/pre-1928 figure — a single non-deterministic roll should never override a name this app already hand-vetted as safe. A hit also self-heals (removes) any stale blocklist entry for the same name.
-- **`src/utils/characterBlocklist.ts`** (`character_blocklist` table) — checked next (only reached if the allowlist misses). A hit skips the Claude call entirely, scrubs any leftover cached avatar, and returns a hard, non-overridable block with a generic message (`scrubbed: true` — see below). Rows are added automatically the moment Claude classifies *any* name `"warning"` (`source: "claude"`, fire-and-forget so it never adds latency to the triggering request) — but that classification's own ordinary overridable warning flow still runs for *that one* first attempt; only a *repeat* attempt against the now-blocklisted name gets the fast, hard block. Rows can also be added/removed manually by an admin (`source: "admin"`) via `/admin/moderation` (below).
-- **`src/utils/characterWarningLog.ts`** (`character_warning_log` table) — a separate, *append-only* record of every "warning"-level classification Claude has ever returned, written alongside (not instead of) the blocklist auto-add above. Deliberately not deduplicated like the allow/blocklist tables: once a name is un-blocked or allowlisted it disappears from those, so only this log can answer "what has Claude flagged in the last day/week/month" — it backs `/admin/moderation`'s "Recently warned" panel.
-- **`/admin/moderation`** (`src/app/admin/moderation/`, `AdminModerationView.tsx`) is one combined admin page — not separate `/admin/allowlist`/`/admin/blocklist` pages — with three sections: "Recently warned" (read-only, time-window filterable: hour/24h/7d/30d/all, `GET /api/admin/warnings`, with inline Allow/Block buttons per row), "Allowed", and "Blocked" (both full CRUD via `POST`/`DELETE` on `src/pages/api/admin/{allowlist,blocklist}.ts`, plus a "Move to X" transfer button). A name is never on both lists at once — each list's `POST` handler also removes the name from the other table server-side, which is what makes both the transfer button and the Warning Log's Allow/Block buttons work (they just `POST` to the target list). A `refreshKey` counter in `AdminModerationView`, bumped by any successful mutation anywhere on the page, is a dependency of every section's fetch effect so a change in one section (e.g. transferring a name) is reflected by its sibling immediately, without a manual reload. Reuses the shared `AppHeader`/`useAccountMenu` chrome, same as every other page — `src/app/admin/AdminStatsView.tsx` was also migrated from its own bespoke masthead to this shared chrome as part of the same pass. Its table uses `table-layout: fixed` with ellipsis truncation to keep every row one line at any width, and drops the Reason/Source/Added columns entirely below 640px (icon-only actions, `aria-label`/`title` kept for accessibility) — two earlier mobile approaches (a horizontally-scrollable table, then a stacked-card layout per row) were tried and rejected as clunky/unwieldy before landing on this.
-- **The copyright-classification prompt was hardened, not just gated.** It now explicitly separates "a name only meaningful because of one specific corporate work" (`warning` — Spider-Man, Pikachu) from "a mythological deity/historical person/pre-1928 work a studio also happens to have adapted" (`none`, even if a popular adaptation exists), with worked examples (Thor, Sherlock Holmes, Winnie-the-Pooh, Hercules) directly in the system prompt — same "worked counter-example" pattern already used to fix the guessing game's Hamlet/Laertes classifier bug (see "Guessing game" below).
-- **`scrubbed: true`** on `CharacterValidationResult` means either of the above happened (blocklist hit, or a fresh "warning" for a name that was already cached) — `useBotCreation.ts` treats it as a hard stop with a generic message ("This character is no longer available"), the same non-overridable shape as `blocked`, never showing `CopyrightWarningModal`'s "Continue Anyway".
-- **`scripts/scrub-copyrighted-avatar-cache.cjs`** (`npm run chars:scrub-copyrighted`, optionally `--dry-run`) is the one-time retroactive sweep: classifies every existing `avatar_cache` row in a single Claude call (not batched — this app's cached-character count is hobby-scale), blocklists and deletes anything flagged `"warning"`. Not run automatically, and not run as of this writing — a real `--dry-run` against production flagged Sherlock Holmes/Thor/Winnie-the-Pooh (the exact false positives that motivated the allowlist/prompt fixes above) alongside genuine violations, so it was deliberately held pending those fixes rather than trusted blind.
+- **`characterAllowlist.ts`** (`character_allowlist`) is a permanent circuit-breaker checked
+  first, before Claude. Sources: the static curated list `src/data/characterNames.ts` plus an
+  admin-managed table. A hit also removes any stale blocklist row for the name.
+- **`characterBlocklist.ts`** (`character_blocklist`) is checked next. A hit skips Claude, scrubs
+  any cached avatar, and returns a hard, non-overridable block with a generic message
+  (`scrubbed: true`). Rows are added automatically when Claude classifies a name `"warning"`
+  (`source: "claude"`, fire-and-forget; that first attempt still gets the ordinary overridable
+  warning, only repeats hit the hard block) or `blocked: true`, and manually via
+  `/admin/moderation` (`source: "admin"`). Each row has a `category`: `"copyright"` (repeat hit
+  returns `warningLevel: "warning"` + `scrubbed: true`) or `"content"` (repeat hit returns
+  `blocked: true`). Legacy rows default to `"copyright"`.
+- **All three helpers wrap their DB calls in `safeDb`** (`src/utils/safeDb.ts`): a no-op fallback without `DATABASE_URL`, and a logged `error` plus fallback on any DB failure, so moderation never blocks creation.
+- **`characterWarningLog.ts`** (`character_warning_log`) is an append-only record of every
+  "warning" Claude has returned. Unlike the allow/blocklist it is never deduplicated, so it alone
+  answers "what was flagged this week" and backs the "Recently warned" panel.
 
-**Abusive names, and now living-person legal risk, are a separate, non-overridable check on the same response.** `CharacterValidationResult` also carries `blocked: boolean`, set by the same Claude call from two independent instructions, entirely separate from copyright status: (1) "is this name itself profane/a slur/sexually explicit," and (2) added 2026-09-17 after a live report — "does this name identify a real, currently-living person with a serious, well-documented real-world criminal conviction or extensive credible allegations of serious criminal conduct." The second check is deliberately narrow: it never applies to historical/deceased figures (however controversial — the app must not exclude legitimate historical characters) or ordinary celebrity/political controversy, only serious real-world criminal conduct by someone still alive today, with Bill Cosby as the prompt's own worked example (the live report that motivated this). Unlike `warningLevel`, there is no "Continue Anyway" for `blocked: true` either way — `useBotCreation.ts`'s `handleCreate` short-circuits straight to a plain error message before ever showing `CopyrightWarningModal`. This exists because every created character's name (and portrait) ends up on the public `/chars` gallery — a copyright concern is the user's own legal risk to accept, but neither an abusive name nor a legally-risky living-person impersonation is something the app can let exist publicly (or even privately, in a signed-in user's own saved characters) at all. On any validation error, `blocked` defaults to `false` (fail open, same as `warningLevel: "none"` there) rather than blocking creation when Claude is unreachable.
+**`blocked: true` is a separate, non-overridable check** from the same Claude call, for (1) a
+profane, slur, or sexually explicit name, and (2) a real, currently-living person with a serious,
+well-documented criminal conviction or extensive credible allegations of serious criminal conduct
+(the prompt carries a worked example). The second is deliberately narrow: never historical or
+deceased figures however controversial, never ordinary celebrity or political controversy.
+`useBotCreation.ts` short-circuits to a plain error without showing the modal's "Continue Anyway",
+because every created name and portrait can land on the public `/chars` wall (and, privately, in a
+user's saved characters). On a validation error, `blocked` and `warningLevel` fail open
+(`false`/`"none"`), so a Claude outage doesn't block creation.
 
-- **`character_blocklist` rows now carry a `category`** (`"copyright"` | `"content"`, `src/db/schema.ts`) distinguishing which of `validate-character.ts`'s two hard-block-eligible checks a row belongs to, since a repeat-attempt fast-path hit against the blocklist needs a different response shape for each: `"copyright"` (a made-permanent, still-nominally-"warning"-shaped) `warningLevel: "warning"` + `scrubbed: true`, versus `"content"` (abusive name, or the new living-person check) → `blocked: true` directly. A fresh `blocked: true` classification is now persisted to the blocklist exactly like a copyright "warning" already was (`category: "content"`) — previously `blocked: true` results were never persisted at all, so a repeat attempt against an already-abusive name relied on Claude's non-deterministic classification catching it again every single time. Legacy rows (written before this column existed) default to `"copyright"`, preserving their original behavior.
-- **Blocking a name — automatically via Claude, or manually via `/admin/moderation` — now scrubs it everywhere, not just the shared cache.** `src/utils/avatarGeneration.ts`'s `scrubUserBotsByName` (new, alongside the existing `scrubCachedAvatar`) deletes every signed-in user's own saved `bots` row matching the name case-insensitively, across every user and environment; `messages` rows cascade-delete automatically via their FK to `bots.id`. Added alongside the living-person guardrail: a user's own private saved copy of a now-blocked name (and its full chat history) is a real concern independent of whether that name was ever on the public Character Wall. `src/pages/api/admin/blocklist.ts`'s manual-add endpoint also gained an immediate scrub call — previously it only prevented *future* generations, leaving an already-cached/saved name fully visible until someone happened to re-trigger `validate-character` for that exact name again. A manual admin add defaults to `category: "content"` (Claude's own classification already auto-handles the copyright category, so a manual add is far more likely covering that gap) unless the request explicitly passes `category: "copyright"`.
-
-**Overriding a warning/caution never persists anything server-side.** `useBotCreation.ts` captures whether the run reached `handleCreate` via `handleValidationContinue` (i.e. the user clicked "Continue Anyway") into a `skipPersistence` flag that rides along on the `Bot` object itself, all the way through: `POST /api/generate-avatar` gets `{ skipPersistence: true }` and, when set, never reads or writes the shared `avatar_cache` table and never uploads to Vercel Blob (returns the raw base64 data URL instead of a durable link) — see `src/pages/api/generate-avatar.ts`'s `bypassPersistence`. `src/app/index.tsx`'s `handleBotCreated` checks `bot.skipPersistence` before its usual fire-and-forget `POST /api/bots`, so the character never lands in that signed-in user's own `bots` row either — it behaves exactly like a guest's character for that session (localStorage only). `ChatHeader.tsx` also hides the Download Transcript button for such a bot, so no durable artifact of the session leaves the app. `CopyrightWarningModal.tsx`'s disclaimer text tells the user this up front. None of this touches personality or voice generation — those were never cached/persisted per-name to begin with.
+- **`scrubbed: true`** (blocklist hit, or a fresh "warning" for an already-cached name) is treated
+  like `blocked`: a hard stop with "This character is no longer available".
+- **Blocking scrubs everywhere:** `avatarGeneration.ts`'s `scrubCachedAvatar` and
+  `scrubUserBotsByName` delete the shared cache row and every user's saved `bots` row for the name
+  (case-insensitive, all users and environments; `messages` cascade). The manual admin add does the
+  same immediately and defaults to `category: "content"` unless it passes `"copyright"`.
+- **The prompt separates** "a name meaningful only because of one corporate work" (`warning`:
+  Spider-Man, Pikachu) from "a mythological, historical, or pre-1928 figure a studio also adapted"
+  (`none`: Thor, Sherlock Holmes, Winnie-the-Pooh, Hercules), with those worked examples inline.
+- **`/admin/moderation`** (`src/app/admin/moderation/`, `AdminModerationView.tsx`) is one page with
+  three sections: "Recently warned" (read-only, time-window filter, `GET /api/admin/warnings`, inline
+  Allow/Block), "Allowed", and "Blocked" (CRUD via `POST`/`DELETE` on
+  `src/pages/api/admin/{allowlist,blocklist}.ts`, plus "Move to X"). A name is never on both lists:
+  each list's `POST` removes it from the other server-side, which is what makes Move and the warning
+  log's buttons work. A `refreshKey` bumped on any mutation re-fetches every section. The table uses
+  `table-layout: fixed` with ellipsis (one line per row) and drops Reason/Source/Added below 640px
+  (icon-only actions keep `aria-label`/`title`); scrolling and stacked-card layouts were rejected.
+- **Overriding a warning/caution never persists anything server-side.** `useBotCreation.ts` sets
+  `skipPersistence` on the `Bot` when the user clicks "Continue Anyway". `generate-avatar.ts`
+  (`bypassPersistence`) then skips `avatar_cache` and Vercel Blob (returns the base64 data URL),
+  `index.tsx`'s `handleBotCreated` skips `POST /api/bots` (the character behaves like a guest's,
+  localStorage only), `ChatHeader.tsx` hides Download Transcript, and the modal's disclaimer says so.
 
 ### Supported-character gate (unrecognized names)
 
-`validate-character.ts`'s single Claude call classifies a third, independent concern — `recognized: boolean` — asking whether the name identifies an established fictional, historical, mythological, religious, or folklore figure Claude has real knowledge of. A `false` result is a non-overridable stop in shared `useCharacterCreation`: web and mobile show the same “couldn't identify” error and never call personality, avatar, or voice generation. The former original-character description/appearance modals and their API fields were removed in v0.24.0. Validation still defaults `recognized` to `true` on transport/server errors so a transient Claude outage does not disable all character conversations.
+The same validation call also returns `recognized: boolean` (an established fictional, historical,
+mythological, religious, or folklore figure Claude knows; a bare common noun or generic archetype
+counts as unrecognized). `false` is a non-overridable stop in shared `useCharacterCreation`: web
+and mobile show the same "couldn't identify" error and never call personality, avatar, or voice
+generation. It defaults to `true` on transport/server errors so a Claude outage doesn't disable
+chat. Original-character creation was removed in v0.24.0. Legacy `skipPersistence` sessions are
+deleted from local storage by `getValidBotFromStorage` (web) and `loadBot` (mobile) instead of
+resuming.
 
-Legacy original-character sessions used `skipPersistence`, so `getValidBotFromStorage` (web) and `loadBot` (mobile) now delete those local active-bot/history/voice keys instead of resuming them. `npm run chars:scrub-unrecognized -- --dry-run` conservatively reviews all legacy `avatar_cache` names, reports only names classified as unambiguously invented plus same-name saved bots, and the non-dry run deletes those cache/bot/message rows plus unreferenced Vercel Blob images. Short names, titles, epithets, obscure figures, and every uncertain case are preserved. It intentionally never infers “unrecognized” from a missing cache row. Run and verify the dry run against the intended environment before the destructive pass; once production cleanup is confirmed, remove the one-time script.
+### Account persistence
 
-### Avatar generation (`src/pages/api/generate-avatar.ts`)
+Optional accounts with server-persisted bots and history, additive: guest usage works unchanged and
+everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401.
 
-**Avatar generation runs on free image providers only — no payment method required at all** (the earlier Gemini/Vertex path was fully removed). Two-stage: Claude (`text-simple` tier) writes a detailed, SFW image-description prompt from the established character name, then an image is rendered by whichever free provider succeeds first:
-
-1. **Cloudflare Workers AI** (`src/utils/cloudflareImageGen.ts`, model `@cf/black-forest-labs/flux-1-schnell`) — tried first when `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are both set. Free tier: 10,000 "neurons"/day, no payment info required; a Workers Paid plan (not configured here) would be needed to go past that, so requests simply start failing once the daily allocation is exhausted rather than silently incurring cost.
-2. **Pollinations.ai** (`src/utils/pollinationsImageGen.ts`) — free, anonymous, no API key, no comparable daily cap. Used whenever Cloudflare isn't configured, errors, or is rejected by its own safety filter, so it's also what runs immediately if `CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN` are simply unset (e.g. a fresh clone with no Cloudflare account). Its anonymous tier may render a small "pollinations.ai" watermark into the image — there's no free-tier way to suppress that.
-
-Each provider function returns `null` on any failure (missing config, non-2xx response, safety filter, empty body) rather than throwing, so the handler's `if (!avatarUrl)` fallthrough is what actually chains them — same degrade-gracefully shape as the Blob upload and avatar-cache logic below. If `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` is set, the resulting image is uploaded to Vercel Blob (`avatars/<uuid>.<ext>`, public access) and a durable Blob URL is returned; otherwise (no token configured, e.g. local dev with no Blob store) it falls back to a base64 data URL. Blob upload failures don't fail the request — they fall back to the data URL too. Rate-limited to 5 req/min/IP since image generation calls are comparatively expensive to redo.
-
-**Both providers' `fetch()` calls carry a 25s `AbortSignal.timeout`.** Plain `fetch()` has no default timeout of its own, and a stalled request (most plausible on Pollinations — anonymous, unauthenticated, no daily-cap protection) used to hang the calling `await` forever rather than ever reaching the try/catch that degrades gracefully. Found live via the guessing game's `/api/guess-who-next/start` (which calls this same pipeline in-process — see "Guessing game" below) getting stuck indefinitely in dev.
-
-**Fuzzy name matching happens one step earlier, in `src/pages/api/generate-personality.ts`** — before an avatar is ever generated, so a misspelling reuses the existing cache row instead of spawning a duplicate. `generatePersonalityPrompt` (`src/config/serverConfig.ts`) fetches up to 300 existing `avatar_cache` names (`fetchExistingCharacterNames`, newest first, no-op without `DATABASE_URL`) and folds them into the *same* Claude call that already generates the personality, asking it to return a `correctedName`: the input with spelling/casing fixed, or — when the input is clearly a misspelling or minor variant of one of those existing names — that exact existing name instead. This is a single reused call, not an extra round trip. `correctedName` then flows through unchanged to `/api/generate-avatar`, whose `avatarCacheKey()` lowercases it for the lookup — so "sherlok holmes" naturally hits the same row as an existing "Sherlock Holmes" rather than creating "sherlok holmes" as a second, permanently-misspelled entry.
-
-**`avatarCache.displayName`** (`src/db/schema.ts`) stores that properly-cased `correctedName` at write time (`cacheAvatar` in `generate-avatar.ts`) — the one place the correct casing is actually known, since Claude produced it. `src/pages/api/chars.ts` prefers this column over its own regex-based `toDisplayName` reconstruction, which is necessarily lossier (it can't know "III" should stay uppercase, or that "of"/"van"/"da" stay lowercase mid-name, purely from a lowercased string). Nullable — rows written before this column existed fall back to the regex reconstruction; `scripts/backfill-avatar-display-names.cjs` (`npm run chars:backfill-display-names`, optionally `--dry-run`) asks Claude to fill in `display_name` for any row still missing one.
-
-**`correctedName` also expands to the character's fullest commonly recognized name, not just corrected casing** — added 2026-09-18. `generatePersonalityPrompt`'s `fullNameGuidance` instruction (`src/config/serverConfig.ts`) asks Claude to return first and last name at minimum when a character genuinely has one (e.g. "Einstein" -> "Albert Einstein", "Napoleon" -> "Napoleon Bonaparte"), plus an honorific/regnal number/suffix where that's genuinely how they're commonly identified — applied both when there's no `EXISTING_NAMES` match and as the fallback when there is one but nothing matches. Deliberately conservative in four ways, the last three tightened after real dry runs of the backfill script below surfaced each failure mode: (1) Claude is told never to fabricate a surname for a figure genuinely known by one name (e.g. "Zeus", "Gandalf") — those are left as-is; (2) an expansion must add real, specific identifying information that resolves to exactly one individual — never swap one vague descriptor/epithet for a different, equally vague one ("the monster" -> "the creature" for Frankenstein's deliberately unnamed creation added no identifying information at all), and never produce a title that's itself still ambiguous between multiple people ("Buckingham" -> "Duke of Buckingham" didn't disambiguate anything — several historical Dukes of Buckingham exist); (3) never swap a pen name/stage name/nickname that is ITSELF the more commonly recognized form for a less-recognized birth name (an early version of this instruction turned "Molière" into "Jean-Baptiste Poquelin" — his real name, but strictly worse for this app's purposes); (4) never guess when a bare name is genuinely ambiguous between two or more distinct, similarly well-known people (e.g. "Brutus" expanded to Lucius Junius Brutus, the Republic's founder, when pop culture's "Brutus" — "Et tu, Brute?" — is at least as likely Marcus Junius Brutus, Caesar's assassin; nothing in a bare name disambiguates the two, so it's now left unexpanded instead). Since `correctedName` is the one place this happens, every downstream store inherits it for free: `avatarCache.displayName`/`characterName` (the lowercased PK), a signed-in user's `bots.name`, and the versioned localStorage keys (`chatbot-history-<name>`, `voiceConfig-<name>`) that key off the same string.
-
-- **`scripts/backfill-full-character-names.cjs`** (`npm run chars:backfill-full-names`, optionally `--dry-run`) is the one-time retroactive catch-up for characters created before this expansion existed. It re-derives the fullest name for every `recognized = true` `avatar_cache` row in a **single Claude call**, not batched — this app's cached-character count is hobby-scale, same reasoning as `chars:scrub-copyrighted` below — using the exact same `fullNameGuidance` wording (including both guardrails above) so the backfill and live character creation never disagree. Unlike the display-name-only backfill above, it renames the row's `character_name` **primary key** too (not just `display_name`): renaming only the display name would leave the cache key short, so a later visitor typing the full name would miss the cache and generate a second, duplicate portrait for the same person. When the target key already has its own row (a short form and a full form were both independently cached), the shorter row is deleted after logging its avatarUrl/gender/category/displayName for manual recovery — the one destructive step, and it's opt-in, logged, and never runs automatically. It then mirrors each confirmed rename onto any signed-in user's `bots` row with a matching name (skipping — and logging — a rare per-user name collision rather than violating the `(user_id, name, environment)` unique constraint). Deliberately restricted to names it just confirmed are real recognized characters via `avatar_cache`: `bots` has no `recognized` column of its own, so a user's original/invented character (never cache-keyed by name) is never touched by this script, avoiding Claude fabricating a surname for someone who was never real. Not run automatically. Known, self-healing gap: an already-open browser session's localStorage keeps the pre-backfill name until the user resumes that character via the landing page's "Resume" dropdown (which reloads from `GET /api/bots` and picks up the new name) — until then it behaves like an ordinary un-renamed local session, the same degrade-gracefully shape used elsewhere when a client-held name doesn't match a `bots` row.
-
-### Character Wall (`/chars`)
-
-A public, no-auth gallery of every supported portrait in the shared `avatar_cache` — every established character/person name and AI-generated portrait this app has produced, on one page. Nothing here is per-user data; a row is already discoverable by anyone who types that exact name into the launcher, so listing it publicly discloses nothing new. `src/pages/api/chars.ts` retains `WHERE recognized = true` while the v0.24.0 retirement cleanup is pending, preventing any legacy unrecognized row from appearing before it is deleted by `chars:scrub-unrecognized`.
-
-- **`avatar_cache.category` / `src/utils/characterCategories.ts`** — nullable persisted taxonomy with six stable identifiers: `history`, `mythology`, `literature`, `folklore`, `religion`, and `other`. New portraits receive a category from the same Claude response that already writes their avatar prompt (no additional generation call). Missing or unknown API values degrade to `other`. The one-time historical backfill (batches of 25, guarded to never overwrite an existing classification) ran on 2026-09-18: all 129 eligible legacy rows were filled, with zero recognized rows left uncategorized — the now-fully-consumed script has since been deleted.
-- **`src/pages/api/chars.ts`** — `GET`-only, paginated (`limit`/`offset`, default 60, max 100, `hasMore` in the response). `sort` accepts `newest` (default), `oldest`, `name-asc`, or `name-desc`; `group` accepts `none` (default) or `category`. The full cached list is ordered before pagination, and category grouping makes the stable taxonomy order primary and the requested sort secondary. Backed by an in-process cache of the full row list with a 60s TTL (`getAllCharacters()`), so infinite-scroll pagination from many concurrent visitors costs at most one `avatar_cache` table scan per minute per warm instance, not one query per page fetch. Per-instance only (resets on cold start, not shared across serverless instances) — the same tradeoff class as the rate limiter's default MemoryStore; sharing it across instances would mean pulling in the Redis store already wired up in `rateLimitStore.ts`, not worth it for data that changes this slowly.
-- **`src/app/components/CharsGallery.tsx`** — puts a slim, responsive Sort by select and Group by category switch above the collection rather than a large settings card. The defaults are Recently added and grouping off. Turning grouping on reloads from offset zero and presents every category as an independently expandable header, all collapsed initially; quick control changes ignore stale in-flight responses. The page is one broad tattered-parchment surface, with portraits distributed through a CSS multi-column masonry collage that uses six or fewer compact columns based on available width, and never fewer than two, even on narrow phones — fixed 2026-09-29 after live feedback that a sub-380px viewport (iPhone SE/12 mini) collapsed to a single-column scroll. There is no book binding, page division, decorative dot texture, catalogue metadata, or text beyond each portrait's full wrapping name. A `.dark`-scoped charred-parchment palette preserves the archival concept while respecting the app theme. Each tile's aspect ratio and restrained rotation are chosen by a stable hash of the character name (`hashString` — djb2), so pagination never reshuffles its treatment. Infinite scroll uses a callback ref + `IntersectionObserver` on the conditionally-rendered sentinel (a plain mount-time ref effect would miss it). The floating "To top" control reads and listens to `body` (the actual Chromium scroll owner under this app's flex-root layout), window, documentElement, and scrollingElement; it appears after 360px and uses `scrollIntoView()` on a marker before the app header, eliminating scroll-owner and header-offset mismatches while honoring reduced motion. A native `<dialog>` (`showModal()`/`close()`) provides the click-through lightbox and is wrapped in the feature-detected View Transitions API. Since the wall can be opened from many app surfaces, its header uses a universal arrow + "Back" control that calls browser history and falls back to `/` only when there is no same-app entry to return to; it does not claim the destination is Home or Chat. That fallback decision deliberately does not use `window.history.length` — a brand-new tab already carries an `about:blank` entry ahead of the first real navigation, so `history.length` reads 2 (not 1) the moment `/chars` is loaded directly, which sent a fresh visitor's "Back" click into a blank page instead of `/`. `src/utils/clientNavigationState.ts` tracks this instead with an in-memory (never persisted) flag set by `Providers.tsx` the first time `usePathname()` changes after mount — true only once at least one real client-side route change has happened in this tab's running app instance, which a hard reload or fresh tab always resets. The page uses the shared `AppHeader`, `BackHomeLink`, and `useAccountMenu()` chrome.
-- **"Chat with this character" launches straight into a chat, not the landing page.** The lightbox's link is `/?name=<encoded name>` — the exact same launch point `BotCreator.tsx` already reads via `useSearchParams()`. Landing on that URL never shows the ordinary creator form (input, Random button, footer links): `BotCreator`'s `isLaunchingFromUrl` flag hides all of it in favor of a bare loading spinner, so the transition reads as "opening a chat," not "landing on the creator page, which then happens to fill itself in." Resolution order once there:
-  1. Signed in + a saved `bots` row with that exact name (case-insensitive) already exists → resume it via `persistedBotToBot()` (exported from `BotCreator.tsx` alongside `PersistedBot`), so it's the user's actual saved personality/voice/avatar, not a fresh regeneration.
-  2. Otherwise (guest, or no saved match) → falls through to the ordinary `handleCreate()` generation pipeline.
-  - **StrictMode footgun already fixed once, don't reintroduce it:** the guard ref (`hasAutoSubmittedRef`) is set synchronously *before* the `/api/bots` lookup's `await` resolves. React 18 StrictMode runs every effect twice in dev (mount → cleanup → mount again) without resetting refs in between; if the cleanup ran while that fetch was still in flight, the first invocation's result got silently dropped (`cancelled` check) while the second invocation saw the guard already set and bailed — so *nothing* ever called `onBotCreated`/`handleCreate`, and the launch hung on the loading screen forever. Fixed by tracking a local `dispatched` flag and only releasing the guard in the effect's cleanup when nothing was actually dispatched yet. `tests/app/components/BotCreator.url.test.tsx` has a dedicated regression test that renders inside `<React.StrictMode>` to pin this.
-- **Profanity is blocked before a name can ever reach this page** — see the `blocked` field described in the copyright-validation section above.
-
-### Voice input (speech-to-text)
-
-`src/app/components/useSpeechRecognition.ts` wraps the browser's native
-`SpeechRecognition`/`webkitSpeechRecognition` API (Chrome/Edge; no support in Firefox,
-inconsistent in Safari) — deliberately not a server-side MediaRecorder + Google Cloud
-Speech-to-Text round trip, so voice input costs nothing per use and needs no new backend
-route. `isSupported`/`isRecording`/`transcript`/`error` plus `startRecording`/
-`stopRecording`/`toggleRecording` are returned rather than writing into an input
-directly, so the merge decision lives at the integration point, not inside the
-browser-API wrapper. Covers three text fields: ordinary chat and the guessing game's
-shared `ChatInput.tsx`, and the landing page's character-name field
-(`src/app/components/BotCreator.tsx`) — each integration point owns its own wiring
-(there's no shared "attach a mic to this input" component), but all three consume the
-same hook and the same `normalizeDictatedText` cleanup below.
-
-- **The mic button is a toggle** (click to start, click to stop), mirroring the
-  existing audio mute/unmute button's interaction pattern rather than push-to-talk.
-  It renders in `ChatInput.tsx` only when `isSpeechSupported` — unsupported browsers
-  never see a broken control, just no button — and is hidden while `isAudioPlaying` to
-  cap simultaneous icon buttons at 3 on mobile widths (mic+toggle+send, or
-  stop+toggle+send, never all four); dictating while the character is still talking
-  isn't a real use case anyway. `BotCreator.tsx`'s own mic button (its own inline
-  markup/CSS, not an import of `ChatInput.module.css` — see the "no shared CSS modules"
-  convention) follows the same toggle/icon pattern, hidden instead while validation or
-  generation is already running (`isBusy`, the same condition that already disables its
-  Random/Create buttons).
-- **The live transcript is run through `normalizeDictatedText`** (capitalization and
-  punctuation spacing only — collapses whitespace, drops a space before punctuation,
-  capitalizes sentence starts and the standalone pronoun "i") before it's returned,
-  so the input already reads cleanly while still dictating. Deliberately not a real
-  spelling/grammar/misheard-word correction pass — that would need a Claude call,
-  which breaks voice input's zero-cost design; a misheard word is still on the user to
-  fix before sending, same as a typo.
-- **Starting a recording overwrites the current input text** rather than appending, to
-  avoid interim-result flicker against already-typed text. `useChatController.ts`
-  (ordinary chat), `useGameController.ts` (the guessing games — same shared
-  `ChatShell.tsx`/`ChatInput.tsx`, so this had to ship in both places for parity), and
-  `BotCreator.tsx` (the landing page's character-name field) all sync the live
-  transcript into their own input while recording, force-stop any in-progress recording
-  the moment a name/message actually submits, and route a speech error into the same
-  error banner their own screen already uses for other errors. The game's own
-  `useGameSession` (shared with mobile) doesn't expose a settable error, so its speech
-  error is tracked in a local `speechErrorDisplay` state instead, cleared the moment a
-  message sends; `BotCreator.tsx` routes into `useBotCreation.ts`'s own `setError`
-  (from the shared `useCharacterCreation` hook) since that's a local `useState`, not a
-  `set-state-in-effect`-flagged local state the way `useChatController.ts`'s `setInput`
-  is — so its sync effects don't need the disable-comment wrapper the other two do.
-- **`next.config.mjs`'s `Permissions-Policy` allows `microphone=(self)`** (this origin
-  only; embedded iframes still blocked) — it previously blocked microphone access
-  entirely (`microphone=()`).
-- **Mobile is a deliberate, evaluated parity gap, not a "not built yet."** The most
-  actively maintained Expo-compatible speech-recognition library
-  (`expo-speech-recognition`, wraps native Android `SpeechRecognizer` and iOS
-  `SFSpeechRecognizer`) requires a custom dev client (Expo prebuild) — it cannot run in
-  plain Expo Go on either platform (there's no Android-only version of this gap; the
-  module set Expo Go bundles is identical across both OSes). `apps/mobile/CLAUDE.md`
-  documents staying on plain Expo Go as a deliberate decision (a dev client was tried
-  once, for an unrelated keyboard bug, and fully reverted), so adopting one for this
-  feature needs its own decision, not a side effect of shipping web voice input.
-  A record/upload/transcribe round trip via Google Cloud Speech-to-Text (the same GCP
-  project already billing TTS) was prototyped on a branch as the Expo-Go-compatible
-  alternative and evaluated 2026-09-27, then declined for now: real dollar cost is
-  trivial at this app's scale (~$0.002-0.003 per short dictated message vs. web's
-  $0/free browser-native path), but it reopens a genuine, unforced privacy question —
-  sending a user's own recorded voice to a cloud API — that TTS's synthesized *output*
-  never had to answer, for a feature currently used by nobody. Revisit either path
-  (dev client, or the GCP round trip) if real user demand for mobile voice input shows
-  up; the branch's approach (platform-specific recording format — AMR_WB on Android,
-  LINEAR16/WAV on iOS — chosen so no server-side transcoding is ever needed, a shared
-  `normalizeDictatedText` extracted to `packages/shared` for both platforms to reuse,
-  and a hard 20s client-side recording cap so a stuck-open mic can't run up an
-  open-ended bill) is a reasonable starting point if picked back up. See CLAUDE.md's
-  web/mobile parity goal above.
-
-### Client-side storage
-
-`src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Known keys: `chatbot-bot`, `chatbot-history-<bot.name>`, `voiceConfig-<bot.name>` (versioned — use the versioned helpers in `storage.ts`, never write the shape directly), `audioEnabled`, `darkMode`, `bot-session-id`, `chatbot-user-name` and `chatbot-user-name-gate-skipped` (the visitor's own preferred name and whether they've dismissed the name gate — see "Personalized greeting" below), `chatbot-guess-who-token`/`chatbot-guess-who-state`/`chatbot-guess-who-instructions-seen` (the clue game's encrypted token, visible state, and instructions gate), `chatbot-guess-who-next-token`/`chatbot-guess-who-next-transcript`/`chatbot-guess-who-next-instructions-seen` (the conversation game's equivalent state), `chatbot-landing-carousel-cache` (the landing header carousel's last-fetched portrait sample, repainted immediately on a return visit — see "Unified header" below), and `portrayal-google-analytics-consent` (web-only `granted`/`denied` choice for optional GA4; never an identifier). Never store secrets or PII here; it's client-side only.
-
-### Guessing games: one engine, two definitions
-
-"Guess Who" and "Guess Who's Next" (below) are **one game engine with two
-`GameDefinition`s**, refactored from two parallel, near-identical copies of every layer
-(routes, token, scores, session hook, controllers, pages, screens, CSS, tests). A game
-change is now one edit that reaches web, mobile, and both games at once; only what
-genuinely differs lives in a definition.
-
-- **`packages/shared/src/game.ts`** holds `GUESS_WHO`/`GUESS_WHO_NEXT` (`GAMES`, `GAME_LIST`
-  with Guess Who first) and the pure logic: response parsing, `applyGameMessageResponse`,
-  `revealGameMessages`, and `createGameTransport(game, io)` (URLs, per-game wire token name,
-  and validation over a platform's raw `get`/`post`/`round` primitives). `useGameSession.ts`
-  is the one client state machine. A definition carries `slug`, `tokenField` (wire name of
-  the round token), `eventPrefix`, `hidesSpeaker`, `storageKeys`, and `copy`
-  (`gameCopy.ts`).
-- **`hidesSpeaker` is the one real behavioral difference.** `false` (Guess Who's Next): a
-  named, shown character steers toward a *different*, hidden one. `true` (Guess Who): the
-  character being chatted with *is* the mystery; its name and avatar are generated eagerly
-  but live only inside the encrypted token until a correct guess, second wrong guess, or
-  give-up. The header shows a silhouette and "???" until then, and **a reveal retroactively
-  rewrites the round's already-shown transcript** (`revealGameMessages`).
-- **Server: one implementation per endpoint under `src/pages/api/[game]/`** (`start`,
-  `continue`, `message`, `give-up`, `high-score`, `leaderboard`, `leaderboard-settings`),
-  wrapped by `src/utils/game/route.ts`'s `gameRoute` (resolves `[game]`, 404 otherwise,
-  per-game-per-endpoint rate limiter named `<slug>-<endpoint>` as before, request log). One
-  `@swagger` block per route documents both games via a shared `Game` path parameter
-  (`scripts/generate-openapi.cjs`). `src/utils/game/` holds `definitions.ts` (slug lookup and
-  score tables; no Claude imports, every route loads it), `token.ts`, `round.ts`
-  (`planRound`, `generateGameRound`) and `scores.ts` (parameterized on `game.tables`).
-- **The wire format is unchanged, deliberately.** Each game keeps its historical token field
-  (`guessWhoToken`/`gameToken`), URLs, response fields, and analytics event names
-  (`guess_who_*`/`guess_who_next_*`, aggregated by `/api/admin/stats`), so released mobile
-  builds keep working with no forced upgrade. Clients normalize to `token` at the boundary.
-- **One token payload for both games** (`GameState`: `speakerName`, `targetName`, equal in
-  Guess Who) with a **`game` discriminator, so a token never verifies against the other
-  game's routes**. **`verifyGameState` still accepts pre-unification tokens** (`fromLegacy`)
-  so runs in players' storage survive the deploy; delete that branch once none can remain, at
-  the cost of resetting such runs. Verification still fails CLOSED.
-- **Persisted client state keeps its on-disk layout** (token under `storageKeys.token`, the
-  rest as JSON under `storageKeys.transcript`), so older web and mobile saves resume.
-  `useGameController.ts` (web) and `apps/mobile/src/useGameController.ts` supply only
-  transport, storage, logger, audio, and (web) SSE progress; `GamePage.tsx` (one
-  `GamePage.module.css`) and `GameScreen.tsx` (exporting `GuessWhoScreen`/
-  `GuessWhoNextScreen`) are one component each.
-- **`src/utils/classifyGuess.ts`** is the classifier both games share, so the tuned few-shot
-  examples (Edward/Edmund, Hamlet/Laertes, Beauty/Cleopatra, Venus/Aphrodite) live once.
-- **Database tables stay separate per game** (`guess_who_*`, `guess_who_next_*`): they are
-  selected by config, and merging them would add a production data migration for almost no
-  code saved. `schema.ts` keeps them explicit because `scripts/check-db-schema.cjs`
-  regex-scans it.
-- **Tests run each shared flow once per game** (`describe.each`), branching only where the
-  games differ; fixtures in `tests/helpers/gameRoute.ts`.
-
-### Guess Who (self-describing chat game)
-
-`/guess-who` is the first/default game wherever both games appear. Redesigned 2026-09-29
-from a static clue list to a real chat: the player converses with a mystery character that
-never reveals its own name and drops escalating real clues about itself.
-
-- **One wrong guess is tolerated per round, a second ends the run.**
-- **`generateGuessWhoSelfCluePersonaPrompt(name, work?)`** (`serverConfig.ts`) is the inverse
-  of `generateGameCluePersonaPrompt`: first person, never names itself, escalates from a
-  broad self-description to specific checkable facts within a couple of exchanges, grounded
-  in `gameCharacterWork.ts`. Its opening uses `SELF_CLUE_OPENING_INSTRUCTION`
-  (`gameReply.ts`), never the default "introduce yourself" line, which gave the name away.
-- **Give-up is a pure token decode and release**, no Claude call.
-- Scores use the `guess_who_*` tables; `/leaderboard` shows both top tens as tabs.
-
-### Guess Who's Next (conversation game)
-
-A second mode alongside ordinary chat, built as a chain. The player starts a run in a normal-feeling chat with a real, NAMED character (revealed — name and avatar shown just like any other chat). That character talks as itself but is instructed to naturally steer the conversation toward a *different, hidden* figure it has in mind. **There is no separate guess control** — the player types both ordinary questions and guesses into the same box, and the server itself classifies which is which on every turn (see `src/pages/api/[game]/message.ts`); when it's genuinely unclear, the character asks the player to confirm what they mean, in character, rather than guessing on their behalf. One wrong guess per hidden target is tolerated; a second ends the run, or the player can voluntarily give up anytime — either via the hamburger menu's "Give Up" button, or by typing it straight into the chat box ("I give up", "just tell me") — and always be told the answer (see `src/pages/api/[game]/give-up.ts` below). A correct guess reveals the hidden figure and holds on a "Continue" prompt (see the round-switch bullet below) before **that revealed figure becomes the player's new chat partner** — greeting them and, in turn, steering toward a fresh hidden target — continuing the chain and building a streak. TTS audio is generated for every reply, same as ordinary chat. Phase 1 (guest-playable core loop, this section) is functionally built, manually verified in dev, and has automated test coverage — Phase 2 (a public, opt-in cross-user leaderboard) is built too, see the leaderboard bullets below.
-
-Getting the "who's hidden" direction backwards here is an easy mistake (an earlier internal draft of this feature had the *current* character hiding its own identity instead, and a separate draft had a dedicated guess-only input box) — the character you're chatting with is never the mystery; the person they're describing is; and guessing happens in the same box as everything else.
-
-- **Round state lives in a signed, encrypted, opaque token — not a DB row.** `src/utils/game/token.ts`'s `GameState` carries both `currentCharacterName` (revealed, safe to show) and `nextCharacterName` (the hidden guess target), plus `currentCharacterName`'s generated persona prompt, avatar/gender/voiceConfig, the streak, the current wrong-guess count, and every name already met this streak (`usedNames`, to avoid repeats). `signGameState`/`verifyGameState` encrypt all of it into a single AES-256-GCM token the client holds (in localStorage) and echoes back on every `/api/guess-who-next/*` call. This is deliberate, not a shortcut: `nextCharacterName` must never be readable by the client (guest or signed-in), and this app's dominant pattern is "guest is fully client-authoritative, the database is a bonus, never a requirement" (see "Account persistence" below) — a DB-backed session table would be the first piece of core gameplay to require a database.
-- **Key derivation never falls back to a per-process random key.** `getKey()` derives the AES key from `GAME_TOKEN_SECRET ?? NEXTAUTH_SECRET ?? API_SECRET` — since `API_SECRET` is already a required env var in this app, this needs zero new required configuration and stays stable across every concurrent Vercel serverless instance. Only a deliberate secret rotation ever invalidates an in-flight token, degrading to a friendly "please start a new game" 400, never a crash.
-- **`verifyGameState()` fails CLOSED — the one deliberate exception to this codebase's usual fail-open convention** (an avatar-cache miss regenerates; a personality-generation error falls back to a generic template). Any tamper, malformed input, or decrypt failure returns `null`, and `src/pages/api/[game]/message.ts` treats that as a hard 400, never as a partially-trusted state.
-- **The character-generation, avatar, and voice pipelines are shared with ordinary bot creation, not duplicated.** `src/utils/pickRandomCharacterName.ts` (extracted from `src/pages/api/random-character.ts`), `src/utils/avatarGeneration.ts`'s `getOrGenerateAvatar` (extracted from `src/pages/api/generate-avatar.ts`), and `src/utils/characterVoices.ts`'s existing `getVoiceConfigForCharacter` are all called in-process by the game's routes instead of over HTTP. An avatar/voice is only ever resolved for `currentCharacterName` (the one actually shown) — never for the still-hidden `nextCharacterName` — so there's no accidental spoiler.
-- **`src/utils/game/round.ts`'s `generateGameRound(currentCharacterName, excludeNames, onProgress?)`** is the one place the persona → avatar → opening reply → voice → TTS sequence lives, shared by `src/pages/api/[game]/start.ts` (a run's first round) and `src/pages/api/[game]/continue.ts` (the next round after a correct guess — see "deferred round generation" below for why that's its own endpoint rather than living inside the guess-judging call). The persona prompt and the avatar each depend only on `currentCharacterName`, not on each other, and the opening reply (needs the persona) and the voice config (needs only the avatar step's `gender`) likewise don't depend on each other — so the 5 network calls run as `[persona ‖ avatar] → [opening reply ‖ voice config] → TTS synthesis`, 3 sequential stages instead of 5, with no behavior change. The optional `onProgress` callback fires the instant each named step genuinely completes — see "real SSE-driven progress" below for what consumes it.
-- **`src/config/serverConfig.ts`'s `generateGameCluePersonaPrompt(currentCharacterName, nextCharacterName)`** builds the persona the player actually talks to, reusing `generatePersonalityPrompt` for `currentCharacterName`'s own voice and appending a rules block: steer toward `nextCharacterName` without naming them; never claim not to know or refuse to discuss `nextCharacterName` for being from a "different time/place/story" than `currentCharacterName` (the pool spans wildly different eras/cultures/fictional universes, and this would break immersion); the opening greeting must include one real, narrowing category-level fact (broad era/culture/domain, e.g. "a queen from ancient Egypt") rather than pure mood; and follow-up answers must escalate to a specific, checkable fact (a defining deed/relationship/event, still never the name) within the first couple of exchanges rather than holding back. **Retuned 2026-09-19 for GitHub issue #878 ("game is too hard").** The original rules required a purely atmospheric opening hint with zero real content and explicitly calibrated for "real inference across several exchanges, not a lucky first guess" — that read as stalling rather than teaching, since a contentless hint gives the player nothing to reason from. The prompt now explicitly favors the player walking away with a long streak of correct guesses over a round nobody can solve.
-- **`src/utils/gameReply.ts`** holds the three Claude-call shapes the game needs: `getGameReply` (ordinary in-character turn, takes an optional `extraInstruction` used to ask for confirmation when a guess is ambiguous), `getOpeningReply` (a round's greeting, wrapping `getGameReply` with a never-throws fallback), and `getGuessReactionReply` (the one-turn override that lets the persona confirm/deny/reveal once `src/pages/api/[game]/message.ts` has already judged a guess — also never throws, falling back to a templated reaction). The reaction call deliberately receives only that authoritative outcome and the canonical revealed name, never the raw guess or transcript: correctness must be settled once before response generation, not independently re-judged by a second model call that can contradict the banner. This never-throws guarantee matters most on a correct guess: the player already succeeded, so a transient Claude hiccup generating the *next* character's greeting must never turn that success into a 500.
-- **Four endpoints, no separate `/api/guess-who-next/guess`.** `src/pages/api/[game]/start.ts` picks both names, generates the persona + avatar + voice, and returns the opening greeting (with audio) plus the signed token and `currentCharacterName` (safe to reveal). `src/pages/api/[game]/message.ts` handles every ordinary turn and every guess judgment: it verifies the token, classifies the message (`"clear"` / `"ambiguous"` / `"giveUp"` / `"none"`, via a dedicated Haiku classifier that also judges correctness in the same call when `"clear"`), then either replies normally, asks for confirmation (`"ambiguous"`), signals a give-up (`"giveUp"`, see below), tolerates-once-then-reveals-and-ends on a second wrong guess, or — on a correct guess — returns just the in-character reaction and the new streak, deliberately **not** generating the next round itself (see "deferred round generation" below). `src/pages/api/[game]/continue.ts` is the fourth endpoint, called only once the player clicks "Continue" after a correct guess: it reads the still-valid `gameToken` from that same guess to recover the revealed `nextCharacterName` and `usedNames`, then runs the exact same `generateGameRound` pipeline `start.ts` uses. `src/pages/api/[game]/give-up.ts` is the last one: a voluntary end-the-run action, gated behind an in-app confirmation step client-side (`GamePage.tsx`'s give-up dialog). It does no Claude call or avatar/voice work at all — the hidden `nextCharacterName` is already inside the verified token, so it just decodes it and returns `{ revealedName, finalStreak, gameOver: true }`, the same shape the client already renders for a two-wrong-guess game over.
-- **Giving up via chat reuses the exact same confirmation dialog as the menu button, rather than ending the run unconfirmed.** When `classifyGuess` returns `"giveUp"`, `message.ts` skips generating any in-character reply and returns `{ giveUpRequested: true }` alone. `useGameController.ts`'s `sendMessage` sets a `giveUpRequested` flag (the player's own typed message still appears in the transcript; no bot reply is appended for that turn); `GamePage.tsx` watches it and opens its existing give-up confirmation modal — the same one the hamburger menu's "Give Up" button opens — so a stray "I have no idea" phrased as a give-up still requires an explicit confirm before the run actually ends. Only on confirmation does the client call `/api/guess-who-next/give-up` as usual.
-- **The guess classifier's `"clear"` vs `"ambiguous"` bar was tuned after a real dev-session bug.** Decoded session logs (via the `/api/audio?...&text=` query param, which carries the full reply verbatim) once showed a player correctly narrow a round to "England," then guess "Edward" (the real hidden answer was a different, similarly-named king, "Edmund Ironside") repeatedly across eight straight turns, with the character only ever demanding "the full name" and never letting the guess resolve to a scored outcome — `game_guess_correct`/`game_over` never fired once in that session. `classifyGuess` (originally in `src/pages/api/[game]/message.ts`; extracted 2026-09-29 to `src/utils/classifyGuess.ts` so "Guess Who" could reuse the same tuned logic — see that section above) now explicitly treats a single specific candidate name as `"clear"` rather than bouncing it to `"ambiguous"`, and `AMBIGUOUS_GUESS_NOTE` (`src/utils/gameReply.ts`) asks for confirmation once rather than repeatedly. If this regresses, check real session logs the same way rather than relying on a short manual playtest — the failure mode only showed up after many turns.
-- **The guess classifier's `"correct"` judgment was over-corrected too far toward lenient after the Edward/Edmund fix above, and needed its own separate tightening.** Found live on a Preview deployment: hidden character was "Laertes" (Hamlet's foil, Polonius's son), the player guessed "Hamlet" — a different character in the same play — and the classifier scored it as `correct: true`, ending the round on a wrong answer. The `"clear"` vs `"ambiguous"` leniency from the Edward/Edmund fix (accept a single confident candidate name rather than demanding an exact/full name) had bled into correctness itself: the prompt's original "accept ... unambiguous descriptions, not just an exact name match" reads as license to accept a *related* name, not just an *equivalent* one. `classifyGuess`'s system prompt now explicitly separates the two: leniency applies only to the surface form of a name (short/full forms, nicknames, genuine aliases, spelling/transliteration/localization variants, and established title-names of the *same* individual), never to identity — two different people/characters are never a match merely for being closely related (family, rivals, foils, or others from the same story/play/myth/event), with "Hamlet" vs "Laertes" as the prompt's own worked counter-example. If this regresses, it'll look like the opposite failure mode from Edward/Edmund: a real wrong guess getting scored as a win rather than a real right guess getting bounced to ambiguous forever — check for that shape specifically before re-loosening this prompt. **Hardened further 2026-09-19 after a third live instance ("Beauty"/Cleopatra — see the curated-list bullet below):** the Hamlet/Laertes fix only ruled out two *different named* characters being confused; it didn't cover a guess matching the hidden character on a shared trait/epithet/role rather than actual identity. `classifyGuess`'s prompt now adds a second worked counter-example generalizing the same rule: if the hidden character is "Beauty (Beauty and the Beast)", a guess of "Cleopatra" is incorrect even though Cleopatra is also renowned for her beauty — a shared descriptor is never enough on its own, the guess must name the literal same individual — and tells the classifier to default `correct: false` when genuinely unsure between "same individual" and "a different individual who fits the same description."
-- **Mythological/religious counterparts from different traditions are distinct game characters, not aliases.** Added after production accepted "Aphrodite" for a hidden answer of "Venus": even though the Roman and Greek figures are commonly equated and share a domain, the game must score Aphrodite/Venus, Ares/Mars, Zeus/Jupiter, and comparable cross-tradition analogues as different identities. The classifier has an explicit rule and worked Venus/Aphrodite counter-example; translated or localized names still count only when they refer to the literal same individual.
-- **The "how to play" rules are a real, explicit UI surface, not something inferred by playing.** `GameInstructionsModal.tsx` shows automatically the first time a player reaches `/guess-who-next` (gated by `chatbot-guess-who-next-instructions-seen`), and is always reachable again from the game page's menu. Its copy is the accuracy-critical spot for this feature — it must describe the actual mechanic (guesses typed into the same chat box, no separate guess control) rather than an earlier, abandoned draft's design.
-- **Client side reuses the main chat UI, not a lookalike.** `src/app/components/ChatShell.tsx` is the chat screen shell extracted out of `ChatPage.tsx` (header with clickable avatar + portrait lightbox, scrollable transcript, `ChatInput` with full audio controls, `ChatStatus`) — both `ChatPage.tsx` and `GamePage.tsx` render through it now, each supplying its own menu items/modals/banners via its slots, so the game *is* the same chat UI, not a copy that can visually drift. `src/app/components/useGameController.ts` mirrors `useChatController.ts`'s shape (message/loading/error state, scroll/focus via the same `useChatScrollAndFocus`, audio via the same `useAudioPlayer` plus a shared `src/app/components/useAudioEnabled.ts` — extracted because both hooks had grown near-identical copies of the mute-toggle-and-persist logic). Each game transcript message pins both the avatar and gender hint from the round in which it was spoken, so replay regeneration continues to select that speaker's voice after later characters take over the same transcript; an existing audio URL already embeds the full original voice config and is replayed unchanged. **Replaying a message with no `audioFileUrl` of its own (its TTS call failed that turn) used to regenerate through a fresh, context-free server-side re-cast — `getVoiceConfigForCharacter(botName, gender)` with no personality context — which could silently hand the speaker a different, even differently-gendered, voice than every other line they'd said (found live: a male mythological character replayed with a female voice).** `packages/shared/src/replayAudio.ts`'s `findSpeakerVoiceConfig` fixes this by reading the speaker's already-cast `voiceConfig` back out of any other message's own audio URL in the same transcript before falling back to a bare regeneration request — both `useGameController.ts` (web) and mobile's `GuessWhoNextScreen.tsx` call it on every replay. "Back to Home" in the menu ends the run (`quitGame()`) rather than leaving a stale token behind; there's no separate "Quit" control.
-- **Generating the next character is deferred until "Continue" is clicked — a real architecture change made 2026-09-19, not a tweak, after live feedback that a correct guess hung on a long, unlabeled spinner.** The original design had `message.ts`'s correct-guess branch call `generateGameRound` itself and return everything (new `currentCharacterName`, `nextReply`, `gameToken`, avatar/gender/streak) in one response, held client-side in a `pendingAdvance` object until Continue was clicked — meaning the *entire* persona+avatar+voice+reply+TTS pipeline for the next character ran before the player ever saw "Correct!". Now `message.ts`'s correct branch only judges the guess and returns the current character's reaction plus the new streak (fast — one Claude+TTS call), and `useGameController.ts`'s `continueRound()` is what actually calls `src/pages/api/[game]/continue.ts`, only once the player clicks Continue, using the same real-progress streaming described below. On failure, `continueRound` restores the "Correct!" banner and shows an error so the player can retry, rather than being stuck on a disabled input with no way forward.
-- **The "Correct!" moment is a prominent inline banner, not a modal — a modal was tried first and reverted.** `GamePage.tsx`'s `bannerContent` slot sits above the scrollable transcript, never inside it, so it's always visible without ever obscuring the character's own last message the way a modal overlay did. `awaitingContinue` (derived as `lastEvent?.type === "correct"`, not a separate flag) drives a bold, pulsing banner (`.correctGuessBanner`) with the Continue button; once clicked, `continuing` becomes true and that banner is replaced by the *exact same* staged, real-progress spinner the start screen uses (see below) — same underlying pipeline, same UX, per explicit user feedback that the two should match rather than one being a silent spinner. The chat input stays disabled (`apiAvailable={!awaitingContinue && !continuing}`) throughout both states.
-- **`roundStartIndex` must point at the index of the current round's first message in the full `messages` array — a real bug found and fixed after Phase 1 was first called "functionally complete," worth re-checking any time this logic moves.** `sendMessage` computes `historyForServer = messages.slice(roundStartIndex)` (the current round's own transcript) before appending the new turn. The original bug: the post-correct-guess update computed the *next* `roundStartIndex` as a length relative to the current round's own slice rather than an absolute index into the full array, which only coincidentally produced the right value on the very first round switch. Now that generating the next round is deferred to `continueRound()` (see above), the computation lives there instead: it captures `messages.length` *before* appending the new round's one greeting message, so that captured value already points exactly at the greeting's index — no offset arithmetic needed. `tests/app/components/useGuessWhoNextController.test.ts`'s "excludes prior rounds' trailing messages" test plays through three consecutive round switches specifically to catch a regression of this shape.
-- **Real, server-reported progress, not a simulated timer — fixed 2026-09-19 after feedback that the progress label should be honest about what's actually happening.** An earlier version cycled `startProgressMessage` through 4 fixed labels on a 600ms client-side timer while treating the round-generation call as one opaque block — so the displayed stage had no real connection to server state, and often sat on "Preparing greeting…" for most of the wait because avatar generation (the genuinely slow, unpredictable step) was still running underneath it. Both `src/pages/api/[game]/start.ts` and `src/pages/api/[game]/continue.ts` now support an SSE `stream: true` mode: `generateGameRound`'s `onProgress` callback writes a `data: {"stage": "personality"|"avatar"|"reply"|"voice", "done": false}\n\n` frame the instant each named step genuinely completes, then a final `{..., done: true}` frame carrying the same fields the non-streaming JSON response would. `src/app/components/useGameRoundProgress.ts`'s `fetchRoundWithProgress` (extracted 2026-09-29 out of `useGameController.ts`'s own local copy so "Guess Who"'s web controller could reuse it too — see that section above; shared by both games' `startGame`/`continueRound`) reads these via `readSseFrames` and shows the first stage in a fixed order not yet marked complete — which naturally handles `personality`/`avatar` (and `reply`/`voice`) resolving in either order, since each pair runs concurrently server-side, and holds on "Preparing greeting…" once both pairs are done but the final frame (real TTS synthesis) hasn't arrived. `src/pages/api/chat.ts` already had its own SSE mode for ordinary replies, but no client code read it before this — this is the app's first real SSE consumer.
-- **A stalled free/anonymous avatar provider used to be able to hang a round-start forever.** `src/utils/pollinationsImageGen.ts` and `src/utils/cloudflareImageGen.ts`'s `fetch()` calls now pass `signal: AbortSignal.timeout(25000)` — plain `fetch()` has no default timeout, and Pollinations in particular (anonymous, unauthenticated, no daily-cap protection) can occasionally stall past any reasonable wait. Before this fix, a stalled provider meant `getOrGenerateAvatar` never settled at all, so `generateGameRound`'s `await` — and the whole `/api/guess-who-next/start` or `/api/guess-who-next/continue` request — hung indefinitely rather than the try/catch around it ever getting a chance to degrade gracefully. This applies to ordinary bot creation's avatar generation too, not just the game.
-- **The curated character-name list (`src/data/characterNames.ts`) is trusted BLINDLY here — neither the game nor `/api/random-character` ever calls `/api/validate-character`'s Claude-based recognition check.** `src/utils/pickRandomCharacterName.ts` just picks a random entry, and `src/utils/game/round.ts` hardcodes `recognized: true` when caching the resulting avatar — so a low-quality entry in that list becomes a real, publicly-cached (`avatar_cache`, visible on `/chars` and the landing carousel) "recognized" character with zero content-quality gate, no description, and no copyright/recognition classification at all. **Live incident:** a bare `"Hero"` entry in the list (present twice — once from *Much Ado About Nothing*, once from the Hero-and-Leander myth) was ambiguous with the plain English word "hero," so whichever path picked it (the game or Random) generated a personality from just that bare word with no disambiguating context, producing a nonsensical character that got cached and published. Separately, `/api/validate-character.ts`'s own allowlist short-circuit (`isCuratedAllowlisted`, `src/utils/characterAllowlist.ts`) checks this exact same list, so even a manually-typed "Hero" skipped Claude's recognition check entirely and never got a chance to be classified `recognized: false` (which would have prompted for a description instead). Fixed two ways: (1) both `characterNames.ts` entries were disambiguated to `"Hero (Much Ado About Nothing)"`/`"Hero (Greek mythology)"`, matching this list's existing collision-disambiguation convention (see `"Cleopatra (Greek mythology)"` elsewhere in the same file) — this closes the allowlist bypass *and* removes the bad entry from the game/Random pool; (2) `validate-character.ts`'s recognition prompt (concern 3) now explicitly treats a bare common noun/generic archetype with no other identifying detail as `recognized: false` even if some specific obscure character happens to share that exact word, as defense-in-depth for the Claude-classification path (a manually-typed name not on the curated list, or a future admin-allowlist addition). `tests/src/data/characterNames.test.ts` gained a regression test denylisting known bare archetypes (hero, wizard, king, ninja, vampire, etc.) so an equally-ambiguous entry can't silently slip back into this list. The stale `"hero"` `avatar_cache` row itself was deleted directly from the shared production database (no matching `bots` row existed to also scrub). **This exact bug recurred four more times in live play on 2026-09-19** — bare/generic entries `"Beauty"` (Beauty and the Beast's protagonist; also the trigger for the classifyGuess hardening described above), `"David Copperfield"` (collided with the real-world illusionist, not the Dickens novel), `"The Emperor"` (Hans Christian Andersen's "The Emperor's New Clothes" — the character is canonically unnamed in the source, so the work title itself is the disambiguator), `"The Knight"` (Chaucer's Canterbury Tales), and `"The Monster"` (Frankenstein's creature) — each fixed the same way (`"Beauty (Beauty and the Beast)"`, `"David Copperfield (Charles Dickens novel)"`, `"The Emperor (The Emperor's New Clothes)"`, `"The Knight (The Canterbury Tales)"`, `"The Monster (Frankenstein)"`). The recurrence exposed a real gap in the denylist test itself: it only ever matched a bare noun *exactly*, never a `"The X"` form — which is this list's actual convention for most such entries (`"The Beast"`, `"The Emperor"`) — so `"The Emperor"`/`"The Knight"`/`"The Monster"` had been sitting there undetected. Fixed by stripping a leading article (`the`/`a`/`an`) before comparing against the denylist, and adding `emperor`/`empress` to it. Given how often this specific pattern recurs, treat any newly-added curated-list entry that's a bare title/role/quality word (with or without a leading article) as suspect by default, not just the ones this denylist happens to enumerate.
-- **The game draws its own names from `src/data/gameCharacterNames.ts`, a separate, smaller (~400-name) curated subset — not the full `characterNames.ts` list above.** Added for GitHub issue #878 ("game is too hard"): the full ~1000-entry list is deliberately broad (obscure Titans, one-off Victorian side characters, minor saga figures) because `/random-character`'s "surprise me, then build a bot around it" flow shows the name up front, so obscurity there is part of the fun. The game is the opposite case — a *hidden* name the player has to infer from clues — so an obscure figure makes a round unwinnable regardless of clue quality. Every entry is copied verbatim (same spelling/disambiguation suffix) from `characterNames.ts`, never independently spelled, so the game can't hide a name Claude can't resolve back to its canonical form; `tests/src/data/gameCharacterNames.test.ts` pins that the two lists can't silently drift apart. `src/utils/pickRandomCharacterName.ts` takes an optional `pool` parameter (default: the full list, used by `/random-character`) so `src/utils/game/round.ts` (the hidden `nextCharacterName`) and `src/pages/api/[game]/start.ts` (the revealed starting `currentCharacterName`) can both pass `gameCharacterNames` instead — `/random-character` itself is untouched.
-- **`src/data/gameCharacterWork.ts` gives every entry in `gameCharacterNames.ts` explicit source-work/tradition grounding — the structural fix, added 2026-09-27, after the reactive name-disambiguation pattern above recurred a sixth time (a live game round hidden `"Scarecrow"` drifted toward a generic scarecrow instead of specifically L. Frank Baum's Wizard of Oz character; `"Tin Man"`/`"Cowardly Lion"` had the identical, undetected bug, since they're multi-word and the denylist test above only ever matched a single bare word).** The root cause common to every prior incident, including the classifier near-misses (Edward/Edmund, Hamlet/Laertes, Beauty/Cleopatra, Venus/Aphrodite): the game's only source of truth for "who is this character" was a bare name string, independently re-derived by Claude in both clue-generation and guess-classification with no persistent structured ground truth. Patching one disambiguating `"(...)"` suffix at a time as each incident surfaced live was reactive and incomplete by construction. `gameCharacterWork` is a `Record<string, string>` keyed by the exact name string (parallel to, not replacing, the naming convention above), giving a required, authored `work` fact for all ~330 entries — not just the ones a live incident happened to reveal as ambiguous. `src/utils/game/round.ts` looks it up for both `currentCharacterName` and the freshly-picked `nextCharacterName` and threads it into `generateGameCluePersonaPrompt` (`src/config/serverConfig.ts`), which appends an explicit "you are specifically drawn from: `<work>`" line for the current character and a "specifically the one from: `<work>`" qualifier on the hidden character's internal-reference line — grounding clue-generation in the real individual instead of Claude's own default association for that name. `src/pages/api/[game]/message.ts`'s `classifyGuess` does the same lookup for the hidden character and folds it into the "Hidden character (trusted, for judging only)" line, so identity judgment gets the same anchor. `tests/src/data/gameCharacterWork.test.ts` enforces completeness both ways (every `gameCharacterNames` entry has a work key; no orphaned keys) — this is the actual guardrail against recurrence, stronger than the single-word denylist test above, which stays only as a secondary backstop for the full `characterNames.ts` list (used by bot creation and `/random-character`, where obscurity is fine and this per-entry metadata doesn't apply).
-- **A disambiguation qualifier is identity, not display (added 2026-09-23).** A curated name like `"David Copperfield (Charles Dickens novel)"` keeps its qualifier everywhere it acts as data: the game token, every Claude prompt, the `avatar_cache` key, `bots.name`, and the launch name the Wall and carousel pass to creation. Dropping it there would reintroduce the Hero/David Copperfield collisions above. Only rendering strips it, via `displayCharacterName()` (`packages/shared/src/validation.ts`), which both apps call at every place a character name is shown (headers, message labels, Wall and carousel captions, Past chats, game reveal copy, `src/pages/api/transcript.ts`). A new UI surface that shows a character name should call it too.
-- **Rate limits:** `game-start` (10/min/IP — sized for the combined personality+avatar generation cost, since calling those pipelines in-process means this limiter is the only ceiling on that cost), `game-continue` (10/min/IP, same reasoning as `game-start`), `game-message` (10/min/IP, same tier as `chat`), `game-give-up` (10/min/IP), `game-high-score` (20/min/IP, same tier as `user-profile`).
-- **Personal high score (done, ahead of the cross-user leaderboard below).** `src/db/schema.ts`'s `guessWhoNextHighScores` table (`(user_id, environment)` primary key, `environment`-scoped like `bots`/`analyticsEvents`) holds a signed-in user's best-ever streak. `src/utils/guessWhoNextHighScore.ts`'s `updateHighScoreIfBeaten` is called fire-and-forget from `src/pages/api/[game]/message.ts`'s correct-guess branch — a streak only ever increases within a run, so the moment it's incremented is also the moment it might be a new personal best; a Postgres upsert with a `setWhere` guard (`highScore < newStreak`) means a stale/racing write can never overwrite a higher score. This increment happens exactly once, at judgment time, regardless of whether or when the player clicks Continue — `src/pages/api/[game]/continue.ts` independently recomputes the same `streak + 1` from the same trusted token field purely to build its own new token, not to re-trigger the high-score write. `GET /api/guess-who-next/high-score` (no-DB gets `{ highScore: null }`, same shape as `/api/user-profile`; a guest gets its cookie-bound best from `guess_who_next_results`) is fetched once per sign-in by `useGameController.ts`, gated on `useSession()` reporting `"authenticated"` — a guest calls it too (cookie-bound, no session needed), so `GamePage.tsx`'s "Best: N" badge now shows for guests as well as signed-in users. The client then bumps `highScore` optimistically on every correct guess (`Math.max` against the new streak) rather than re-fetching, since the same monotonic-streak reasoning applies client-side too. **Requires a `db:push` before it does anything live** — see "Phase 3b" above's environment-scoping note; a fresh table doesn't exist in the live DB until that's run, and `npm run db:check` deliberately treats a wholly-missing table as "not a drift concern" rather than failing, so this step is easy to forget silently.
-- **Public leaderboard (Phase 2, done).** `guess_who_next_results` holds one row per run (`id` = the token's `runId`, exactly one of `user_id`/`guest_id`, `environment`-scoped, `bestStreak` only ever raised via a guarded upsert). A guest's identity is a random 32-byte token in the HTTP-only `portrayal-game-guest` cookie, hashed (SHA-256) before storage, so raw credentials never enter the database (`src/utils/gameGuestIdentity.ts`); `ensureGuestId` mints it at game start, `getGuestId` only ever reads. `recordGameResult` is called from `message.ts`'s correct-guess branch for both signed-in and guest runs, but only when the token's issuance (`issuedForUserId`/`issuedForGuestId` plus `environment`) still matches the caller — a token copied to another browser or account can't credit anyone. `continue.ts` refuses to advance a round until `canContinue` is true (set only on the fresh token `message.ts` returns with a correct judgment), so `/guess-who-next/continue` can't be driven from an unjudged token. `getLeaderboard` ranks account bests (from `guess_who_next_high_scores`) plus per-guest bests (`max(bestStreak)` grouped by guest from `guess_who_next_results`) together (private scores included for ranking only) and publishes just the opted-in top-ten names — one entry per account/guest, keyed to `users.leaderboardName`/`guess_who_next_guest_profiles.leaderboardName`. Opting in goes through `GET`/`POST /api/guess-who-next/leaderboard-settings`: top-ten eligibility is rechecked server-side, and the name passes `checkLeaderboardName` (length/script rules plus a Claude moderation call that fails closed to `unavailable`). Opt-in naming is keyed only by account/guest identity; a player can update their public name at any time. (A per-run "locked name" mechanism shipped alongside this and was removed as dead code — see [`docs/decisions-history.md`](docs/decisions-history.md).)
-- **Phasing:** Phase 1 (the core loop), the personal-high-score piece, real SSE-driven round-generation progress, and aggregate `analyticsEvents` instrumentation (all above) are complete. Phase 2 (done): a `guess_who_next_results` table plus `users.showOnLeaderboard`/`guessWhoNextGuestProfiles` backing a public `/leaderboard` page of best streaks, built on top of the personal-high-score groundwork already in place — see the leaderboard bullets below. [GitHub issue #876](https://github.com/andylacroce/character-chatbot-generator/issues/876) tracked both phases and is now closed.
-- **Won't do: streaming ordinary per-turn game chat replies.** `src/pages/api/chat.ts` has a `stream: true` server mode, but no client in this app (`useChatController.ts` or otherwise) ever calls it that way — ordinary chat's own UI always renders one full reply at once, with no live typing effect anywhere in this app today. Since chat itself doesn't visibly stream, there's no existing pattern for the game to match; building word-by-word rendering for the game alone would mean new client-side work (`useGameController.ts` only has the different, stage-based progress-frame pattern from round-generation, not incremental text) for a UX improvement neither surface currently has. Closed as won't-do 2026-09-22 rather than built. If this becomes worth doing, start with ordinary chat's own UI, where the server piece already exists, not the game.
-- **Not mechanically verifiable regardless:** whether a given real-world guess is judged fairly, and whether clue difficulty/pacing actually holds up in real conversations, are ongoing manual-QA/prompt-iteration concerns.
-
-### Account persistence (in progress)
-
-The app is migrating toward optional user accounts with server-persisted bots/chat history, staged as additive phases — guest (no account) usage must keep working unchanged throughout.
-
-- **Phase 1 (done):** `src/pages/api/generate-avatar.ts` uploads generated avatars to Vercel Blob and returns a durable URL when `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` is configured; otherwise falls back to a base64 data URL (unchanged prior behavior).
-- **Phase 2 (done):** Auth.js (`next-auth@4` — stable; v5/"Auth.js" is still beta and its simplified `auth()` helper is App-Router-only, which doesn't fit this repo's Pages-Router-authoritative API convention) with Google sign-in, JWT sessions (no `sessions` table). `src/auth/authOptions.ts` holds the config; `src/pages/api/auth/[...nextauth].ts` mounts it — this route intentionally lives in `src/pages/api` (unlike `/reference`) since Auth.js v4's Pages Router integration is a direct default-export handler, not an App Router route handler. `src/db/schema.ts` (Drizzle, Postgres via Neon) defines just `users`/`accounts` so far. `src/db/client.ts` exports `getDb()`, a lazily-constructed singleton — it must never connect at module import time, since `next build` bundles (but never executes) API route handlers, and constructing eagerly would break the build whenever `DATABASE_URL` is unset. The Drizzle adapter in `authOptions.ts` is likewise only attached when `DATABASE_URL` is set — same degrade-gracefully shape as the Blob token and the Upstash rate-limit store. Use `src/utils/getSessionUserId.ts` in any future Pages Router handler that needs to know the signed-in user — never trust a client-supplied user id, same trust boundary `proxy.ts` enforces for request origin. Schema changes are applied locally via `npm run db:push` (Drizzle Kit, not part of `npm run ci` since it mutates external state). `proxy.ts` bypasses its origin/API-key check entirely for `/api/auth/*` — Auth.js's own signed CSRF/state cookies secure those routes, and Google's OAuth callback arrives with Google's own Referer, which the origin check would otherwise reject. `next.config.mjs`'s CSP `form-action` explicitly allows Google's consent-screen origin (`https://accounts.google.com`), since Chrome enforces `form-action` against a form submission's eventual redirect target, not just its immediate action URL — without it, the sign-in form's redirect to Google is silently blocked with no visible error; extend this list for any future OAuth provider. Real Google sign-in only works on the static production domain: Google's redirect URI matching has no wildcard support, so it can't follow Vercel preview deployments' per-push URLs. Preview (`VERCEL_ENV === "preview"`) swaps Google out entirely for a stub `Credentials` provider (`id: "preview-stub"`, in `authOptions.ts`) that issues an ephemeral, unverified, non-DB-backed session from just an email string — good enough to exercise signed-in UI on a preview deployment. Swapped, not added alongside: Google has no client_id configured on preview and would just fail with `SIGNIN_OAUTH_ERROR` if offered there too. Guarded twice (excluded from the `providers` array outside preview, and rechecked inside `authorize()` itself) so it can never activate outside an actual Vercel preview build.
-  - **Facebook sign-in (issue #832): built, shipped, then fully removed** — see [`docs/decisions-history.md`](docs/decisions-history.md) for why and what it looked like.
-- **Phase 3a (done):** Landing-page sign-in via `AuthControl` (`src/app/components/AuthControl.tsx`) — the chat header intentionally has no sign-in control; a guest mid-chat goes back to the landing page to sign in. Clicking "Sign in" opens an in-page lightbox (`SignInModal`) with a "Continue with Google" button, rather than redirecting straight off-site with zero context, or (Auth.js's own default for 2+ providers) a bare picker page. On the preview-stub provider, that step is skipped and it signs in immediately with no lightbox, since it's a smoke-test aid, not a real login. `SessionProvider` lives in its own `"use client"` wrapper (`src/app/components/Providers.tsx`) rather than being rendered inline from the Server Component root layout (`src/app/layout.tsx`) — inline breaks `next build`'s static prerender of `/`. Google sets `allowDangerousEmailAccountLinking: true` (a deliberate, documented next-auth v4 opt-in, not a default) — see `authOptions.ts`'s doc comment for the trust reasoning before extending this to any future provider.
-- **`authOptions.ts` also configures a custom `pages.signIn: "/auth/signin"`** (`src/app/auth/signin/page.tsx` → `AuthSignInPage.tsx`), styled to match the rest of the app instead of NextAuth's generic default-rendered picker. Web's own flow never navigates here (`SignInModal` covers it, as above) — this page exists for `character-chatbot-mobile`'s sign-in bridge (`src/pages/api/auth/mobile-auth-start.ts`), which opens a bare browser tab with no in-app lightbox context to render into and has to send it somewhere. Mirrors `SignInModal.tsx`'s exact `signIn()` calls and Google/email button styling (a separate CSS module, per this repo's "no shared CSS modules" convention, not an import of `SignInModal`'s), conditionally hides either provider's button via `getProviders()` if it isn't actually configured (matching `SignInModal`'s own `hasEmailProvider` guard), and reads `?callbackUrl=`/`?error=` from the URL (no separate `pages.error` is configured, so a failed attempt also lands back here).
-- **Phase 3b (done):** `bots` table (`src/db/schema.ts`) persists a signed-in user's created characters; `src/pages/api/bots.ts` exposes `POST` (upsert on create) and `GET` (list, most-recently-updated first), both gated on `getSessionUserId` and silently no-op (200, empty result) for guests or when `DATABASE_URL` isn't configured — never a 401, since accounts are additive. Wired into `src/app/index.tsx`'s `handleBotCreated`: fire-and-forget, `.catch()`-swallowed, so a persistence failure never breaks bot creation for a signed-in user (identical to how it already works for guests).
-  - **Environment scoping, not separate databases:** one shared Neon database serves local dev, Preview, and Production — rows are walled off by an `environment` column (`bots.environment`, part of its `(user_id, name, environment)` unique constraint) rather than provisioning a Neon branch per environment. `src/utils/environment.ts`'s `getCurrentEnvironment()` resolves it from `VERCEL_ENV` (`"production"` | `"preview"`, set by Vercel itself, never client-controlled), falling back to `"development"` when unset (plain local `next dev`). Every `bots` query must filter on this — see `src/pages/api/bots.ts` for the pattern. Deliberately *not* applied to `users`/`accounts` (a signed-in identity is the same person regardless of which environment they're using) or `avatar_cache` (see below — intentionally global).
-  - **`avatar_cache` (global, not environment-scoped):** `src/pages/api/generate-avatar.ts` checks this table (keyed by lowercased character name) before calling Claude + an image provider, and writes to it after a successful generation — even a free image provider isn't instant, so a name generated once is reused by every user, guest or signed-in, in every environment, going forward. This is a deliberate exception to environment-scoping: walling it off would reintroduce the cost problem it exists to solve. Only real generations are cached, never the `/silhouette.svg` fallback — caching a failure would permanently deny a name a real portrait past a transient outage. `gender` is cached alongside the image since it's produced by the same Claude prompt-generation step a cache hit skips entirely, and callers need it for voice selection. Cache reads/writes degrade gracefully (return null / no-op) with no `DATABASE_URL` or on any DB error — never fail the actual generation request.
-  - **Resuming a saved character:** `/history` (`src/app/history/page.tsx` → `HistoryPage.tsx`, labeled "Past chats" in the UI) lists every saved character, each with a friendly relative last-updated time (`formatRelativeTime` — "a few minutes ago", "yesterday", etc.). Linked from the landing page's footer and the account menu (`useAccountMenu.tsx`), signed-in only. It replaced an inline "Previously" list on the landing page (`ResumeBotDropdown`, removed 2026-09-23) that took up too much room there. Named `history`, not `chats`, on purpose: `/chats` would sit one letter away from the chat UI's own `ChatPage`/`useChatController` names. Each row links to `/?name=<name>`, the same launch point the Character Wall uses, which already resumes a signed-in user's saved character by name (see "Character Wall" above), so there's no separate "load an existing bot" path to keep in sync. Cancelling that launch goes Back to whichever page started it (falling back to `/chars` on a direct load). Only identity (name/personality/avatar/voice) is restored synchronously this way — chat history catches up separately via phase 3c below.
-- **Phase 3c (done): `messages` table + server-persisted chat history.** For a signed-in user's saved character, `src/pages/api/chat.ts` becomes the source of truth for personality and message history instead of trusting the client's `personality`/`conversationHistory` on every request — same rationale as bot ownership in phase 3b. It looks up the caller's `bots` row by `(user_id, name, environment)` (the same unique index `src/pages/api/bots.ts` relies on); a guest, no `DATABASE_URL`, or a character never saved server-side (e.g. a copyright-warning override, which is never persisted at all — see the copyright-validation section above) all fall through to the exact prior client-authoritative behavior, unchanged.
-  - **Rolling summarization checkpoint:** `bots.summary`/`summarizedThroughMessageId` (`src/db/schema.ts`) replace re-summarizing the full history from scratch every turn once it exceeds 20 messages. Each turn fetches only the `messages` rows after the checkpoint; if that unsummarized tail exceeds 20, the oldest excess is folded into a new summary via `summarizeConversation`'s new optional `priorSummary` param (`src/utils/conversationSummarizer.ts`) — which compounds the existing summary rather than discarding it — and the checkpoint advances to the last message folded in. Most turns touch the summarizer zero times, reusing the existing summary for free. Notably, the *client* already pre-trims `conversationHistory` to the last 20 messages before sending (`useChatController.ts`), so the original client-history-based summarization branch never actually fired in production — this DB-backed path is what makes summarization real.
-  - **Write path:** after every response path (cache hit, streaming, non-streaming) sends its reply, `finalizeChatPersistence` fire-and-forget-inserts the user/bot message pair into `messages` and, if this turn advanced the checkpoint, updates `bots.summary`/`summarizedThroughMessageId` — best-effort, same resilience pattern as TTS and the avatar cache; a write failure is logged and never discards an already-generated reply. The intro message ("Introduce yourself...") goes through this same `/api/chat` path, so it's persisted with no special-casing.
-  - **Read path:** `GET /api/messages?botName=<name>` (new, GET-only — messages are never written through a directly-callable endpoint) returns a signed-in user's chat history for one saved character, oldest-first, capped at 200. `useChatController.ts` seeds its `messages` state from local storage instantly on mount (unchanged, so perceived load time doesn't regress), then — only when signed in — fetches this endpoint in the background and adopts the server's list only if it's *longer* than what's already loaded (the new-device / cleared-storage case). Local storage stays the fast per-device cache; the server is the durable, multi-device source of truth.
-  - Schema changes for this phase were applied via `npm run db:push` same as prior phases — remember to run it again after pulling `src/db/schema.ts` changes, since a mismatched live DB fails every `bots`/`messages` query with a missing-column/relation error (caught and logged, degrades to guest-like behavior — silent, easy to miss without checking server logs).
-  - **This exact failure mode (edit `schema.ts`, forget `db:push`) broke live dev/prod twice** — once for `users.preferred_name`, once for `avatar_cache.display_name` — before `scripts/check-db-schema.cjs` (`npm run db:check`) existed. It's a read-only guardrail: it regex-scans `schema.ts` for declared columns, compares them against `information_schema.columns` for the same tables in the real database, and fails loudly (non-zero exit) if `schema.ts` has a column the live DB doesn't. Wired into both `predev` (so it surfaces the moment you start `next dev` locally) and `npm run ci` (so it's part of the gate before calling work done) — it silently no-ops without `DATABASE_URL`, which is also why it's a no-op on GitHub Actions CI specifically (no DB credentials there); it only has teeth against a real `DATABASE_URL`, i.e. local dev. It never runs `db:push` itself or writes anything — closing the gap this way, rather than trying to auto-apply schema changes, keeps `db:push` an explicit, reviewed action against a shared production database.
-- **Account deletion (self-serve):** `DELETE /api/account` (`src/pages/api/account.ts`, 5/min) deletes the `users` row, which cascades through `accounts`/`bots`/`messages` and both games' account-scoped tables (`guess_who_high_scores`/`guess_who_results`, `guess_who_next_high_scores`/`guess_who_next_results`); `analytics_events.user_id` is `set null`, leaving anonymous aggregates. The handler also removes the email's `verification_tokens`, plus — since a guest-scoped row is keyed by cookie, not `user_id`, so no FK cascade reaches it — this browser/device's guest-scoped rows in **both** games' result and leaderboard-profile tables (`guess_who_results`/`guess_who_guest_profiles` and `guess_who_next_results`/`guess_who_next_guest_profiles`) plus its cookie (`clearGuestId`; mobile sends `x-game-guest`). **A real gap existed here until 2026-09-29:** when "Guess Who" was rebuilt as its own self-describing chat game (see that section above) it kept its pre-existing `guess_who_results`/`guess_who_guest_profiles` tables from the original clue-reveal design, but this handler had only ever cleared the sibling `guess_who_next_*` guest tables — so a signed-in user who'd played Guess Who as a guest on the same browser before signing in could delete their account and still leave a guest-scoped leaderboard row behind. Fixed by adding the two missing deletes; `tests/pages/api/account.test.ts` asserts all four guest-scoped tables are hit. Via `src/utils/userBlobs.ts`'s `deleteUserBlobs`, Vercel Blob avatars no remaining `avatar_cache`/`bots` row references (a shared cached portrait is never deleted) plus the user's chat logs. A Blob failure after the DB delete is logged (`account_delete_blob_failed`, with URLs) but still returns success, since the account is already gone. Clients (web `useAccountMenu` via the generic `ConfirmDialog.tsx`, mobile `AccountModal` → `AuthContext.deleteAccount`) then clear local personal keys via shared `isPersonalStorageKey` (keeps dark mode/audio/GA consent/carousel cache) and sign out. Known gap: a JWT on *another* device stays decodable until it expires; writes from it fail the `users` FK and degrade like any other persistence error. A new table holding per-user data needs an `onDelete: "cascade"` FK to `users`, and a new table holding *guest*-scoped data needs an explicit delete in this handler keyed by guest cookie, or account deletion silently misses it — exactly the shape of gap this fix closed.
-- **Deleting chats (Past chats page):** `DELETE /api/bots` clears every saved character in the current environment; `DELETE /api/bots?id=<id>` deletes one (scoped to the caller). Messages cascade; `deleteUserBlobs` removes portraits only those rows used, and on clear-all (`chatLogs: true`) the user's chat logs too. Logs are per-account, not per-character, so a single delete leaves them. Clients confirm first (web `ConfirmDialog`, mobile `Alert`), delete server-side, then remove local keys (shared `chatStorageKeys(name)` for one, `isChatHistoryStorageKey` for all).
-- **Chat troubleshooting logs (`src/pages/api/log-message.ts`) never store IP addresses** (removed 2026-09-24: an IP ties an anonymous guest log to a real person, which the privacy policy promises against). A signed-in user's logs live under `chat-logs/users/<sha256(userId)>/` (`chatLogPrefix`) so deletion can list and remove them; guest logs stay at the root, unlinked. `scripts/scrub-chat-log-ips.cjs` (`npm run logs:scrub-ips`, optionally `--dry-run`) is the opt-in, not-yet-run rewrite that strips IPs from logs written before this change; older signed-in logs also predate the prefix and can only be removed by hand on an email request.
-- **Tracking:** [GitHub issue #830](https://github.com/andylacroce/character-chatbot-generator/issues/830) covers the whole migration across all phases. Keep it current as work lands — check off a phase's checkbox in the issue body (`gh issue edit 830 --body-file <file>`) and post a short progress comment (`gh issue comment 830 --body "..."`) when a phase completes or a significant sub-step is verified working, not just at the very end.
-
-### Personalized greeting (the visitor's own name)
-
-Independent of the account-persistence migration above: the app also tracks the *human's*
-own preferred name (what a character should call them), not just the character's.
-`users.preferredName` (`src/db/schema.ts`) is deliberately separate from Auth.js's own
-`users.name` (populated from the OAuth profile, used only for `AuthControl.tsx`'s "Sign
-out (X)" label) — this one is explicit, user-typed, and never inferred from a sign-in
-provider.
-
-- **Capture point: a one-time gate, not a standing field.** `useBotCreation.ts`'s
-  `handleCreate()` pauses itself (`showNameGateModal`) the first time a browser submits a
-  character with no name known yet (`userNameCtx.isResolved && !name && !hasSkippedGate`),
-  showing `NameCaptureModal` (`mode="gate"`) — "Continue" saves the typed name and resumes
-  generation, "Skip for now" marks `chatbot-user-name-gate-skipped` (so it never asks again
-  in that browser) and resumes anyway. This single insertion point covers every path that
-  calls `handleCreate()` (the form, the validation/description-modal continuations, the
-  `?name=` URL auto-launch effect) for free. Two earlier placements — a masthead icon, then
-  a field stacked above the character-name input — both tested badly (missed, or cluttered
-  the primary flow) before landing on this contextual gate.
-- **Editable anytime via the account menu, not just at creation.** `useAccountMenu.tsx`'s
-  "Add your name" / "Change your name" item opens the same `NameCaptureModal` in
-  `mode="edit"` — see "Unified header" below for where that menu appears.
-- **Guest:** stored client-side only, in localStorage under `STORAGE_KEYS.userName`
-  (`chatbot-user-name`) and `STORAGE_KEYS.userNameGateSkipped` (`chatbot-user-name-gate-skipped`
-  — see `src/utils/storageKeys.ts`). `useChatController.ts` reads the name directly and sends
-  it as `userName` on every `/api/chat` request.
-- **Signed in:** `src/pages/api/user-profile.ts` (`GET`/`POST`, same guest/no-`DATABASE_URL`
-  200-no-op shape as `src/pages/api/bots.ts`) persists it to `users.preferredName`.
-  `useUserName.ts` seeds the DB once from any pre-existing guest-entered localStorage value
-  on first sign-in, so switching from guest to signed-in doesn't require retyping it.
-- **Server precedence (`src/pages/api/chat.ts`):** for a signed-in user, the DB value wins once
-  one is set — same server-authoritative-once-saved rationale as `personality` for a saved
-  bot, so a later request can't spoof a different name for an account that already has one.
-  Otherwise the client-supplied `userName` (sanitized via `sanitizeUserName`,
-  `src/utils/security.ts` — keeps apostrophes/hyphens, unlike `sanitizeCharacterName`) is
-  used. When present, it's added to the system prompt as a `<user_name>` block, following
-  the same wrap-in-tags prompt-injection mitigation as `<character_persona>`/
-  `<conversation_summary>`, and folded into the reply cache key — otherwise two
-  differently-named users asking an identical question could get a cross-contaminated
-  cached reply that greets the wrong person.
-- **Shown live in the chat transcript, not just spoken by the character.** `ChatMessage.tsx`
-  displays the visitor's name instead of the generic "Me" on their own messages, threaded
-  down from a single `useUserName()` instance in `ChatPage.tsx` through `ChatMessagesList`/
-  `VirtualizedMessagesList` — so changing it via the account menu updates every
-  already-rendered message immediately, not just new ones. `downloadTranscript.ts`/
-  `src/pages/api/transcript.ts` accept the same `userName` and use it in place of "Me" in the
-  downloaded HTML transcript too.
-- Optional everywhere: no name (or Skip) just means the generic "Me"/no personalized
-  greeting — nothing else changes. Not part of the `messages` table — it's a per-turn
-  system-prompt addition and a display-only transcript substitution, not persisted chat
-  content itself.
-- **Sign-in is reachable from the same flow, not a separate mechanism.** Both
-  `NameCaptureModal` (when `onRequestSignIn` is passed) and `useAccountMenu`'s own
-  `AuthControl` share **one** `SignInModal` instance per page (`AuthControl`'s
-  `onRequestSignIn` prop skips its own internal modal in favor of the caller's). This isn't
-  just tidiness: `AuthControl` used to be rendered *inside* the hamburger's dropdown and
-  render its own `SignInModal` inline — since a `position: fixed` modal is still a DOM
-  descendant of whatever rendered it, `HamburgerMenu.module.css`'s dropdown-item reset
-  (`.menuDropdown button { border: none; background: none; ... }`) was silently stripping
-  the sign-in buttons' real styling. Hoisting to one shared modal per page, rendered as a
-  sibling of the header rather than inside the dropdown, fixed it structurally instead of
-  patching around it.
-
-### Unified header
-
-`src/app/components/AppHeader.tsx` (renamed from `ChatHeader.tsx`) is the one header
-component shared by the chat page, the game page, the landing page, and the Character
-Wall — rather than each page owning its own masthead markup that has to be kept in visual
-sync by hand. It's deliberately generic: `{ menuItems, menuSide?: "left" | "right", center,
-extra? }` — a plain 3-bar hamburger on `menuSide`, an arbitrary `center` slot, and an
-optional `extra` slot on the opposite side. Its own CSS module only carries the generic
-shell/chrome (the sticky bar, the left/center/right grid) — page-specific content (avatar
-buttons, brand links, menu-item icons) lives in that page's own `.module.css`, per this
-repo's "no shared CSS modules" convention (a rule aimed specifically at descendant
-selectors that could reach into another component's DOM — see the CSS-specificity bug
-below — not a ban on sharing a genuinely atomic, single-class rule: the `.menuDivider`
-separating a page's own menu items from `useAccountMenu`'s below lives once in
-`src/app/globals.css`'s utility section and is referenced by its literal class name, not
-copy-pasted per module — see `feedback_no_shared_css_modules` memory for why this was
-tightened after an early draft duplicated it three times).
-
-- **There is no separate identity-chip trigger** — every page uses the plain 3-bar icon.
-  The dark-mode toggle and, for whichever page's `menuItems` includes it, a signed-in
-  user's identity/name status are both folded into the hamburger's own dropdown
-  (appended by `AppHeader.tsx` after each caller's `menuItems`) instead of separate header
-  controls. This replaced an earlier design with a dedicated `menuTrigger`/identity-chip
-  prop — consolidated so a mobile header didn't have to fit a name, an avatar, a toggle,
-  and a chip all in ~390px at once.
-- **`useAccountMenu.tsx`** is the shared "account" bundle every page's header now uses —
-  `BotCreator.tsx` (landing page), `CharsGallery.tsx` (`/chars`), `ChatPage.tsx`, and
-  `GamePage.tsx` all call it and append its `menuItems` after their own page-specific
-  items (a `menuDivider` separates the two groups). It returns `{ userNameCtx, menuItems,
-  modals, requestSignIn }`: `menuItems` leads with a non-interactive identity label
-  ("Guest" or the visitor's name/email), then the change-name button, an "Admin Stats"
-  link (`FaUserShield` icon) when a cheap client-visible check
-  (`GET /api/admin/is-admin` — see "Internal analytics" below) reports the signed-in
-  caller is an admin, then `<AuthControl onRequestSignIn={requestSignIn}>`. `modals`
-  renders exactly one shared `NameCaptureModal` (`mode="edit"`) and one shared
-  `SignInModal` per page — a DRY consolidation extracted after per-page inline copies of
-  this logic started drifting apart (see "Personalized greeting" above).
-  `BotCreator.tsx`/`CharsGallery.tsx` use it as their *entire* menu (no other items of
-  their own); `ChatPage.tsx`/`GamePage.tsx` put it after their existing page-specific
-  items (Back to Character Creator/Download Transcript/Character Wall, and Back to
-  Home/Give Up/How to Play, respectively) — chat and the game no longer keep sign-in out
-  of their headers, a deliberate reversal of an earlier "no sign-in control in the chat
-  header" decision (see git history around 2026-09-17 if that decision's original
-  rationale is ever worth revisiting).
-- **`BotCreator.tsx`**'s `center` slot is `LandingCharacterCarousel` (below);
-  `CharsGallery.tsx`'s is a `BackHomeLink` pill button (`src/app/components/BackHomeLink.tsx`
-  — a house glyph + "Back to Home", styled like an outlined pill, the one consistent
-  look for this action outside a dropdown; also used by the guessing game's start
-  screen, see "Guessing game" below); `ChatPage.tsx`/`GamePage.tsx` (via the shared
-  `ChatShell.tsx`) use `menuSide="left"` with the character's avatar + name as `center`
-  and a personal brand link as `extra`.
-- **Signing in and signing out both always redirect to `/`** (every `signIn(...)` call in
-  `AuthControl.tsx`/`SignInModal.tsx`, and `AuthControl.tsx`'s `signOut(...)`, pass
-  `callbackUrl: "/"`) regardless of which page triggered them — now that sign-in/out are
-  reachable from the chat and game headers too, NextAuth's own default (redirect back to
-  the current URL) would otherwise drop a visitor back into the middle of a chat/game
-  session either way. `callbackUrl` alone isn't sufficient, though: `src/app/index.tsx`'s
-  `Home` renders `ChatPage` instead of the landing page whenever a bot session is still
-  in localStorage, regardless of navigation intent, so landing on `/` would otherwise
-  still show whatever chat was already open. `clearStoredBot()`
-  (`src/utils/getValidBotFromStorage.ts`) — the same cleanup `handleBackToCharacterCreation`
-  already does — is called immediately before the Google/preview-stub `signIn()` and
-  `signOut()` calls (not the magic-link one, which doesn't navigate immediately) so `/`
-  reliably renders the actual landing page afterward.
-- **`LandingCharacterCarousel.tsx`** is the landing page's wide `center` slot: an
-  auto-advancing rotation through recognized characters, reusing the exact same data
-  `CharsGallery`/`src/pages/api/chars.ts` already serves (`GET /api/chars?limit=100&sample=20`).
-  The API samples 20 of the newest 100 on each request so the client does not download
-  unused portraits, including potentially large base64 data URLs. Auto-advances every 4s,
-  preloads the next portrait, and pauses on hover/focus. The landing-only `wideCenter`
-  header mode is a one-row 3:1 grid: the image owns the left side and fades toward the
-  theme/menu controls in the dedicated right column. Desktop uses a taller face-level
-  crop focused around 42% from the top; mobile keeps the compact 22% crop. Clicking a
-  portrait navigates to `/chars?name=<encoded name>`; `CharsGallery` resolves that one
-  entry through `GET /api/chars?name=...` and opens its ordinary lightbox without waiting
-  for the matching gallery page. Fixed dimensions prevent layout shift between names and
-  while waiting for the sample API.
-- **The landing page itself is a responsive dashboard, not a long centered stack.**
-  `BotCreator.tsx` presents the character conversation launcher as the dominant panel and both games in a
-  compact secondary panel. At 820px and below they become one column; the game cards stay
-  side-by-side on ordinary phones and stack only below 340px. Spacing and type use clamps,
-  and the internal form scroller remains the fallback for unusually short viewports. Dark
-  mode deliberately removes the light theme's ambient background wash and elevation
-  shadows, using flat solid surfaces and borders instead.
-- **The empty/loading state used to sit blank for the length of a cold `/api/chars` round
-  trip (a real Neon query behind that route's own 60s in-process cache, worse on a cold
-  serverless instance) — fixed 2026-09-22 two ways, after live feedback that it read as
-  broken rather than loading.** First, the component now caches its last-fetched sample in
-  `localStorage` (`STORAGE_KEYS.landingCarouselCache`) and paints it immediately on mount —
-  read in the same effect that fires the fetch, not as `useState`'s lazy initializer, since
-  the latter would run during client hydration and disagree with the server-rendered empty
-  placeholder, tripping a hydration mismatch; a fresh, non-empty response then replaces both
-  the shown sample and the cache, and an empty or failed fetch just leaves the cached sample
-  showing rather than reverting to the placeholder. This means only a true first-ever visit
-  (no cache yet) still waits on the network. Second, that first-visit placeholder itself
-  (`.portraitLoading`) now has a subtle opacity pulse (respecting
-  `prefers-reduced-motion`) instead of sitting static, so it reads as loading rather than
-  stuck even before any cache exists.
-- **A CSS specificity bug worth knowing about if the header ever shifts layout again:**
-  `AppHeader.module.css` originally had a generic `.headerCenter > button { display: block;
-  }` rule (specificity 0,1,1) meant for the chat page's avatar button. Because the
-  carousel's own root element is also a `<button>` directly inside `.headerCenter`, that
-  rule silently beat the carousel's own `.carousel { display: flex; }` (specificity 0,1,0)
-  and collapsed it to block layout, which is what caused the shift. Fixed by deleting the
-  generic rule from `AppHeader.module.css` and adding `display: block` directly to the
-  specific `.avatarButton` class in `ChatPage.module.css` where it actually belongs —
-  a reminder that a broad selector living in a *shared* CSS module can reach into and break
-  a completely different component that happens to share the same DOM shape.
-
-### Internal analytics (`/admin`)
-
-Vercel Analytics/Speed Insights (`src/app/layout.tsx`) cover cookie-free page views and performance. Production Google traffic analytics use the site's public `G-W01K2YSWH4` GA4 stream; `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` overrides it or enables the flow in development. The built-in ID applies only when `VERCEL_ENV === "production"` (not `NODE_ENV`), so Preview deployments and a local `next start` never report into the live stream. `GoogleAnalyticsConsent.tsx` validates the ID shape and does not render `@next/third-parties`' GA loader until the visitor explicitly opts in. The choice is stored under `STORAGE_KEYS.googleAnalyticsConsent`, synchronized across tabs, and editable on `/privacy`; opting out also sets Google's `ga-disable-<measurement-id>` flag and pushes a Consent Mode denial immediately. Google Tag Manager was removed 2026-09-24 as unused (the container held no tags; GA4 is wired directly and product events live in `analytics_events`). If it's ever re-added, don't publish a GA4 tag for `G-W01K2YSWH4` inside it (page views would double-count), and don't server-render GTM's `<noscript>` iframe (it would contact Google without consent). CSP still allows `googletagmanager.com` because GA4's own `gtag.js` is served from there. The database-backed layer below is separate product-usage analytics, deliberately kept small rather than becoming general-purpose observability.
-
-- **`analytics_events`** (`src/db/schema.ts`) is an append-only event log — `name`, `environment`-scoped like `bots`, a nullable `userId` (null = guest), and a `metadata` jsonb blob. It exists specifically because guest usage — likely most traffic, since sign-in isn't required — never touches `bots`/`messages` at all, so without this table most real usage is invisible. `src/utils/analytics.ts`'s `recordEvent()` writes to it fire-and-forget, no-op without `DATABASE_URL`, matching the exact resilience pattern used by the avatar cache and bot-persistence writes elsewhere.
-- **Low-frequency, high-signal events are instrumented:** `character_validated` (`src/pages/api/validate-character.ts`, success path only — the fail-open branch isn't a real classification), `avatar_generated` (`src/pages/api/generate-avatar.ts`, provider: `cache` | `cloudflare` | `pollinations` | `none`), and `bot_created` (`src/pages/api/generate-personality.ts`). The game adds `game_started` (guest boolean), `game_guess_correct` (new streak), `game_guess_wrong`, `game_round_continued` (new streak), and `game_run_ended` (fixed reason `second_wrong` or `give_up`, final streak). These fire only after successful actions; ordinary game chat and ambiguous guesses are excluded. No analytics event records character names, guesses, or chat text, preserving `skipPersistence`'s no-trace guarantee for copyright overrides. All writes remain best effort and no-op without `DATABASE_URL`.
-- **Game stats** in `GET /api/admin/stats` aggregate those events for the current environment: starts today/7d/all time, guest share, scored guess accuracy, continued rounds, ending reasons, average/best/final-streak distribution, and 90 days of daily activity. `/admin` separates Guessing game and Character conversations into keyboard-operable tabs. Both daily charts use `AdminActivityChart`'s line, tooltip, range, and table UI. The 7/30/90-day range changes only the chart and its exact-count table; the progress panel and top-level figures are all-time totals (except the explicitly labeled today/7d start counts). These figures begin when instrumentation is deployed: the encrypted token has no run history to backfill, the personal-high-score table covers only signed-in users, and abandoned runs have no ending event. Since tokens are stateless and writes are best effort, event counts can include retries and are not a guaranteed unique-run ledger.
-- **`/admin`** (`src/app/admin/page.tsx` + `GET /api/admin/stats`) is an unlinked-but-reachable internal stats view (same reachability model as `/reference`'s API docs) showing aggregate counts — no per-user or per-guest detail. Gated by `src/utils/isAdmin.ts`: a signed-in session whose email is in the optional `ADMIN_EMAILS` env var (comma-separated). **Fails closed** — no `ADMIN_EMAILS` configured means nobody is admin, the opposite default of every other optional feature in this app, because this one grants read access to aggregate activity rather than a convenience for the caller's own data. The page itself 404s a non-admin visitor (`notFound()`, via `isAdminSession()`) rather than rendering the stats shell and then showing a "not authorized" message. It shares the same `AppHeader`/`useAccountMenu` chrome as every other page rather than a bespoke masthead.
-- **`/admin/moderation`** (`src/app/admin/moderation/`) is the character allowlist/blocklist/warning-log admin panel — see "Copyright/trademark validation" above for what it manages. Same server-side gating shape as `/admin` (`notFound()` via `isAdminSession()` in `src/app/admin/moderation/page.tsx`).
-- **Discoverable via the account menu, not just a memorized URL.** `src/pages/api/admin/is-admin.ts` is a cheap, DB-free `GET` wrapping the same `isAdmin()` check both pages enforce — it always returns `200 { isAdmin: boolean }` (never 401/403, since it isn't itself a security boundary, just a display decision) and is rate-limited 30/min. `useAccountMenu.tsx` (see "Unified header" above) calls it only while `useSession()` reports `"authenticated"`, and shows an "Admin" sub-section (its own divider + label) with "Stats" (`FaUserShield` icon) and "Moderation" (`FaBan` icon) links only when it reports `true` — styled identically to the menu's other items, including no underline, matched via `HamburgerMenu.module.css`'s generic `.menuDropdown a` reset. Both pages and their APIs still enforce their own access control regardless of whether these links are ever rendered.
-- **Never honored on a Vercel Preview deployment, regardless of email match.** Preview swaps Google sign-in for a stub `Credentials` provider that issues a session for *any typed-in email with zero verification* (see "Account persistence" phase 2 above) — without this exclusion, anyone who knows or guesses the admin's email could self-assign it on a preview URL and pass the `ADMIN_EMAILS` check. `isAdmin()` checks `process.env.VERCEL_ENV === "preview"` first and refuses admin status outright before ever consulting the email list. Google OAuth can't succeed on preview anyway (no wildcard redirect URI), so this only excludes the one sign-in path that was never trustworthy.
-- The API route itself also enforces standard access control independent of the page: 401 with no session, 403 signed in but not listed, both before any DB query runs. The page's own `useSession()` check is UX only (avoid a loading flash); nothing sensitive is ever server-rendered into the page shell for a non-admin.
-
-### API documentation
-
-Every `src/pages/api/*.ts` handler carries a `@swagger` JSDoc block (OpenAPI 3.0). `npm run docs:api` (`scripts/generate-openapi.cjs`, via `swagger-jsdoc`) reads those comments and writes `public/openapi.json` — a gitignored, build-time artifact, not something to hand-edit or commit. It runs automatically before `dev`/`build`/`vercel-build`; run it directly after touching a route's annotations. `src/app/reference/route.ts` serves the interactive UI (`@scalar/nextjs-api-reference`) at `/reference`, reading that same static file — deliberately not scanning route source at request time, since Vercel's serverless bundler doesn't reliably ship raw `.ts` alongside compiled output. The route lives outside `src/pages/api`, so it isn't subject to `proxy.ts` auth. `swagger-jsdoc`'s glob resolution doesn't match backslash-separated paths, so the script normalizes to forward slashes before passing them in — same class of Windows/POSIX path bug as elsewhere in this repo; keep that in mind if `docs:api` starts reporting 0 documented paths locally. The glob is recursive (`src/pages/api/**/*.ts`) specifically so a nested route directory like `src/pages/api/admin/` is still picked up — a route added under a new subdirectory without a matching glob update would silently document 0 paths for it instead of erroring.
-
-### Code documentation standard
-
-Distinct from the inline "why" comments described in the global `~/.claude/CLAUDE.md` (default to none; only add one when the reasoning is non-obvious) — this section covers a separate layer: a one-line `/** ... */` JSDoc summary on every top-level exported function, React component, and hook, so the codebase's public API surface is discoverable on its own, independent of any single call site's context.
-
-- **What's required:** a `/**...*/` block with a real summary sentence, placed immediately above the declaration (a blank line, or another statement, in between breaks the association and the linter won't see it). Not required: exhaustive `@param`/`@returns` prose — types and destructured names in the signature already say that; don't duplicate it. `@param`/`@returns` tags are fine to add when genuinely useful (e.g. a non-obvious return contract) but aren't mechanically enforced.
-- **Where it's enforced:** `eslint.config.cjs`'s `eslint-plugin-jsdoc` block, scoped to `src/app/components/**/*.{ts,tsx}`, `src/**/*.ts`, and `src/pages/api/**/*.ts` (tests and `.d.ts` files excluded). It requires a doc block on every top-level `function`/arrow-const/hook in those directories (via `jsdoc/require-jsdoc`'s `contexts`, matched by AST position — `Program > ...` — not by export syntax, so both `export const Foo = () => {}` and the `const Foo = () => {}; export default Foo` pattern common in `src/app/components` are covered) and validates JSDoc syntax itself (`flat/recommended-typescript-flavor`) wherever a block already exists. Runs as part of `npm run lint`, which `npm run ci` gates on with `--max-warnings=0` — a missing or malformed doc block fails CI the same way a lint error would. `@swagger` (this repo's OpenAPI annotation, see above) and `@google-cloud` are allow-listed via `check-tag-names`' `definedTags` rather than flagged as unknown tags.
-- **Where it's exported to:** `npm run docs:code` runs TypeDoc (config: `config/typedoc.mjs`) over the same three directories and writes a browsable HTML reference to `docs-generated/` — gitignored, regenerated on demand (same "build artifact, not hand-edited or committed" treatment as `public/openapi.json` above). It's also wired into `npm run ci` (and the GitHub Actions `ci.yml` workflow) as its own step: TypeDoc fails the build on a real generation error, which is a second, independent check on the same comments beyond ESLint's syntax validation. `config/typedoc.mjs`'s `blockTags` is TypeDoc's own `OptionDefaults.blockTags` plus `@swagger` — omitting `@swagger` there makes TypeDoc warn on the OpenAPI blocks even though ESLint's `check-tag-names` already allows it, since the two tools maintain separate tag allowlists.
-- **Nested/inline functions are not required to carry a doc block** — the ESLint contexts intentionally match only top-level declarations, not callbacks or helpers defined inside a component/hook body. (One partial exception: `eslint-plugin-jsdoc`'s own default behavior additionally requires a doc block on any `function`-keyword declaration anywhere, including nested ones — arrow-function helpers nested inside a component/hook are unaffected.) Don't over-apply the standard by documenting every inner helper; that's exactly the "explaining what, not why" pattern the global inline-comment preference already warns against.
-
-### Logging standards
-
-Audited and standardized 2026-09-12 — before this, `src/pages/api/chat.ts` and a few newer
-routes (`bots.ts`, `messages.ts`, `chars.ts`, `admin/stats.ts`, `transcript.ts`) had drifted
-onto an ad-hoc `logger.info`/`logger.error` pattern (hand-formatted message strings, no
-`event` field) instead of the structured convention already dominant everywhere else
-(`audio.ts`, `generate-avatar.ts`, `health.ts`, `log-message.ts`, `validate-character.ts`,
-`generate-personality.ts`, `random-character.ts`, and all of `src/app/components`). All server
-routes now follow the same convention described here, and it's ESLint-enforced so it can't
-silently drift again.
-
-- **Every log line is `logEvent(level, event, message, meta)`** (`src/utils/logger.ts`),
-  never a raw `logger.info`/`.warn`/`.error(string, meta)` call or a bare `console.*`. The
-  `event` field is what makes logs greppable/alertable by kind rather than by matching a
-  hand-formatted message string.
-- **Event names are `snake_case`, prefixed by the route or domain they belong to** —
-  `chat_*`, `audio_*`, `avatar_*`, `bots_*`, `messages_*`, `chars_*`, `admin_stats_*`,
-  `transcript_*`, `log_api_*`, `health_*`, `rate_limit_exceeded`. One sanctioned exception:
-  `auth_error`/`auth_warning` (NextAuth's own internal error/warning `code`, e.g.
-  `adapter_error_getUserByAccount`, goes in `meta.code` rather than the event name — those
-  codes aren't this app's to rename, and inlining them would fragment one auth-failure
-  event into dozens of ad-hoc ones).
-- **Level semantics:** `info` for expected lifecycle events (a reply was sent, a cache hit,
-  a 400 for a routine bad request); `warn` for something recoverable or security-relevant
-  worth a human's attention (a rate limit tripped, a non-admin hit `/api/admin/stats`, a
-  text/audio mismatch); `error` for an actual failure — something that surfaces as a 500,
-  discards work, or means a downstream call genuinely broke.
-- **Wrap `meta` in `sanitizeLogMeta()`** so long strings are truncated and nested objects
-  don't blow up the log line. Never log full user-authored content (a chat message, a bot
-  reply, a personality prompt, a cache key built from any of those) on a routine path —
-  log lengths/hashes/ids instead (see `chat.ts`'s `chat_reply_sent`/`chat_cache_hit`
-  events). A short, truncated snippet is acceptable only for a rare, bounded diagnostic
-  path investigating a specific bug (e.g. `audio.ts`'s `audio_text_mismatch_regen`) — not
-  as a routine per-request trace.
-- **Don't double-log one failure at two levels** — a single `logEvent` call per failure,
-  not an `error` and a `warn`/`info` pair carrying the same information (this used to
-  happen in a few places, e.g. `audio.ts`'s not-found/read-error paths; fixed as part of
-  the 2026-09-12 audit). The one deliberate exception is `health.ts`: its `error`-level
-  detail is gated behind `NODE_ENV !== "production"` and an unconditional lower-detail
-  `info`-level event always fires alongside it — since this endpoint is hit on every chat
-  session mount and external providers have transient blips, error-level (which tends to
-  drive alerting) is intentionally suppressed in production while still leaving an audit
-  trail. Don't "fix" that one back into a single call without re-reading why it's split.
-- **Centralize cross-cutting logging instead of repeating it per route.** Rate-limit
-  exceeded (429) logging lives once inside `applyRateLimit` (`src/utils/rateLimit.ts`),
-  tagged with the limiter's `name` — every rate-limited route gets it for free rather than
-  each call site logging its own copy.
-- **Enforcement:** `eslint.config.cjs` has two rules backing this — `no-console` (scoped to
-  `src/app/**`, `src/**`, `src/pages/**`, excluding `src/utils/logger.ts` itself and tests) bans
-  raw `console.*`, and a `no-restricted-syntax` rule scoped to `src/pages/api/**/*.ts` bans
-  `logger.info(`/`.warn(`/`.error(` calls specifically, so a route can't quietly regress to
-  the pre-2026-09-12 ad-hoc pattern. Both run as part of `npm run lint`, which `npm run ci`
-  gates on with `--max-warnings=0` — same enforcement shape as the JSDoc standard above.
-- **Client-side (`src/app/components`) already follows this convention exclusively** — every
-  hook/component logs via `logEvent`, never raw `console.*`. Keep new client code
-  consistent with that rather than introducing a second style.
-- **Not mechanically enforced beyond the syntax rules above.** ESLint can ban raw
-  `console.*`/`logger.*` calls, but it can't know whether a *new* failure path should have
-  gotten a `logEvent` call at all — that's a judgment call, same as whether this file or
-  README needs updating for a given change. Review both deliberately before opening a PR
-  (the PR template's checklist exists specifically for this) rather than assuming
-  `npm run ci` passing means logging/docs are current — it doesn't check either.
-
-### Module system (do not regress)
-
-`package.json` intentionally has no `"type": "module"` — removing it previously fixed a Vercel `ERR_REQUIRE_ESM` crash where Next's CJS serverless launcher couldn't `require()` compiled API route output. `next.config.mjs` uses an explicit `.mjs` extension instead so it's still treated as ESM. Source (TS, `import`/`export`) compiles fine either way via SWC — don't re-add `"type": "module"`.
-
-### Security posture
-
-Hardening pass completed 2026-09-11. Kept deliberately high-level (this file is public) —
-it records *what* changed and *why*, not exploit-level specifics about anything not yet
-fully closed.
-
-- `proxy.ts`'s Origin/Referer check is CSRF protection (stops a malicious site's
-  browser-side JS from riding a visitor's session) — it isn't a substitute for
-  authenticating every caller. Don't treat an allowed-origin match as proof of a trusted
-  caller when reasoning about request volume/cost; the per-route rate limiter
-  (`src/utils/rateLimit.ts`) is the actual ceiling there, independent of origin. Fully
-  closing this gap would mean either requiring login on guest-usable routes (breaks core
-  UX) or real session/token infrastructure — an accepted tradeoff, not an oversight.
-- The API key comparison in `proxy.ts` uses a constant-time compare (`secureCompare`,
-  hash-then-`timingSafeEqual`) rather than `!==`, now that Proxy defaults to the
-  **Node.js runtime** (Next.js 16; renamed from `middleware.ts`, which defaulted to Edge).
-- `getClientIp()` (`src/utils/rateLimit.ts`) trusts the first `x-forwarded-for` entry,
-  which is correct on Vercel specifically (their edge overwrites this header rather than
-  forwarding a client-supplied value). Revisit if this app is ever self-hosted behind a
-  different reverse proxy — prefer `@vercel/functions`'s `ipAddress()` there.
-- `/api/health` is rate-limited (10/min/IP) and no longer returns raw third-party SDK
-  error text in its response body (still logged server-side via `logEvent`) — it makes two
-  real billed/quota-limited calls per request, so both mattered.
-- `buildSsml()` (`src/utils/voiceHelpers.ts`) XML-escapes `text` before interpolating into
-  SSML — fixes a correctness bug too (ordinary dialogue with `&`/`<` already produced
-  malformed SSML). `/api/audio`'s `text` param is capped at 2000 characters. Letting the
-  client supply this text at all is intentional, not the bug — audio isn't persisted
-  server-side (see Account Persistence phase 3c above), so regenerating it after eviction
-  requires the client to resupply the original text; escaping/capping was the missing part.
-- `scripts/scan-secrets.sh` now matches this app's actual credential shapes (Anthropic
-  keys, Google OAuth secrets, Postgres connection strings, Vercel Blob tokens), not just
-  PEM private-key blocks. `.env.example` is excluded from scanning since its
-  placeholder-shaped values look like credentials by design.
-- `.github/workflows/semgrep.yml` runs the JavaScript, TypeScript, React, and Node.js
-  community rulesets on pushes to `main` and pull requests. It uses the token-free
-  `semgrep scan` command with metrics disabled, and reviewed false positives carry
-  narrow, rule-specific `nosemgrep` annotations with reasons at the affected lines.
-- `eslint-plugin-regexp` runs `regexp/no-super-linear-backtracking` and
-  `regexp/no-super-linear-move` as errors in the ordinary root `npm run lint` command.
-  Together they catch exponential or polynomial backtracking and unanchored polynomial
-  searches locally, while the existing `npm run ci` composite remains the local gate.
-- `.github/workflows/ci.yml` uses `npm ci`, not `npm install`/`npm update`, for
-  reproducible builds against the committed lockfile.
-- `API_SECRET` was rotated as a precaution. Any external integration outside this repo
-  that authenticates with the API key needs the current value from `.env.local`/Vercel.
-- `next.config.mjs` sends an explicit `Strict-Transport-Security` header alongside the
-  existing CSP/`X-Frame-Options`/`Permissions-Policy` headers.
-
-## Environment variables
-
-Required: `ANTHROPIC_API_KEY`, `API_SECRET` (checked by `proxy.ts`), `GOOGLE_APPLICATION_CREDENTIALS_JSON` (path or raw JSON — for TTS).
-Optional: `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` (overrides the production site's built-in GA4 stream or enables the consent-gated flow in development; the Google tag stays unloaded until the visitor opts in), `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` (enables Cloudflare Workers AI as the primary avatar image provider — see "Avatar generation" above; without them, avatar generation still works via the Pollinations.ai fallback with no config at all), `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN` (enables Vercel Blob logging and durable avatar URLs), `TTS_TMP_DIR` (defaults to system temp), `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) to share rate-limit counters across instances, `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (enables account sign-in and persistence — see "Account persistence" above; the app is fully functional as a guest with none of these set), `EMAIL_SERVER` + `EMAIL_FROM` (enables passwordless magic-link sign-in alongside Google — see "Account persistence" above's magic-link bullet; needs `DATABASE_URL` set too), `GAME_TOKEN_SECRET` (optional key for the guessing game's encrypted round token — see "Guessing game" above; falls back to `NEXTAUTH_SECRET` then the already-required `API_SECRET`, so the game works with zero new configuration), `ADMIN_EMAILS` (comma-separated allowlist for the internal `/admin` stats page — see "Internal analytics" above; fails closed with none set).
+- **Auth:** Auth.js (`next-auth@4`, stable; v5's `auth()` is App-Router-only) with Google, JWT
+  sessions (no `sessions` table). `src/auth/authOptions.ts` holds config;
+  `src/pages/api/auth/[...nextauth].ts` mounts it in Pages Router. Use
+  `src/utils/getSessionUserId.ts` in any handler needing the signed-in user, never a client-supplied
+  id. `proxy.ts` bypasses its origin/key check for `/api/auth/*` (Auth.js has its own CSRF/state
+  cookies, and Google's callback carries Google's Referer). `next.config.mjs`'s CSP `form-action`
+  must allow `https://accounts.google.com` (Chrome enforces `form-action` against the redirect
+  target, so it's otherwise blocked silently); extend it for any new provider.
+- **Preview:** Google has no wildcard redirect URIs, so real sign-in works only on the production
+  domain. On `VERCEL_ENV === "preview"` a stub `Credentials` provider (`id: "preview-stub"`) issues
+  an unverified, non-DB session from an email string, swapped in rather than added, and guarded
+  twice (excluded from `providers` and rechecked in `authorize()`).
+- **Google sets `allowDangerousEmailAccountLinking: true`** (a documented next-auth v4 opt-in; see
+  `authOptions.ts` before extending to any new provider). Magic-link email sign-in also exists
+  (`EMAIL_SERVER` + `EMAIL_FROM`, needs `DATABASE_URL`). Facebook sign-in was built and removed
+  (see `docs/decisions-history.md`).
+- **DB:** Drizzle on Neon. `src/db/client.ts`'s `getDb()` is a lazy singleton; it must never
+  connect at import time (`next build` bundles handlers and would fail with no `DATABASE_URL`).
+  The Drizzle adapter attaches only when `DATABASE_URL` is set. Apply schema changes with
+  `npm run db:push` (not in `ci`, it mutates external state).
+- **`SessionProvider` lives in its own `"use client"` wrapper** (`Providers.tsx`); inline in the
+  root layout it breaks `next build`'s static prerender of `/`.
+- **Sign-in UI:** `AuthControl.tsx` on the landing page opens an in-page `SignInModal` (Continue with
+  Google) instead of redirecting off-site with no context; the preview stub skips the lightbox.
+  `authOptions.ts`'s `pages.signIn: "/auth/signin"` (`AuthSignInPage.tsx`) exists for mobile's
+  sign-in bridge (no lightbox to render into). It mirrors `SignInModal`'s `signIn()` calls and
+  styling in its own CSS module, hides providers via `getProviders()` when unconfigured, and reads
+  `?callbackUrl=`/`?error=`.
+- **Environment scoping, not separate databases:** one Neon database serves dev, Preview, and
+  Production, walled by an `environment` column (`getCurrentEnvironment()` in
+  `src/utils/environment.ts`, from `VERCEL_ENV`, else `"development"`). Every `bots` query must
+  filter on it. Not applied to `users`/`accounts` (identity is the same everywhere) or
+  `avatar_cache` (intentionally global).
+- **`bots`** (`src/pages/api/bots.ts`: `POST` upsert, `GET` list most-recently-updated first) is
+  wired fire-and-forget into `index.tsx`'s `handleBotCreated`, so a persistence failure never
+  breaks creation. **`/history`** ("Past chats", `HistoryPage.tsx`, signed-in only, linked from the
+  landing footer and account menu) lists saved characters with `formatRelativeTime`. It's named
+  `history`, not `chats`, to avoid confusion with `ChatPage`/`useChatController`. Rows link to
+  `/?name=<name>`, the Wall's launch point, which resumes the saved character; identity
+  (name/personality/avatar/voice) restores synchronously and history catches up via `messages`.
+- **Server-persisted chat history (`messages` table).** For a signed-in user's saved character,
+  `chat.ts` is the source of truth for personality and history rather than trusting the client's.
+  It looks up the `bots` row by `(user_id, name, environment)`; guests, no `DATABASE_URL`, or
+  never-saved characters (e.g. copyright overrides) fall through to client-authoritative behavior.
+  - **Rolling summary:** `bots.summary`/`summarizedThroughMessageId` replace re-summarizing from
+    scratch. Each turn fetches messages after the checkpoint; if that tail exceeds 20, the oldest
+    excess folds into a new summary via `summarizeConversation`'s `priorSummary` and the checkpoint
+    advances. (The client already pre-trims to 20 before sending, so this DB path is what makes
+    summarization real.)
+  - **Write path:** after each reply path (cache hit, streaming, non-streaming),
+    `finalizeChatPersistence` fire-and-forget inserts the user/bot pair and any checkpoint update;
+    failures are logged and never discard a reply. The intro message goes through the same path.
+  - **Read path:** `GET /api/messages?botName=` (GET-only) returns oldest-first, capped at 200.
+    `useChatController.ts` seeds from localStorage instantly, then (signed in) adopts the server
+    list only if longer (new device / cleared storage).
+  - **Schema drift guard:** forgetting `db:push` after editing `schema.ts` broke live dev/prod twice
+    (`users.preferred_name`, `avatar_cache.display_name`). `npm run db:check`
+    (`scripts/check-db-schema.cjs`) regex-scans `schema.ts` columns against
+    `information_schema.columns` and fails if the live DB lacks one. It runs on `predev` and in `ci`,
+    is read-only, and no-ops without `DATABASE_URL` (so it's a no-op on GitHub Actions). It
+    deliberately never runs `db:push`: that stays an explicit, reviewed action on a shared database.
+- **Self-serve account deletion:** `DELETE /api/account` (5/min) deletes the `users` row, cascading
+  through `accounts`/`bots`/`messages` and both games' account-scoped tables;
+  `analytics_events.user_id` is `set null`. It also removes the email's `verification_tokens`, this
+  device's guest-scoped rows in **both** games' result and leaderboard-profile tables
+  (`guess_who_results`/`guess_who_guest_profiles`, `guess_who_next_results`/
+  `guess_who_next_guest_profiles`, keyed by cookie so no FK cascade reaches them; mobile sends
+  `x-game-guest`) plus the cookie (`clearGuestId`), and, via `userBlobs.ts`'s `deleteUserBlobs`,
+  Blob avatars no remaining `avatar_cache`/`bots` row references plus the user's chat logs. A Blob
+  failure after the DB delete logs `account_delete_blob_failed` but still returns success. Clients
+  (web `useAccountMenu` via `ConfirmDialog.tsx`, mobile `AccountModal` → `AuthContext.deleteAccount`)
+  clear personal local keys via shared `isPersonalStorageKey` (keeping dark mode, audio, GA consent,
+  carousel cache) and sign out. Known gap: a JWT on another device stays decodable until expiry;
+  its writes fail the `users` FK and degrade like any persistence error.
+  **A new per-user table needs an `onDelete: "cascade"` FK to `users`; a new guest-scoped table
+  needs an explicit delete here keyed by guest cookie,** or deletion silently misses it (a missing
+  pair of Guess Who guest tables was exactly this gap, fixed 2026-09-29; `tests/pages/api/account.test.ts`
+  asserts all four).
+- **Deleting chats (Past chats):** `DELETE /api/bots` clears every saved character in the current
+  environment; `?id=<id>` deletes one. Messages cascade; `deleteUserBlobs` removes portraits only
+  those rows used, and on clear-all (`chatLogs: true`) the user's chat logs (per-account, so a
+  single delete leaves them). Clients confirm, delete server-side, then remove local keys
+  (`chatStorageKeys(name)` / `isChatHistoryStorageKey`).
+- **Chat troubleshooting logs** (`log-message.ts`) never store IP addresses (an IP would tie an
+  anonymous log to a person, which the privacy policy promises against). A signed-in user's logs
+  live under `chat-logs/users/<sha256(userId)>/` (`chatLogPrefix`) so deletion can find them; guest
+  logs stay at the root, unlinked. Older signed-in logs predate the prefix and can only be removed
+  by hand on an email request.
+- **Tracking:** [issue #830](https://github.com/andylacroce/character-chatbot-generator/issues/830)
+  covers the migration; keep it current (`gh issue edit 830 --body-file`, `gh issue comment`) when
+  a phase completes.
 
 ### Rate limiting
 
 `createRateLimiter({ name, max, message, windowMs? })` in `src/utils/rateLimit.ts` wraps every limited route. `name` is required and namespaces the counter (`rl:<name>:<ip>`) — a shared store is shared across routes, so without it `/api/chat` and `/api/audio` would draw down the same budget. With no Redis env vars configured the limiter uses `express-rate-limit`'s in-process MemoryStore, which is correct for local dev and per-instance on Vercel; with them set, `src/utils/rateLimitStore.ts` backs it with an Upstash-compatible Redis REST store and the limits become global. Store outages fail open (`passOnStoreError`) — the limiter throttles, `proxy.ts` authenticates.
 
-## Testing conventions
+### Module system (do not regress)
 
-- Tests live under `tests/`, organized to mirror source (`tests/api`, `tests/app`, `tests/pages`, `tests/src`, `tests/utils`, `tests/integration`, `tests/unit`).
-- Mock `authenticatedFetch`, not raw `fetch`, for client/server interaction tests.
-- TTS tests must call `tts.__resetSingletonsForTest()` to avoid cross-test singleton state leaking.
-- Mock external APIs (Anthropic, GCP TTS/Vertex) rather than calling them live.
-- For code that reads an SSE (`stream: true`) response via `response.body.getReader()` (the guessing game's `fetchRoundWithProgress`, or `src/pages/api/chat.ts`'s own streaming mode), use `tests/helpers/mockResponse.ts`'s `mockSseResponse` (all frames queued upfront) or `mockControlledSseResponse` (frames pushed one at a time, for asserting on state *between* individual events, e.g. a staged-progress label) — a plain `mockResponse()` has no `.body` and will make the read hang/fail.
+`package.json` intentionally has no `"type": "module"`: removing it once caused a Vercel
+`ERR_REQUIRE_ESM` crash, because Next's CJS serverless launcher couldn't `require()` compiled API
+route output. `next.config.mjs` uses an explicit `.mjs` extension so it's still ESM. Source
+(TS, `import`/`export`) compiles fine either way via SWC; don't re-add `"type": "module"`.
+
+## Features
+
+### Character Wall (`/chars`)
+
+A public, no-auth gallery of every supported portrait in `avatar_cache` (anyone can already
+discover a row by typing its name, so nothing new is disclosed). `src/pages/api/chars.ts` keeps
+`WHERE recognized = true` so a legacy unrecognized row never appears.
+
+- **`avatar_cache.category`** (`packages/shared/src/characterCategories.ts`) is a nullable taxonomy
+  of six identifiers: `history`, `mythology`, `literature`, `folklore`, `religion`, `other`; missing
+  or unknown values degrade to `other`.
+- **`chars.ts`** is `GET`-only, paginated (`limit`/`offset`, default 60, max 100, `hasMore`).
+  `sort`: `newest` (default), `oldest`, `name-asc`, `name-desc`; `group`: `none` (default) or
+  `category` (taxonomy order primary, sort secondary). The full list is ordered before pagination
+  and held in a per-instance 60s in-process cache (`getAllCharacters()`), so infinite scroll costs
+  at most one table scan a minute per warm instance (same tradeoff class as the rate limiter's
+  MemoryStore). `?name=` resolves a single entry; `sample=N` returns N of the newest `limit`.
+- **`CharsGallery.tsx`:** a slim Sort-by select and Group-by-category switch; grouping reloads from
+  offset zero with all categories collapsed, and stale in-flight responses are ignored. One
+  tattered-parchment surface with a CSS multi-column masonry of two to six columns (never one, even
+  under 380px); each tile's aspect ratio and rotation come from a djb2 hash of the name
+  (`hashString`) so pagination never reshuffles. A `.dark`-scoped charred-parchment palette follows
+  the app theme. Infinite scroll uses a callback ref + `IntersectionObserver` on the
+  conditionally-rendered sentinel (a mount-time ref effect would miss it). "To top" reads `body`,
+  window, `documentElement`, and `scrollingElement` (`body` is the real scroll owner under the
+  flex-root layout), appears after 360px, and uses `scrollIntoView()` on a marker before the
+  header. A native `<dialog>` lightbox is wrapped in the View Transitions API when available.
+- **Back control:** the header's arrow + "Back" calls browser history and falls back to `/` only
+  when there's no same-app entry. It deliberately doesn't use `window.history.length` (a fresh tab
+  already reads 2 because of `about:blank`); `src/utils/clientNavigationState.ts` holds an in-memory
+  flag set by `Providers.tsx` on the first `usePathname()` change. The page uses the shared
+  `AppHeader`, `BackHomeLink`, and `useAccountMenu()`.
+- **"Chat with this character" links to `/?name=<encoded>`,** the same launch point
+  `BotCreator.tsx` reads via `useSearchParams()`. `isLaunchingFromUrl` hides the whole creator UI
+  for a bare spinner. Resolution: signed in with a saved `bots` row of that exact name
+  (case-insensitive) → resume it via `persistedBotToBot()`; otherwise `handleCreate()`.
+  **StrictMode footgun, don't reintroduce:** `hasAutoSubmittedRef` is set synchronously before the
+  `/api/bots` await. React 18 StrictMode double-runs effects without resetting refs, so cleanup
+  during the in-flight fetch dropped the first result while the second run saw the guard set and
+  bailed, hanging on the spinner forever. Fix: track a local `dispatched` flag and release the guard
+  in cleanup only if nothing was dispatched. `tests/app/components/BotCreator.url.test.tsx` pins it.
+
+### Voice input (speech-to-text)
+
+`useSpeechRecognition.ts` wraps the browser's native `SpeechRecognition`/`webkitSpeechRecognition`
+(Chrome/Edge; absent in Firefox, inconsistent in Safari), deliberately not a server round-trip, so
+it costs nothing and needs no route. It returns `isSupported`/`isRecording`/`transcript`/`error`
+plus `startRecording`/`stopRecording`/`toggleRecording`; each integration point (ordinary chat and
+the games' `ChatInput.tsx`, and `BotCreator.tsx`'s name field) owns its own wiring and all use
+`normalizeDictatedText`.
+
+- **The mic is a toggle** (click to start, click to stop), like the mute button. It renders only
+  when `isSpeechSupported` and is hidden while `isAudioPlaying` (caps mobile icon buttons at 3).
+  `BotCreator.tsx` has its own inline markup/CSS and hides it while busy.
+- **`normalizeDictatedText`** only fixes capitalization and punctuation spacing. Real correction
+  would need a Claude call, which breaks the zero-cost design.
+- **Starting a recording overwrites the input** (avoids interim-result flicker). The controllers
+  (`useChatController.ts`, `useGameController.ts`, `BotCreator.tsx`) sync the transcript into their
+  input, force-stop on submit, and route speech errors to their own error banner. The game keeps its
+  speech error in local state (`speechErrorDisplay`) because `useGameSession` has no settable error.
+- **`next.config.mjs`'s `Permissions-Policy` allows `microphone=(self)`.**
+- **Mobile has no voice input, a deliberate, evaluated gap (declined 2026-09-27).** The best Expo
+  library (`expo-speech-recognition`) needs a custom dev client, which mobile avoids on purpose. The
+  Expo-Go-compatible alternative (record → upload → Google Cloud Speech-to-Text, prototyped on a
+  branch with AMR_WB on Android, LINEAR16 on iOS, and a 20s recording cap) was declined not for cost
+  (~$0.002-0.003 per message) but because it sends a user's own recorded voice to a cloud API, a
+  privacy tradeoff web's free native path never makes, for a feature nobody has asked for. Revisit
+  either path if real demand appears.
+
+### Client-side storage
+
+`src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Keys
+(`packages/shared/src/storageKeys.ts`): `chatbot-bot`, `chatbot-history-<bot.name>`,
+`voiceConfig-<bot.name>` (versioned; use the versioned helpers, never write the shape directly),
+`audioEnabled`, `darkMode`, `bot-session-id`, `chatbot-user-name` and
+`chatbot-user-name-gate-skipped` (see "Personalized greeting"), the games' token/state/
+instructions-seen keys (see the game sections), `chatbot-landing-carousel-cache`, and
+`portrayal-google-analytics-consent` (web-only `granted`/`denied`, never an identifier). Never store
+secrets or PII here.
+
+### Personalized greeting (the visitor's own name)
+
+Separate from accounts: the app tracks what a character should call the *human*.
+`users.preferredName` is deliberately distinct from Auth.js's `users.name` (from the OAuth profile,
+used only for the "Sign out (X)" label); this one is explicit and user-typed.
+
+- **Capture is a one-time gate, not a standing field.** `useBotCreation.ts`'s `handleCreate()`
+  pauses (`showNameGateModal`) the first time a browser submits with no name known
+  (`userNameCtx.isResolved && !name && !hasSkippedGate`) and shows `NameCaptureModal`
+  (`mode="gate"`): "Continue" saves and resumes, "Skip for now" sets
+  `chatbot-user-name-gate-skipped` and resumes. One insertion point covers every `handleCreate()`
+  caller (form, modal continuations, `?name=` auto-launch). A masthead icon and a stacked field were
+  tried and rejected (missed, or cluttered the main flow).
+- **Editable anytime** via the account menu ("Add your name"/"Change your name", `mode="edit"`).
+- **Guest:** localStorage only (`chatbot-user-name`, `chatbot-user-name-gate-skipped`);
+  `useChatController.ts` sends it as `userName` on every `/api/chat`.
+- **Signed in:** `src/pages/api/user-profile.ts` (`GET`/`POST`) persists to `users.preferredName`;
+  `useUserName.ts` seeds the DB once from a pre-existing guest value on first sign-in.
+- **Server precedence (`chat.ts`):** for a signed-in user the DB value wins once set (server
+  authoritative, like `personality` for a saved bot), so a request can't spoof another name;
+  otherwise the client's `userName` (sanitized by `sanitizeUserName`, which keeps apostrophes and
+  hyphens unlike `sanitizeCharacterName`). When present it goes in the system prompt as a
+  `<user_name>` block (same prompt-injection mitigation as `<character_persona>`) and into the reply
+  cache key, so differently-named users can't get a cross-contaminated cached greeting.
+- **Shown in the transcript:** `ChatMessage.tsx` shows the visitor's name instead of "Me" (threaded
+  from one `useUserName()` in `ChatPage.tsx`), updating live; `downloadTranscript.ts` and
+  `transcript.ts` accept `userName` too. Optional everywhere; not part of the `messages` table.
+- **Sign-in shares one `SignInModal` per page** between `NameCaptureModal` (via `onRequestSignIn`)
+  and `useAccountMenu`'s `AuthControl`, rendered as a sibling of the header. Rendering it inside the
+  hamburger dropdown let `HamburgerMenu.module.css`'s `.menuDropdown button` reset strip the
+  buttons' styling, since a `position: fixed` modal is still a DOM descendant.
+
+### Unified header
+
+`AppHeader.tsx` is the one header for chat, game, landing, and the Wall: `{ menuItems, menuSide?,
+center, extra? }` with a plain 3-bar hamburger. Its CSS module carries only the generic shell
+(sticky bar, left/center/right grid); page-specific content lives in that page's own module, per
+the "no shared CSS modules" rule (descendant selectors leaking across components; a genuinely
+atomic single-class rule such as `.menuDivider` lives once in `globals.css` by literal class name).
+
+- **No identity-chip trigger.** The dark-mode toggle and (where a page's items include it) the
+  signed-in identity are folded into the hamburger dropdown, which `AppHeader.tsx` appends after
+  each caller's `menuItems` (a mobile header can't fit a name, avatar, toggle, and chip in ~390px).
+- **`useAccountMenu.tsx`** returns `{ userNameCtx, menuItems, modals, requestSignIn }` and is used by
+  `BotCreator`, `CharsGallery`, `ChatPage`, and `GamePage` (page items first, then a `menuDivider`).
+  `menuItems` leads with a non-interactive identity label ("Guest" or name/email), then change-name,
+  an "Admin" sub-section (Stats `FaUserShield`, Moderation `FaBan`) when `GET /api/admin/is-admin`
+  reports true, then `<AuthControl onRequestSignIn={requestSignIn}>`. `modals` renders one shared
+  `NameCaptureModal` and one `SignInModal` per page.
+- **Slots:** `BotCreator`'s `center` is `LandingCharacterCarousel`; `CharsGallery`'s is a
+  `BackHomeLink` pill (`BackHomeLink.tsx`, also on the game start screen); chat and game (via
+  `ChatShell.tsx`) use `menuSide="left"` with the character's avatar + name as `center` and a
+  personal brand link as `extra`.
+- **Signing in or out always redirects to `/`** (every `signIn`/`signOut` passes `callbackUrl:
+  "/"`), since both are reachable mid-chat. `callbackUrl` alone isn't enough: `index.tsx`'s `Home`
+  renders `ChatPage` whenever a bot session is in localStorage, so `clearStoredBot()` runs just before
+  the Google/preview-stub `signIn()` and `signOut()` (not magic-link, which doesn't navigate).
+- **`LandingCharacterCarousel.tsx`** rotates through recognized characters via
+  `GET /api/chars?limit=100&sample=20` (the API samples, so the client doesn't download unused
+  portraits, including large base64 URLs). It advances every 4s, preloads the next portrait, and
+  pauses on hover/focus. The landing-only `wideCenter` mode is a one-row 3:1 grid with the image
+  fading toward the controls; desktop uses a taller face-level crop (about 42% from the top), mobile
+  a compact 22%. Clicking goes to `/chars?name=<encoded>`, which `CharsGallery` resolves via
+  `GET /api/chars?name=...` and opens in the lightbox without waiting for the page. Fixed
+  dimensions prevent layout shift. **The empty state paints the cached sample first:** the last
+  sample lives in `localStorage` (`landingCarouselCache`), read in the same effect as the fetch (not
+  a lazy `useState` initializer, which would hydration-mismatch the server placeholder); a fresh
+  non-empty response replaces both, and an empty or failed fetch keeps the cache. Only a first-ever
+  visit waits on the network, and its placeholder (`.portraitLoading`) pulses (respecting
+  `prefers-reduced-motion`).
+- **The landing page is a responsive dashboard:** the launcher is the dominant panel and both
+  games a compact secondary panel. At 820px and below it is one column; game cards stay side by
+  side on phones and stack only below 340px. Spacing and type use clamps; the form scroller is the
+  short-viewport fallback. Dark mode removes the light theme's ambient wash and shadows for flat
+  solid surfaces with borders.
+- **CSS specificity gotcha:** a generic `.headerCenter > button { display: block }` in the shared
+  `AppHeader.module.css` (0,1,1) once beat the carousel's own `.carousel { display: flex }` (0,1,0)
+  because its root is also a `<button>` there, collapsing the layout. The rule was moved to the
+  specific `.avatarButton` in `ChatPage.module.css`. A broad selector in a shared module can break
+  an unrelated component with the same DOM shape.
+
+### Guessing games: one engine, two definitions
+
+"Guess Who" and "Guess Who's Next" are **one engine with two `GameDefinition`s**; a game change is
+one edit reaching web, mobile, and both games. Only what genuinely differs lives in a definition.
+
+- **`packages/shared/src/game.ts`** holds `GUESS_WHO`/`GUESS_WHO_NEXT` (`GAMES`, `GAME_LIST`,
+  Guess Who first) and the pure logic: response parsing, `applyGameMessageResponse`,
+  `revealGameMessages`, and `createGameTransport(game, io)` (URLs, per-game wire token name,
+  validation over a platform's raw `get`/`post`/`round` primitives). `useGameSession.ts` is the one
+  client state machine. A definition carries `slug`, `tokenField`, `eventPrefix`, `hidesSpeaker`,
+  `storageKeys`, and `copy` (`gameCopy.ts`).
+- **`hidesSpeaker` is the one behavioral difference.** `false` (Guess Who's Next): a named, shown
+  character steers toward a *different*, hidden one. `true` (Guess Who): the character you chat
+  with *is* the mystery; its name and avatar are generated eagerly but live only in the encrypted
+  token until a correct guess, second wrong guess, or give-up. The header shows a silhouette and
+  "???" until then, and **a reveal retroactively rewrites the round's already-shown transcript**
+  (`revealGameMessages`).
+- **Server: one implementation per endpoint under `src/pages/api/[game]/`** (`start`, `continue`,
+  `message`, `give-up`, `high-score`, `leaderboard`, `leaderboard-settings`), wrapped by
+  `src/utils/game/route.ts`'s `gameRoute` (resolves `[game]`, 404 otherwise, per-game-per-endpoint
+  limiter `<slug>-<endpoint>`, request log). One `@swagger` block per route covers both games via a
+  shared `Game` path parameter. `src/utils/game/` holds `definitions.ts` (slug lookup, score
+  tables; no Claude imports), `token.ts`, `round.ts` (`planRound`, `generateGameRound`), and
+  `scores.ts` (parameterized on `game.tables`).
+- **The wire format is unchanged on purpose.** Each game keeps its historical token field
+  (`guessWhoToken`/`gameToken`), URLs, response fields, and analytics event names
+  (`guess_who_*`/`guess_who_next_*`) so released mobile builds keep working. Clients normalize to
+  `token` at the boundary.
+- **One token payload** (`GameState`: `speakerName`, `targetName`, equal in Guess Who) with a
+  **`game` discriminator so a token never verifies against the other game's routes.**
+- **Persisted client state keeps its on-disk layout** (token under `storageKeys.token`, the rest as
+  JSON under `storageKeys.transcript`) so older saves resume. The platform controllers
+  (`useGameController.ts` on web, `apps/mobile/src/useGameController.ts`) supply only transport,
+  storage, logger, audio, and (web) SSE progress. `GamePage.tsx`/`GamePage.module.css` and
+  `GameScreen.tsx` (exporting `GuessWhoScreen`/`GuessWhoNextScreen`) are one component each.
+- **`src/utils/classifyGuess.ts`** is the classifier both games share (few-shot examples live once).
+- **DB tables stay separate per game** (`guess_who_*`, `guess_who_next_*`): selected by config, and
+  merging would add a production migration for almost no code saved. `schema.ts` keeps them
+  explicit because `scripts/check-db-schema.cjs` regex-scans it.
+- **Tests run each shared flow once per game** (`describe.each`); fixtures in
+  `tests/helpers/gameRoute.ts`.
+
+### Game mechanics shared by both games
+
+- **Round state lives in a signed, encrypted, opaque token, not a DB row.** `GameState` carries the
+  names, the current persona prompt, avatar/gender/voiceConfig, streak, wrong-guess count, and
+  `usedNames` (no repeats). `signGameState`/`verifyGameState` wrap it in one AES-256-GCM token the
+  client echoes on every call. This keeps the hidden name unreadable to the client and keeps
+  gameplay working for guests with no database.
+- **The key derives from `GAME_TOKEN_SECRET ?? NEXTAUTH_SECRET ?? API_SECRET`** (`getKey()`), never
+  a per-process random key, so it's stable across Vercel instances with no new required config.
+  Only a deliberate rotation invalidates a run, degrading to a friendly "start a new game" 400.
+- **`verifyGameState()` fails CLOSED** (any tamper, malformed input, or decrypt failure returns
+  `null` and `message.ts` returns a hard 400), the one deliberate exception to this codebase's
+  usual fail-open convention.
+- **Character, avatar, and voice pipelines are shared with ordinary bot creation** and called
+  in-process: `pickRandomCharacterName.ts`, `avatarGeneration.ts`'s `getOrGenerateAvatar`, and
+  `characterVoices.ts`'s `getVoiceConfigForCharacter`. An avatar/voice is only resolved for the
+  character actually shown, never the hidden one (no spoiler).
+- **`generateGameRound(currentCharacterName, excludeNames, onProgress?)`** (`round.ts`) is the one
+  place the persona → avatar → opening reply → voice → TTS sequence lives, for both `start.ts` and
+  `continue.ts`. It runs `[persona ‖ avatar] → [opening reply ‖ voice config] → TTS`.
+- **`gameReply.ts`** has the three Claude-call shapes: `getGameReply` (an in-character turn, with
+  optional `extraInstruction`), `getOpeningReply` (never throws, falls back), and
+  `getGuessReactionReply` (the confirm/deny/reveal line after a guess is judged; never throws). The
+  reaction call gets only the authoritative outcome and canonical revealed name, never the raw
+  guess, so correctness is settled once and a second model call can't contradict the banner. The
+  never-throws guarantee matters on a correct guess: a Claude hiccup building the *next* greeting
+  must not turn a win into a 500.
+- **Generating the next character is deferred until "Continue."** `message.ts`'s correct branch
+  only judges and returns the reaction plus the new streak; `continueRound()` in the controller
+  calls `continue.ts` (which reads the still-valid token for `nextCharacterName`/`usedNames` and
+  runs `generateGameRound`). `continue.ts` refuses to advance until the token's `canContinue` is
+  true (set only by a judged-correct response). On failure the "Correct!" banner is restored with an
+  error so the player can retry.
+- **The "Correct!" moment is an inline banner, not a modal** (a modal obscured the last message).
+  `GamePage.tsx`'s `bannerContent` slot sits above the transcript; `awaitingContinue` is derived
+  from `lastEvent?.type === "correct"`. After Continue, the same staged progress spinner as the
+  start screen replaces it, and the input stays disabled
+  (`apiAvailable={!awaitingContinue && !continuing}`).
+- **Progress is real, server-reported SSE, not a timer.** `start.ts`/`continue.ts` accept
+  `stream: true` and write `data: {"stage": "personality"|"avatar"|"reply"|"voice", "done": false}`
+  frames as each step completes, then a final `done: true` frame with the normal response fields.
+  `useGameRoundProgress.ts`'s `fetchRoundWithProgress` (`readSseFrames`) shows the first stage not
+  yet complete (pairs resolve in either order) and holds on "Preparing greeting…" until the final
+  frame. This is the app's first real SSE consumer.
+- **`roundStartIndex` must be an absolute index into the full `messages` array** (the index of the
+  current round's first message). `sendMessage` sends `messages.slice(roundStartIndex)` as history.
+  `continueRound()` captures `messages.length` *before* appending the new greeting. An earlier
+  off-by-offset bug only worked on the first round switch;
+  `tests/app/components/useGuessWhoNextController.test.ts` plays three consecutive switches.
+- **Replay keeps each speaker's voice.** Every transcript message pins its round's avatar and
+  gender; a message with no `audioFileUrl` (its TTS failed) is replayed via
+  `packages/shared/src/replayAudio.ts`'s `findSpeakerVoiceConfig`, which recovers the speaker's
+  cast `voiceConfig` from another message's audio URL before falling back to a bare regeneration
+  (a fresh context-free cast once gave a male speaker a female voice). Web and mobile both use it.
+- **"Back to Home" ends the run** (`quitGame()`); there is no separate Quit.
+- **The classifier's bars** (`classifyGuess`): a single specific candidate name is `"clear"`, not
+  `"ambiguous"`, and `AMBIGUOUS_GUESS_NOTE` asks for confirmation once, not repeatedly (an earlier
+  version bounced "Edward" vs "Edmund Ironside" for eight turns, found only via real session
+  logs decoded from `/api/audio?...&text=`). `"correct"` demands the *same individual*: leniency
+  covers only surface forms (short/full names, nicknames, genuine aliases, spelling/localization,
+  title-names of the same person), never related people (Hamlet vs Laertes), a shared trait or
+  epithet (Beauty vs Cleopatra), or cross-tradition counterparts (Venus vs Aphrodite, Ares/Mars,
+  Zeus/Jupiter). Default `correct: false` when unsure. If it regresses, expect a *wrong* guess
+  scored as a win; check for that before loosening the prompt.
+- **Giving up via chat reuses the menu's confirmation dialog.** On `"giveUp"`, `message.ts` returns
+  `{ giveUpRequested: true }` with no reply; the controller sets a flag and `GamePage.tsx` opens
+  the same modal the hamburger's "Give Up" opens. Only on confirm does the client call `give-up.ts`.
+  **Give-up is a pure token decode** (no Claude call): `{ revealedName, finalStreak, gameOver: true }`.
+- **`GameInstructionsModal.tsx`** shows on first visit (gated by each game's
+  `instructions-seen` key) and from the menu. Its copy is accuracy-critical: guesses are typed into
+  the same chat box; there is no separate guess control.
+- **Curated names.** The game draws from `src/data/gameCharacterNames.ts` (~400 well-known names),
+  not the full `characterNames.ts` (~1000, deliberately broad because `/random-character` shows the
+  name up front). A hidden obscure figure makes a round unwinnable. Every entry is copied verbatim
+  from `characterNames.ts` (`tests/src/data/gameCharacterNames.test.ts` pins this).
+  `pickRandomCharacterName.ts` takes an optional `pool` (default: the full list).
+- **`src/data/gameCharacterWork.ts`** gives every game name an authored source-work/tradition
+  fact (`Record<string, string>` keyed by exact name). `round.ts` threads it into
+  `generateGameCluePersonaPrompt` ("you are specifically drawn from: …") and `classifyGuess`'s
+  "Hidden character" line, anchoring clues and judgments in the real individual instead of Claude's
+  default association for a bare string. `tests/src/data/gameCharacterWork.test.ts` enforces
+  completeness both ways. This was the structural fix after disambiguation bugs kept recurring
+  (Scarecrow, Tin Man, Cowardly Lion, Hero, Beauty, David Copperfield, The Emperor, The Knight, The
+  Monster).
+- **Curated-list caveat: `characterNames.ts` is trusted blindly** (neither the game nor Random calls
+  `validate-character`, and `round.ts` hardcodes `recognized: true`), and the allowlist also
+  short-circuits validation for its names. A bare or ambiguous entry therefore becomes a public,
+  cached "recognized" character. Treat any new bare title/role/quality word (with or without a
+  leading article) as suspect: disambiguate with a parenthetical work, matching `"Cleopatra (Greek
+  mythology)"`. `tests/src/data/characterNames.test.ts` denylists known bare archetypes (leading
+  `the`/`a`/`an` stripped) as a secondary backstop.
+- **A disambiguation qualifier is identity, not display.** `"David Copperfield (Charles Dickens
+  novel)"` keeps its qualifier everywhere it acts as data: the token, every prompt, the
+  `avatar_cache` key, `bots.name`, and launch names. Only rendering strips it, via
+  `displayCharacterName()` (`packages/shared/src/validation.ts`), which both apps call wherever a
+  name is shown (headers, message labels, Wall/carousel captions, Past chats, reveal copy,
+  `transcript.ts`). Any new UI surface showing a character name should call it.
+- **Rate limits (per IP/min):** `game-start` 10, `game-continue` 10 (both sized for in-process
+  persona+avatar cost, the only ceiling on it), `game-message` 10, `game-give-up` 10,
+  `game-high-score` 20.
+- **Won't do: streaming ordinary per-turn game replies.** `chat.ts` has a `stream: true` mode but no
+  client renders a live typing effect anywhere; if wanted, start with ordinary chat's UI.
+- Not mechanically verifiable: whether a real guess is judged fairly and whether clue difficulty
+  holds up are ongoing manual-QA and prompt-iteration concerns.
+
+### Guess Who (self-describing chat game)
+
+`/guess-who` is the default game wherever both appear. The player chats with a mystery character
+that never reveals its name and drops escalating real clues about itself. One wrong guess per
+round is tolerated; a second ends the run. `generateGuessWhoSelfCluePersonaPrompt(name, work?)`
+(`serverConfig.ts`) is the inverse of `generateGameCluePersonaPrompt`: first person, never names
+itself, escalates from a broad self-description to specific checkable facts within a couple of
+exchanges, grounded in `gameCharacterWork.ts`. Its opening uses `SELF_CLUE_OPENING_INSTRUCTION`
+(`gameReply.ts`), never the default "introduce yourself" line (which gave the name away). Scores use
+the `guess_who_*` tables; `/leaderboard` shows both top tens as tabs.
+
+### Guess Who's Next (conversation game)
+
+The player chats with a real, NAMED, shown character who talks as itself but steers toward a
+*different, hidden* figure. **Don't invert this:** the character you chat with is never the
+mystery, and there is no separate guess control; the server classifies every typed message as
+`"clear"` guess, `"ambiguous"` (the character asks in character to confirm), `"giveUp"`, or
+`"none"` (ordinary question). One wrong guess per hidden target is tolerated; a second ends the
+run, or the player gives up (menu or typed) and is always told the answer. A correct guess reveals
+the target and holds on "Continue," after which **the revealed figure becomes the new chat partner**
+and steers toward a fresh hidden target, building a streak. TTS plays for every reply.
+
+- **`generateGameCluePersonaPrompt(currentCharacterName, nextCharacterName)`** (`serverConfig.ts`)
+  reuses `generatePersonalityPrompt` for the speaker and appends rules: steer toward the target
+  without naming it; never claim not to know it or refuse it as being from another time/place (the
+  pool spans eras and universes); the opening greeting includes one real, narrowing category-level
+  fact ("a queen from ancient Egypt"), not pure mood; follow-ups escalate to a specific checkable
+  fact within a couple of exchanges. This was deliberately made easier (issue #878, "game is too
+  hard"): a contentless hint reads as stalling, and the prompt favors players finishing with long
+  streaks over unsolvable rounds.
+- **`start.ts`** picks both names, builds persona + avatar + voice, and returns the greeting (with
+  audio), the token, and `currentCharacterName`. **`message.ts`** verifies the token, classifies
+  (a Haiku classifier that also judges correctness when `"clear"`), then replies normally, asks for
+  confirmation, tolerates-once-then-ends on a second wrong guess, or returns the reaction and new
+  streak on a correct one.
+- **Personal high score:** `guess_who_next_high_scores` (`(user_id, environment)` PK) holds a
+  signed-in user's best streak. `updateHighScoreIfBeaten` runs fire-and-forget from `message.ts`'s
+  correct branch (a Postgres upsert with a `setWhere` guard `highScore < newStreak`, so a racing
+  write can't lower it); it fires once at judgment time, not on Continue. `GET .../high-score`
+  returns `{ highScore: null }` with no DB (a guest gets its cookie-bound best from
+  `guess_who_next_results`); `useGameController.ts` fetches it once on sign-in and bumps it
+  optimistically with `Math.max`, so "Best: N" shows for guests too. **A new table needs `db:push`
+  before it works live;** `db:check` treats a wholly-missing table as not-a-drift, so it's easy to
+  forget.
+- **Public leaderboard:** `guess_who_next_results` has one row per run (`id` = the token's `runId`,
+  exactly one of `user_id`/`guest_id`, `environment`-scoped, `bestStreak` raised only via a guarded
+  upsert). A guest's identity is a random 32-byte token in the HTTP-only `portrayal-game-guest`
+  cookie, SHA-256-hashed before storage (`gameGuestIdentity.ts`; `ensureGuestId` mints at start,
+  `getGuestId` only reads). `recordGameResult` runs on the correct branch for signed-in and guest
+  runs, only when the token's issuance (`issuedForUserId`/`issuedForGuestId` plus `environment`)
+  still matches the caller, so a copied token can't credit anyone. `getLeaderboard` ranks account
+  bests plus per-guest bests together (private scores count for ranking only) and publishes only
+  the opted-in top ten, one entry per account/guest. Opting in goes through
+  `GET`/`POST .../leaderboard-settings`: top-ten eligibility is rechecked server-side and the name
+  passes `checkLeaderboardName` (length/script rules plus a Claude moderation call that fails closed
+  to `unavailable`). A player can change their public name anytime.
+- **Analytics** (`analyticsEvents`): `game_started`, `game_guess_correct`, `game_guess_wrong`,
+  `game_round_continued`, `game_run_ended` (reason `second_wrong` or `give_up`); see "Internal
+  analytics".
+
+### Internal analytics (`/admin`)
+
+Vercel Analytics/Speed Insights (`layout.tsx`) cover cookie-free page views and performance.
+Production Google traffic analytics use the public GA4 stream `G-W01K2YSWH4`
+(`NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` overrides it or enables the flow in development); the built-in ID
+applies only when `VERCEL_ENV === "production"`, so previews and a local `next start` never report
+into the live stream. `GoogleAnalyticsConsent.tsx` validates the ID shape and loads
+`@next/third-parties` only after the visitor opts in. The choice is stored under
+`STORAGE_KEYS.googleAnalyticsConsent`, synced across tabs, and editable on `/privacy`; opting out
+also sets `ga-disable-<id>` and pushes a Consent Mode denial. Google Tag Manager was removed
+2026-09-24 as unused; if re-added, don't publish a GA4 tag for this ID in it (double counting) and
+don't server-render its `<noscript>` iframe (contacts Google without consent). CSP still allows
+`googletagmanager.com` because `gtag.js` is served from there. The database layer below is separate
+product-usage analytics, kept small rather than becoming general observability.
+
+- **`analytics_events`** is an append-only log (`name`, `environment`, nullable `userId` where null
+  means guest, `metadata` jsonb). It exists because guest usage never touches `bots`/`messages`.
+  `recordEvent()` (`src/utils/analytics.ts`) is fire-and-forget and no-ops without `DATABASE_URL`.
+- **Events** (low-frequency, high-signal, only after success): `character_validated`,
+  `avatar_generated` (provider: `cache` | `cloudflare` | `pollinations` | `none`), `bot_created`,
+  and the game events above. No event records character names, guesses, or chat text, preserving
+  `skipPersistence`'s no-trace guarantee.
+- **`GET /api/admin/stats`** aggregates the current environment: game starts (today/7d/all time),
+  guest share, scored guess accuracy, continued rounds, ending reasons, streak distribution, and 90
+  days of daily activity. `/admin` has keyboard-operable tabs (Guessing game, Character
+  conversations); both daily charts use `AdminActivityChart`, whose 7/30/90-day range changes only
+  the chart and its table (other figures are all-time except the labeled today/7d counts). Figures
+  start when instrumentation deployed (no backfill: tokens hold no history, and abandoned runs emit
+  no event). Writes are best effort, so counts can include retries and aren't a unique-run ledger.
+- **Access:** `/admin` (`src/app/admin/page.tsx`) and `/admin/moderation` are unlinked-but-reachable
+  and use the shared `AppHeader`/`useAccountMenu`. `src/utils/isAdmin.ts` admits a signed-in session
+  whose email is in `ADMIN_EMAILS` (comma-separated) and **fails closed** (no list, no admins), the
+  opposite default of other optional features because it grants read access to aggregate activity.
+  Pages 404 a non-admin (`notFound()` via `isAdminSession()`) rather than rendering a shell.
+  **Never honored on a Vercel Preview deployment,** since the stub provider signs in any typed
+  email unverified; `isAdmin()` checks `VERCEL_ENV === "preview"` first. The API returns 401 with
+  no session and 403 when not listed, before any DB query; the page's `useSession()` check is UX
+  only. `GET /api/admin/is-admin` (DB-free, 30/min, always `200 { isAdmin }`, not a security
+  boundary) drives the menu's Admin links, called only while authenticated.
+
+## Conventions
+
+### Prompt engineering conventions
+
+Apply to any *new or edited* system prompt (not a mandate to rewrite existing ones).
+
+- **`"text-simple"` (always Haiku) is the tier most sensitive to prompt quality** (`classifyGuess`,
+  `validate-character.ts`, voice config, avatar prompts). Tighten the prompt with the techniques
+  below before ever moving a call to a larger tier for accuracy.
+- **Few-shot examples are the highest-leverage fix for a wrong judgment call.** Use 3-5 diverse,
+  adversarial `<example>` blocks inside one `<examples>` tag, covering the near-misses that
+  actually broke in production (see `classifyGuess`'s Edward/Edmund, Hamlet/Laertes,
+  Beauty/Cleopatra, Venus/Aphrodite), not just the easy case.
+- **Structure multi-part prompts with XML tags** (`<character_persona>`, `<examples>`, ...) so
+  instructions, context, and untrusted input are unambiguous.
+- **For a structured-JSON judgment call, put an explanation field before the decision field**
+  (`{"reasoning": ..., "status": ..., "correct": ...}`): a cheap embedded chain-of-thought.
+- **Prefer saying what *to* do, and add a one-line "why" behind non-obvious constraints.**
+- **Known gap:** Anthropic now prefers tool-use/Structured Outputs over "return ONLY JSON" plus
+  regex extraction (`src/utils/parseClaudeJson.ts`'s `extractJson`). Not migrated (no production
+  bug yet); reach for it if a *new* structured call proves flaky rather than adding another
+  parsing workaround.
+- **Ordinary character dialogue never uses an em dash (—).** Every in-character system prompt
+  (`chat.ts` replies and all of `src/utils/gameReply.ts`) appends `FORMATTING: Never use an em
+  dash (—) anywhere in your reply. Use a comma, period, colon, or parentheses instead.` Stated as
+  an explicit negative because Claude's prose defaults lean on em dashes and no positive phrasing
+  suppresses them reliably. Not applied to `"text-simple"` classification prompts.
+
+### Logging standards
+
+All server routes use structured logging, ESLint-enforced.
+
+- **Every log line is `logEvent(level, event, message, meta)`** (`src/utils/logger.ts`), never a raw
+  `logger.info/.warn/.error(string, meta)` or bare `console.*`. The `event` field makes logs
+  greppable and alertable by kind.
+- **Event names are `snake_case`, prefixed by route or domain:** `chat_*`, `audio_*`, `avatar_*`,
+  `bots_*`, `messages_*`, `chars_*`, `admin_stats_*`, `transcript_*`, `log_api_*`, `health_*`,
+  `rate_limit_exceeded`. Exception: `auth_error`/`auth_warning` carry NextAuth's own code in
+  `meta.code`, since those codes aren't this app's to rename.
+- **Levels:** `info` for expected lifecycle events (a reply sent, a cache hit, a routine 400);
+  `warn` for recoverable or security-relevant events (a tripped rate limit, a non-admin hitting
+  `/api/admin/stats`, a text/audio mismatch); `error` for real failures (a 500, discarded work, a
+  broken downstream call).
+- **Wrap `meta` in `sanitizeLogMeta()`** (truncates long strings, flattens nested objects). Never log
+  full user-authored content (messages, replies, personality prompts, cache keys built from them) on a
+  routine path; log lengths, hashes, or ids (see `chat_reply_sent`/`chat_cache_hit`). A short
+  truncated snippet is acceptable only on a rare, bounded diagnostic path (`audio_text_mismatch_regen`).
+- **One `logEvent` per failure,** not an `error`/`warn` pair. The one deliberate exception is
+  `health.ts`: its `error` detail is gated behind `NODE_ENV !== "production"` while an unconditional
+  lower-detail `info` always fires, because the endpoint is hit on every chat mount and transient
+  provider blips shouldn't drive alerting. Don't collapse it without re-reading why.
+- **Centralize cross-cutting logging:** 429 logging lives once in `applyRateLimit`
+  (`src/utils/rateLimit.ts`), tagged with the limiter's `name`.
+- **Enforcement:** `no-console` (scoped to `src/**`, excluding `logger.ts` and tests) plus a
+  `no-restricted-syntax` rule banning `logger.info(`/`.warn(`/`.error(` in `src/pages/api/**/*.ts`.
+  Client code (`src/app/components`) already uses `logEvent` exclusively; keep it that way.
+- **Not mechanically enforced:** whether a *new* failure path should log at all is a judgment call,
+  as is whether this file or the README needs updating. Review both deliberately before opening a PR
+  (the PR template's checklist exists for this); a green `npm run ci` doesn't check either.
+
+### Code documentation standard
+
+A separate layer from inline "why" comments (default to none; add one only when the reasoning is
+non-obvious): a one-line `/** ... */` JSDoc summary on every top-level exported function, React
+component, and hook.
+
+- **Required:** a real summary sentence placed immediately above the declaration (a blank line or
+  statement between breaks the association). Not required: exhaustive `@param`/`@returns` prose
+  (signatures already say it); add tags only when they carry a non-obvious contract.
+- **Enforced** by `eslint.config.cjs`'s `eslint-plugin-jsdoc` block, scoped to
+  `src/app/components/**/*.{ts,tsx}`, `src/**/*.ts`, and `src/pages/api/**/*.ts` (tests and `.d.ts`
+  excluded). `jsdoc/require-jsdoc` matches by AST position (`Program > ...`), so both `export const
+  Foo = () => {}` and `const Foo = () => {}; export default Foo` are covered, and
+  `flat/recommended-typescript-flavor` validates syntax wherever a block exists. `@swagger` and
+  `@google-cloud` are allowed via `check-tag-names`' `definedTags`. A missing or malformed block fails
+  `npm run ci` (`--max-warnings=0`).
+- **Exported** by `npm run docs:code` (TypeDoc, `config/typedoc.mjs`) to gitignored `docs-generated/`,
+  also a `ci` step and a workflow step (a second check on the same comments). `blockTags` is TypeDoc's
+  `OptionDefaults.blockTags` plus `@swagger`; the two tools keep separate tag allowlists.
+- **Nested helpers and callbacks don't need blocks** (only top-level declarations; `eslint-plugin-jsdoc`
+  additionally requires one on any nested `function`-keyword declaration, but arrow helpers are
+  exempt). Don't document every inner helper.
+
+### API documentation
+
+Every `src/pages/api/*.ts` handler carries an OpenAPI 3.0 `@swagger` JSDoc block.
+`npm run docs:api` (`scripts/generate-openapi.cjs`, via `swagger-jsdoc`) writes
+`public/openapi.json` (a gitignored build artifact; never hand-edit) and runs automatically before
+`dev`/`build`/`vercel-build`. `src/app/reference/route.ts` serves the interactive UI
+(`@scalar/nextjs-api-reference`) at `/reference` from that static file, since Vercel's bundler
+doesn't reliably ship raw `.ts`; it sits outside `src/pages/api`, so `proxy.ts` auth doesn't apply.
+The glob is recursive (`src/pages/api/**/*.ts`) so nested directories like `admin/` are picked up,
+and the script normalizes to forward slashes because `swagger-jsdoc` doesn't match backslash paths
+(if `docs:api` reports 0 documented paths locally on Windows, suspect this).
+
+### Testing conventions
+
+- Tests live under `tests/`, mirroring source (`tests/api`, `tests/app`, `tests/pages`, `tests/src`,
+  `tests/utils`, `tests/integration`, `tests/unit`).
+- Mock `authenticatedFetch`, not raw `fetch`, for client/server interaction tests, and mock external
+  APIs (Anthropic, GCP TTS/Vertex) rather than calling them live.
+- TTS tests must call `tts.__resetSingletonsForTest()` to avoid leaking singleton state.
+- For code reading an SSE (`stream: true`) response via `response.body.getReader()` (the games'
+  `fetchRoundWithProgress`, `chat.ts`'s streaming mode), use `tests/helpers/mockResponse.ts`'s
+  `mockSseResponse` (all frames queued) or `mockControlledSseResponse` (frames pushed one at a time,
+  to assert state *between* events such as a staged-progress label). A plain `mockResponse()` has no
+  `.body` and hangs or fails.
+
+## Security posture
+
+Kept high-level (this file is public): what changed and why, not exploit-level specifics.
+
+- **`proxy.ts`'s Origin/Referer check is CSRF protection, not authentication.** It stops a malicious
+  site's browser JS from riding a visitor's session, but a non-browser client can set any `Origin`.
+  Don't treat an allowed-origin match as proof of a trusted caller when reasoning about request
+  volume or cost; the per-route rate limiter (`src/utils/rateLimit.ts`) is the real ceiling. Fully
+  closing this would mean requiring login on guest-usable routes (breaking core UX) or real
+  session/token infrastructure, an accepted tradeoff.
+- **API key comparison is constant-time** (`secureCompare`, hash-then-`timingSafeEqual`), since Proxy
+  defaults to the Node.js runtime in Next.js 16 (renamed from `middleware.ts`, which was Edge).
+- **`getClientIp()`** trusts the first `x-forwarded-for` entry, correct on Vercel (its edge
+  overwrites the header). Revisit if self-hosted behind another proxy (prefer `@vercel/functions`'
+  `ipAddress()`).
+- **`/api/health` is rate-limited (10/min/IP) and returns no raw third-party SDK error text** (still
+  logged server-side); it makes two real billed or quota-limited calls per request.
+- **`buildSsml()`** (`src/utils/voiceHelpers.ts`) XML-escapes `text` before interpolating into SSML
+  (also fixes malformed SSML from ordinary `&`/`<`). `/api/audio`'s `text` param is capped at 2000
+  characters. Letting the client supply the text is intentional: audio isn't persisted server-side,
+  so regenerating after eviction needs the original text.
+- **`scripts/scan-secrets.sh`** matches this app's credential shapes (Anthropic keys, Google OAuth
+  secrets, Postgres URLs, Vercel Blob tokens), not just PEM blocks; `.env.example` is excluded
+  (placeholders look like credentials by design).
+- **`.github/workflows/semgrep.yml`** runs the JavaScript, TypeScript, React, and Node.js community
+  rulesets on pushes to `main` and PRs (token-free `semgrep scan`, metrics off); reviewed false
+  positives carry narrow `nosemgrep` annotations with reasons.
+- **`eslint-plugin-regexp`** runs `no-super-linear-backtracking` and `no-super-linear-move` as
+  errors in `npm run lint`, catching ReDoS-shaped patterns locally.
+- **`.github/workflows/ci.yml` uses `npm ci`,** not `npm install`/`update`, for reproducible builds.
+- **`next.config.mjs`** sends explicit `Strict-Transport-Security` alongside the CSP,
+  `X-Frame-Options`, and `Permissions-Policy` headers.
+- **Anyone integrating with the API key** gets the current `API_SECRET` from `.env.local`/Vercel.
+
+## Mobile app (`apps/mobile`)
+
+Android/iOS Expo client for this same backend (folded into the monorepo in v0.6.1 with history
+preserved; the old standalone mobile/shared repos are deleted). It is a pure API client: no
+server code lives in it, and it must never reimplement backend logic, only call it. It still
+deploys independently of the web app (Expo/EAS, not Vercel). Read the versioned Expo docs
+(<https://docs.expo.dev/versions/v57.0.0/>) before writing mobile code; SDK 57 differs from
+older Expo. Parity rules are in "Web/mobile parity" above. Mobile owns only its UI: screens
+(`apps/mobile/src/screens/`: Creator, Chat, CharWall, History, Game, Leaderboard) and
+components are written natively, never shared with the DOM app.
+
+- **`packages/shared` (`character-chatbot-shared`) is the canonical home for anything
+  cross-platform**, an npm workspace resolved locally (edit it and re-run type-check, no
+  install step). It holds API types (`types.ts`, mirroring the `@swagger` blocks), validation,
+  storage keys, brand theme/copy, game and leaderboard state machines, character-creation flow,
+  category taxonomy, and `formatRelativeTime`. Colors are authored once in
+  `packages/shared/src/tokens/{light,dark}.json`; mobile flattens them and
+  `scripts/generate-theme-css.cjs` feeds the same files to Style Dictionary for web's
+  generated CSS.
+- **Audio is `expo-audio`** (`useAudioPlayer` + `player.replace()`); `expo-av` is gone from SDK 57.
+- **Stays on plain Expo Go, deliberately.** A custom dev client (`react-native-keyboard-controller` with
+  prebuild) was tried for a keyboard bug and fully reverted once `insets.bottom` solved it.
+  Don't adopt a native dependency without confirming Expo Go's module set truly can't do the job.
+- **Chat is non-streaming** (React Native's `fetch` can't read an SSE body), so `/api/chat` and
+  the game's `start`/`continue` run without `stream` and show a plain spinner. Game tokens are
+  opaque in AsyncStorage; a guest's identity is a random SecureStore secret
+  (`src/gameGuest.ts`) sent as `x-game-guest` in place of web's HttpOnly cookie. Correct and
+  wrong guesses fire haptics (native-only extra).
+- **Every non-GET request carries `x-api-key`** (`EXPO_PUBLIC_API_SECRET`), because React
+  Native sends no `Origin`/`Referer` and so lands in `proxy.ts`'s external-origin branch. The
+  secret is extractable from the APK; the per-route rate limiter is the real abuse ceiling
+  (same caveat as "Security posture"). A documented tradeoff, not an oversight: discuss before
+  changing. Env vars: `EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_API_SECRET` (`.env.example`).
+- **Sign-in is a backend-mediated browser bridge**, since Auth.js's cookie session doesn't fit a
+  mobile client and Expo Go has no native Google Sign-In. `src/auth.ts`'s `signIn()` opens
+  `GET /api/auth/mobile-auth-start?redirect_uri=...` via `expo-web-browser`
+  (`app.json`'s scheme `character-chatbot-mobile`), which lands on the backend's own
+  `/auth/signin` page (Google or email). NextAuth's ordinary callbacks finish, then
+  `mobile-auth-complete.ts` mints a bearer JWT (same shape as the web cookie; `getSessionUserId`
+  reads either) back into the app. The token lives in memory and `expo-secure-store`
+  (`src/authToken.ts`, split from `auth.ts` to avoid a cycle with `api.ts`) and is attached as
+  `Authorization: Bearer`. `GET /api/auth/mobile-session` resolves it to `{ email, name }`.
+  **Email-path limitation:** it only auto-completes if the magic link is tapped on the same
+  device; elsewhere the in-app browser tab just waits. A signed-in user's characters persist via
+  `POST /api/bots` (fire-and-forget), `HistoryScreen` lists them, and `ChatScreen` reconciles
+  local history against `GET /api/messages` (adopt the server list only if longer), matching web.
+- **Headers:** `AccountHeaderButton` is every screen's default `headerRight` (set in
+  `App.tsx`'s `screenOptions` with `DarkModeButton`), so sign-in, name, and Past chats are
+  reachable everywhere. It takes `navigation` as a prop, and lives in `headerRight` because
+  overriding `headerLeft` would replace native-stack's back button.
+- **Navigate with `navigation.navigate`, not `replace`,** from Creator/CharWall into Chat;
+  replacing left Chat with no back button.
+- **`CreatorScreen` must fit one screen with no scrolling** on modern Android phones (checked at
+  360x740 through 412x915 with a resume card showing). The carousel is the flexible element:
+  it is sized (110 to 210) from the measured leftover room, and the viewport keeps the tallest
+  height seen so the keyboard doesn't shrink it. Don't give the scroll container `flexGrow: 1`.
+  Anything tall added here needs re-checking via Expo web plus Playwright with `/api/chars` stubbed.
+- **Keyboard avoidance in `ChatScreen`** uses `KeyboardAvoidingView` with `behavior="padding"` and
+  `keyboardVerticalOffset={useHeaderHeight()}` (SDK 57's forced edge-to-edge disables
+  `adjustResize`), and drops the input row's `insets.bottom` padding while the keyboard is open
+  (it otherwise doubled up on a real Samsung). For a bug that reproduces on one device only, add a
+  temporary on-screen debug readout of real device values before changing the mechanism blind.
+- **Shared hand-drawn SVG icon glyphs were tried and reverted** (the send button rendered blank
+  on a real Android device and stayed broken). Icons are `@expo/vector-icons` (Ionicons). If
+  revisited, validate on a real Android device, not the web preview.
+- **Branding** reuses the web favicon (`public/palette-icon.svg`): `assets/icon.png`,
+  `splash-icon.png`, and the `android-icon-*` set are rendered from it (regenerate if it changes).
+- **Web preview (`npx expo start --web`) is dev-only,** for layout and navigation; real network
+  calls hit `proxy.ts`'s CORS wall by design.
+- **No voice input on mobile** (declined 2026-09-27; see "Voice input" above).
+- **Still to do for store release:** privacy policy listing (can point at the web site), Play
+  Console listing, EAS signing config, internal testing track.
+
+### Mobile testing, lint and CI
+
+Jest (`jest-expo`) plus React Native Testing Library, tests under `apps/mobile/tests/` mirroring
+`src/`, with the same 80% global coverage threshold. Its `npm run ci` (`lint --max-warnings=0`,
+`lint:md`, `format:check`, `type-check`, `test:coverage`) runs from the root workflow
+`.github/workflows/ci-mobile.yml` and inside the root `npm run ci`, which also runs
+`packages/shared`'s tests.
+
+- **RNTL v14's `render` and `fireEvent` are async;** always `await` both.
+- **Wrap an async handler before `onPress`** (`() => void run()`), or a test that pauses a mocked
+  request mid-flow hangs until Jest's timeout.
+- **Screen tests render `navigation.setOptions`'s header in the same tree** via a harness with a
+  memoized `navigation` object (see `ChatScreen.test.tsx`); an unmemoized one loops the effect.
+- **Workspace hoisting** is handled in `jest.config.js` (`moduleNameMapper` forces one `react`;
+  `moduleDirectories` finds native deps installed only under `apps/mobile`). `jest.setup.js` owns
+  the native/global mocks (AsyncStorage, SecureStore, expo-audio, vector icons); a dependency bump
+  can move a mock's path, so check there first.
+- **ESLint** (`eslint-config-expo`) disables `react/no-unescaped-entities` and `react-hooks/refs`
+  (false positives for RN; see `eslint.config.js`). `settings.react.version` is pinned, not
+  `"detect"`, because ESLint 10 removed an API `eslint-plugin-react@7.37.5` calls during
+  detection; **bump it by hand whenever mobile's `react` version changes.** Prettier and
+  markdownlint configs deliberately mirror the root's.
+- Audio playback, keyboard/scroll layout, and the real sign-in handoff can only be verified on a device.
+
+## Environment variables
+
+**Required:** `ANTHROPIC_API_KEY`, `API_SECRET` (checked by `proxy.ts`),
+`GOOGLE_APPLICATION_CREDENTIALS_JSON` (path or raw JSON, for TTS).
+
+**Optional** (each degrades gracefully when unset; the app is fully functional as a guest with none):
+
+- `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID`: overrides the production site's built-in GA4 stream or enables
+  the consent-gated flow in development (see "Internal analytics").
+- `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`: Cloudflare Workers AI as the primary avatar
+  provider; without them Pollinations.ai runs with no config (see "Avatar generation").
+- `VERCEL_BLOB_READ_WRITE_TOKEN` / `BLOB_READ_WRITE_TOKEN`: Vercel Blob logging and durable avatar URLs.
+- `TTS_TMP_DIR`: defaults to the system temp dir.
+- `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`):
+  share rate-limit counters across instances.
+- `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`: account sign-in
+  and persistence (see "Account persistence").
+- `EMAIL_SERVER` + `EMAIL_FROM`: passwordless magic-link sign-in alongside Google (needs `DATABASE_URL`).
+- `GAME_TOKEN_SECRET`: key for the games' encrypted round token; falls back to `NEXTAUTH_SECRET`, then
+  the required `API_SECRET`, so the games need no new configuration.
+- `ADMIN_EMAILS`: comma-separated allowlist for `/admin`; fails closed when unset.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

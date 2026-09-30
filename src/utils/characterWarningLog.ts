@@ -14,7 +14,7 @@
 import { desc } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { characterWarningLog } from "../db/schema";
-import { logEvent, sanitizeLogMeta } from "./logger";
+import { safeDb } from "./safeDb";
 
 export interface WarningLogEntry {
   characterName: string;
@@ -24,37 +24,22 @@ export interface WarningLogEntry {
 }
 
 /** Records a single warning-level classification event. Best-effort, fire-and-forget from the caller. */
-export async function logWarning(name: string, reason: string | null): Promise<void> {
-  if (!process.env.DATABASE_URL) return;
-  try {
-    await getDb()
-      .insert(characterWarningLog)
-      .values({ characterName: name, displayName: name, reason });
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_warning_log_write_failed",
-      "Warning log write failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-  }
+export function logWarning(name: string, reason: string | null): Promise<void> {
+  return safeDb(
+    "character_warning_log_write_failed",
+    "Warning log write failed",
+    undefined,
+    async () => {
+      await getDb()
+        .insert(characterWarningLog)
+        .values({ characterName: name, displayName: name, reason });
+    },
+  );
 }
 
 /** Lists every warning event, newest first, for the /admin/moderation "Recently warned" panel. */
-export async function listWarnings(): Promise<WarningLogEntry[]> {
-  if (!process.env.DATABASE_URL) return [];
-  try {
-    return await getDb()
-      .select()
-      .from(characterWarningLog)
-      .orderBy(desc(characterWarningLog.createdAt));
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_warning_log_list_failed",
-      "Warning log list failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    return [];
-  }
+export function listWarnings(): Promise<WarningLogEntry[]> {
+  return safeDb("character_warning_log_list_failed", "Warning log list failed", [], () =>
+    getDb().select().from(characterWarningLog).orderBy(desc(characterWarningLog.createdAt)),
+  );
 }

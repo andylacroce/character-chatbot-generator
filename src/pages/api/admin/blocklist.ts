@@ -26,7 +26,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { requireAdmin } from "../../../utils/adminGuard";
+import { readAdminName, requireAdmin } from "../../../utils/adminGuard";
 import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import {
@@ -136,12 +136,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === "POST") {
-    const { name, reason, category } = req.body ?? {};
-    if (!name || typeof name !== "string" || !name.trim()) {
-      res.status(400).json({ error: "Valid name required" });
-      return;
-    }
-    const trimmedName = name.trim();
+    const { reason, category } = req.body ?? {};
+    const trimmedName = readAdminName(req, res);
+    if (!trimmedName) return;
     const resolvedCategory = category === "copyright" ? "copyright" : "content";
     await addToBlocklist(
       trimmedName,
@@ -166,12 +163,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === "DELETE") {
-    const { name } = req.body ?? {};
-    if (!name || typeof name !== "string" || !name.trim()) {
-      res.status(400).json({ error: "Valid name required" });
-      return;
-    }
-    const trimmedName = name.trim();
+    const trimmedName = readAdminName(req, res);
+    if (!trimmedName) return;
     const removed = await removeFromBlocklist(trimmedName);
     logEvent(
       "info",

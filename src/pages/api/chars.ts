@@ -17,7 +17,7 @@ import {
   getCharacterCategoryOrder,
   isCharacterCategory,
   type CharacterCategory,
-} from "../../utils/characterCategories";
+} from "character-chatbot-shared";
 
 /** Rate limiter: 60 requests per minute per IP — higher than most since infinite scroll on the gallery fires one request per batch. */
 const charsRateLimit = createRateLimiter({
@@ -121,7 +121,7 @@ async function getAllCharacters(): Promise<CharacterEntry[]> {
     // Prefer the properly-cased name captured at generation time (see
     // src/db/schema.ts's avatarCache.displayName doc comment) — the regex-based
     // reconstruction below is a fallback only for rows written before that column
-    // existed (or run through scripts/backfill-avatar-display-names.cjs).
+    // existed.
     name: row.displayName || toDisplayName(row.characterName),
     avatarUrl: row.avatarUrl,
     category: isCharacterCategory(row.category) ? row.category : "other",

@@ -16,7 +16,7 @@ import {
   getCharacterCategoryLabel,
   isCharacterCategory,
   type CharacterCategory,
-} from "../../utils/characterCategories";
+} from "character-chatbot-shared";
 import AppHeader from "./AppHeader";
 import BackHomeLink from "./BackHomeLink";
 import { useAccountMenu } from "./useAccountMenu";

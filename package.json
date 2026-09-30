@@ -1,6 +1,6 @@
 {
   "name": "portrayal",
-  "version": "0.25.3",
+  "version": "0.25.4",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -38,12 +38,7 @@
     "db:push": "drizzle-kit push --config config/drizzle.config.ts",
     "db:check": "node scripts/check-db-schema.cjs",
     "db:generate": "drizzle-kit generate --config config/drizzle.config.ts",
-    "db:studio": "drizzle-kit studio --config config/drizzle.config.ts",
-    "chars:backfill-display-names": "node scripts/backfill-avatar-display-names.cjs",
-    "chars:backfill-full-names": "node scripts/backfill-full-character-names.cjs",
-    "chars:scrub-copyrighted": "node scripts/scrub-copyrighted-avatar-cache.cjs",
-    "chars:scrub-unrecognized": "node scripts/scrub-unrecognized-characters.cjs",
-    "logs:scrub-ips": "node scripts/scrub-chat-log-ips.cjs"
+    "db:studio": "drizzle-kit studio --config config/drizzle.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.127.0",

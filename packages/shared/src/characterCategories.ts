@@ -1,9 +1,7 @@
 import type { CharacterCategory } from "./types";
 
 /**
- * Stable taxonomy used to classify and group public Character Wall portraits — mirrors
- * the web app's src/utils/characterCategories.ts (not yet migrated to this package; kept
- * in sync by hand until it is).
+ * Stable taxonomy used to classify and group public Character Wall portraits.
  */
 export const CHARACTER_CATEGORIES: readonly { value: CharacterCategory; label: string }[] = [
   { value: "history", label: "Historical Figures" },
@@ -25,4 +23,10 @@ export function isCharacterCategory(value: unknown): value is CharacterCategory 
 export function getCharacterCategoryLabel(value: unknown): string {
   const category = CHARACTER_CATEGORIES.find((entry) => entry.value === value);
   return category?.label ?? "Other";
+}
+
+/** Provides the curated display order for grouped Character Wall sections. */
+export function getCharacterCategoryOrder(value: unknown): number {
+  const index = CHARACTER_CATEGORIES.findIndex((entry) => entry.value === value);
+  return index === -1 ? CHARACTER_CATEGORIES.length - 1 : index;
 }

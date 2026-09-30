@@ -22,7 +22,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { characterAllowlist } from "../db/schema";
-import { logEvent, sanitizeLogMeta } from "./logger";
+import { safeDb } from "./safeDb";
 import characterNames from "../data/characterNames";
 
 const CURATED_ALLOWLIST = new Set(characterNames.map((name) => name.toLowerCase()));
@@ -46,23 +46,14 @@ export interface AllowlistEntry {
 }
 
 /** Looks up a name in the admin-managed allowlist table. Null on a miss, without DATABASE_URL, or on any DB error. */
-export async function getAllowlistEntry(name: string): Promise<AllowlistEntry | null> {
-  if (!process.env.DATABASE_URL) return null;
-  try {
+export function getAllowlistEntry(name: string): Promise<AllowlistEntry | null> {
+  return safeDb("character_allowlist_lookup_failed", "Allowlist lookup failed", null, async () => {
     const rows = await getDb()
       .select()
       .from(characterAllowlist)
       .where(eq(characterAllowlist.characterName, allowlistKey(name)));
     return rows[0] ?? null;
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_allowlist_lookup_failed",
-      "Allowlist lookup failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    return null;
-  }
+  });
 }
 
 /** Combined check: the static curated list, or the admin-managed table. */
@@ -72,58 +63,34 @@ export async function isAllowlisted(name: string): Promise<boolean> {
 }
 
 /** Adds (or refreshes) a name on the admin-managed allowlist. Best-effort. */
-export async function addToAllowlist(name: string, reason: string | null): Promise<void> {
-  if (!process.env.DATABASE_URL) return;
-  try {
-    await getDb()
-      .insert(characterAllowlist)
-      .values({ characterName: allowlistKey(name), displayName: name, reason, source: "admin" })
-      .onConflictDoUpdate({
-        target: characterAllowlist.characterName,
-        set: { reason },
-      });
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_allowlist_write_failed",
-      "Allowlist write failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-  }
+export function addToAllowlist(name: string, reason: string | null): Promise<void> {
+  return safeDb(
+    "character_allowlist_write_failed",
+    "Allowlist write failed",
+    undefined,
+    async () => {
+      await getDb()
+        .insert(characterAllowlist)
+        .values({ characterName: allowlistKey(name), displayName: name, reason, source: "admin" })
+        .onConflictDoUpdate({ target: characterAllowlist.characterName, set: { reason } });
+    },
+  );
 }
 
 /** Removes a name from the admin-managed allowlist. Returns whether a row existed. Never touches the static curated list. */
-export async function removeFromAllowlist(name: string): Promise<boolean> {
-  if (!process.env.DATABASE_URL) return false;
-  try {
+export function removeFromAllowlist(name: string): Promise<boolean> {
+  return safeDb("character_allowlist_delete_failed", "Allowlist delete failed", false, async () => {
     const deleted = await getDb()
       .delete(characterAllowlist)
       .where(eq(characterAllowlist.characterName, allowlistKey(name)))
       .returning({ characterName: characterAllowlist.characterName });
     return deleted.length > 0;
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_allowlist_delete_failed",
-      "Allowlist delete failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    return false;
-  }
+  });
 }
 
-/** Lists every admin-managed allowlist entry, newest first, for the /admin/moderation panel. */
-export async function listAllowlist(): Promise<AllowlistEntry[]> {
-  if (!process.env.DATABASE_URL) return [];
-  try {
-    return await getDb().select().from(characterAllowlist).orderBy(characterAllowlist.createdAt);
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_allowlist_list_failed",
-      "Allowlist list failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    return [];
-  }
+/** Lists every admin-managed allowlist entry, oldest first, for the /admin/moderation panel. */
+export function listAllowlist(): Promise<AllowlistEntry[]> {
+  return safeDb("character_allowlist_list_failed", "Allowlist list failed", [], () =>
+    getDb().select().from(characterAllowlist).orderBy(characterAllowlist.createdAt),
+  );
 }

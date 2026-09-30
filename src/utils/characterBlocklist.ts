@@ -12,7 +12,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { characterBlocklist } from "../db/schema";
-import { logEvent, sanitizeLogMeta } from "./logger";
+import { safeDb } from "./safeDb";
 
 /** Lowercased so lookups are case-insensitive, same convention as avatarCache. */
 function blocklistKey(name: string): string {
@@ -32,97 +32,60 @@ export interface BlocklistEntry {
  * Looks up a name in the blocklist. Returns the matching entry, or null on a miss,
  * without DATABASE_URL, or on any DB error.
  */
-export async function getBlocklistEntry(name: string): Promise<BlocklistEntry | null> {
-  if (!process.env.DATABASE_URL) return null;
-  try {
+export function getBlocklistEntry(name: string): Promise<BlocklistEntry | null> {
+  return safeDb("character_blocklist_lookup_failed", "Blocklist lookup failed", null, async () => {
     const rows = await getDb()
       .select()
       .from(characterBlocklist)
       .where(eq(characterBlocklist.characterName, blocklistKey(name)));
     return rows[0] ?? null;
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_blocklist_lookup_failed",
-      "Blocklist lookup failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    return null;
-  }
+  });
 }
 
 /**
- * Adds (or refreshes) a name on the blocklist. Best-effort — a write failure is
- * logged and swallowed rather than failing the caller's request, since the caller's
- * own response to the user doesn't depend on this succeeding.
+ * Adds (or refreshes) a name on the blocklist. Best-effort: a write failure is logged
+ * and swallowed rather than failing the caller's request.
  *
  * `category` is required (not defaulted) so every call site states explicitly which
- * fast-path response shape a future lookup should produce — see the table's own doc
+ * fast-path response shape a future lookup should produce; see the table's own doc
  * comment in src/db/schema.ts for what "copyright" vs "content" each mean.
  */
-export async function addToBlocklist(
+export function addToBlocklist(
   name: string,
   reason: string | null,
   source: "claude" | "admin",
   category: "copyright" | "content",
 ): Promise<void> {
-  if (!process.env.DATABASE_URL) return;
-  try {
-    await getDb()
-      .insert(characterBlocklist)
-      .values({
-        characterName: blocklistKey(name),
-        displayName: name,
-        reason,
-        source,
-        category,
-      })
-      .onConflictDoUpdate({
-        target: characterBlocklist.characterName,
-        set: { reason, source, category },
-      });
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_blocklist_write_failed",
-      "Blocklist write failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-  }
+  return safeDb(
+    "character_blocklist_write_failed",
+    "Blocklist write failed",
+    undefined,
+    async () => {
+      await getDb()
+        .insert(characterBlocklist)
+        .values({ characterName: blocklistKey(name), displayName: name, reason, source, category })
+        .onConflictDoUpdate({
+          target: characterBlocklist.characterName,
+          set: { reason, source, category },
+        });
+    },
+  );
 }
 
 /** Removes a name from the blocklist (an admin "unblock" action). Returns whether a row existed. */
-export async function removeFromBlocklist(name: string): Promise<boolean> {
-  if (!process.env.DATABASE_URL) return false;
-  try {
+export function removeFromBlocklist(name: string): Promise<boolean> {
+  return safeDb("character_blocklist_delete_failed", "Blocklist delete failed", false, async () => {
     const deleted = await getDb()
       .delete(characterBlocklist)
       .where(eq(characterBlocklist.characterName, blocklistKey(name)))
       .returning({ characterName: characterBlocklist.characterName });
     return deleted.length > 0;
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_blocklist_delete_failed",
-      "Blocklist delete failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    return false;
-  }
+  });
 }
 
-/** Lists every blocklisted name, newest first, for the /admin blocklist panel. */
-export async function listBlocklist(): Promise<BlocklistEntry[]> {
-  if (!process.env.DATABASE_URL) return [];
-  try {
-    return await getDb().select().from(characterBlocklist).orderBy(characterBlocklist.createdAt);
-  } catch (err) {
-    logEvent(
-      "error",
-      "character_blocklist_list_failed",
-      "Blocklist list failed",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    return [];
-  }
+/** Lists every blocklisted name, oldest first, for the /admin blocklist panel. */
+export function listBlocklist(): Promise<BlocklistEntry[]> {
+  return safeDb("character_blocklist_list_failed", "Blocklist list failed", [], () =>
+    getDb().select().from(characterBlocklist).orderBy(characterBlocklist.createdAt),
+  );
 }
