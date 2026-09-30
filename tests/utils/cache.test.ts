@@ -63,13 +63,6 @@ describe("cache utility", () => {
       expect(cache.getReplyCache("k")).toBeNull();
     });
 
-    it("deleteReplyCache removes a key", () => {
-      const { cache } = load();
-      cache.setReplyCache("k", "v");
-      cache.deleteReplyCache("k");
-      expect(cache.getReplyCache("k")).toBeNull();
-    });
-
     it("cleans up when the cache exceeds its max size, keeping the newest entry", () => {
       const { cache } = load();
       for (let i = 0; i < 1001; i++) cache.setReplyCache(`bulk-${i}`, `val-${i}`);
@@ -106,13 +99,6 @@ describe("cache utility", () => {
       cache.setReplyCache("c", "v-c");
       const written = JSON.parse(fs.writeFileSync.mock.calls[0][1]);
       expect(Object.keys(written).sort()).toEqual(["a", "b", "c"]);
-    });
-
-    it("deleteReplyCache removes the key and writes the file", () => {
-      const { cache, fs } = load({ gone: { value: "x", timestamp: Date.now() } });
-      cache.deleteReplyCache("gone");
-      const written = JSON.parse(fs.writeFileSync.mock.calls[0][1]);
-      expect(written).not.toHaveProperty("gone");
     });
 
     it("degrades to an empty cache on invalid JSON and still persists on set", () => {

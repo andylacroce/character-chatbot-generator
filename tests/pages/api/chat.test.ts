@@ -101,12 +101,6 @@ jest.mock("fs", () => ({
   },
 }));
 
-const mockIpinfo = jest.fn();
-jest.mock("ipinfo", () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => mockIpinfo(...args),
-}));
-
 const mockLogEvent = jest.fn();
 jest.mock("../../../src/utils/logger", () => ({
   __esModule: true,
@@ -206,7 +200,6 @@ describe("chat API", () => {
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readFileSync.mockReturnValue("");
     mockGetReplyCache.mockReturnValue(undefined);
-    mockIpinfo.mockResolvedValue({ city: "London", region: "England", country: "GB" });
     mockSynthesizeSpeechToFile.mockResolvedValue(undefined);
     // Guest by default — see the phase 3c describe block for the signed-in path.
     mockGetSessionUserId.mockResolvedValue(null);
@@ -436,40 +429,6 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "Unknown error" }));
-    });
-
-    it("continues without a location when the IP lookup fails", async () => {
-      mockIpinfo.mockRejectedValueOnce(new Error("ipinfo down"));
-      claudeSays("Greetings.");
-      const res = makeRes();
-      await handler(makeReq(), res);
-
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(mockLogEvent).toHaveBeenCalledWith(
-        "warn",
-        "chat_ip_lookup_failed",
-        expect.any(String),
-        expect.any(Object),
-      );
-    });
-
-    it("skips the IP lookup entirely when no address is available", async () => {
-      claudeSays("Greetings.");
-      const req = makeReq();
-      (req.headers as Record<string, unknown>)["x-forwarded-for"] = undefined;
-      (req as unknown as { connection: { remoteAddress?: string } }).connection = {};
-      await handler(req, makeRes());
-
-      expect(mockIpinfo).not.toHaveBeenCalled();
-    });
-
-    it("takes the first address from a forwarded-for array", async () => {
-      claudeSays("Greetings.");
-      const req = makeReq();
-      (req.headers as Record<string, unknown>)["x-forwarded-for"] = ["203.0.113.9", "10.0.0.1"];
-      await handler(req, makeRes());
-
-      expect(mockIpinfo).toHaveBeenCalledWith("203.0.113.9");
     });
   });
 

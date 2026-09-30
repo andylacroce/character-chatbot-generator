@@ -75,8 +75,6 @@
 .hero {
   text-align: center;
   width: 100%;
-  /* No bottom margin: .orDivider (rendered right after this) supplies the
-     space down to the input row on its own, so the two don't stack. */
   margin-bottom: 0;
 }
 
@@ -215,31 +213,6 @@
 .wallCta:active {
   transform: translateY(0);
   box-shadow: 0 2px 6px color-mix(in srgb, var(--color-secondary) 45%, transparent);
-}
-
-.orDivider {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  margin: 1.7rem 0 1.5rem;
-  color: var(--color-text-secondary);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.orDivider::before,
-.orDivider::after {
-  content: "";
-  flex: 1 1 0;
-  height: 1px;
-  background: var(--color-outline);
-  opacity: 0.45;
-}
-
-.orDivider span {
-  padding: 0 0.9rem;
 }
 
 /* ===== Name input + actions ===== */
@@ -1064,32 +1037,9 @@
   color: var(--color-on-primary-container);
 }
 
-.gamesBandDivider {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.2rem;
-  flex-shrink: 0;
-  font-family: var(--font-secondary), serif;
-  font-size: 1.1rem;
-  color: var(--color-text-secondary);
-  background: var(--color-background);
-  border-left: 1px solid var(--color-outline);
-  border-right: 1px solid var(--color-outline);
-}
-
 @media (max-width: 600px) {
   .gamesBand {
     flex-direction: column;
-  }
-
-  .gamesBandDivider {
-    width: 100%;
-    height: 1.6rem;
-    border-left: none;
-    border-right: none;
-    border-top: 1px solid var(--color-outline);
-    border-bottom: 1px solid var(--color-outline);
   }
 }
 

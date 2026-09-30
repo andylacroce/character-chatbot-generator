@@ -13,7 +13,6 @@ import { synthesizeSpeechToFile } from "../../utils/tts";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import ipinfo from "ipinfo";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../utils/logger";
 import { setReplyCache, getReplyCache } from "../../utils/cache";
 import crypto from "crypto";
@@ -249,28 +248,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userName =
       storedUserName ||
       (typeof req.body.userName === "string" ? sanitizeUserName(req.body.userName) : "");
-
-    // Get user IP for logging/location
-    const userIp = Array.isArray(req.headers["x-forwarded-for"])
-      ? req.headers["x-forwarded-for"][0]
-      : req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-    let userLocation = "Unknown location";
-    if (userIp) {
-      try {
-        const locationData = await ipinfo(userIp as string);
-        userLocation = `${locationData.city}, ${locationData.region}, ${locationData.country}`;
-      } catch (error) {
-        logEvent(
-          "warn",
-          "chat_ip_lookup_failed",
-          "IP info lookup failed",
-          sanitizeLogMeta({
-            requestId,
-            error: error instanceof Error ? error.message : String(error),
-          }),
-        );
-      }
-    }
 
     // Conversation summarization keeps the context window manageable once history exceeds
     // 20 messages. For a saved character (botRow), this reads from the messages table and
@@ -582,8 +559,6 @@ CRITICAL CONTEXT INSTRUCTIONS:
           sanitizeLogMeta({
             requestId,
             botName,
-            userIp,
-            userLocation,
             userMessageLength: userMessage.length,
             botReplyLength: botReply.length,
             cached: false,
@@ -716,8 +691,6 @@ CRITICAL CONTEXT INSTRUCTIONS:
           sanitizeLogMeta({
             requestId,
             botName,
-            userIp,
-            userLocation,
             userMessageLength: userMessage.length,
             botReplyLength: botReply.length,
             cached: false,
@@ -771,8 +744,6 @@ CRITICAL CONTEXT INSTRUCTIONS:
       sanitizeLogMeta({
         requestId,
         botName,
-        userIp,
-        userLocation,
         userMessageLength: userMessage.length,
         botReplyLength: botReply.length,
         cached: false,
