@@ -17,5 +17,8 @@
   "private": true,
   "peerDependencies": {
     "react": "*"
+  },
+  "dependencies": {
+    "character-chatbot-shared": "^0.1.0"
   }
 }
