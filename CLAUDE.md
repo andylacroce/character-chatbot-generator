@@ -368,8 +368,8 @@ route output. `next.config.mjs` uses an explicit `.mjs` extension so it's still 
 ### Character Wall (`/chars`)
 
 A public, no-auth gallery of every supported portrait in `avatar_cache` (anyone can already
-discover a row by typing its name, so nothing new is disclosed). `src/pages/api/chars.ts` keeps
-`WHERE recognized = true` so a legacy unrecognized row never appears.
+discover a row by typing its name, so nothing new is disclosed). Every
+`avatar_cache` row is recognized (legacy unsupported rows were deleted), so `chars.ts` no longer filters.
 
 - **`avatar_cache.category`** (`packages/shared/src/characterCategories.ts`) is a nullable taxonomy
   of six identifiers: `history`, `mythology`, `literature`, `folklore`, `religion`, `other`; missing

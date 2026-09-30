@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.25.5 — 2026-09-30 — Character Wall filter retired
+
+- Removed the `recognized = true` filter from the Character Wall query now that the last two legacy unsupported cache rows are deleted; every cached portrait is a supported character.
+
 ## v0.25.4 — 2026-09-30 — Code cleanup
 
 - Refactor, no user-visible change: web and mobile now share one copy of `formatRelativeTime` and the character-category taxonomy in `packages/shared` instead of hand-synced duplicates.
