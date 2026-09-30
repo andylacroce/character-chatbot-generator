@@ -5,6 +5,7 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 ## v0.25.2 — 2026-09-29 — Character Wall stayed one column on smaller phones
 
 - Fixed the Character Wall collapsing to a single-column scroll on phones at or below 380px wide (iPhone SE, iPhone 12 mini) — the mosaic now keeps 2 columns down to the narrowest real device widths instead of dropping to 1.
+- Fixed CI build failure caused by missing critters dependency that was incorrectly removed during cleanup
 
 ## v0.25.1 — 2026-09-29 — Character Wall control styling fix
 
