@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```powershell
-npm install              # install deps (also runs scripts/fix-express-tsconfig.cjs via postinstall)
+npm install              # install deps
 npm run dev               # next dev --turbopack
 npm run build              # production build
 npm run lint                # eslint . --ext .js,.jsx,.ts,.tsx (includes JSDoc, security, and regex-safety rules)

@@ -2,6 +2,12 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.25.7 — 2026-09-30 — Dependency and dead-code cleanup
+
+- Removed the `ipinfo` lookup from `/api/chat`: it made a third-party network call on every chat request only to add the visitor's IP and city to log lines. Chat logs no longer carry IP or location.
+- Removed the `postinstall` script that patched a file inside `node_modules` (type-check and lint pass without it) and the blanket `react-window` type shim; the virtualized list now uses the library's own types, and its ignored `height`/`width` props are gone (no behavior change).
+- Deleted dead CSS (`.orDivider`, `.gamesBandDivider`) and the unused `deleteReplyCache`.
+
 ## v0.25.6 — 2026-09-30 — Local text-to-speech credentials
 
 - Fixed audio silently failing in local dev: outside Vercel, `GOOGLE_APPLICATION_CREDENTIALS_JSON` was only accepted as a file path, so inline JSON (what `vercel env pull` writes) fell back to Google's default credentials and every reply came back without audio. It is now inline JSON only, everywhere, which matches how Vercel stores it.

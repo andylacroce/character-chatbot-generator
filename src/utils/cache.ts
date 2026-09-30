@@ -136,17 +136,3 @@ export function getReplyCache(key: string): string | null {
     return null;
   }
 }
-
-/**
- * Deletes a reply from the cache.
- * @param {string} key - The cache key.
- */
-export function deleteReplyCache(key: string) {
-  if (isVercelEnv()) {
-    memoryCache.delete(key);
-  } else {
-    const cache = loadCacheFromFile();
-    cache.delete(key);
-    saveCacheToFile(cache);
-  }
-}

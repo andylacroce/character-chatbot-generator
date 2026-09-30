@@ -1,5 +1,5 @@
 import React from "react";
-import { List as RWList } from "react-window";
+import { List as RWList, type RowComponentProps } from "react-window";
 import ChatMessage from "./ChatMessage";
 import { Bot } from "./BotCreator";
 import styles from "./styles/VirtualizedMessagesList.module.css";
@@ -59,12 +59,6 @@ interface RowProps {
 // brand-new component reference on every render — all the data it needs travels through
 // `rowProps`, matching react-window v2's actual rowComponent contract, rather than a
 // closure over the parent's render.
-//
-// react-window ships its own types (RowComponentProps), but this repo has a blanket
-// `declare module 'react-window'` shim (src/types/react-window.d.ts) working around a
-// TS inference gap in List's generic signature under this project's moduleResolution —
-// see that file's comment. That makes every named export `any`, so the row props shape is
-// typed by hand here instead of importing RowComponentProps.
 /** Renders a single virtualized message row at react-window's given index/style. */
 function Row({
   index,
@@ -75,7 +69,7 @@ function Row({
   onReplayAudio,
   replayDisabled,
   userName,
-}: RowProps & { index: number; style: React.CSSProperties }) {
+}: RowComponentProps<RowProps>) {
   return (
     <div style={style}>
       <ChatMessage
@@ -117,15 +111,12 @@ const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({
   }, [heights, itemCount, maxHeight]);
 
   const visibleMessages = messages.slice(startIdx);
-  const height = Math.min(maxHeight, visibleHeights.reduce((sum, h) => sum + h, 0) + 1);
 
   return (
     <div className={styles.wrapper}>
       <RWList
-        height={height}
         rowCount={visibleMessages.length}
         rowHeight={(index: number) => visibleHeights[index] ?? ROW_CHROME}
-        width={"100%"}
         overscanCount={4}
         rowComponent={Row}
         rowProps={{
