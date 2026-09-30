@@ -22,7 +22,7 @@ import anthropic from "./anthropicClient";
 import { getDb } from "../db/client";
 import { avatarCache, bots } from "../db/schema";
 import { recordEvent } from "./analytics";
-import { isCharacterCategory, type CharacterCategory } from "./characterCategories";
+import { isCharacterCategory, type CharacterCategory } from "character-chatbot-shared";
 
 /** Options controlling avatar cache/persistence behavior — see pages/api/generate-avatar.ts's @swagger block for the full rationale on each. */
 export interface AvatarGenerationOptions {

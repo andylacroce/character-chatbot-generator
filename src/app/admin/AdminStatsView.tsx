@@ -30,7 +30,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { FaSyncAlt, FaHome } from "react-icons/fa";
 import { authenticatedFetch } from "../../utils/api";
-import { formatRelativeTime } from "../../utils/formatRelativeTime";
+import { formatRelativeTime } from "character-chatbot-shared";
 import AdminActivityChart, { type DailyActivityRow } from "../components/AdminActivityChart";
 import GameActivityChart, { type GameDailyActivityRow } from "../components/GameActivityChart";
 import AppHeader from "../components/AppHeader";

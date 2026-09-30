@@ -247,7 +247,7 @@ Drizzle ORM), so both survive across devices and browser sessions:
   user's chat logs.
 - **Chat logs**: `/api/log-message` troubleshooting logs never record IP addresses. A signed-in
   user's logs are filed under a hashed per-account Blob prefix so the deletions above can find
-  them. `npm run logs:scrub-ips [-- --dry-run]` strips IPs from logs written before this change.
+  them.
 - **Account deletion**: signed-in users can delete their own account from the account menu
   (web) or the account screen (mobile). `DELETE /api/account` erases it immediately: the
   `users` row (which cascades to characters, chat history, and game scores), pending

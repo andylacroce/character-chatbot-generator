@@ -141,7 +141,7 @@ export interface GenerateAvatarResponse {
   gender?: string | null;
 }
 
-/** Taxonomy assigned to a character at creation time (src/utils/characterCategories.ts). */
+/** Taxonomy assigned to a character at creation time (packages/shared/src/characterCategories.ts). */
 export type CharacterCategory =
   "history" | "mythology" | "literature" | "folklore" | "religion" | "other";
 

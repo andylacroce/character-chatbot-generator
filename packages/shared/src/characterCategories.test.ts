@@ -3,7 +3,7 @@ import {
   getCharacterCategoryLabel,
   getCharacterCategoryOrder,
   isCharacterCategory,
-} from "../../../src/utils/characterCategories";
+} from "./characterCategories";
 
 describe("characterCategories", () => {
   it("recognizes only persisted taxonomy identifiers", () => {

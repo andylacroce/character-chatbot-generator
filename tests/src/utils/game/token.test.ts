@@ -64,7 +64,7 @@ describe("game token", () => {
     expect(verifyGameState(token, "guessWho")).not.toBeNull();
   });
 
-  describe("tokens minted before the two games shared one payload", () => {
+  describe("untagged (pre-unification) tokens", () => {
     const common = {
       personaPrompt: "p",
       avatarUrl: "a",
@@ -77,38 +77,10 @@ describe("game token", () => {
       issuedForUserId: "u1",
     };
 
-    it("maps a legacy Guess Who token (hiddenName) to a speaker that is its own target", async () => {
+    it("rejects a token with no game discriminator", async () => {
       const { verifyGameState } = await load();
-      const legacy = encryptRaw({ ...common, runId: "r", hiddenName: "Irene Adler" });
-      expect(verifyGameState(legacy, "guessWho")).toMatchObject({
-        game: "guessWho",
-        speakerName: "Irene Adler",
-        targetName: "Irene Adler",
-        issuedForGuestId: null,
-      });
-    });
-
-    it("maps a legacy Guess Who's Next token, including one with no runId or guest id", async () => {
-      const { verifyGameState } = await load();
-      const legacy = encryptRaw({
-        ...common,
-        currentCharacterName: "Sherlock Holmes",
-        nextCharacterName: "Irene Adler",
-      });
-      const state = verifyGameState(legacy, "guessWhoNext");
-      expect(state).toMatchObject({
-        game: "guessWhoNext",
-        speakerName: "Sherlock Holmes",
-        targetName: "Irene Adler",
-        issuedForGuestId: null,
-      });
-      expect(state?.runId).toBeUndefined();
-    });
-
-    it("does not let a legacy token of one game pass as the other", async () => {
-      const { verifyGameState } = await load();
-      const legacyGuessWho = encryptRaw({ ...common, runId: "r", hiddenName: "Irene Adler" });
-      expect(verifyGameState(legacyGuessWho, "guessWhoNext")).toBeNull();
+      const untagged = encryptRaw({ ...common, runId: "r", hiddenName: "Irene Adler" });
+      expect(verifyGameState(untagged, "guessWho")).toBeNull();
     });
   });
 

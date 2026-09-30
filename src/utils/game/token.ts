@@ -80,29 +80,6 @@ function hasValidCommonFields(v: Record<string, unknown>): boolean {
   );
 }
 
-/**
- * Maps a token minted before the two games shared one payload onto the current shape, so a
- * run already in a player's storage survives the deploy. "Guess Who" tokens named one
- * `hiddenName`; "Guess Who's Next" tokens named `currentCharacterName` (shown) and
- * `nextCharacterName` (hidden). Safe to delete once no pre-unification token can still be
- * in a client's storage, at the cost of resetting any such run to the start screen.
- */
-function fromLegacy(game: GameId, v: Record<string, unknown>): Record<string, unknown> | null {
-  if (game === "guessWho" && typeof v.hiddenName === "string") {
-    const { hiddenName, ...rest } = v;
-    return { ...rest, game, speakerName: hiddenName, targetName: hiddenName };
-  }
-  if (
-    game === "guessWhoNext" &&
-    typeof v.currentCharacterName === "string" &&
-    typeof v.nextCharacterName === "string"
-  ) {
-    const { currentCharacterName, nextCharacterName, ...rest } = v;
-    return { ...rest, game, speakerName: currentCharacterName, targetName: nextCharacterName };
-  }
-  return null;
-}
-
 /** Encrypts a round's state into an opaque, base64url token for the client to hold. */
 export function signGameState(state: GameState): string {
   return encryptPayload(state, SECRET_ENV_VARS);
@@ -118,7 +95,7 @@ export function verifyGameState(token: unknown, game: GameId): GameState | null 
   const parsed = decryptPayload(token, SECRET_ENV_VARS);
   if (!parsed || typeof parsed !== "object") return null;
   const raw = parsed as Record<string, unknown>;
-  const v = "game" in raw ? (raw.game === game ? raw : null) : fromLegacy(game, raw);
+  const v = raw.game === game ? raw : null;
   if (
     !v ||
     typeof v.speakerName !== "string" ||

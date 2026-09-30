@@ -16,7 +16,7 @@ import { useSession } from "next-auth/react";
 import { FaTrashAlt } from "react-icons/fa";
 import { authenticatedFetch } from "../../utils/api";
 import { hasNavigatedWithinSession } from "../../utils/clientNavigationState";
-import { formatRelativeTime } from "../../utils/formatRelativeTime";
+import { formatRelativeTime } from "character-chatbot-shared";
 import { clearStoredBot, getValidBotFromStorage } from "../../utils/getValidBotFromStorage";
 import { removeItem, removeItemsWhere } from "../../utils/storage";
 import AppHeader from "./AppHeader";

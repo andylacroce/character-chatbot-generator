@@ -3,101 +3,139 @@ jest.mock("fs", () => ({
   readFileSync: jest.fn(),
   writeFileSync: jest.fn(),
 }));
-// Use jest.requireMock to access the mocked fs module instead of require('fs')
-const fs = jest.requireMock("fs") as {
+
+interface FsMock {
   existsSync: jest.Mock;
   readFileSync: jest.Mock;
   writeFileSync: jest.Mock;
-};
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * Loads a fresh cache module (it keeps in-memory state and reads VERCEL_ENV at call time) and
+ * the `fs` mock instance that module actually sees; `jest.resetModules()` replaces that
+ * instance, so stubs must be set on the one returned here. `file` seeds the cache file.
+ */
+function load(file?: unknown) {
+  jest.resetModules();
+  const fs = jest.requireMock("fs") as FsMock;
+  fs.existsSync.mockReturnValue(file !== undefined);
+  if (file !== undefined) {
+    fs.readFileSync.mockReturnValue(typeof file === "string" ? file : JSON.stringify(file));
+  }
+  const cache: typeof import("../../src/utils/cache") = jest.requireActual("../../src/utils/cache");
+  return { cache, fs };
+}
 
 describe("cache utility", () => {
-  const _CACHE_FILE = "/tmp/bot-reply-cache.json";
+  const OLD_ENV = process.env;
   beforeEach(() => {
-    jest.resetModules();
+    process.env = { ...OLD_ENV };
     delete process.env.VERCEL_ENV;
-    jest.clearAllMocks();
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
-    (fs.readFileSync as jest.Mock).mockReset();
-    (fs.writeFileSync as jest.Mock).mockReset();
+  });
+  afterEach(() => {
+    process.env = OLD_ENV;
+    jest.restoreAllMocks();
   });
 
-  function getCache() {
-    // Always re-import the module after any env changes
-    jest.resetModules();
-    return jest.requireActual("../../src/utils/cache");
-  }
-
-  it("setReplyCache and getReplyCache use memory in Vercel", () => {
-    process.env.VERCEL_ENV = "1";
-    const cache = getCache();
-    cache.setReplyCache("foo", "bar");
-    expect(cache.getReplyCache("foo")).toBe("bar");
-    expect(fs.writeFileSync).not.toHaveBeenCalled();
-  });
-
-  it("setReplyCache and getReplyCache use file in non-Vercel", () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    const fileCache = { foo: "baz" };
-    (fs.readFileSync as jest.Mock).mockImplementation(() => JSON.stringify(fileCache));
-    const cache = getCache();
-    expect(() => cache.setReplyCache("foo", "bar")).not.toThrow();
-  });
-
-  it("getReplyCache returns null if not found", () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.readFileSync as jest.Mock).mockReturnValue('{"baz":"qux"}');
-    const cache = getCache();
-    expect(cache.getReplyCache("foo")).toBeNull();
-  });
-
-  it("handles file read error gracefully", () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.readFileSync as jest.Mock).mockImplementation(() => {
-      throw new Error("fail");
+  describe("in Vercel (memory only)", () => {
+    let now = 0;
+    beforeEach(() => {
+      process.env.VERCEL_ENV = "1";
+      now = Date.now();
+      jest.spyOn(Date, "now").mockImplementation(() => now);
     });
-    const cache = getCache();
-    expect(cache.getReplyCache("foo")).toBeNull();
-  });
 
-  it("handles file write error gracefully", () => {
-    (fs.writeFileSync as jest.Mock).mockImplementation(() => {
-      throw new Error("fail");
+    it("sets and gets without touching the file, and keeps entries until the TTL", () => {
+      const { cache, fs } = load();
+      cache.setReplyCache("k", "v");
+      expect(cache.getReplyCache("k")).toBe("v");
+      now += DAY - 1000;
+      expect(cache.getReplyCache("k")).toBe("v");
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
     });
-    const cache = getCache();
-    expect(() => cache.setReplyCache("foo", "bar")).not.toThrow();
+
+    it("drops an entry past the TTL", () => {
+      const { cache } = load();
+      cache.setReplyCache("k", "v");
+      now += DAY + 1;
+      expect(cache.getReplyCache("k")).toBeNull();
+    });
+
+    it("deleteReplyCache removes a key", () => {
+      const { cache } = load();
+      cache.setReplyCache("k", "v");
+      cache.deleteReplyCache("k");
+      expect(cache.getReplyCache("k")).toBeNull();
+    });
+
+    it("cleans up when the cache exceeds its max size, keeping the newest entry", () => {
+      const { cache } = load();
+      for (let i = 0; i < 1001; i++) cache.setReplyCache(`bulk-${i}`, `val-${i}`);
+      now += 1000;
+      cache.setReplyCache("post-cleanup", "alive");
+      expect(cache.getReplyCache("post-cleanup")).toBe("alive");
+    });
   });
 
-  it("deleteReplyCache works in Vercel", () => {
-    process.env.VERCEL_ENV = "1";
-    const cache = getCache();
-    cache.setReplyCache("foo", "bar");
-    expect(cache.getReplyCache("foo")).toBe("bar");
-    cache.deleteReplyCache("foo");
-    expect(cache.getReplyCache("foo")).toBeNull();
-  });
+  describe("outside Vercel (file-backed)", () => {
+    it("returns a fresh entry and saves its refreshed timestamp", () => {
+      const { cache, fs } = load({ k: { value: "file-val", timestamp: Date.now() } });
+      expect(cache.getReplyCache("k")).toBe("file-val");
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
 
-  it("deleteReplyCache works in non-Vercel", () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    const fileCache = { foo: "bar" };
-    (fs.readFileSync as jest.Mock).mockImplementation(() => JSON.stringify(fileCache));
-    const cache = getCache();
-    expect(() => cache.deleteReplyCache("foo")).not.toThrow();
-  });
+    it("returns null for a missing key", () => {
+      const { cache } = load({ baz: { value: "qux", timestamp: Date.now() } });
+      expect(cache.getReplyCache("foo")).toBeNull();
+    });
 
-  it("handles JSON parse error gracefully", () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.readFileSync as jest.Mock).mockReturnValue("not-json");
-    const cache = getCache();
-    expect(cache.getReplyCache("foo")).toBeNull();
-  });
-  it("cleanupExpiredEntries removes expired entries (L59 if[1])", () => {
-    // Provide a file cache with an expired entry; setReplyCache calls cleanupExpiredEntries
-    const expiredTs = Date.now() - 25 * 60 * 60 * 1000; // 25 hours ago
-    const fileCache = { oldkey: { value: "old", timestamp: expiredTs } };
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.readFileSync as jest.Mock).mockImplementation(() => JSON.stringify(fileCache));
-    const cache = getCache();
-    // setReplyCache loads file, calls cleanupExpiredEntries; expired entry hits if[1] (false branch)
-    expect(() => cache.setReplyCache("newkey", "newval")).not.toThrow();
+    it("removes and saves when the entry is expired", () => {
+      const { cache, fs } = load({ stale: { value: "x", timestamp: Date.now() - DAY - 1000 } });
+      expect(cache.getReplyCache("stale")).toBeNull();
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it("keeps every live entry when setting alongside several others", () => {
+      const now = Date.now();
+      const { cache, fs } = load({
+        a: { value: "a", timestamp: now - 1000 },
+        b: { value: "b", timestamp: now },
+      });
+      cache.setReplyCache("c", "v-c");
+      const written = JSON.parse(fs.writeFileSync.mock.calls[0][1]);
+      expect(Object.keys(written).sort()).toEqual(["a", "b", "c"]);
+    });
+
+    it("deleteReplyCache removes the key and writes the file", () => {
+      const { cache, fs } = load({ gone: { value: "x", timestamp: Date.now() } });
+      cache.deleteReplyCache("gone");
+      const written = JSON.parse(fs.writeFileSync.mock.calls[0][1]);
+      expect(written).not.toHaveProperty("gone");
+    });
+
+    it("degrades to an empty cache on invalid JSON and still persists on set", () => {
+      const { cache, fs } = load("not-json");
+      expect(cache.getReplyCache("foo")).toBeNull();
+      cache.setReplyCache("k1", "v1");
+      expect(fs.writeFileSync).toHaveBeenCalled();
+    });
+
+    it("handles a read error", () => {
+      const { cache, fs } = load({});
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error("fail");
+      });
+      expect(cache.getReplyCache("foo")).toBeNull();
+    });
+
+    it("handles a write error", () => {
+      const { cache, fs } = load();
+      fs.writeFileSync.mockImplementation(() => {
+        throw new Error("fail");
+      });
+      expect(() => cache.setReplyCache("foo", "bar")).not.toThrow();
+    });
   });
 });

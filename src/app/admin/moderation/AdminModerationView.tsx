@@ -22,7 +22,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { FaHome, FaExchangeAlt, FaTimes, FaCheck, FaBan } from "react-icons/fa";
 import { authenticatedFetch } from "../../../utils/api";
-import { formatRelativeTime } from "../../../utils/formatRelativeTime";
+import { formatRelativeTime } from "character-chatbot-shared";
 import AppHeader from "../../components/AppHeader";
 import { useAccountMenu } from "../../components/useAccountMenu";
 import styles from "../../components/styles/AdminModeration.module.css";
