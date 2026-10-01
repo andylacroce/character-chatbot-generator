@@ -56,4 +56,5 @@ docs-generated/
 
 # Local AI agent guidance (keep local overrides out of commits)
 .claude/
+.qwen/
 .vercel
