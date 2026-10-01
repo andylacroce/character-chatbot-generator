@@ -168,3 +168,8 @@ export function sanitizeUserName(name: string): string {
   const sanitized = name.replace(/[<>`]/g, "").trim();
   return sanitized.length > 50 ? sanitized.substring(0, 50) : sanitized;
 }
+
+/** Removes angle brackets so untrusted text can't close or forge the XML-style delimiters around it in a prompt. */
+export function stripPromptTags(text: string): string {
+  return typeof text === "string" ? text.replace(/[<>]/g, "") : "";
+}
