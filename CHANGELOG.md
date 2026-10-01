@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.25.8 — 2026-09-30 — Prompt delimiter hardening
+
+- `/api/chat` now strips angle brackets from the character personality and conversation summary before placing them inside their XML-style prompt blocks, so crafted text can't close the block and pose as instructions. Removed two `codeql[...]` comments that CodeQL never honored.
+
 ## v0.25.7 — 2026-09-30 — Dependency and dead-code cleanup
 
 - Removed the `ipinfo` lookup from `/api/chat`: it made a third-party network call on every chat request only to add the visitor's IP and city to log lines. Chat logs no longer carry IP or location.
