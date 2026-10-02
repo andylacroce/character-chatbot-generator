@@ -41,7 +41,7 @@
     "db:studio": "drizzle-kit studio --config config/drizzle.config.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.127.0",
+    "@anthropic-ai/sdk": "^0.129.0",
     "@auth/drizzle-adapter": "^1.11.3",
     "@google-cloud/text-to-speech": "^7.1.0",
     "@neondatabase/serverless": "^1.1.0",
