@@ -18,7 +18,7 @@
     "expo-haptics": "~57.0.3",
     "expo-image": "~57.0.5",
     "expo-linear-gradient": "~57.0.2",
-    "expo-linking": "~57.0.11",
+    "expo-linking": "~58.0.4",
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
