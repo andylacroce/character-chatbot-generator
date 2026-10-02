@@ -99,6 +99,8 @@ interface GameAggregateRow {
   endedGiveUp: number;
   finalStreakSum: number;
   bestStreak: number;
+  turnSum: number;
+  turnCount: number;
   zero: number;
   one: number;
   twoToFour: number;
@@ -120,6 +122,7 @@ const EMPTY_GAME_STATS = {
   endedByGiveUp: 0,
   avgFinalStreak: null as number | null,
   bestStreak: 0,
+  avgTurnsToSolve: null as number | null,
   finalStreaks: { zero: 0, one: 0, twoToFour: 0, fiveOrMore: 0 },
   daily: [] as GameDailyRow[],
 };
@@ -197,6 +200,8 @@ async function aggregateGameStats(
         endedGiveUp: sql<number>`count(*) filter (where ${inList(names.ended)} and metadata->>'reason' = 'give_up')::int`,
         finalStreakSum: sql<number>`coalesce(sum((metadata->>'finalStreak')::int) filter (where ${inList(names.ended)}), 0)::int`,
         bestStreak: sql<number>`coalesce(max((metadata->>'streak')::int) filter (where ${inList(names.correct)}), 0)::int`,
+        turnSum: sql<number>`coalesce(sum((metadata->>'turn')::int) filter (where ${inList(names.correct)} and metadata->>'turn' is not null), 0)::int`,
+        turnCount: sql<number>`count(*) filter (where ${inList(names.correct)} and metadata->>'turn' is not null)::int`,
         zero: sql<number>`count(*) filter (where ${inList(names.ended)} and (metadata->>'finalStreak')::int = 0)::int`,
         one: sql<number>`count(*) filter (where ${inList(names.ended)} and (metadata->>'finalStreak')::int = 1)::int`,
         twoToFour: sql<number>`count(*) filter (where ${inList(names.ended)} and (metadata->>'finalStreak')::int between 2 and 4)::int`,
@@ -220,6 +225,8 @@ async function aggregateGameStats(
     endedGiveUp: 0,
     finalStreakSum: 0,
     bestStreak: 0,
+    turnSum: 0,
+    turnCount: 0,
     zero: 0,
     one: 0,
     twoToFour: 0,
@@ -244,6 +251,7 @@ async function aggregateGameStats(
     endedByGiveUp: agg.endedGiveUp,
     avgFinalStreak: endedRuns > 0 ? Math.round((agg.finalStreakSum / endedRuns) * 10) / 10 : null,
     bestStreak: agg.bestStreak,
+    avgTurnsToSolve: agg.turnCount > 0 ? Math.round((agg.turnSum / agg.turnCount) * 10) / 10 : null,
     finalStreaks: {
       zero: agg.zero,
       one: agg.one,

@@ -767,7 +767,8 @@ and steers toward a fresh hidden target, building a streak. TTS plays for every 
   `GET`/`POST .../leaderboard-settings`: top-ten eligibility is rechecked server-side and the name
   passes `checkLeaderboardName` (length/script rules plus a Claude moderation call that fails closed
   to `unavailable`). A player can change their public name anytime.
-- **Analytics** (`analyticsEvents`): `game_started`, `game_guess_correct`, `game_guess_wrong`,
+- **Analytics** (`analyticsEvents`): `game_started`, `game_guess_correct`, `game_guess_wrong` (both
+  carry `turn`, the round's exchange number, which `/admin` averages as "turns to solve"),
   `game_round_continued`, `game_run_ended` (reason `second_wrong` or `give_up`); see "Internal
   analytics".
 
