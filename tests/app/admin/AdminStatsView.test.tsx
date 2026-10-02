@@ -61,6 +61,7 @@ const FULL_STATS = {
     endedByGiveUp: 1,
     avgFinalStreak: 1.7,
     bestStreak: 4,
+    avgTurnsToSolve: 2.5,
     finalStreaks: { zero: 1, one: 1, twoToFour: 1, fiveOrMore: 0 },
     daily: [{ day: new Date().toISOString().slice(0, 10), started: 1, correct: 2, ended: 1 }],
   },
@@ -100,6 +101,8 @@ describe("AdminStatsView", () => {
     await waitFor(() => expect(screen.getByText("production")).toBeInTheDocument());
     expect(screen.getByRole("heading", { name: "Guessing game" })).toBeInTheDocument();
     expect(screen.getByText("Guess accuracy")).toBeInTheDocument();
+    expect(screen.getByText("Average turns to solve")).toBeInTheDocument();
+    expect(screen.getByText("2.5")).toBeInTheDocument();
     expect(screen.getByText("62.5%", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("2–4 wins")).toBeInTheDocument();
     expect(screen.queryByText("Saved characters")).not.toBeInTheDocument();

@@ -63,6 +63,8 @@ const GAME_AGG_ROWS = [
     endedGiveUp: 1,
     finalStreakSum: 5,
     bestStreak: 4,
+    turnSum: 15,
+    turnCount: 6,
     zero: 1,
     one: 1,
     twoToFour: 1,
@@ -196,6 +198,7 @@ describe("admin/stats API", () => {
       endedByGiveUp: 1,
       avgFinalStreak: 1.7,
       bestStreak: 4,
+      avgTurnsToSolve: 2.5,
       finalStreaks: { zero: 1, one: 1, twoToFour: 1, fiveOrMore: 0 },
       daily: GAME_DAILY_ROWS,
     };
@@ -217,6 +220,7 @@ describe("admin/stats API", () => {
       endedByGiveUp: 0,
       avgFinalStreak: null,
       bestStreak: 0,
+      avgTurnsToSolve: null,
       finalStreaks: { zero: 0, one: 0, twoToFour: 0, fiveOrMore: 0 },
       daily: [],
     });

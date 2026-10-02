@@ -79,6 +79,7 @@ interface AdminStats {
     endedByGiveUp: number;
     avgFinalStreak: number | null;
     bestStreak: number;
+    avgTurnsToSolve: number | null;
     finalStreaks: { zero: number; one: number; twoToFour: number; fiveOrMore: number };
     daily: GameDailyActivityRow[];
   };
@@ -326,6 +327,11 @@ export default function AdminStatsView() {
                     <p className={styles.statLabel}>Average final streak</p>
                     <p className={styles.statValue}>{stats.game.avgFinalStreak ?? "—"}</p>
                     <p className={styles.statSub}>Across recorded run endings</p>
+                  </div>
+                  <div className={styles.statTile}>
+                    <p className={styles.statLabel}>Average turns to solve</p>
+                    <p className={styles.statValue}>{stats.game.avgTurnsToSolve ?? "n/a"}</p>
+                    <p className={styles.statSub}>Chat turns before a correct guess</p>
                   </div>
                   <div className={styles.statTile}>
                     <p className={styles.statLabel}>Best streak reached</p>
