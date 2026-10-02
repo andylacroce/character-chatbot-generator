@@ -44,10 +44,42 @@ describe("gameReply", () => {
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           model: "claude-test",
-          max_tokens: 300,
+          max_tokens: 220,
           temperature: 0.8,
         }),
       );
+    });
+
+    describe("hidden-name guard", () => {
+      const say = (text: string) =>
+        mockCreate.mockResolvedValueOnce({ content: [{ type: "text", text }] });
+
+      it("regenerates once when the reply names the hidden character unprompted", async () => {
+        say("I am Bagheera, a panther.");
+        say("I am a panther of the jungle.");
+        const reply = await getGameReply("persona", [], "Who are you?", 1, undefined, "Bagheera");
+        expect(reply).toBe("I am a panther of the jungle.");
+        expect(mockCreate).toHaveBeenCalledTimes(2);
+      });
+
+      it("falls back to a neutral line when the retry leaks again", async () => {
+        say("Bagheera here.");
+        say("Call me Bagheera.");
+        const reply = await getGameReply("persona", [], "Who are you?", 1, undefined, "Bagheera");
+        expect(reply).toMatch(/work out for yourself/);
+      });
+
+      it("ignores the qualifier, matches whole words only, and allows names the player said", async () => {
+        say("What a never-ending story.");
+        expect(await getGameReply("persona", [], "hi", 1, undefined, "Eve (Garden of Eden)")).toBe(
+          "What a never-ending story.",
+        );
+        say("Yes, Eve it is.");
+        expect(await getGameReply("persona", [], "Is it Eve?", 1, undefined, "Eve")).toBe(
+          "Yes, Eve it is.",
+        );
+        expect(mockCreate).toHaveBeenCalledTimes(2);
+      });
     });
 
     it("throws when Claude's response has no text content", async () => {

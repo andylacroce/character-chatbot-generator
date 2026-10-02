@@ -115,6 +115,7 @@ export async function generateGameRound(
       // Only the hidden-speaker game replaces the default "introduce yourself" opening,
       // which would otherwise have it state its own name.
       game.hidesSpeaker ? SELF_CLUE_OPENING_INSTRUCTION : undefined,
+      plan.targetName,
     ).then((result) => {
       onProgress?.("reply");
       return result;

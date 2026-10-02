@@ -156,6 +156,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
       "What's your favorite case?",
       1,
       undefined,
+      state.targetName,
     );
     expect(mockSynthesizeReplyAudio).toHaveBeenCalledWith(
       "Ask away.",
@@ -178,6 +179,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
       "is it someone from London?",
       1,
       "maybe guessing",
+      "Irene Adler",
     );
     expect(mockRecordEvent).not.toHaveBeenCalled();
   });
@@ -222,7 +224,11 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
         "correct",
         "Irene Adler",
       );
-      expect(mockRecordEvent).toHaveBeenCalledWith(`${prefix}_guess_correct`, { streak: 3 }, null);
+      expect(mockRecordEvent).toHaveBeenCalledWith(
+        `${prefix}_guess_correct`,
+        { streak: 3, turn: 1 },
+        null,
+      );
 
       // The token travels under the game's own wire name and proves the guess was judged.
       expect(verifyGameState(json[game.tokenField], game.id)?.canContinue).toBe(true);
@@ -307,7 +313,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
       );
       expect(mockRecordEvent).toHaveBeenCalledWith(
         `${prefix}_guess_correct`,
-        { streak: 3 },
+        { streak: 3, turn: 1 },
         "user-1",
       );
     });
@@ -325,11 +331,33 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
   });
 
   describe("a wrong guess", () => {
-    it("tolerates the first one and bumps the wrong-guess count in a fresh token", async () => {
+    it("makes a miss on the first message free, once, without bumping the wrong-guess count", async () => {
+      classify("clear", false);
+      mockGetGuessReactionReply.mockResolvedValue("Not quite, try again?");
+
+      const json = sentJson(await send({ message: "Is it Moriarty?" }));
+      const spent = verifyGameState(json[game.tokenField], game.id);
+      expect(json).toMatchObject({ gameOver: false, wrongGuessesRemaining: 1 });
+      expect(spent?.wrongGuessCount).toBe(0);
+      expect(spent?.freeMissUsed).toBe(true);
+
+      // A client resending an empty history can't farm free misses: the signed flag is spent.
+      classify("clear", false);
+      token = signGameState({ ...makeState(game), freeMissUsed: true });
+      const again = sentJson(await send({ message: "Is it Moriarty?" }));
+      expect(verifyGameState(again[game.tokenField], game.id)?.wrongGuessCount).toBe(1);
+    });
+
+    it("tolerates a later first miss and bumps the wrong-guess count in a fresh token", async () => {
       classify("clear", false);
       mockGetGuessReactionReply.mockResolvedValueOnce("Not quite, try again?");
 
-      const json = sentJson(await send({ message: "Is it Moriarty?" }));
+      const json = sentJson(
+        await send({
+          message: "Is it Moriarty?",
+          conversationHistory: ["Bot: hi", "User: hello", "Bot: ask away"],
+        }),
+      );
 
       expect(json).toMatchObject({
         reply: "Not quite, try again?",
@@ -343,7 +371,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
         "Irene Adler",
       );
       expect(mockRecordEvent).toHaveBeenCalledTimes(1);
-      expect(mockRecordEvent).toHaveBeenCalledWith(`${prefix}_guess_wrong`, undefined, null);
+      expect(mockRecordEvent).toHaveBeenCalledWith(`${prefix}_guess_wrong`, { turn: 2 }, null);
       expect(verifyGameState(json[game.tokenField], game.id)?.wrongGuessCount).toBe(1);
     });
 
@@ -366,7 +394,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
         "finalWrong",
         "Irene Adler",
       );
-      expect(mockRecordEvent).toHaveBeenCalledWith(`${prefix}_guess_wrong`, undefined, null);
+      expect(mockRecordEvent).toHaveBeenCalledWith(`${prefix}_guess_wrong`, { turn: 1 }, null);
       expect(mockRecordEvent).toHaveBeenCalledWith(
         `${prefix}_run_ended`,
         { reason: "second_wrong", finalStreak: 2 },

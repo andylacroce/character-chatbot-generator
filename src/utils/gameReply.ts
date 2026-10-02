@@ -13,6 +13,7 @@ import anthropic from "./anthropicClient";
 import { isClaudeResponse, stripActionEmotes, gracefullyWrapResponse } from "./chatReplyFormatting";
 import { buildClaudeMessages, type ClaudeMessage } from "./conversationSummarizer";
 import { logEvent, sanitizeLogMeta } from "./logger";
+import { displayCharacterName } from "character-chatbot-shared";
 
 const OPENING_INSTRUCTION =
   "Introduce yourself to the player in 1-2 sentences, the way you normally would. Stay in character. Your greeting must also include a vague, atmospheric hint that someone else is on your mind, so the player knows there's someone to figure out, but don't give away anything concrete or identifying about them yet. Save specifics for when the player actually asks.";
@@ -28,14 +29,14 @@ const OPENING_INSTRUCTION =
  * being chatted with is itself the mystery.
  */
 export const SELF_CLUE_OPENING_INSTRUCTION =
-  "Send your opening message for this round now, following the game rules above exactly: greet the player without ever stating or hinting at your own name, and pair it with the one real, narrowing detail about yourself the rules describe (your broad era, culture, or domain). Do not introduce yourself by name the way you normally would in an ordinary conversation — that would give the game away immediately.";
+  "Send your opening message for this round now, following the game rules above exactly: greet the player without ever stating or hinting at your own name, and pair it with the single broad detail about yourself the rules describe (one general category only, nothing more specific). Do not introduce yourself by name the way you normally would in an ordinary conversation — that would give the game away immediately.";
 
 /** Generic, always-available opening line used when the real Claude call fails, see getOpeningReply below. */
 const FALLBACK_OPENING_REPLY = "Hello there! Great to meet you, ask me anything.";
 
 /** Folded into a turn's system prompt when pages/api/[game]/message.ts's classifier can't tell if the player is guessing. */
 export const AMBIGUOUS_GUESS_NOTE =
-  "The player's message just now might be an attempt to guess who you have in mind, but it isn't clear enough to tell — they hedged or asked a question rather than committing to an identification. In your next reply, briefly nudge them in character: ask once, naturally, whether they're ready to make a definite guess and what name they have in mind. Then continue the conversation as normal — don't repeat that question or badger them about it across turns.";
+  "The player's message just now might be an attempt to guess who you have in mind, but they offered several names at once or didn't commit to one. Stay fully in character: playfully ask them to pick a single name they want to stake their guess on, in your own voice, then carry on the conversation. Never say or imply whether any name they mentioned is right, wrong, close, or already correct, and never mention judges, a system, a game engine, or anyone else who decides if guesses are right. Ask for a single name only this once; if a later message again lists several, don't repeat the request.";
 
 /**
  * Gets one Claude reply from `currentCharacterName` (see generateGameCluePersonaPrompt),
@@ -48,7 +49,7 @@ export const AMBIGUOUS_GUESS_NOTE =
  * `personaPrompt`. `extraInstruction`, when given, is appended as a one-off note for
  * this turn only (e.g. AMBIGUOUS_GUESS_NOTE) without altering the stored persona.
  */
-export async function getGameReply(
+async function requestGameReply(
   personaPrompt: string,
   conversationHistory: string[],
   userMessage: string,
@@ -64,7 +65,8 @@ export async function getGameReply(
 
 <character_persona>
 ${personaPrompt}
-</character_persona>
+</character_persona>`;
+  const turnNote = `
 
 This is roughly exchange #${clueRound} of this round with the player, pace how much you reveal accordingly, per the game rules above.${extraInstruction ? `\n\n${extraInstruction}` : ""}
 
@@ -74,9 +76,9 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
 
   const result = await anthropic.messages.create({
     model: getClaudeModel("text"),
-    system: systemPrompt,
+    system: systemPrompt + turnNote,
     messages,
-    max_tokens: 300,
+    max_tokens: 220,
     temperature: 0.8,
     stop_sequences: ["User:", "Bot:"],
   });
@@ -95,6 +97,64 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
   return reply;
 }
 
+/** Said instead of a reply that keeps leaking the hidden name; stays in character-neutral territory. */
+const LEAK_FALLBACK_REPLY =
+  "Ha, that one you will have to work out for yourself. Ask me something else.";
+
+/** True when `text` contains the hidden character's display name as a whole word. */
+function mentionsName(text: string, hiddenName: string): boolean {
+  const name = displayCharacterName(hiddenName).toLowerCase();
+  const lower = text.toLowerCase();
+  for (let i = lower.indexOf(name); i !== -1; i = lower.indexOf(name, i + 1)) {
+    const before = lower[i - 1];
+    const after = lower[i + name.length];
+    if (!/\p{L}/u.test(before ?? " ") && !/\p{L}/u.test(after ?? " ")) return true;
+  }
+  return false;
+}
+
+/**
+ * Gets one in-character reply (see requestGameReply). When `hiddenName` is given, a reply
+ * that says that name unprompted (the player's own message didn't) is regenerated once with
+ * a stern note and replaced by a neutral line if it leaks again, so a model slip such as
+ * "I am Bagheera... ah, but you must discover that" never reaches the player.
+ */
+export async function getGameReply(
+  personaPrompt: string,
+  conversationHistory: string[],
+  userMessage: string,
+  clueRound: number,
+  extraInstruction?: string,
+  hiddenName?: string,
+): Promise<string> {
+  const reply = await requestGameReply(
+    personaPrompt,
+    conversationHistory,
+    userMessage,
+    clueRound,
+    extraInstruction,
+  );
+  if (!hiddenName || mentionsName(userMessage, hiddenName) || !mentionsName(reply, hiddenName)) {
+    return reply;
+  }
+  logEvent("warn", "game_reply_name_leak", "Reply named the hidden character, regenerating");
+  const note = `Your previous draft said the hidden name, which breaks the game. Reply again without ever writing that name, in any form.${
+    extraInstruction
+      ? `
+
+${extraInstruction}`
+      : ""
+  }`;
+  const retry = await requestGameReply(
+    personaPrompt,
+    conversationHistory,
+    userMessage,
+    clueRound,
+    note,
+  );
+  return mentionsName(retry, hiddenName) ? LEAK_FALLBACK_REPLY : retry;
+}
+
 /**
  * Gets a round's opening in-character line, never throwing. A correct guess must be
  * able to start a brand-new round unconditionally, the player already succeeded, so a
@@ -107,9 +167,10 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
 export async function getOpeningReply(
   personaPrompt: string,
   openingInstruction: string = OPENING_INSTRUCTION,
+  hiddenName?: string,
 ): Promise<string> {
   try {
-    return await getGameReply(personaPrompt, [], openingInstruction, 1);
+    return await getGameReply(personaPrompt, [], openingInstruction, 1, undefined, hiddenName);
   } catch (err) {
     logEvent(
       "warn",
@@ -174,10 +235,11 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
       },
     ];
     const result = await anthropic.messages.create({
-      model: getClaudeModel("text"),
+      // A short reaction to a verdict the server already decided, so the cheap tier is enough.
+      model: getClaudeModel("text-simple"),
       system: systemPrompt,
       messages,
-      max_tokens: 200,
+      max_tokens: 160,
       temperature: 0.8,
       stop_sequences: ["User:", "Bot:"],
     });

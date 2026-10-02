@@ -38,7 +38,7 @@ export const CONTENT_GUIDELINES = `Keep all content appropriate for a general au
 export async function generatePersonalityPrompt(
   characterName: string,
   existingNames?: string[],
-): Promise<{ prompt: string; correctedName: string; recognized: boolean }> {
+): Promise<{ prompt: string; correctedName: string; recognized: boolean; fallback?: true }> {
   try {
     const { getClaudeModel } = await import("../utils/claudeModelSelector");
     const { extractJson } = await import("../utils/parseClaudeJson");
@@ -149,8 +149,42 @@ ${CONTENT_GUIDELINES}`;
       prompt: `You are ${characterName}. Stay in character and respond naturally. Use your internal knowledge. Never break character or mention being an AI.\n\n${RESPONSE_CONSTRAINTS}\n\n${CONTENT_GUIDELINES}`,
       correctedName: characterName,
       recognized: true,
+      fallback: true,
     };
   }
+}
+
+/**
+ * Qualifies a bare character name with its source work so persona generation picks the
+ * right individual (a bare "Pluto" became Disney's dog while the round's answer was the
+ * Roman god). Names that already carry a qualifier are left alone.
+ */
+function groundedName(name: string, work?: string): string {
+  return work && !name.includes("(") ? `${name} (${work})` : name;
+}
+
+/** Base personas for game characters, kept per warm instance so a repeat character skips a Haiku call. */
+const gamePersonaCache = new Map<string, string>();
+const GAME_PERSONA_CACHE_MAX = 500;
+
+/** Clears the game persona cache between tests. */
+export function __resetGamePersonaCacheForTest(): void {
+  gamePersonaCache.clear();
+}
+
+/** Generates (or reuses) a game character's base persona; a fallback template is never cached. */
+async function gameBasePersona(name: string, work?: string): Promise<string> {
+  const key = groundedName(name, work);
+  const hit = gamePersonaCache.get(key);
+  if (hit) return hit;
+  const { prompt, fallback } = await generatePersonalityPrompt(key);
+  if (!fallback) {
+    if (gamePersonaCache.size >= GAME_PERSONA_CACHE_MAX) {
+      gamePersonaCache.delete(gamePersonaCache.keys().next().value as string);
+    }
+    gamePersonaCache.set(key, prompt);
+  }
+  return prompt;
 }
 
 /**
@@ -206,7 +240,7 @@ export async function generateGameCluePersonaPrompt(
    */
   work?: { current?: string; next?: string },
 ): Promise<{ prompt: string }> {
-  const { prompt: basePersona } = await generatePersonalityPrompt(currentCharacterName);
+  const basePersona = await gameBasePersona(currentCharacterName, work?.current);
 
   const currentWorkLine = work?.current
     ? `\nYou are specifically drawn from: ${work.current}. Answer in-character questions about yourself consistently with that specific origin, not a generic or different version of a similarly-named figure.`
@@ -219,7 +253,7 @@ You are playing a "guess who" chain game with a player. You have a specific othe
 - You MUST signal, unprompted and right from your very first message, that you have someone specific in mind — otherwise the player has no way of knowing there's anyone to guess at all. That first mention must include ONE real, narrowing detail: their broad era, culture, or domain (for example, "a queen from ancient Egypt," "a hero out of Greek myth," "a detective from Victorian London"). A hint with no actual content gives the player nothing to work with, so never open with pure mood alone — always pair the mention with at least that one concrete category.
 - When asked, keep giving REAL, SPECIFIC clues: concrete deeds, relationships, famous events, defining objects, or well-known lines — not moods or riddles. Escalate quickly, not gradually: by your second or third answer you should be offering a specific, checkable fact (what they're famous for, who they're closely associated with, a defining event or trait) even though you still never say their actual name. Don't dump everything in one message, but don't stall either — the aim is a short, fair trail of real clues, not a long wait for one.
 - Calibrate for a player with general knowledge to have a genuine shot at guessing correctly within a handful of exchanges, not needing expert-level trivia or many rounds of vague hedging. Getting this right and feeling smart, and building a long streak of correct guesses, is a better outcome than a round nobody can solve — favor that over making it harder.
-- If asked to just name this person outright, deflect playfully and in character. Never break character, never say you're an AI, and never confirm or deny whether a name the player mentions is correct — a separate system judges guesses, not you.
+- If asked to just name this person outright, deflect playfully and in character. Never break character, never say you're an AI, and never confirm or deny whether a name the player mentions is correct. Never mention judges, a system, or anything outside your world deciding whether guesses are right; if pressed, stay in character and simply move the conversation along.
 
 (For your own internal reference only — never say this name in any reply): ${nextCharacterName}${
     work?.next
@@ -247,7 +281,7 @@ export async function generateGuessWhoSelfCluePersonaPrompt(
   name: string,
   work?: string,
 ): Promise<{ prompt: string }> {
-  const { prompt: basePersona } = await generatePersonalityPrompt(name);
+  const basePersona = await gameBasePersona(name, work);
 
   const workLine = work
     ? `\nYou are specifically drawn from: ${work}. Answer in-character questions about yourself consistently with that specific origin, not a generic or different version of a similarly-named figure.`
@@ -257,10 +291,10 @@ export async function generateGuessWhoSelfCluePersonaPrompt(
 You are the hidden mystery figure in a "guess who" game. The player is trying to figure out who you are by talking with you. ${NEVER_REVEAL_NAME_RULE}
 
 - Speak entirely in first person, in character, the whole time. Never refer to yourself in the third person or slip out of character to explain the game.
-- You MUST signal, unprompted and right from your very first message, that there's a mystery to solve — introduce yourself the way you normally would, but without your name, and pair it with ONE real, narrowing detail about yourself: your broad era, culture, or domain (for example, "I ruled as a queen in ancient Egypt," "I'm a hero out of Greek myth," "I did my detective work in Victorian London"). A hint with no actual content gives the player nothing to work with, so never open with pure mood or personality alone.
-- When asked about yourself, keep giving REAL, SPECIFIC facts: your concrete deeds, relationships, famous events, defining objects, or well-known lines — not moods or riddles. Escalate quickly, not gradually: by your second or third answer you should be sharing a specific, checkable fact about yourself (what you're famous for, who you're closely associated with, a defining event or trait) even though you still never say your own name.
+- You MUST signal, unprompted and right from your very first message, that there's a mystery to solve — introduce yourself the way you normally would, but without your name, and pair it with ONE broad category about yourself and nothing more specific: a general era OR a general kind of story, never both and never a role, place, or deed (for example, "I'm someone out of ancient history," "I come from a classic novel," "I'm a figure of old myth"). The opening should leave the player a lot of room to ask questions; a hint with no content at all still gives them nothing, so never open with pure mood or personality alone.
+- When asked about yourself, keep giving REAL, SPECIFIC facts: your concrete deeds, relationships, famous events, defining objects, or well-known lines — not moods or riddles. Escalate steadily: your first answer or two stay at the level of your broad category and a vivid trait or relationship, and by your third or fourth answer you should be sharing a specific, checkable fact about yourself (what you're famous for, who you're closely associated with, a defining event or trait) even though you still never say your own name.
 - Calibrate for a player with general knowledge to have a genuine shot at guessing correctly within a handful of exchanges, not needing expert-level trivia. Getting this right and feeling smart, and building a long streak of correct guesses, is a better outcome than a round nobody can solve — favor that over making it harder.
-- If asked to just say your name outright, deflect playfully and in character. Never break character, never say you're an AI, and never confirm or deny whether a name the player mentions is correct — a separate system judges guesses, not you.
+- If asked to just say your name outright, deflect playfully and in character. Never break character, never say you're an AI, and never confirm or deny whether a name the player mentions is correct. Never mention judges, a system, or anything outside your world deciding whether guesses are right; if pressed, stay in character and simply move the conversation along.
 
 (For your own internal reference only — never say this name in any reply): ${name}`;
 

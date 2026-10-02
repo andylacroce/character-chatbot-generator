@@ -127,6 +127,7 @@ describe("generateGameRound", () => {
     expect(mockGetOpeningReply).toHaveBeenCalledWith(
       "self-clue persona",
       "__SELF_CLUE_OPENING_INSTRUCTION__",
+      "Irene Adler",
     );
   });
 
@@ -140,7 +141,7 @@ describe("generateGameRound", () => {
       current: gameCharacterWork["Sherlock Holmes"],
       next: gameCharacterWork["Irene Adler"],
     });
-    expect(mockGetOpeningReply).toHaveBeenCalledWith("steering persona", undefined);
+    expect(mockGetOpeningReply).toHaveBeenCalledWith("steering persona", undefined, "Irene Adler");
   });
 
   it("generates avatar, voice and TTS for the SPEAKER, never the hidden target", async () => {

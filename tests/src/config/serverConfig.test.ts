@@ -13,6 +13,7 @@ import {
   generatePersonalityPrompt,
   generateGameCluePersonaPrompt,
   generateGuessWhoSelfCluePersonaPrompt,
+  __resetGamePersonaCacheForTest,
 } from "../../../src/config/serverConfig";
 import { getClaudeModel } from "../../../src/utils/claudeModelSelector";
 
@@ -29,7 +30,10 @@ function claudeReturns(text: string) {
 }
 
 describe("serverConfig", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    __resetGamePersonaCacheForTest();
+  });
 
   describe("generatePersonalityPrompt", () => {
     it("builds a prompt from the structured JSON Claude returns", async () => {
@@ -284,7 +288,24 @@ describe("serverConfig", () => {
       expect(prompt).not.toContain("specifically drawn from");
     });
 
+    it("reuses a character's base persona instead of regenerating it, but never caches the fallback", async () => {
+      __resetGamePersonaCacheForTest();
+      claudeReturns(JSON.stringify(fullConfig));
+      await generateGuessWhoSelfCluePersonaPrompt("Irene Adler");
+      await generateGuessWhoSelfCluePersonaPrompt("Irene Adler");
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+
+      __resetGamePersonaCacheForTest();
+      mockCreate.mockClear();
+      mockCreate.mockRejectedValueOnce(new Error("boom"));
+      await generateGuessWhoSelfCluePersonaPrompt("Irene Adler");
+      claudeReturns(JSON.stringify(fullConfig));
+      await generateGuessWhoSelfCluePersonaPrompt("Irene Adler");
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+    });
+
     it("reuses generatePersonalityPrompt's own text-simple tier call for the base persona", async () => {
+      __resetGamePersonaCacheForTest();
       claudeReturns(JSON.stringify(fullConfig));
 
       await generateGuessWhoSelfCluePersonaPrompt("Irene Adler");
