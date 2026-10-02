@@ -209,6 +209,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/start API", (game) => {
       expect(mockGetOpeningReply).toHaveBeenCalledWith(
         "persona prompt here",
         "__SELF_CLUE_OPENING_INSTRUCTION__",
+        "Irene Adler",
       );
     });
   } else {

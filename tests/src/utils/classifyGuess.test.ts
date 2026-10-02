@@ -32,6 +32,31 @@ describe("classifyGuess", () => {
     jest.clearAllMocks();
   });
 
+  describe("pre-check that skips the classifier", () => {
+    it("treats a long plain question with no cue or name as 'none' without calling Claude", async () => {
+      const result = await classifyGuess(
+        "Sherlock Holmes",
+        "what was the most difficult thing you ever had to do in your life",
+        [],
+      );
+      expect(result).toEqual({ status: "none", correct: false });
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["a short message", "zeus"],
+      ["a guess cue", "what was the hardest thing you ever did, i think it was war"],
+      [
+        "a mid-sentence capitalized name",
+        "did you ever meet someone like Moriarty in your travels",
+      ],
+    ])("still classifies %s", async (_label, message) => {
+      mockClaudeResponse({ reasoning: "x", status: "none", correct: false });
+      await classifyGuess("Sherlock Holmes", message, []);
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("classifies a clear, correct guess", async () => {
     mockClaudeResponse({ reasoning: "matches", status: "clear", correct: true });
     const result = await classifyGuess("Sherlock Holmes", "It's Sherlock Holmes!", []);

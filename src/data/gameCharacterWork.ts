@@ -68,7 +68,7 @@ const gameCharacterWork: Record<string, string> = {
   Juno: "Roman mythology",
   Minerva: "Roman mythology",
   Bacchus: "Roman mythology",
-  Pluto: "Roman mythology",
+  "Pluto (Roman mythology)": "Roman mythology, god of the underworld",
   Heracles: "Greek mythology",
   Theseus: "Greek mythology",
   Jason: "Greek mythology (Jason and the Argonauts)",

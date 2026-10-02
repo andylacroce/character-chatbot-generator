@@ -156,6 +156,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         message,
         clueRound,
         classification.status === "ambiguous" ? AMBIGUOUS_GUESS_NOTE : undefined,
+        state.targetName,
       );
       res.status(200).json({ reply, audioFileUrl: await speak(state, reply) });
       return;
@@ -178,7 +179,11 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         "Correct guess, advancing streak",
         sanitizeLogMeta({ streak: newStreak }),
       );
-      void recordEvent(`${game.eventPrefix}_guess_correct`, { streak: newStreak }, userId);
+      void recordEvent(
+        `${game.eventPrefix}_guess_correct`,
+        { streak: newStreak, turn: clueRound },
+        userId,
+      );
 
       // Deliberately not generating the next round here; see continue.ts, called once the
       // player clicks "Continue". The token is re-signed with canContinue:true but otherwise
@@ -209,7 +214,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         `${game.title} run ended on a second wrong guess`,
         sanitizeLogMeta({ finalStreak: state.streak }),
       );
-      void recordEvent(`${game.eventPrefix}_guess_wrong`, undefined, userId);
+      void recordEvent(`${game.eventPrefix}_guess_wrong`, { turn: clueRound }, userId);
       void recordEvent(
         `${game.eventPrefix}_run_ended`,
         { reason: "second_wrong", finalStreak: state.streak },
@@ -229,8 +234,13 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
 
     const reply = await getGuessReactionReply(state.personaPrompt, "wrong", state.targetName);
     const audioFileUrl = await speak(state, reply);
-    const newToken = signGameState({ ...state, wrongGuessCount: 1 });
-    void recordEvent(`${game.eventPrefix}_guess_wrong`, undefined, userId);
+    // A miss on the very first message is a warm-up: it costs nothing, once per round (the
+    // signed flag, not the client-supplied history, stops it repeating).
+    const freeMiss = clueRound === 1 && !state.freeMissUsed;
+    const newToken = signGameState(
+      freeMiss ? { ...state, freeMissUsed: true } : { ...state, wrongGuessCount: 1 },
+    );
+    void recordEvent(`${game.eventPrefix}_guess_wrong`, { turn: clueRound }, userId);
     res.status(200).json({
       reply,
       audioFileUrl,

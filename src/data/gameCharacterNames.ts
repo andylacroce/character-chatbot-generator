@@ -62,7 +62,7 @@ const gameCharacterNames: string[] = [
   "Juno",
   "Minerva",
   "Bacchus",
-  "Pluto",
+  "Pluto (Roman mythology)",
 
   // Roman history
   "Julius Caesar",

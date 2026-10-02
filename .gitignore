@@ -58,3 +58,6 @@ docs-generated/
 .claude/
 .qwen/
 .vercel
+
+# Game simulator output (npm run sim:games)
+sim-output/

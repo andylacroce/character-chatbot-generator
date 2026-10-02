@@ -2,6 +2,15 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.26.0 — 2026-10-01 — Guessing game polish
+
+- A wrong guess on a round's first message is now free (once per round), so a warm-up guess no longer burns one of the two strikes.
+- "Is it X?" and hedged single-name guesses now count as guesses instead of asking the player to repeat themselves; an explicit "I'm going with X" wins over extra names floated alongside it.
+- Characters no longer talk about "judges" or confirm a name while asking you to pick one, and a reply that names the hidden character is regenerated before you see it.
+- Guess Who opens with one broad category and escalates clues more slowly; personas are generated from the character's source work so "Pluto" is the Roman god, not Disney's dog.
+- Added `npm run sim:games`, an LLM-player simulator for tuning (spends real API tokens; hard-capped at one round per game on a Haiku player by default).
+- Cut Claude spend: game verdict reactions run on Haiku, plain questions skip the guess classifier, game personas are reused per instance, and game replies cap at 220 tokens.
+
 ## v0.25.8 — 2026-09-30 — Prompt delimiter hardening
 
 - `/api/chat` now strips angle brackets from the character personality and conversation summary before placing them inside their XML-style prompt blocks, so crafted text can't close the block and pose as instructions. Removed two `codeql[...]` comments that CodeQL never honored.

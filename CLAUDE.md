@@ -19,6 +19,7 @@ npm run test                       # jest
 npm run test:watch
 npm run test:coverage               # jest --coverage (enforces 80% global threshold — see jest.config.cjs)
 npm run analyze                      # ANALYZE=true next build (bundle analysis)
+npm run sim:games                    # LLM-vs-game simulator (scripts/simulate-games.ts); spends real Anthropic tokens, see "Game simulator"
 npm run docs:api                      # regenerate public/openapi.json from @swagger JSDoc comments; runs automatically before dev/build
 npm run db:check                       # read-only check that schema.ts matches the live DB; runs automatically before dev and as part of ci
 npm run ci                             # format (auto-fix) && lint --max-warnings=0 && lint:md && type-check && mobile ci && shared tests && db:check && docs:code && test:coverage && build — run this before considering work done
@@ -131,7 +132,8 @@ Three tiers, chosen by call site, never by a runtime cost heuristic:
 
 - `"text"`: chat replies only. `claude-sonnet-4-6` in prod, `claude-haiku-4-5-20251001` in dev.
 - `"text-simple"`: one-shot structured JSON tasks (personality generation, character validation,
-  voice config, suggestion lists). Always `claude-haiku-4-5-20251001`.
+  voice config, suggestion lists, and the games' short verdict reactions). Always
+  `claude-haiku-4-5-20251001`.
 - `"image"`: avatar prompts render via `gemini-3.1-flash-lite-image` on Google Cloud's Gemini
   Enterprise Agent Platform (formerly Vertex AI; not Claude).
 
@@ -621,15 +623,39 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
   cast `voiceConfig` from another message's audio URL before falling back to a bare regeneration
   (a fresh context-free cast once gave a male speaker a female voice). Web and mobile both use it.
 - **"Back to Home" ends the run** (`quitGame()`); there is no separate Quit.
-- **The classifier's bars** (`classifyGuess`): a single specific candidate name is `"clear"`, not
-  `"ambiguous"`, and `AMBIGUOUS_GUESS_NOTE` asks for confirmation once, not repeatedly (an earlier
-  version bounced "Edward" vs "Edmund Ironside" for eight turns, found only via real session
-  logs decoded from `/api/audio?...&text=`). `"correct"` demands the *same individual*: leniency
+- **The classifier's bars** (`classifyGuess`): one specific candidate name is `"clear"`, even
+  phrased as a question or hedged ("is it X?", "maybe X or something?"), because bouncing it back
+  made the game feel unresponsive. Two or more names with no stated pick is `"ambiguous"`, but an
+  explicit commitment ("I'm going with X") wins over floated extras, and once the character has
+  asked for a single name the classifier takes the most committed (else last) one rather than
+  asking again. `AMBIGUOUS_GUESS_NOTE` never lets the character say or imply whether a name is
+  right and never mentions judges or a system (an earlier version leaked the verdict, so a round
+  was answered yet never scored, and "a separate system judges guesses" in the persona prompt made
+  characters talk about "the judges"). An earlier version bounced "Edward" vs "Edmund Ironside"
+  for eight turns, found only via real session logs decoded from `/api/audio?...&text=`. `"correct"` demands the *same individual*: leniency
   covers only surface forms (short/full names, nicknames, genuine aliases, spelling/localization,
   title-names of the same person), never related people (Hamlet vs Laertes), a shared trait or
   epithet (Beauty vs Cleopatra), or cross-tradition counterparts (Venus vs Aphrodite, Ares/Mars,
   Zeus/Jupiter). Default `correct: false` when unsure. If it regresses, expect a *wrong* guess
   scored as a win; check for that before loosening the prompt.
+- **A miss on the round's first message is free, once.** `message.ts` spends the token's signed
+  `freeMissUsed` flag instead of `wrongGuessCount`, so exploratory opening guesses don't end a run
+  after one clue. The flag, not the client's history length, bounds it (an empty history can't
+  farm free misses). Client copy ("one wrong guess is OK") is still accurate; the warm-up is a bonus.
+- **Hidden-name guard.** `getGameReply`/`getOpeningReply` take the hidden name; a reply that says
+  it unprompted (the player's own message didn't) is regenerated once, then replaced with a neutral
+  line. A real Guess Who opening once began "Bagheera... ah, but you must discover that".
+- **Persona is grounded by a qualified name.** `generateGuessWhoSelfCluePersonaPrompt` and
+  `generateGameCluePersonaPrompt` generate the base persona from `Name (work)`, since appending the
+  work fact afterward lost to the bare name (a bare "Pluto" played Disney's dog while the answer was
+  the Roman god). The name is now `Pluto (Roman mythology)` in the name and work lists. Base
+  personas are memoized per warm instance (`gameBasePersona`, 500 entries, never the error
+  fallback, which `generatePersonalityPrompt` flags with `fallback: true`).
+- **Cost levers (keep them).** `classifyGuess` skips its Haiku call for a long message with no cue word and no capitalized name (short ones
+  like "zeus" always classify). Verdict reactions use Haiku, and game replies cap at 220 tokens.
+  **Prompt caching was tried and removed:** a game persona prefix is ~900 tokens, under the
+  model's cache minimum (a live check showed 0 cache reads and writes), and chat's is no longer.
+  Revisit only if a prompt grows past roughly 2k tokens, and verify with `usage.cache_read_input_tokens`.
 - **Giving up via chat reuses the menu's confirmation dialog.** On `"giveUp"`, `message.ts` returns
   `{ giveUpRequested: true }` with no reply; the controller sets a flag and `GamePage.tsx` opens
   the same modal the hamburger's "Give Up" opens. Only on confirm does the client call `give-up.ts`.
@@ -670,6 +696,20 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
   client renders a live typing effect anywhere; if wanted, start with ordinary chat's UI.
 - Not mechanically verifiable: whether a real guess is judged fairly and whether clue difficulty
   holds up are ongoing manual-QA and prompt-iteration concerns.
+
+### Game simulator (`npm run sim:games`)
+
+`scripts/simulate-games.ts` plays both games in-process with an LLM player (`--player strong|weak|adversarial`,
+`--game`, `--concurrency`, `--max-turns`; **hard-limited to one round per game, concurrency 2, 6 turns by default (10 max), and it refuses to run unless a human sets `ALLOW_PAID_SIM=1`**; the local `.claude/settings.local.json` also denies Claude Code from launching it) and reports
+win rate, pacing, wasted turns (an "ambiguous" the player had to repeat), name leaks, and
+fourth-wall mentions, writing transcripts to gitignored `sim-output/`. It skips avatar, voice, TTS,
+and the DB. **It costs real Anthropic money:** each turn is three or four calls and ~400 rounds
+cost enough that the user stopped the work (~230 rounds yielded three real bugs, a leak, a two-name
+win and a persona mismatch; most of the spend only confirmed prior findings). Read prompts and scan
+name lists first; use real-player data (`analytics_events`, `/admin`) for difficulty questions, since
+an LLM player knows far more than a human; one round per game is the cap, and Claude must not run it unprompted. `NODE_ENV=production`
+makes chat replies use Sonnet like prod (the classifier is Haiku either way). Findings so far: all
+players mostly win and the strong player wins in 2 to 3 turns, so difficulty is the open question.
 
 ### Guess Who (self-describing chat game)
 

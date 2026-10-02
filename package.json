@@ -1,6 +1,6 @@
 {
   "name": "portrayal",
-  "version": "0.25.8",
+  "version": "0.26.0",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -30,6 +30,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage --silent --coverageReporters=text --coverageReporters=text-summary",
+    "sim:games": "tsx --env-file=.env.local scripts/simulate-games.ts",
     "type-check": "tsc --noEmit",
     "prepare": "node ./scripts/setup-git-hooks.cjs",
     "type-check:watch": "tsc --noEmit --watch",

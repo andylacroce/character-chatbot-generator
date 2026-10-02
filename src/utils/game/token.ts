@@ -48,6 +48,8 @@ export interface GameState {
   streak: number;
   /** 0 or 1: a 2nd wrong guess ends the run, enforced by the message route. */
   wrongGuessCount: 0 | 1;
+  /** True once the round's free first-message miss has been spent. */
+  freeMissUsed?: boolean;
   environment: string;
   /** Convenience only: the signed-in user id at issuance, never trusted for auth. */
   issuedForUserId: string | null;
@@ -73,6 +75,7 @@ function hasValidCommonFields(v: Record<string, unknown>): boolean {
     v.usedNames.every((name) => typeof name === "string") &&
     typeof v.streak === "number" &&
     (v.wrongGuessCount === 0 || v.wrongGuessCount === 1) &&
+    (v.freeMissUsed === undefined || typeof v.freeMissUsed === "boolean") &&
     typeof v.environment === "string" &&
     isNullableString(v.issuedForUserId) &&
     (v.issuedForGuestId === undefined || isNullableString(v.issuedForGuestId)) &&

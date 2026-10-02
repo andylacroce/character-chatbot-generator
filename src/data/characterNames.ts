@@ -176,7 +176,7 @@ const characterNames: string[] = [
   "Jupiter",
   "Juno",
   "Neptune",
-  "Pluto",
+  "Pluto (Roman mythology)",
   "Ceres",
   "Mars",
   "Venus",
