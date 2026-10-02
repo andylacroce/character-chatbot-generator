@@ -31,7 +31,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
-    "@react-native/jest-preset": "^0.86.3",
+    "@react-native/jest-preset": "^0.87.1",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
