@@ -36,8 +36,14 @@ import { getSessionUserId } from "../../../utils/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 
 /** Speaks `text` in the round's speaker voice, returning the audio URL (undefined if TTS fails). */
-function speak(state: GameState, text: string) {
-  return synthesizeReplyAudio(text, state.speakerName, state.gender, state.voiceConfig);
+function speak(game: ServerGame, state: GameState, text: string) {
+  return synthesizeReplyAudio(
+    text,
+    state.speakerName,
+    state.gender,
+    state.voiceConfig,
+    game.hidesSpeaker,
+  );
 }
 
 /**
@@ -158,7 +164,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         classification.status === "ambiguous" ? AMBIGUOUS_GUESS_NOTE : undefined,
         state.targetName,
       );
-      res.status(200).json({ reply, audioFileUrl: await speak(state, reply) });
+      res.status(200).json({ reply, audioFileUrl: await speak(game, state, reply) });
       return;
     }
 
@@ -170,7 +176,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
       const newStreak = state.streak + 1;
       const scoreWrite = writeScore(game, req, state, userId, newStreak);
       const reply = await getGuessReactionReply(state.personaPrompt, "correct", state.targetName);
-      const audioFileUrl = await speak(state, reply);
+      const audioFileUrl = await speak(game, state, reply);
       await scoreWrite;
 
       logEvent(
@@ -207,7 +213,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         "finalWrong",
         state.targetName,
       );
-      const audioFileUrl = await speak(state, reply);
+      const audioFileUrl = await speak(game, state, reply);
       logEvent(
         "info",
         `${game.eventPrefix}_run_ended`,
@@ -233,7 +239,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
     }
 
     const reply = await getGuessReactionReply(state.personaPrompt, "wrong", state.targetName);
-    const audioFileUrl = await speak(state, reply);
+    const audioFileUrl = await speak(game, state, reply);
     // A miss on the very first message is a warm-up: it costs nothing, once per round (the
     // signed flag, not the client-supplied history, stops it repeating).
     const freeMiss = clueRound === 1 && !state.freeMissUsed;

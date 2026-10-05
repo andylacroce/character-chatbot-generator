@@ -161,7 +161,17 @@ describe("generateGameRound", () => {
       "Sherlock Holmes",
       "female",
       voiceConfig,
+      false,
     );
+  });
+
+  it("hides the speaker's identity in the audio URL only for a hidden-speaker game", async () => {
+    await generateGameRound(guessWho, {
+      speakerName: "Bagheera",
+      targetName: "Bagheera",
+      usedNames: ["Bagheera"],
+    });
+    expect(mockSynthesizeReplyAudio.mock.calls.at(-1)?.[4]).toBe(true);
   });
 
   it("returns the full round shape", async () => {

@@ -126,7 +126,13 @@ export async function generateGameRound(
     }),
   ]);
 
-  const audioFileUrl = await synthesizeReplyAudio(reply, speakerName, gender, voiceConfig);
+  const audioFileUrl = await synthesizeReplyAudio(
+    reply,
+    speakerName,
+    gender,
+    voiceConfig,
+    game.hidesSpeaker,
+  );
   return { personaPrompt, avatarUrl, gender, voiceConfig, reply, audioFileUrl };
 }
 

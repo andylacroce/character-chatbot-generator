@@ -163,6 +163,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
       state.speakerName,
       state.gender,
       state.voiceConfig,
+      game.hidesSpeaker,
     );
   });
 
