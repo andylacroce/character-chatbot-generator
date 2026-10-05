@@ -10,7 +10,7 @@ function makeRow(
   name: string,
   avatarUrl = `https://example.test/${name}.png`,
   category: string | null = null,
-  createdAt = new Date(),
+  createdAt = new Date(0), // fixed so the newest-first sort keeps input order (a ticking clock made it flaky)
 ) {
   return { characterName: name, avatarUrl, gender: null, category, createdAt };
 }
