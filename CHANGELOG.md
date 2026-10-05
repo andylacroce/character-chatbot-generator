@@ -2,6 +2,18 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.26.2 - 2026-10-04 - Defect and security sweep
+
+- Guess Who no longer leaks the mystery character's name (or gender) in the audio URL of its replies.
+- A guessing-game run now ends on give-up or a second wrong guess, and an ended run can no longer score. Previously the revealed answer could be replayed as a correct guess, which let a leaderboard streak be farmed. Adds a nullable `ended_at` column to both results tables (run `npm run db:push`).
+- `/api/generate-avatar` checks the moderation blocklist itself, so a blocked name can't regain a public Wall portrait by calling it directly.
+- The mobile sign-in bridge only redirects to the app's own URI or an Expo Go dev host, instead of any `exp://` host.
+- `/api/audio` only accepts bare `.mp3` names (a name without the extension let the text sidecar overwrite the audio file), no longer improvises a reply from the filename, and only looks up a voice when it has to synthesize.
+- Chat logs are never overwritten when reading the existing log fails, and appends within an instance are queued so entries aren't lost. `/api/log-message` and `/api/get-voice-config` are now rate limited.
+- Saved characters can only reference this app's avatar blobs, and deleting one only deletes `avatars/` blobs. The temp-file cleanup only removes files this app created.
+- `/api/chat` and the game message route reject oversized input, chat 500s no longer echo upstream error text, the chat bot name is sanitized, history roles no longer depend on the bot's name, and Google sign-in requires a verified email.
+- Added tests for the mobile auth bridge, state signing, chat persistence and reply formatting (statement coverage 92% to 94%).
+
 ## v0.26.1 — 2026-10-01 — Turns to solve
 
 - Guess events now record the chat turn they happened on, and `/admin` shows the average turns to solve a round, so game difficulty can be judged from real players instead of simulations. Figures start from this deploy (no backfill).
