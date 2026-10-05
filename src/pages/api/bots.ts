@@ -9,7 +9,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { bots } from "../../db/schema";
 import { getSessionUserId } from "../../utils/getSessionUserId";
-import { deleteUserBlobs } from "../../utils/userBlobs";
+import { deleteUserBlobs, isBlobAvatarUrl, isBlobHostUrl } from "../../utils/userBlobs";
 import { sanitizeCharacterName } from "../../utils/security";
 import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
 import { getCurrentEnvironment } from "../../utils/environment";
@@ -68,7 +68,7 @@ const botsRateLimit = createRateLimiter({
  *                 persisted:
  *                   type: boolean
  *       400:
- *         description: Invalid name or personality
+ *         description: Invalid name, personality or avatar
  *       405:
  *         description: Method not allowed
  *       429:
@@ -221,6 +221,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const sanitizedName = sanitizeCharacterName(name);
   if (!sanitizedName || typeof personality !== "string" || !personality.trim()) {
     res.status(400).json({ error: "Invalid name or personality" });
+    return;
+  }
+
+  // A blob URL must be one of this app's portraits: deleting a saved character deletes its
+  // unreferenced blob, so storing another blob's URL (e.g. a chat log) would let it be deleted.
+  if (
+    avatarUrl != null &&
+    (typeof avatarUrl !== "string" || (isBlobHostUrl(avatarUrl) && !isBlobAvatarUrl(avatarUrl)))
+  ) {
+    res.status(400).json({ error: "Invalid avatar" });
     return;
   }
 

@@ -15,7 +15,12 @@ jest.mock("../../src/db/client", () => ({
   }),
 }));
 
-import { chatLogPrefix, deleteUserBlobs } from "../../src/utils/userBlobs";
+import {
+  chatLogPrefix,
+  deleteUserBlobs,
+  isBlobAvatarUrl,
+  isBlobHostUrl,
+} from "../../src/utils/userBlobs";
 
 const OWN = "https://abc.public.blob.vercel-storage.com/avatars/own.png";
 const SHARED = "https://abc.public.blob.vercel-storage.com/avatars/shared.png";
@@ -41,6 +46,23 @@ describe("userBlobs", () => {
     expect(prefix).toMatch(/^chat-logs\/users\/[0-9a-f]{64}\/$/);
     expect(prefix).not.toContain("user-1");
     expect(chatLogPrefix("user-2")).not.toBe(prefix);
+  });
+
+  it("treats only avatars/ blobs as deletable portraits", () => {
+    expect(isBlobAvatarUrl(OWN)).toBe(true);
+    const log = "https://abc.public.blob.vercel-storage.com/chat-logs/users/x/a.log";
+    expect(isBlobAvatarUrl(log)).toBe(false);
+    expect(isBlobHostUrl(log)).toBe(true);
+    for (const url of ["/silhouette.svg", "data:image/png;base64,AA", "not a url"]) {
+      expect(isBlobAvatarUrl(url)).toBe(false);
+      expect(isBlobHostUrl(url)).toBe(false);
+    }
+  });
+
+  it("never deletes a non-avatar blob even if a saved character references it", async () => {
+    const log = "https://abc.public.blob.vercel-storage.com/chat-logs/users/x/a.log";
+    await expect(deleteUserBlobs("user-1", [log], { chatLogs: false })).resolves.toBe(0);
+    expect(mockDel).not.toHaveBeenCalled();
   });
 
   it("is a no-op without a Blob token", async () => {

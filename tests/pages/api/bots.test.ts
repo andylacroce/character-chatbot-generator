@@ -30,6 +30,7 @@ jest.mock("../../../src/db/client", () => ({ getDb: () => mockDb }));
 
 const mockDeleteUserBlobs = jest.fn();
 jest.mock("../../../src/utils/userBlobs", () => ({
+  ...jest.requireActual("../../../src/utils/userBlobs"),
   deleteUserBlobs: (...args: unknown[]) => mockDeleteUserBlobs(...args),
 }));
 
@@ -214,6 +215,37 @@ describe("bots API", () => {
       });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);
+    });
+
+    it.each([
+      ["a chat-log blob", "https://abc.public.blob.vercel-storage.com/chat-logs/users/x/log.log"],
+      ["a non-string", 42],
+    ])("rejects an avatar that is %s", async (_label, avatarUrl) => {
+      const handler = (await import("../../../src/pages/api/bots")).default;
+      const { req, res } = createMocks({
+        method: "POST",
+        headers: { "x-forwarded-for": "10.9.9.9" },
+        body: { name: "Sherlock Holmes", personality: "A detective.", avatarUrl },
+      });
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(400);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      "https://abc.public.blob.vercel-storage.com/avatars/a.png",
+      "data:image/png;base64,AAAA",
+      "/silhouette.svg",
+      null,
+    ])("accepts the avatar %p", async (avatarUrl) => {
+      const handler = (await import("../../../src/pages/api/bots")).default;
+      const { req, res } = createMocks({
+        method: "POST",
+        headers: { "x-forwarded-for": "10.9.9.9" },
+        body: { name: "Sherlock Holmes", personality: "A detective.", avatarUrl },
+      });
+      await handler(req, res);
+      expect(res._getStatusCode()).toBe(200);
     });
 
     it("upserts on (userId, name, environment) and persists", async () => {
