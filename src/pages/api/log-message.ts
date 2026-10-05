@@ -14,6 +14,43 @@ import { chatLogPrefix } from "../../utils/userBlobs";
 import { getSessionUserId } from "../../utils/getSessionUserId";
 import { withRequestLog } from "../../utils/withRequestLog";
 
+/** Per-log append chains, so concurrent appends from one instance don't overwrite each other. */
+const blobAppendQueues = new Map<string, Promise<unknown>>();
+
+/**
+ * Read-modify-write append to a blob log. The write replaces the whole blob, so a read
+ * that fails for any reason other than "no such blob yet" must abort rather than write:
+ * proceeding would silently replace the existing log with this one line. Appends to the
+ * same log within an instance are serialized (instances can still race; blobs have no
+ * atomic append).
+ */
+function appendToBlobLog(filename: string, entry: string, token: string): Promise<void> {
+  const run = async () => {
+    let existing = "";
+    try {
+      const info = await head(filename, { token });
+      const response = await fetch((info.downloadUrl || info.url) + `?cachebust=${Date.now()}`); // Bypass CDN cache
+      if (!response.ok) throw new Error(`Reading the existing log failed (${response.status})`);
+      existing = await response.text();
+    } catch (error) {
+      if (!(error instanceof BlobNotFoundError)) throw error;
+    }
+    await put(filename, existing + entry, {
+      access: "public",
+      allowOverwrite: true, // Replaces the log with the appended contents
+      addRandomSuffix: false, // Keep deterministic filename
+      token,
+    });
+  };
+  const next = (blobAppendQueues.get(filename) ?? Promise.resolve()).then(run, run);
+  const tail = next.catch(() => undefined);
+  blobAppendQueues.set(filename, tail);
+  void tail.then(() => {
+    if (blobAppendQueues.get(filename) === tail) blobAppendQueues.delete(filename);
+  });
+  return next;
+}
+
 /**
  * Next.js API route handler for logging chat messages and events to storage (Vercel Blob or local).
  * Includes XSS-safe HTML escaping for logs.
@@ -184,39 +221,7 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
     if (blobToken) {
       // Append to Vercel Blob (Read, Append, Write)
       try {
-        let existingContent = "";
-        try {
-          // Check if blob exists and get its content
-          const blobInfo = await head(logFilename, { token: blobToken });
-          const blobUrl = blobInfo.downloadUrl || blobInfo.url;
-
-          const response = await fetch(blobUrl + `?cachebust=${Date.now()}`); // Bypass CDN cache
-          if (response.ok) {
-            existingContent = await response.text();
-          }
-        } catch (error) {
-          if (error instanceof BlobNotFoundError) {
-            // Expected when blob does not exist yet
-          } else if (
-            typeof error === "object" &&
-            error !== null &&
-            "status" in error &&
-            typeof (error as { status?: unknown }).status === "number" &&
-            (error as { status: number }).status !== 404
-          ) {
-            // Ignore non-404 errors
-          }
-        }
-
-        const newContent = existingContent + logEntry;
-
-        // Write the log content directly (no explicit UTF-8 conversion)
-        await put(logFilename, newContent, {
-          access: "public", // Or 'private'
-          allowOverwrite: true, // Allow overwriting the existing blob
-          addRandomSuffix: false, // Keep deterministic filename
-          token: blobToken,
-        });
+        await appendToBlobLog(logFilename, logEntry, blobToken);
       } catch (error) {
         logEvent(
           "error",

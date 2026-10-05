@@ -274,23 +274,48 @@ describe("log-message API", () => {
       expect(res.status).toHaveBeenCalledWith(200);
     });
 
-    it("starts a fresh log when reading the existing blob fails", async () => {
+    it("never overwrites the existing log when reading it fails", async () => {
       mockHead.mockResolvedValueOnce({ url: "https://blob.example/log" });
-      (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false, text: async () => "ignored" });
+      (global.fetch as jest.Mock).mockResolvedValueOnce({ ok: false, status: 503 });
       const res = makeRes();
       await handler(makeReq(validBody), res);
 
-      expect(mockPut.mock.calls[0][1]).not.toContain("ignored");
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(mockPut).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(500);
     });
 
-    it("ignores a non-404 head error and still writes", async () => {
+    it("never overwrites the existing log when the head lookup fails for a non-404 reason", async () => {
       mockHead.mockRejectedValueOnce({ status: 500 });
       const res = makeRes();
       await handler(makeReq(validBody), res);
 
-      expect(mockPut).toHaveBeenCalled();
-      expect(res.status).toHaveBeenCalledWith(200);
+      expect(mockPut).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+
+    it("serializes concurrent appends to the same log so neither entry is lost", async () => {
+      let stored = "";
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      mockHead.mockResolvedValue({ url: "https://blob.example/log" });
+      (global.fetch as jest.Mock).mockImplementation(async () => ({
+        ok: true,
+        text: async () => {
+          await gate;
+          return stored;
+        },
+      }));
+      mockPut.mockImplementation(async (_name: string, content: string) => {
+        stored = content;
+      });
+
+      const first = handler(makeReq({ ...validBody, text: "first" }), makeRes());
+      const second = handler(makeReq({ ...validBody, text: "second" }), makeRes());
+      release();
+      await Promise.all([first, second]);
+
+      expect(stored).toContain("first");
+      expect(stored).toContain("second");
     });
 
     it("returns 500 when the blob write fails", async () => {
