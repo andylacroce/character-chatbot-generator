@@ -16,8 +16,9 @@ runs:
       with:
         path: |
           node_modules
-          apps/mobile/node_modules
-        key: modules-${{ runner.os }}-node24-${{ hashFiles('package-lock.json') }}
+          apps/*/node_modules
+          packages/*/node_modules
+        key: modules-${{ runner.os }}-node24-v2-${{ hashFiles('package-lock.json') }}
 
     - name: Install dependencies
       if: steps.modules.outputs.cache-hit != 'true'
