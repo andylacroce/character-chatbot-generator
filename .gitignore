@@ -61,3 +61,6 @@ docs-generated/
 
 # Game simulator output (npm run sim:games)
 sim-output/
+e2e-report/
+test-results/
+playwright-report/

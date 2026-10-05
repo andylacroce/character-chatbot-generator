@@ -27,14 +27,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Setup Node and dependencies
+        uses: ./.github/actions/setup
 
       - name: Check formatting
         run: npm run format:check
@@ -61,14 +55,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Setup Node and dependencies
+        uses: ./.github/actions/setup
 
       - name: Cache Jest cache
         uses: actions/cache@v4
@@ -98,14 +86,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
+      - name: Setup Node and dependencies
+        uses: ./.github/actions/setup
 
       - name: Cache Next.js build cache
         uses: actions/cache@v4
@@ -118,5 +100,20 @@ jobs:
           restore-keys: |
             nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
 
-      - name: Build production bundle
-        run: npm run build
+      # Chromium downloads while the build runs; e2e reuses this build instead of rebuilding.
+      - name: Build production bundle and install Chromium
+        run: |
+          npx playwright install --with-deps chromium &
+          browsers=$!
+          npm run build
+          wait $browsers
+
+      - name: Run smoke synthetics (no Claude calls)
+        run: npm run e2e
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results
