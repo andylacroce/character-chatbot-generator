@@ -20,8 +20,11 @@ import {
   getGuestHighScore,
   getHighScore,
   getLeaderboard,
+  isRunEnded,
   isTopTenPlayer,
+  markRunEnded,
   recordGameResult,
+  scoringIdentity,
   updateHighScoreIfBeaten,
 } from "../../../../src/utils/game/scores";
 import { getServerGame } from "../../../../src/utils/game/definitions";
@@ -56,6 +59,89 @@ describe.each(["guess-who", "guess-who-next"])("game scores (%s)", (slug) => {
 
   afterAll(() => {
     process.env = OLD_ENV;
+  });
+
+  describe("run ending", () => {
+    it("reports a run as ended only when it has an endedAt", async () => {
+      mockSelect.mockReturnValueOnce(query([{ endedAt: new Date() }]));
+      await expect(isRunEnded(game, "run-1")).resolves.toBe(true);
+      mockSelect.mockReturnValueOnce(query([{ endedAt: null }]));
+      await expect(isRunEnded(game, "run-1")).resolves.toBe(false);
+      mockSelect.mockReturnValueOnce(query([]));
+      await expect(isRunEnded(game, "run-1")).resolves.toBe(false);
+    });
+
+    it("fails open (not ended) without a database or on a read error", async () => {
+      mockSelect.mockImplementationOnce(() => {
+        throw new Error("db down");
+      });
+      await expect(isRunEnded(game, "run-1")).resolves.toBe(false);
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        expect.stringMatching(/_run_ended_check_failed$/),
+        expect.any(String),
+        expect.anything(),
+      );
+      delete process.env.DATABASE_URL;
+      await expect(isRunEnded(game, "run-1")).resolves.toBe(false);
+    });
+
+    it("upserts an ended marker owned by the caller, leaving the best streak alone on conflict", async () => {
+      await markRunEnded(game, { guestId: "g1" }, "run-1", 4);
+      expect(mockValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "run-1",
+          userId: null,
+          guestId: "g1",
+          bestStreak: 4,
+          endedAt: expect.any(Date),
+        }),
+      );
+      const conflict = mockOnConflictDoUpdate.mock.calls[0][0];
+      expect(Object.keys(conflict.set)).toEqual(["endedAt"]);
+    });
+
+    it("never throws when the marker write fails", async () => {
+      mockOnConflictDoUpdate.mockRejectedValueOnce(new Error("db down"));
+      await expect(markRunEnded(game, { userId: "u1" }, "run-1", 1)).resolves.toBeUndefined();
+    });
+
+    it("is a no-op without a database", async () => {
+      delete process.env.DATABASE_URL;
+      await markRunEnded(game, { userId: "u1" }, "run-1", 1);
+      expect(mockInsert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("scoringIdentity", () => {
+    const state = (overrides: object) =>
+      ({
+        environment: "test",
+        issuedForUserId: null,
+        issuedForGuestId: null,
+        ...overrides,
+      }) as never;
+    const req = (token?: string) =>
+      ({ cookies: token ? { "portrayal-game-guest": token } : {}, headers: {} }) as never;
+
+    it("credits only the user a token was issued to, in its own environment", () => {
+      expect(scoringIdentity(req(), state({ issuedForUserId: "u1" }), "u1")).toEqual({
+        userId: "u1",
+      });
+      expect(scoringIdentity(req(), state({ issuedForUserId: "u1" }), "u2")).toBeNull();
+      expect(
+        scoringIdentity(req(), state({ issuedForUserId: "u1", environment: "production" }), "u1"),
+      ).toBeNull();
+    });
+
+    it("credits a guest only when its cookie hashes to the issued identity", () => {
+      const token = "a".repeat(43);
+      const guestId = require("crypto").createHash("sha256").update(token).digest("hex");
+      expect(scoringIdentity(req(token), state({ issuedForGuestId: guestId }), null)).toEqual({
+        guestId,
+      });
+      expect(scoringIdentity(req(), state({ issuedForGuestId: guestId }), null)).toBeNull();
+    });
   });
 
   describe("getHighScore", () => {

@@ -338,6 +338,8 @@ export const guessWhoNextResults = pgTable(
     bestStreak: integer("best_streak").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+    /** Set once the run is over (given up or second wrong guess); an ended run can no longer score. */
+    endedAt: timestamp("ended_at", { mode: "date" }),
   },
   (table) => [
     index("guess_who_next_results_environment_user_idx").on(table.environment, table.userId),
@@ -390,6 +392,8 @@ export const guessWhoResults = pgTable(
     bestStreak: integer("best_streak").notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+    /** Set once the run is over (given up or second wrong guess); an ended run can no longer score. */
+    endedAt: timestamp("ended_at", { mode: "date" }),
   },
   (table) => [
     index("guess_who_results_environment_user_idx").on(table.environment, table.userId),

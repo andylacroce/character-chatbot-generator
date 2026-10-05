@@ -18,12 +18,17 @@
  * each turn, the same pattern pages/api/chat.ts uses for a guest's conversation.
  */
 
+import type { NextApiRequest } from "next";
 import { gameRoute, rejectMethod } from "../../../utils/game/route";
 import { signGameState, verifyGameState, type GameState } from "../../../utils/game/token";
-import { recordGameResult, updateHighScoreIfBeaten } from "../../../utils/game/scores";
+import {
+  isRunEnded,
+  markRunEnded,
+  recordGameResult,
+  scoringIdentity,
+  updateHighScoreIfBeaten,
+} from "../../../utils/game/scores";
 import type { ServerGame } from "../../../utils/game/definitions";
-import { getCurrentEnvironment } from "../../../utils/environment";
-import { getGuestId } from "../../../utils/gameGuestIdentity";
 import { recordEvent } from "../../../utils/analytics";
 import {
   getGameReply,
@@ -221,6 +226,10 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         sanitizeLogMeta({ finalStreak: state.streak }),
       );
       void recordEvent(`${game.eventPrefix}_guess_wrong`, { turn: clueRound }, userId);
+      const identity = scoringIdentity(req, state, userId);
+      if (identity && state.runId) {
+        await markRunEnded(game, identity, state.runId, state.streak);
+      }
       void recordEvent(
         `${game.eventPrefix}_run_ended`,
         { reason: "second_wrong", finalStreak: state.streak },
@@ -269,27 +278,30 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
 /**
  * Records a correct guess's score. A streak only ever increases within a run, so the moment
  * it's incremented is also the moment it might be a new personal best. A token issued to a
- * guest or another account cannot credit this caller, and neither can one from another
- * environment. Never throws, and a caller with no identity is simply skipped.
+ * guest or another account cannot credit this caller, neither can one from another
+ * environment, and neither can a run that was already given up or lost (its old tokens stay
+ * decryptable, so this is what stops a revealed answer being replayed as a win). Never
+ * throws, and a caller with no identity is simply skipped.
  */
-function writeScore(
+async function writeScore(
   game: ServerGame,
-  req: Parameters<typeof getGuestId>[0],
+  req: NextApiRequest,
   state: GameState,
   userId: string | null,
   streak: number,
-): Promise<unknown> {
-  const inEnvironment = state.environment === getCurrentEnvironment();
-  const eligibleUserId =
-    userId && state.issuedForUserId === userId && inEnvironment ? userId : null;
-  const eligibleGuestId =
-    !userId && state.issuedForGuestId && state.issuedForGuestId === getGuestId(req) && inEnvironment
-      ? state.issuedForGuestId
-      : null;
-  return Promise.all([
-    eligibleUserId ? updateHighScoreIfBeaten(game, eligibleUserId, streak) : undefined,
-    state.runId && (eligibleUserId || eligibleGuestId)
-      ? recordGameResult(game, eligibleUserId, eligibleGuestId, state.runId, streak)
+): Promise<void> {
+  const identity = scoringIdentity(req, state, userId);
+  if (!identity || (state.runId && (await isRunEnded(game, state.runId)))) return;
+  await Promise.all([
+    identity.userId ? updateHighScoreIfBeaten(game, identity.userId, streak) : undefined,
+    state.runId
+      ? recordGameResult(
+          game,
+          identity.userId ?? null,
+          identity.guestId ?? null,
+          state.runId,
+          streak,
+        )
       : undefined,
   ]);
 }
