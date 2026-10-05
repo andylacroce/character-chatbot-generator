@@ -77,7 +77,7 @@ jobs:
           path: coverage
 
   build:
-    name: Production build & E2E smoke
+    name: Production build
     runs-on: ubuntu-latest
     env:
       CI: true
