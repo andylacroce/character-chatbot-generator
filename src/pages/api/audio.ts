@@ -249,67 +249,7 @@ async function handler(
       }
     }
   } else {
-    // --- NEW: Check .txt file matches expected text if provided ---
-    let txtContent: string | null = null;
-    if (normalizedAudioFilePath || normalizedLocalFilePath) {
-      // Try to find the .txt file in /tmp or /public
-      const txtPathTmp = txtFilePath;
-      const txtPathPublic = path.join(
-        /*turbopackIgnore: true*/ process.cwd(),
-        "public",
-        sanitizedFile.replace(/\.mp3$/, ".txt"),
-      );
-      if (fs.existsSync(txtPathTmp)) {
-        txtContent = fs.readFileSync(txtPathTmp, "utf8");
-      } else if (fs.existsSync(txtPathPublic)) {
-        txtContent = fs.readFileSync(txtPathPublic, "utf8");
-      }
-      // If expectedText is provided, compare
-      // Fix: ensure txtContent is always string before calling trim, and expectedText is string
-      if (
-        typeof expectedText === "string" &&
-        typeof txtContent === "string" &&
-        (txtContent as string).trim() !== (expectedText as string).trim()
-      ) {
-        logEvent(
-          "warn",
-          "audio_text_mismatch_regen",
-          "Audio text mismatch detected, regenerating",
-          sanitizeLogMeta({
-            file: sanitizedFile,
-            expectedText,
-            txtContent,
-          }),
-        );
-        try {
-          const selectedVoice = await getVoice();
-          const ssmlText = buildSsml(expectedText as string, selectedVoice);
-          await synthesizeSpeechToFile({
-            text: ssmlText,
-            filePath: audioFilePath,
-            ssml: true,
-            voice: selectedVoice,
-          });
-          fs.writeFileSync(txtFilePath, expectedText, "utf8");
-          normalizedAudioFilePath = checkFileExists(audioFilePath);
-          found = !!normalizedAudioFilePath;
-          txtContent = expectedText;
-          triedRegenerate = true;
-        } catch (err) {
-          logEvent(
-            "error",
-            "audio_regen_failed_text_mismatch",
-            "Audio regeneration failed for text mismatch",
-            sanitizeLogMeta({
-              file: sanitizedFile,
-              error: err instanceof Error ? err.message : String(err),
-            }),
-          );
-          regenError = err;
-        }
-      }
-    }
-
+    // No `text` param: serve what is on disk, else rebuild from the sidecar or reply cache.
     if (!found) {
       // Only wait for file if we just tried to regenerate it
       triedRegenerate = false;
