@@ -275,6 +275,18 @@ describe("chat API", () => {
   });
 
   describe("non-streaming replies", () => {
+    it("sanitizes the bot name before it reaches the audio URL or prompts", async () => {
+      claudeSays("Greetings.");
+      mockFs.existsSync.mockReturnValue(false);
+      const res = makeRes();
+      await handler(makeReq({ botName: `<i>D'Artagnan</i> & "Co"`.padEnd(300, "x") }), res);
+
+      const { audioFileUrl } = (res.json as jest.Mock).mock.calls[0][0];
+      const botName = new URL(audioFileUrl, "http://x").searchParams.get("botName")!;
+      expect(botName).not.toMatch(/[<>'"&]/);
+      expect(botName.length).toBeLessThanOrEqual(100);
+    });
+
     it("returns the reply and an audio URL", async () => {
       claudeSays("Greetings, traveller.");
       mockFs.existsSync.mockReturnValue(false);

@@ -28,7 +28,7 @@ import { generatePersonalityPrompt } from "../../config/serverConfig";
 import anthropic from "../../utils/anthropicClient";
 import { getSessionUserId } from "../../utils/getSessionUserId";
 import { setSseHeaders, writeSseFrame } from "../../utils/sse";
-import { sanitizeUserName, stripPromptTags } from "../../utils/security";
+import { sanitizeCharacterName, sanitizeUserName, stripPromptTags } from "../../utils/security";
 import {
   isClaudeResponse,
   stripActionEmotes,
@@ -205,7 +205,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userMessage = req.body.message;
     const requestPersonality =
       req.body.personality || (await generatePersonalityPrompt("a character chatbot")).prompt;
-    const botName = req.body.botName || "Character";
+    // Same sanitization saved characters are stored under; also bounds what reaches prompts and file names.
+    const botName = sanitizeCharacterName(req.body.botName) || "Character";
     const gender = req.body.gender;
     const conversationHistory = req.body.conversationHistory || [];
     const stream = req.body.stream === true; // Support streaming mode
