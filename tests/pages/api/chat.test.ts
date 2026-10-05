@@ -387,7 +387,7 @@ describe("chat API", () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           reply: "Error fetching response from bot.",
-          error: "Invalid response from Claude",
+          error: "Chat request failed",
         }),
       );
     });
@@ -398,7 +398,7 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: "Generated bot response is empty." }),
+        expect.objectContaining({ error: "Chat request failed" }),
       );
     });
 
@@ -408,7 +408,7 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: "Generated bot response is empty." }),
+        expect.objectContaining({ error: "Chat request failed" }),
       );
     });
 
@@ -432,7 +432,18 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "anthropic down" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: "Chat request failed" }),
+      );
+      expect(JSON.stringify((res.json as jest.Mock).mock.calls[0][0])).not.toContain(
+        "anthropic down",
+      );
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        "chat_request_failed",
+        expect.any(String),
+        expect.objectContaining({ error: "anthropic down" }),
+      );
     });
 
     it("reports a non-Error throw as an unknown error", async () => {
@@ -440,7 +451,9 @@ describe("chat API", () => {
       const res = makeRes();
       await handler(makeReq(), res);
 
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "Unknown error" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: "Chat request failed" }),
+      );
     });
   });
 

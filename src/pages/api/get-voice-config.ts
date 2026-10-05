@@ -8,6 +8,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getVoiceConfigForCharacter } from "../../utils/characterVoices";
 import { sanitizeCharacterName, sanitizeVoiceContext } from "../../utils/security";
 import { withRequestLog } from "../../utils/withRequestLog";
+import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+
+/** Rate limiter: 20 requests per minute per IP (each uncached name is a Claude call). */
+const voiceConfigRateLimit = createRateLimiter({
+  name: "get-voice-config",
+  max: 20,
+  message: "Too many voice requests from this IP, please try again later.",
+});
 
 /**
  * Next.js API route handler for retrieving a character's TTS voice configuration.
@@ -56,6 +64,8 @@ import { withRequestLog } from "../../utils/withRequestLog";
  *         description: Failed to get voice config
  */
 async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!(await applyRateLimit(voiceConfigRateLimit, req, res))) return;
+
   if (req.method !== "POST") {
     res.status(405).end();
     return;

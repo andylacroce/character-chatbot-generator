@@ -12,15 +12,33 @@ function makeRes() {
   res.status = jest.fn().mockReturnValue(res as NextApiResponse);
   res.json = jest.fn().mockReturnValue(res as NextApiResponse);
   res.end = jest.fn().mockReturnValue(res as NextApiResponse);
+  res.send = jest.fn(() => {
+    (res as { headersSent: boolean }).headersSent = true;
+    return res as NextApiResponse;
+  });
+  res.setHeader = jest.fn();
+  res.getHeader = jest.fn();
   return res as NextApiResponse;
 }
 
-function makeReq(body: unknown, method = "POST") {
-  return { method, body } as NextApiRequest;
+function makeReq(body: unknown, method = "POST", ip = "203.0.113.7") {
+  return { method, body, headers: { "x-forwarded-for": ip } } as unknown as NextApiRequest;
 }
 
 describe("get-voice-config API", () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it("rate limits a caller to 20 requests a minute before reaching Claude", async () => {
+    mockGetVoiceConfig.mockResolvedValue({});
+    for (let i = 0; i < 20; i++) {
+      await handler(makeReq({ name: "Ada" }, "POST", "198.51.100.99"), makeRes());
+    }
+    const res = makeRes();
+    await handler(makeReq({ name: "Ada" }, "POST", "198.51.100.99"), res);
+
+    expect(res.status).toHaveBeenCalledWith(429);
+    expect(mockGetVoiceConfig).toHaveBeenCalledTimes(20);
+  });
 
   it("returns 405 for non-POST methods", async () => {
     const res = makeRes();

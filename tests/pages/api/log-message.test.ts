@@ -338,6 +338,17 @@ describe("log-message API", () => {
     });
   });
 
+  it("rate limits a caller to 60 log writes a minute", async () => {
+    const headers = { "x-forwarded-for": "198.51.100.77" };
+    for (let i = 0; i < 60; i++) {
+      await handler(makeReq(validBody, { headers }), makeRes());
+    }
+    const res = makeRes();
+    await handler(makeReq(validBody, { headers }), res);
+
+    expect(res.status).toHaveBeenCalledWith(429);
+  });
+
   it("returns 500 when the body cannot be destructured", async () => {
     const res = makeRes();
     await handler(makeReq(null), res);

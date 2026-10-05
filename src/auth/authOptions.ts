@@ -154,6 +154,12 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
+    // Google accounts link to existing users by email (allowDangerousEmailAccountLinking),
+    // and admin access keys off the email, so only a Google-verified address may sign in.
+    async signIn({ account, profile }) {
+      if (account?.provider !== "google") return true;
+      return (profile as { email_verified?: boolean } | undefined)?.email_verified === true;
+    },
     async jwt({ token, user }) {
       if (user) token.sub = user.id;
       return token;

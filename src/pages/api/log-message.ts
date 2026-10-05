@@ -13,6 +13,14 @@ import { escapeHtml } from "../../utils/security";
 import { chatLogPrefix } from "../../utils/userBlobs";
 import { getSessionUserId } from "../../utils/getSessionUserId";
 import { withRequestLog } from "../../utils/withRequestLog";
+import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+
+/** Rate limiter: 60 requests per minute per IP (two log lines per chat turn, which is itself capped). */
+const logRateLimit = createRateLimiter({
+  name: "log-message",
+  max: 60,
+  message: "Too many log requests from this IP, please try again later.",
+});
 
 /** Per-log append chains, so concurrent appends from one instance don't overwrite each other. */
 const blobAppendQueues = new Map<string, Promise<unknown>>();
@@ -108,6 +116,8 @@ function appendToBlobLog(filename: string, entry: string, token: string): Promis
  */
 async function handler(req: import("next").NextApiRequest, res: import("next").NextApiResponse) {
   const requestId = req.headers["x-request-id"] || generateRequestId();
+
+  if (!(await applyRateLimit(logRateLimit, req, res))) return;
 
   if (req.method !== "POST") {
     logEvent(

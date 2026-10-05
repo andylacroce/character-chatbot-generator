@@ -787,9 +787,10 @@ CRITICAL CONTEXT INSTRUCTIONS:
       "Chat request failed",
       sanitizeLogMeta({ requestId, error: errorMessage }),
     );
+    // The cause is in the log (by requestId); upstream error text isn't for the client.
     res.status(500).json({
       reply: "Error fetching response from bot.",
-      error: errorMessage,
+      error: "Chat request failed",
       requestId,
     });
     return;
