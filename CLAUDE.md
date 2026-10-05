@@ -17,12 +17,13 @@ npm run type-check               # tsc --noEmit
 npm run docs:code                 # typedoc -> docs-generated/ (gitignored); see "Code documentation standard"
 npm run test                       # jest
 npm run test:watch
+npm run e2e                          # Playwright smoke synthetics against `next start` (needs a prior build); zero Claude calls, see "Testing conventions"
 npm run test:coverage               # jest --coverage (enforces 80% global threshold — see jest.config.cjs)
 npm run analyze                      # ANALYZE=true next build (bundle analysis)
 npm run sim:games                    # LLM-vs-game simulator (scripts/simulate-games.ts); spends real Anthropic tokens, see "Game simulator"
 npm run docs:api                      # regenerate public/openapi.json from @swagger JSDoc comments; runs automatically before dev/build
 npm run db:check                       # read-only check that schema.ts matches the live DB; runs automatically before dev and as part of ci
-npm run ci                             # format (auto-fix) && lint --max-warnings=0 && lint:md && type-check && mobile ci && shared tests && db:check && docs:code && test:coverage && build — run this before considering work done
+npm run ci                             # format (auto-fix) && lint --max-warnings=0 && lint:md && type-check && mobile ci && shared tests && db:check && docs:code && test:coverage && build && e2e — run this before considering work done
 ```
 
 Run a single test file: `npx jest tests/api/chat.test.ts`. Run tests matching a name: `npx jest -t "some test description"`.
@@ -33,6 +34,8 @@ Coverage is enforced globally at 80% in `jest.config.cjs`.
   `.github/workflows/ci.yml` uses `format:check` first instead (fail fast; a workflow can't push a
   fix back). The pre-commit hook (`.githooks/pre-commit`, wired via `npm run prepare`) auto-formats
   staged files, so drift ideally never reaches either.
+- **Workflow setup is the shared composite action `.github/actions/setup`** (Node 24, `node_modules`
+  cached by lockfile hash so `npm ci` runs only when it changes); new jobs should use it.
 - **Any step added to a `ci` script must also be added to the matching workflow;** the workflows
   list steps one by one rather than calling `npm run ci`. Workflows, required checks, the
   Dependabot/Expo upgrade flow, and the `EXPO_UPGRADE_TOKEN` secret are in `.github/CONTRIBUTING.md`.
@@ -924,6 +927,12 @@ and the script normalizes to forward slashes because `swagger-jsdoc` doesn't mat
 (if `docs:api` reports 0 documented paths locally on Windows, suspect this).
 
 ### Testing conventions
+
+- **E2E smoke (`e2e/`, `playwright.config.ts`)** runs a few synthetics (key pages render with no
+  page errors, the random button works, 404s) against a production build on port 3100, inside the
+  `build` job in `ci.yml` (reusing that build; Chromium installs in parallel with it). **It must never spend Claude/Google/image tokens:** the server gets a dummy
+  `ANTHROPIC_API_KEY`, and `smoke.spec.ts` throws on any request matching `BILLED_API`. Extend it
+  only with synthetics that stay off those routes (stub them with `page.route` if a flow needs them).
 
 - Tests live under `tests/`, mirroring source (`tests/api`, `tests/app`, `tests/pages`, `tests/src`,
   `tests/utils`, `tests/integration`, `tests/unit`).
