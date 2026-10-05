@@ -13,13 +13,10 @@ import type { CharacterVoiceConfig } from "../../utils/characterVoices";
 import { getVoiceConfigForCharacter } from "../../utils/characterVoices";
 import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
 import { buildSsml } from "../../utils/voiceHelpers";
-import anthropic from "../../utils/anthropicClient";
+import { sanitizeCharacterName } from "../../utils/security";
 import { withRequestLog } from "../../utils/withRequestLog";
 
 // Note: deterministic serialization is implemented in pages/api/chat.ts where it's used for audio URL encoding.
-
-// SYSTEM_PROMPT: Generalize to a Portrayal character persona
-const SYSTEM_PROMPT = `You are a helpful character chatbot. Respond concisely, helpfully, and in a friendly tone. Use the style, knowledge, and quirks of the selected character. Stay in character at all times. Keep responses to one paragraph maximum (100-120 words). Be concise and focused.`;
 
 /** Rate limiter: 30 requests per minute per IP (higher than chat since audio files may be replayed). */
 const audioRateLimit = createRateLimiter({
@@ -77,8 +74,8 @@ function getOriginalTextForAudio(sanitizedFile: string): string | null {
  *     description: >
  *       Serves an MP3 from the system temp directory or /public. If the file is
  *       missing, or the `text` param doesn't match the cached `.txt` sidecar, the
- *       audio is resynthesized on demand — from the provided text, a cached reply,
- *       or (as a last resort) a fresh Claude+TTS round trip keyed off the filename.
+ *       audio is resynthesized on demand — from the provided text, the `.txt` sidecar,
+ *       or the reply cache. A file that can be neither served nor rebuilt is a 404.
  *       Only files resolving inside the temp dir or /public are ever served. Rate
  *       limited to 30 requests/minute/IP.
  *     tags: [Audio]
@@ -138,18 +135,6 @@ async function handler(
   }
 
   const { file, text: expectedText, voiceConfig: voiceConfigParam } = req.query;
-  const botName = typeof req.query.botName === "string" ? req.query.botName : "Character";
-  const gender = typeof req.query.gender === "string" ? req.query.gender : null;
-  let voiceConfig: CharacterVoiceConfig;
-  if (typeof voiceConfigParam === "string") {
-    try {
-      voiceConfig = JSON.parse(decodeURIComponent(voiceConfigParam));
-    } catch {
-      voiceConfig = await getVoiceConfigForCharacter(botName, gender);
-    }
-  } else {
-    voiceConfig = await getVoiceConfigForCharacter(botName, gender);
-  }
   if (!file || typeof file !== "string") {
     logEvent(
       "info",
@@ -162,6 +147,30 @@ async function handler(
     );
     return res.status(400).json({ error: "File parameter is required" });
   }
+  // Only names this app generates: a bare `.mp3` file name. Anything else (no extension,
+  // dotfiles) would make the `.txt` sidecar collide with the audio file itself, letting a
+  // caller overwrite arbitrary temp files with text.
+  if (!/^[^/\\]{1,200}\.mp3$/.test(file) || file.startsWith(".")) {
+    logEvent("info", "audio_bad_request", "Audio API bad request: invalid file name");
+    return res.status(400).json({ error: "Invalid file name" });
+  }
+  const botName =
+    sanitizeCharacterName(typeof req.query.botName === "string" ? req.query.botName : "") ||
+    "Character";
+  const gender = typeof req.query.gender === "string" ? req.query.gender : null;
+  // Resolved only when audio actually has to be synthesized: without a usable voiceConfig
+  // param this is a Claude call, which a request for a file that already exists never needs.
+  let voiceConfig: CharacterVoiceConfig | undefined;
+  if (typeof voiceConfigParam === "string") {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(voiceConfigParam));
+      if (parsed && typeof parsed === "object") voiceConfig = parsed;
+    } catch {
+      // Falls through to a looked-up voice below.
+    }
+  }
+  const getVoice = async (): Promise<CharacterVoiceConfig> =>
+    (voiceConfig ??= await getVoiceConfigForCharacter(botName, gender));
   // Caps how much text a single request can demand fresh TTS synthesis for — mirrors
   // log-message.ts's existing 2000-char cap on chat message text.
   const MAX_TEXT_LENGTH = 2000;
@@ -214,7 +223,7 @@ async function handler(
             voiceConfig,
           }),
         );
-        const selectedVoice = voiceConfig as CharacterVoiceConfig;
+        const selectedVoice = await getVoice();
         const ssmlText = buildSsml(expectedText, selectedVoice);
         await synthesizeSpeechToFile({
           text: ssmlText,
@@ -273,7 +282,7 @@ async function handler(
           }),
         );
         try {
-          const selectedVoice = voiceConfig as CharacterVoiceConfig;
+          const selectedVoice = await getVoice();
           const ssmlText = buildSsml(expectedText as string, selectedVoice);
           await synthesizeSpeechToFile({
             text: ssmlText,
@@ -313,8 +322,7 @@ async function handler(
         }
         if (originalText) {
           try {
-            const fetchedVoiceConfig = await getVoiceConfigForCharacter(botName, gender);
-            const selectedVoice = fetchedVoiceConfig;
+            const selectedVoice = await getVoice();
             const ssmlText = buildSsml(originalText, selectedVoice);
             await synthesizeSpeechToFile({
               text: ssmlText,
@@ -336,72 +344,6 @@ async function handler(
               }),
             );
             regenError = err;
-          }
-        }
-        // If still not found, try full Claude+TTS regen up to 3 times
-        if (!found) {
-          for (let attempt = 1; attempt <= 3; attempt++) {
-            try {
-              logEvent(
-                "info",
-                "audio_regen_claude_attempt",
-                "Attempting Claude+TTS audio regen",
-                sanitizeLogMeta({
-                  file: sanitizedFile,
-                  attempt,
-                }),
-              );
-              // Use the filename (without .mp3) as the user message if possible
-              const userMessage = sanitizedFile.replace(/\.mp3$/, "");
-              const result = await anthropic.messages.create({
-                model: "claude-haiku-4-5-20251001",
-                system: SYSTEM_PROMPT,
-                messages: [{ role: "user", content: userMessage }],
-                max_tokens: 150,
-                temperature: 0.8,
-              });
-              const aiReply =
-                result.content[0]?.type === "text" ? result.content[0].text.trim() : "";
-              if (!aiReply) throw new Error("Claude returned empty message");
-              // Save .txt for future regen
-              const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
-              fs.writeFileSync(txtFilePath, aiReply, "utf8");
-              // Now TTS
-              const selectedVoice = voiceConfig as CharacterVoiceConfig;
-              const ssmlText = buildSsml(aiReply, selectedVoice);
-              await synthesizeSpeechToFile({
-                text: ssmlText,
-                filePath: audioFilePath,
-                ssml: true,
-                voice: selectedVoice,
-              });
-              normalizedAudioFilePath = checkFileExists(audioFilePath);
-              if (normalizedAudioFilePath) {
-                logEvent(
-                  "info",
-                  "audio_regen_claude_success",
-                  "Audio successfully regenerated via Claude+TTS",
-                  sanitizeLogMeta({
-                    file: sanitizedFile,
-                    attempt,
-                  }),
-                );
-                found = true;
-                break;
-              }
-            } catch (err) {
-              logEvent(
-                "error",
-                "audio_regen_claude_failed",
-                "Claude+TTS audio regen failed",
-                sanitizeLogMeta({
-                  file: sanitizedFile,
-                  attempt,
-                  error: err instanceof Error ? err.message : String(err),
-                }),
-              );
-              regenError = err;
-            }
           }
         }
       }
