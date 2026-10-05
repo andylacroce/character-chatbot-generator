@@ -14,6 +14,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { sanitizeCharacterName } from "../../utils/security";
 import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
 import { getOrGenerateAvatar } from "../../utils/avatarGeneration";
+import { isAllowlisted } from "../../utils/characterAllowlist";
+import { getBlocklistEntry } from "../../utils/characterBlocklist";
 import { withRequestLog } from "../../utils/withRequestLog";
 
 /** Rate limiter: 5 requests per minute per IP (avatar generation is expensive). */
@@ -110,9 +112,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     res.status(400).json({ error: "Invalid character name" });
     return;
   }
-  const result = await getOrGenerateAvatar(sanitizedName, {
-    skipPersistence: skipPersistence === true,
-  });
+
+  // This route is callable directly, so it can't rely on the client having run
+  // /api/validate-character: a blocklisted name must never gain a public Wall portrait.
+  // A private render (skipPersistence) is never stored, so it needs no check. Otherwise a
+  // content block gets no image at all and a copyright block is only rendered privately.
+  let persist = skipPersistence !== true;
+  if (persist && !(await isAllowlisted(sanitizedName))) {
+    const blocked = await getBlocklistEntry(sanitizedName);
+    if (blocked?.category === "content") {
+      res.status(200).json({ avatarUrl: "/silhouette.svg", gender: null });
+      return;
+    }
+    persist = !blocked;
+  }
+  const result = await getOrGenerateAvatar(sanitizedName, { skipPersistence: !persist });
 
   res.status(200).json({ avatarUrl: result.avatarUrl, gender: result.gender });
 }
