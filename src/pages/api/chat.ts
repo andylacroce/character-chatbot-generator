@@ -28,7 +28,7 @@ import { generatePersonalityPrompt } from "../../config/serverConfig";
 import anthropic from "../../utils/anthropicClient";
 import { getSessionUserId } from "../../utils/getSessionUserId";
 import { setSseHeaders, writeSseFrame } from "../../utils/sse";
-import { sanitizeUserName, stripPromptTags } from "../../utils/security";
+import { sanitizeCharacterName, sanitizeUserName, stripPromptTags } from "../../utils/security";
 import {
   isClaudeResponse,
   stripActionEmotes,
@@ -49,6 +49,11 @@ const chatRateLimit = createRateLimiter({
   max: 10,
   message: "Too many chat requests from this IP, please try again later.",
 });
+
+/** Input ceilings: generous for real use, but bound what one request can make Claude read. */
+const MAX_MESSAGE_LENGTH = 4000;
+const MAX_PERSONALITY_LENGTH = 20000;
+const MAX_HISTORY_ENTRIES = 200;
 
 let requestCount = 0;
 const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
@@ -200,7 +205,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userMessage = req.body.message;
     const requestPersonality =
       req.body.personality || (await generatePersonalityPrompt("a character chatbot")).prompt;
-    const botName = req.body.botName || "Character";
+    // Same sanitization saved characters are stored under; also bounds what reaches prompts and file names.
+    const botName = sanitizeCharacterName(req.body.botName) || "Character";
     const gender = req.body.gender;
     const conversationHistory = req.body.conversationHistory || [];
     const stream = req.body.stream === true; // Support streaming mode
@@ -209,6 +215,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // see finalizeChatPersistence, which skips persisting it as a "User" turn.
     const isIntro = req.body.isIntro === true;
 
+    if (
+      typeof userMessage === "string" &&
+      (userMessage.length > MAX_MESSAGE_LENGTH ||
+        (typeof req.body.personality === "string" &&
+          req.body.personality.length > MAX_PERSONALITY_LENGTH) ||
+        (Array.isArray(conversationHistory) && conversationHistory.length > MAX_HISTORY_ENTRIES))
+    ) {
+      logEvent(
+        "info",
+        "chat_bad_request_too_large",
+        "Chat input too large",
+        sanitizeLogMeta({ requestId }),
+      );
+      res.status(400).json({ error: "Message, personality, or history is too long", requestId });
+      return;
+    }
     if (!userMessage) {
       logEvent(
         "info",
@@ -270,7 +292,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         const toSummarize = unsummarized.slice(0, -20);
         const toKeep = unsummarized.slice(-20);
         const oldMessages: ClaudeMessage[] = toSummarize.map((m) => ({
-          role: m.sender === botName ? "assistant" : "user",
+          role: m.sender === "User" ? "user" : "assistant",
           content: m.text,
         }));
         conversationSummary = await summarizeConversation(
@@ -284,7 +306,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           throughMessageId: toSummarize[toSummarize.length - 1].id,
         };
         limitedHistory = toKeep.map((m) =>
-          m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`,
+          m.sender === "User" ? `User: ${m.text}` : `Bot: ${m.text}`,
         );
         logEvent(
           "info",
@@ -295,7 +317,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       } else {
         conversationSummary = botRow.summary || undefined;
         limitedHistory = unsummarized.map((m) =>
-          m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`,
+          m.sender === "User" ? `User: ${m.text}` : `Bot: ${m.text}`,
         );
       }
     } else if (conversationHistory.length > 20) {
@@ -766,9 +788,10 @@ CRITICAL CONTEXT INSTRUCTIONS:
       "Chat request failed",
       sanitizeLogMeta({ requestId, error: errorMessage }),
     );
+    // The cause is in the log (by requestId); upstream error text isn't for the client.
     res.status(500).json({
       reply: "Error fetching response from bot.",
-      error: errorMessage,
+      error: "Chat request failed",
       requestId,
     });
     return;

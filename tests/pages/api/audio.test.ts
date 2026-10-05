@@ -42,12 +42,6 @@ jest.mock("../../../src/utils/characterVoices", () => ({
   getVoiceConfigForCharacter: (...args: unknown[]) => mockGetVoiceConfigForCharacter(...args),
 }));
 
-const mockCreate = jest.fn();
-jest.mock("../../../src/utils/anthropicClient", () => ({
-  __esModule: true,
-  default: { messages: { create: (...a: unknown[]) => mockCreate(...a) } },
-}));
-
 import os from "os";
 import path from "path";
 
@@ -173,7 +167,6 @@ describe("audio API", () => {
     });
 
     it("returns 404 when nothing can be produced", async () => {
-      mockCreate.mockResolvedValue({ content: [{ type: "text", text: "" }] });
       const res = makeRes();
       await handler(makeReq(), res);
 
@@ -185,19 +178,24 @@ describe("audio API", () => {
   });
 
   describe("path containment", () => {
-    it("strips any directory component from the file param", async () => {
-      onDisk([AUDIO, TXT]);
-      mockFs.readFileSync.mockImplementation((p: string) =>
-        p === TXT ? "Greetings." : Buffer.from("audio-bytes"),
-      );
+    it.each([
+      "../../etc/reply.mp3",
+      "sub/reply.mp3",
+      "..\reply.mp3",
+      "reply",
+      "reply.wav",
+      ".mp3",
+      "..mp3",
+      `${"a".repeat(201)}.mp3`,
+    ])("rejects the file param %p before touching the disk or any model", async (file) => {
       const res = makeRes();
-      await handler(makeReq({ file: "../../etc/reply.mp3", text: "Greetings." }), res);
+      await handler(makeReq({ file, text: "Greetings." }), res);
 
-      expect(res.send).toHaveBeenCalled();
-      expect(mockFs.readFileSync).not.toHaveBeenCalledWith(
-        expect.stringContaining("etc"),
-        expect.anything(),
-      );
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "Invalid file name" });
+      expect(mockSynthesizeSpeechToFile).not.toHaveBeenCalled();
+      expect(mockFs.writeFileSync).not.toHaveBeenCalled();
+      expect(mockGetVoiceConfigForCharacter).not.toHaveBeenCalled();
     });
 
     it("refuses a temp file that resolves outside the temp directory", async () => {
@@ -260,6 +258,23 @@ describe("audio API", () => {
     it("looks the voice up when the query config is unparseable", async () => {
       mockFs.existsSync.mockImplementation((p: string) => p === AUDIO);
       await handler(makeReq({ text: "Greetings.", voiceConfig: "not json" }), makeRes());
+
+      expect(mockGetVoiceConfigForCharacter).toHaveBeenCalledWith("Character", null);
+    });
+
+    it("never looks a voice up for a file that already exists and needs no synthesis", async () => {
+      onDisk([AUDIO, TXT]);
+      mockFs.readFileSync.mockImplementation((p: string) =>
+        p === TXT ? "Greetings." : Buffer.from("audio-bytes"),
+      );
+      await handler(makeReq({ text: "Greetings.", botName: "Ada" }), makeRes());
+
+      expect(mockGetVoiceConfigForCharacter).not.toHaveBeenCalled();
+    });
+
+    it("ignores a voice config param that isn't an object", async () => {
+      mockFs.existsSync.mockImplementation((p: string) => p === AUDIO);
+      await handler(makeReq({ text: "Greetings.", voiceConfig: "null" }), makeRes());
 
       expect(mockGetVoiceConfigForCharacter).toHaveBeenCalledWith("Character", null);
     });
@@ -332,7 +347,6 @@ describe("audio API", () => {
       expect(mockSynthesizeSpeechToFile).toHaveBeenCalledWith(
         expect.objectContaining({ filePath: AUDIO, ssml: true }),
       );
-      expect(mockCreate).not.toHaveBeenCalled();
       expect(res.send).toHaveBeenCalledWith(Buffer.from("audio-bytes"));
     });
 
@@ -348,56 +362,15 @@ describe("audio API", () => {
       await handler(makeReq(), res);
 
       expect(mockGetReplyCache).toHaveBeenCalledWith("reply.mp3");
-      expect(mockCreate).not.toHaveBeenCalled();
       expect(res.send).toHaveBeenCalled();
     });
 
-    it("falls back to Claude when there is no text to re-speak", async () => {
-      mockCreate.mockResolvedValue({ content: [{ type: "text", text: "An improvised reply." }] });
-      await handler(makeReq(), makeRes());
-
-      expect(mockCreate).toHaveBeenCalled();
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(TXT, "An improvised reply.", "utf8");
-    });
-
-    it("retries the Claude fallback three times before giving up", async () => {
-      mockCreate.mockRejectedValue(new Error("claude down"));
+    it("answers 404 when there is neither text nor a cached reply to rebuild from", async () => {
       const res = makeRes();
       await handler(makeReq(), res);
 
-      expect(mockCreate).toHaveBeenCalledTimes(3);
       expect(res.status).toHaveBeenCalledWith(404);
-    });
-
-    it("treats an empty Claude reply as a failed attempt", async () => {
-      mockCreate.mockResolvedValue({ content: [{ type: "image" }] });
-      const res = makeRes();
-      await handler(makeReq(), res);
-
-      expect(mockCreate).toHaveBeenCalledTimes(3);
-      expect(res.status).toHaveBeenCalledWith(404);
-    });
-
-    it("serves the file once a Claude-driven regen lands it on disk", async () => {
-      mockCreate.mockResolvedValueOnce({
-        content: [{ type: "text", text: "An improvised reply." }],
-      });
-      let synthesized = false;
-      mockFs.existsSync.mockImplementation((p: string) => synthesized && p === AUDIO);
-      mockSynthesizeSpeechToFile.mockImplementation(async () => {
-        synthesized = true;
-      });
-      mockFs.readFileSync.mockReturnValue(Buffer.from("audio-bytes"));
-      const res = makeRes();
-      await handler(makeReq(), res);
-
-      expect(mockLogEvent).toHaveBeenCalledWith(
-        "info",
-        "audio_regen_claude_success",
-        expect.any(String),
-        expect.any(Object),
-      );
-      expect(res.send).toHaveBeenCalledWith(Buffer.from("audio-bytes"));
+      expect(mockSynthesizeSpeechToFile).not.toHaveBeenCalled();
     });
   });
 });

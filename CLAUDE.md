@@ -157,6 +157,11 @@ forever. With `VERCEL_BLOB_READ_WRITE_TOKEN`/`BLOB_READ_WRITE_TOKEN`, the image 
 Blob (`avatars/<uuid>.<ext>`, public) and a durable URL is returned; otherwise, or on upload
 failure, a base64 data URL. Rate-limited to 5/min/IP.
 
+- **The route re-checks moderation itself:** `generate-avatar.ts` is callable directly, so a
+  blocklisted name never gets a shared or persisted portrait (content blocks get the silhouette,
+  copyright blocks only the private `skipPersistence` render); the allowlist wins. A never-validated
+  new name can still reach the Wall by calling it directly (a signed proof from validate-character
+  would be needed to close that).
 - **`avatar_cache`** (global, deliberately not environment-scoped, or the cost savings vanish) is
   keyed by lowercased name and checked before any generation. Only real generations are cached,
   never the `/silhouette.svg` fallback. `gender` is cached too (callers need it for voice
@@ -345,6 +350,10 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
   those rows used, and on clear-all (`chatLogs: true`) the user's chat logs (per-account, so a
   single delete leaves them). Clients confirm, delete server-side, then remove local keys
   (`chatStorageKeys(name)` / `isChatHistoryStorageKey`).
+- **`/api/audio` accepts only bare `.mp3` names** (a name without the extension made the `.txt`
+  sidecar path equal the audio path) and never calls Claude to improvise a reply; it looks up a voice
+  only when it must synthesize. `audioFileCleanup` deletes only file names this app creates, since the
+  OS temp dir is shared.
 - **Chat troubleshooting logs** (`log-message.ts`) never store IP addresses (an IP would tie an
   anonymous log to a person, which the privacy policy promises against). A signed-in user's logs
   live under `chat-logs/users/<sha256(userId)>/` (`chatLogPrefix`) so deletion can find them; guest
@@ -578,6 +587,13 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
 - **The key derives from `GAME_TOKEN_SECRET ?? NEXTAUTH_SECRET ?? API_SECRET`** (`getKey()`), never
   a per-process random key, so it's stable across Vercel instances with no new required config.
   Only a deliberate rotation invalidates a run, degrading to a friendly "start a new game" 400.
+- **Tokens are stateless, so a run's end is recorded server-side.** Old tokens stay decryptable and
+  give-up reveals the answer, so replaying one would turn the reveal into a scored win. Give-up and a
+  second wrong guess call `markRunEnded` (sets `ended_at` on the run's `*_results` row, inserting a
+  0-streak row if none exists); a correct guess skips scoring when `isRunEnded`. Known limit: a
+  first-wrong token can still be replayed for extra wrong guesses (no server-side strike count).
+  A hidden-speaker game's `/api/audio` URL is built with a neutral `botName` and no `gender`
+  (`synthesizeReplyAudio`'s `hideIdentity`), or the URL would hand over the answer.
 - **`verifyGameState()` fails CLOSED** (any tamper, malformed input, or decrypt failure returns
   `null` and `message.ts` returns a hard 400), the one deliberate exception to this codebase's
   usual fail-open convention.

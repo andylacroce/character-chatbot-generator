@@ -65,6 +65,13 @@ describe("synthesizeReplyAudio", () => {
     );
   });
 
+  it("keeps the speaker's name and gender out of the URL when hiding identity", async () => {
+    const url = await synthesizeReplyAudio("Riddle me this", "Bagheera", "male", VOICE, true);
+
+    expect(url).toMatch(/&botName=Character&gender=&voiceConfig=/);
+    expect(url).not.toContain("Bagheera");
+  });
+
   it("creates the tmp directory when it doesn't exist yet", async () => {
     mockExistsSync.mockReturnValue(false);
     await synthesizeReplyAudio("Hi", "Bot", "female", VOICE);

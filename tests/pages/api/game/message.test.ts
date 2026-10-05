@@ -36,7 +36,12 @@ jest.mock("../../../../src/utils/analytics", () => ({
 
 const mockUpdateHighScoreIfBeaten = jest.fn();
 const mockRecordGameResult = jest.fn();
+const mockIsRunEnded = jest.fn();
+const mockMarkRunEnded = jest.fn();
 jest.mock("../../../../src/utils/game/scores", () => ({
+  ...jest.requireActual("../../../../src/utils/game/scores"),
+  isRunEnded: (...args: unknown[]) => mockIsRunEnded(...args),
+  markRunEnded: (...args: unknown[]) => mockMarkRunEnded(...args),
   updateHighScoreIfBeaten: (...args: unknown[]) => mockUpdateHighScoreIfBeaten(...args),
   recordGameResult: (...args: unknown[]) => mockRecordGameResult(...args),
 }));
@@ -90,6 +95,17 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
     mockGetGuestId.mockReturnValue(null);
     mockUpdateHighScoreIfBeaten.mockResolvedValue(undefined);
     mockRecordGameResult.mockResolvedValue(undefined);
+    mockIsRunEnded.mockResolvedValue(false);
+    mockMarkRunEnded.mockResolvedValue(undefined);
+  });
+
+  it.each([
+    ["an oversized message", { message: "x".repeat(2001) }],
+    ["an oversized history", { message: "hi", conversationHistory: Array(101).fill("User: hi") }],
+  ])("returns 400 before any model call for %s", async (_label, body) => {
+    const res = await send(body);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockClassifyGuess).not.toHaveBeenCalled();
   });
 
   it("applies this game's own rate limiter", async () => {
@@ -163,6 +179,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
       state.speakerName,
       state.gender,
       state.voiceConfig,
+      game.hidesSpeaker,
     );
   });
 
@@ -318,6 +335,24 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
       );
     });
 
+    it("never scores a run that was already given up or lost, even with a valid token", async () => {
+      mockGetSessionUserId.mockResolvedValue("user-1");
+      token = signGameState(makeState(game, { issuedForUserId: "user-1" }));
+      mockIsRunEnded.mockResolvedValue(true);
+      classify("clear", true);
+      mockGetGuessReactionReply.mockResolvedValueOnce("Brilliant!");
+
+      const res = await send({ message: "Irene Adler" });
+
+      expect(mockIsRunEnded).toHaveBeenCalledWith(
+        expect.objectContaining({ id: game.id }),
+        "run-1",
+      );
+      expect(sentJson(res).correct).toBe(true);
+      expect(mockUpdateHighScoreIfBeaten).not.toHaveBeenCalled();
+      expect(mockRecordGameResult).not.toHaveBeenCalled();
+    });
+
     it("does not credit a signed-in user with a token issued to someone else", async () => {
       mockGetSessionUserId.mockResolvedValue("user-2");
       token = signGameState(makeState(game, { issuedForUserId: "user-1" }));
@@ -373,6 +408,22 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
       expect(mockRecordEvent).toHaveBeenCalledTimes(1);
       expect(mockRecordEvent).toHaveBeenCalledWith(`${prefix}_guess_wrong`, { turn: 2 }, null);
       expect(verifyGameState(json[game.tokenField], game.id)?.wrongGuessCount).toBe(1);
+    });
+
+    it("marks the run ended on the second one so its tokens can't score later", async () => {
+      mockGetSessionUserId.mockResolvedValue("user-1");
+      token = signGameState(makeState(game, { wrongGuessCount: 1, issuedForUserId: "user-1" }));
+      classify("clear", false);
+      mockGetGuessReactionReply.mockResolvedValueOnce("Alas.");
+
+      await send({ message: "Is it Moriarty?" });
+
+      expect(mockMarkRunEnded).toHaveBeenCalledWith(
+        expect.objectContaining({ id: game.id }),
+        { userId: "user-1" },
+        "run-1",
+        2,
+      );
     });
 
     it("ends the run on the second one and reveals the hidden name", async () => {

@@ -7,7 +7,14 @@ import { logEvent, sanitizeLogMeta } from "./logger";
 
 const AUDIO_FILE_MAX_AGE = 24 * 60 * 60 * 1000; // Delete audio files older than 24 hours
 
-/** Deletes .mp3/.txt files in the OS temp dir older than AUDIO_FILE_MAX_AGE, to prevent disk bloat. */
+/**
+ * File names this app writes (audio plus its `.txt` sidecar): a content hash, a replay hash,
+ * or `<bot>_<timestamp>`. The temp dir is shared (on a dev machine it's the user's own), so
+ * a bare `.mp3`/`.txt` match would delete unrelated files.
+ */
+const APP_AUDIO_FILE = /^(?:[a-f0-9]{64}|replay-[a-f0-9]+|.+_\d{13})\.(?:mp3|txt)$/;
+
+/** Deletes this app's audio/.txt files in the OS temp dir older than AUDIO_FILE_MAX_AGE, to prevent disk bloat. */
 export function cleanupOldAudioFiles() {
   try {
     const tmpDir = os.tmpdir();
@@ -18,7 +25,7 @@ export function cleanupOldAudioFiles() {
     let cleanedCount = 0;
 
     for (const file of files) {
-      if (file.endsWith(".mp3") || file.endsWith(".txt")) {
+      if (APP_AUDIO_FILE.test(file)) {
         const filePath = path.join(tmpDir, file);
         try {
           const stats = fs.statSync(filePath);

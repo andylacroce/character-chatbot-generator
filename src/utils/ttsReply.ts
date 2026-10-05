@@ -21,12 +21,17 @@ import { setReplyCache } from "./cache";
 import { logEvent, sanitizeLogMeta } from "./logger";
 import type { CharacterVoiceConfig } from "./characterVoices";
 
-/** Synthesizes (or reuses a cached) TTS file for `text` and returns its /api/audio URL, or undefined on failure. */
+/**
+ * Synthesizes (or reuses a cached) TTS file for `text` and returns its /api/audio URL, or undefined on failure.
+ * `hideIdentity` keeps the speaker's name and gender out of the URL (a mystery speaker's answer);
+ * the URL still carries the full voice config, which is all /api/audio needs to replay it.
+ */
 export async function synthesizeReplyAudio(
   text: string,
   botName: string,
   gender: string | null | undefined,
   voiceConfig: CharacterVoiceConfig,
+  hideIdentity = false,
 ): Promise<string | undefined> {
   try {
     const selectedVoice = voiceConfig;
@@ -53,7 +58,9 @@ export async function synthesizeReplyAudio(
       fs.writeFileSync(txtFilePath, text, "utf8");
       setReplyCache(audioFileName, text);
     }
-    return `/api/audio?file=${audioFileName}&text=${encodeURIComponent(text)}&botName=${encodeURIComponent(botName)}&gender=${encodeURIComponent(gender || "")}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
+    const urlName = hideIdentity ? "Character" : botName;
+    const urlGender = hideIdentity ? "" : gender || "";
+    return `/api/audio?file=${audioFileName}&text=${encodeURIComponent(text)}&botName=${encodeURIComponent(urlName)}&gender=${encodeURIComponent(urlGender)}&voiceConfig=${encodeURIComponent(JSON.stringify(voiceConfig))}`;
   } catch (err) {
     logEvent(
       "error",

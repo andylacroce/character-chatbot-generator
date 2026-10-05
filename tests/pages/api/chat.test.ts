@@ -229,6 +229,18 @@ describe("chat API", () => {
       expect(mockCreate).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ["message", { message: "x".repeat(4001) }],
+      ["personality", { personality: "x".repeat(20001) }],
+      ["history", { conversationHistory: Array.from({ length: 201 }, () => "User: hi") }],
+    ])("returns 400 without calling Claude when the %s is oversized", async (_name, overrides) => {
+      const res = makeRes();
+      await handler(makeReq(overrides), res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
     it("returns 400 when the message is missing", async () => {
       const res = makeRes();
       await handler(makeReq({ message: "" }), res);
@@ -263,6 +275,18 @@ describe("chat API", () => {
   });
 
   describe("non-streaming replies", () => {
+    it("sanitizes the bot name before it reaches the audio URL or prompts", async () => {
+      claudeSays("Greetings.");
+      mockFs.existsSync.mockReturnValue(false);
+      const res = makeRes();
+      await handler(makeReq({ botName: `<i>D'Artagnan</i> & "Co"`.padEnd(300, "x") }), res);
+
+      const { audioFileUrl } = (res.json as jest.Mock).mock.calls[0][0];
+      const botName = new URL(audioFileUrl, "http://x").searchParams.get("botName")!;
+      expect(botName).not.toMatch(/[<>'"&]/);
+      expect(botName.length).toBeLessThanOrEqual(100);
+    });
+
     it("returns the reply and an audio URL", async () => {
       claudeSays("Greetings, traveller.");
       mockFs.existsSync.mockReturnValue(false);
@@ -375,7 +399,7 @@ describe("chat API", () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           reply: "Error fetching response from bot.",
-          error: "Invalid response from Claude",
+          error: "Chat request failed",
         }),
       );
     });
@@ -386,7 +410,7 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: "Generated bot response is empty." }),
+        expect.objectContaining({ error: "Chat request failed" }),
       );
     });
 
@@ -396,7 +420,7 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: "Generated bot response is empty." }),
+        expect.objectContaining({ error: "Chat request failed" }),
       );
     });
 
@@ -420,7 +444,18 @@ describe("chat API", () => {
       await handler(makeReq(), res);
 
       expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "anthropic down" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: "Chat request failed" }),
+      );
+      expect(JSON.stringify((res.json as jest.Mock).mock.calls[0][0])).not.toContain(
+        "anthropic down",
+      );
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        "chat_request_failed",
+        expect.any(String),
+        expect.objectContaining({ error: "anthropic down" }),
+      );
     });
 
     it("reports a non-Error throw as an unknown error", async () => {
@@ -428,7 +463,9 @@ describe("chat API", () => {
       const res = makeRes();
       await handler(makeReq(), res);
 
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: "Unknown error" }));
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: "Chat request failed" }),
+      );
     });
   });
 

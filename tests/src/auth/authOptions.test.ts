@@ -49,6 +49,36 @@ describe("auth/authOptions", () => {
     });
   });
 
+  describe("signIn callback", () => {
+    const load = async (run: (signIn: (args: unknown) => Promise<boolean>) => Promise<void>) =>
+      jest.isolateModulesAsync(async () => {
+        delete process.env.DATABASE_URL;
+        const { authOptions } = require("../../../src/auth/authOptions");
+        await run(authOptions.callbacks.signIn);
+      });
+
+    it("lets a Google account in only when Google verified its email", async () => {
+      await load(async (signIn) => {
+        const google = { provider: "google" };
+        await expect(signIn({ account: google, profile: { email_verified: true } })).resolves.toBe(
+          true,
+        );
+        for (const profile of [{ email_verified: false }, {}, undefined]) {
+          await expect(signIn({ account: google, profile })).resolves.toBe(false);
+        }
+      });
+    });
+
+    it("does not gate other providers", async () => {
+      await load(async (signIn) => {
+        await expect(signIn({ account: { provider: "email" }, profile: undefined })).resolves.toBe(
+          true,
+        );
+        await expect(signIn({ account: null, profile: undefined })).resolves.toBe(true);
+      });
+    });
+  });
+
   describe("preview stub provider", () => {
     it('is absent when VERCEL_ENV is not "preview", leaving Google as the real provider', async () => {
       await jest.isolateModulesAsync(async () => {

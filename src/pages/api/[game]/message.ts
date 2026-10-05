@@ -18,12 +18,17 @@
  * each turn, the same pattern pages/api/chat.ts uses for a guest's conversation.
  */
 
+import type { NextApiRequest } from "next";
 import { gameRoute, rejectMethod } from "../../../utils/game/route";
 import { signGameState, verifyGameState, type GameState } from "../../../utils/game/token";
-import { recordGameResult, updateHighScoreIfBeaten } from "../../../utils/game/scores";
+import {
+  isRunEnded,
+  markRunEnded,
+  recordGameResult,
+  scoringIdentity,
+  updateHighScoreIfBeaten,
+} from "../../../utils/game/scores";
 import type { ServerGame } from "../../../utils/game/definitions";
-import { getCurrentEnvironment } from "../../../utils/environment";
-import { getGuestId } from "../../../utils/gameGuestIdentity";
 import { recordEvent } from "../../../utils/analytics";
 import {
   getGameReply,
@@ -35,9 +40,19 @@ import { synthesizeReplyAudio } from "../../../utils/ttsReply";
 import { getSessionUserId } from "../../../utils/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 
+/** Input ceilings; a real round's history is a few dozen short lines. */
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_HISTORY_ENTRIES = 100;
+
 /** Speaks `text` in the round's speaker voice, returning the audio URL (undefined if TTS fails). */
-function speak(state: GameState, text: string) {
-  return synthesizeReplyAudio(text, state.speakerName, state.gender, state.voiceConfig);
+function speak(game: ServerGame, state: GameState, text: string) {
+  return synthesizeReplyAudio(
+    text,
+    state.speakerName,
+    state.gender,
+    state.voiceConfig,
+    game.hidesSpeaker,
+  );
 }
 
 /**
@@ -120,6 +135,14 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
     return;
   }
 
+  if (
+    message.length > MAX_MESSAGE_LENGTH ||
+    (Array.isArray(conversationHistory) && conversationHistory.length > MAX_HISTORY_ENTRIES)
+  ) {
+    res.status(400).json({ error: "Message or history is too long" });
+    return;
+  }
+
   const state = verifyGameState(req.body?.[game.tokenField], game.id);
   if (!state) {
     logEvent(
@@ -158,7 +181,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         classification.status === "ambiguous" ? AMBIGUOUS_GUESS_NOTE : undefined,
         state.targetName,
       );
-      res.status(200).json({ reply, audioFileUrl: await speak(state, reply) });
+      res.status(200).json({ reply, audioFileUrl: await speak(game, state, reply) });
       return;
     }
 
@@ -170,7 +193,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
       const newStreak = state.streak + 1;
       const scoreWrite = writeScore(game, req, state, userId, newStreak);
       const reply = await getGuessReactionReply(state.personaPrompt, "correct", state.targetName);
-      const audioFileUrl = await speak(state, reply);
+      const audioFileUrl = await speak(game, state, reply);
       await scoreWrite;
 
       logEvent(
@@ -207,7 +230,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         "finalWrong",
         state.targetName,
       );
-      const audioFileUrl = await speak(state, reply);
+      const audioFileUrl = await speak(game, state, reply);
       logEvent(
         "info",
         `${game.eventPrefix}_run_ended`,
@@ -215,6 +238,10 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         sanitizeLogMeta({ finalStreak: state.streak }),
       );
       void recordEvent(`${game.eventPrefix}_guess_wrong`, { turn: clueRound }, userId);
+      const identity = scoringIdentity(req, state, userId);
+      if (identity && state.runId) {
+        await markRunEnded(game, identity, state.runId, state.streak);
+      }
       void recordEvent(
         `${game.eventPrefix}_run_ended`,
         { reason: "second_wrong", finalStreak: state.streak },
@@ -233,7 +260,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
     }
 
     const reply = await getGuessReactionReply(state.personaPrompt, "wrong", state.targetName);
-    const audioFileUrl = await speak(state, reply);
+    const audioFileUrl = await speak(game, state, reply);
     // A miss on the very first message is a warm-up: it costs nothing, once per round (the
     // signed flag, not the client-supplied history, stops it repeating).
     const freeMiss = clueRound === 1 && !state.freeMissUsed;
@@ -263,27 +290,30 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
 /**
  * Records a correct guess's score. A streak only ever increases within a run, so the moment
  * it's incremented is also the moment it might be a new personal best. A token issued to a
- * guest or another account cannot credit this caller, and neither can one from another
- * environment. Never throws, and a caller with no identity is simply skipped.
+ * guest or another account cannot credit this caller, neither can one from another
+ * environment, and neither can a run that was already given up or lost (its old tokens stay
+ * decryptable, so this is what stops a revealed answer being replayed as a win). Never
+ * throws, and a caller with no identity is simply skipped.
  */
-function writeScore(
+async function writeScore(
   game: ServerGame,
-  req: Parameters<typeof getGuestId>[0],
+  req: NextApiRequest,
   state: GameState,
   userId: string | null,
   streak: number,
-): Promise<unknown> {
-  const inEnvironment = state.environment === getCurrentEnvironment();
-  const eligibleUserId =
-    userId && state.issuedForUserId === userId && inEnvironment ? userId : null;
-  const eligibleGuestId =
-    !userId && state.issuedForGuestId && state.issuedForGuestId === getGuestId(req) && inEnvironment
-      ? state.issuedForGuestId
-      : null;
-  return Promise.all([
-    eligibleUserId ? updateHighScoreIfBeaten(game, eligibleUserId, streak) : undefined,
-    state.runId && (eligibleUserId || eligibleGuestId)
-      ? recordGameResult(game, eligibleUserId, eligibleGuestId, state.runId, streak)
+): Promise<void> {
+  const identity = scoringIdentity(req, state, userId);
+  if (!identity || (state.runId && (await isRunEnded(game, state.runId)))) return;
+  await Promise.all([
+    identity.userId ? updateHighScoreIfBeaten(game, identity.userId, streak) : undefined,
+    state.runId
+      ? recordGameResult(
+          game,
+          identity.userId ?? null,
+          identity.guestId ?? null,
+          state.runId,
+          streak,
+        )
       : undefined,
   ]);
 }

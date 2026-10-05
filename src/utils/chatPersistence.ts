@@ -174,7 +174,8 @@ export async function finalizeChatPersistence(
   isIntro: boolean,
 ): Promise<void> {
   if (!botRow) return;
-  await persistChatTurn(botRow.id, userMessage, botName, botReply, isIntro);
+  // The saved row's own (sanitized) name, so a sender always matches what the bot is stored as.
+  await persistChatTurn(botRow.id, userMessage, botRow.name, botReply, isIntro);
   if (checkpoint) {
     await persistSummaryCheckpoint(botRow.id, checkpoint.summary, checkpoint.throughMessageId);
   }

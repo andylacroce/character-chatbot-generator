@@ -6,14 +6,17 @@
  * the same resilience pattern as the rest of account persistence.
  */
 
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
+import type { NextApiRequest } from "next";
 import type { LeaderboardEntry } from "character-chatbot-shared";
 import { getDb } from "../../db/client";
 import { users } from "../../db/schema";
 import { getCurrentEnvironment } from "../environment";
+import { getGuestId } from "../gameGuestIdentity";
 import { logEvent, sanitizeLogMeta } from "../logger";
 import { mergeAndRankLeaderboard } from "../leaderboardCore";
 import type { ServerGame } from "./definitions";
+import type { GameState } from "./token";
 
 export type LeaderboardIdentity =
   { userId: string; guestId?: never } | { guestId: string; userId?: never };
@@ -73,6 +76,73 @@ export async function updateHighScoreIfBeaten(
   }
 }
 
+/**
+ * Who a round token may credit for this caller: the signed-in user or the cookie-bound guest
+ * it was issued to, in the environment it was issued in. A copied token credits nobody.
+ */
+export function scoringIdentity(
+  req: NextApiRequest,
+  state: GameState,
+  userId: string | null,
+): LeaderboardIdentity | null {
+  if (state.environment !== getCurrentEnvironment()) return null;
+  if (userId) return state.issuedForUserId === userId ? { userId } : null;
+  const guestId = getGuestId(req);
+  return guestId && state.issuedForGuestId === guestId ? { guestId } : null;
+}
+
+/** Whether a run was already ended; false without a database or on error (fail open, like every score write). */
+export async function isRunEnded(game: ServerGame, runId: string): Promise<boolean> {
+  if (!process.env.DATABASE_URL) return false;
+  const { results } = game.tables;
+  try {
+    const rows = await getDb()
+      .select({ endedAt: results.endedAt })
+      .from(results)
+      .where(eq(results.id, runId));
+    return rows[0]?.endedAt != null;
+  } catch (err) {
+    logScoreFailure(game, "run_ended_check_failed", "Failed to check whether a run ended", err);
+    return false;
+  }
+}
+
+/**
+ * Marks a run over (given up or a second wrong guess) so its old tokens, which stay
+ * decryptable, can't keep scoring: a give-up reveals the answer, and replaying the token
+ * would otherwise turn that reveal into a free correct guess. Never throws.
+ */
+export async function markRunEnded(
+  game: ServerGame,
+  identity: LeaderboardIdentity,
+  runId: string,
+  streak: number,
+): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  const { results } = game.tables;
+  const userId = identity.userId ?? null;
+  const guestId = identity.guestId ?? null;
+  try {
+    await getDb()
+      .insert(results)
+      .values({
+        id: runId,
+        userId,
+        guestId,
+        environment: getCurrentEnvironment(),
+        bestStreak: streak,
+        endedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: results.id,
+        set: { endedAt: new Date() },
+        setWhere: sql`${results.userId} is not distinct from ${userId} and ${results.guestId} is not distinct from ${guestId} and ${results.endedAt} is null`,
+      });
+  } catch (err) {
+    logScoreFailure(game, "run_end_failed", "Failed to mark a run ended", err);
+  }
+}
+
 /** Reads a guest browser's best recorded streak, or null if it has no scored run. */
 export async function getGuestHighScore(game: ServerGame, guestId: string): Promise<number | null> {
   if (!process.env.DATABASE_URL) return null;
@@ -80,8 +150,14 @@ export async function getGuestHighScore(game: ServerGame, guestId: string): Prom
   const rows = await getDb()
     .select({ streak: sql<number>`max(${results.bestStreak})::int` })
     .from(results)
-    .where(and(eq(results.environment, getCurrentEnvironment()), eq(results.guestId, guestId)));
-  return rows[0]?.streak ?? null;
+    .where(
+      and(
+        eq(results.environment, getCurrentEnvironment()),
+        eq(results.guestId, guestId),
+        gt(results.bestStreak, 0),
+      ),
+    );
+  return rows[0]?.streak || null;
 }
 
 /** Records a run's best score, without allowing a delayed retry to lower it. */
@@ -107,7 +183,7 @@ export async function recordGameResult(
       .onConflictDoUpdate({
         target: results.id,
         set: { bestStreak: streak, updatedAt: new Date() },
-        setWhere: sql`${results.userId} is not distinct from ${userId} and ${results.guestId} is not distinct from ${guestId} and ${results.environment} = ${getCurrentEnvironment()} and ${results.bestStreak} < ${streak}`,
+        setWhere: sql`${results.userId} is not distinct from ${userId} and ${results.guestId} is not distinct from ${guestId} and ${results.environment} = ${getCurrentEnvironment()} and ${results.endedAt} is null and ${results.bestStreak} < ${streak}`,
       });
   } catch (err) {
     logScoreFailure(game, "result_update_failed", "Failed to save game result", err);
@@ -129,7 +205,13 @@ async function getTopScores(game: ServerGame) {
     getDb()
       .select({ id: results.guestId, streak: guestBest, date: guestFirst })
       .from(results)
-      .where(and(eq(results.environment, getCurrentEnvironment()), isNotNull(results.guestId)))
+      .where(
+        and(
+          eq(results.environment, getCurrentEnvironment()),
+          isNotNull(results.guestId),
+          gt(results.bestStreak, 0),
+        ),
+      )
       .groupBy(results.guestId)
       .orderBy(desc(guestBest), asc(guestFirst), asc(results.guestId))
       .limit(10),

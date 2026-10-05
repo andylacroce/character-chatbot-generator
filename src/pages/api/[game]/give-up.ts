@@ -7,6 +7,8 @@
 
 import { gameRoute, rejectMethod } from "../../../utils/game/route";
 import { verifyGameState } from "../../../utils/game/token";
+import { markRunEnded, scoringIdentity } from "../../../utils/game/scores";
+import { getSessionUserId } from "../../../utils/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { recordEvent } from "../../../utils/analytics";
 
@@ -68,6 +70,11 @@ export default gameRoute({ endpoint: "give-up", max: 10 }, async (game, req, res
     res.status(400).json({ error: "Your game session has expired. Please start a new game." });
     return;
   }
+
+  // The answer is about to be revealed, so end the run: its tokens stay decryptable and
+  // must not be able to score a guess at what the player was just told.
+  const identity = scoringIdentity(req, state, await getSessionUserId(req));
+  if (identity && state.runId) await markRunEnded(game, identity, state.runId, state.streak);
 
   logEvent(
     "info",

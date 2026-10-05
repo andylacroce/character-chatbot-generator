@@ -41,8 +41,22 @@ async function deleteUserChatLogs(userId: string, token: string): Promise<number
   return removed;
 }
 
-/** Whether a stored avatar URL points at this app's Vercel Blob store (vs. a data URL or static asset). */
-function isBlobUrl(url: string): boolean {
+/**
+ * Whether a URL points at one of this app's Blob portraits (`avatars/…` on Vercel Blob), as
+ * opposed to a data URL, a static asset, or another blob such as a chat log. Only these may
+ * ever be deleted on behalf of a saved character.
+ */
+export function isBlobAvatarUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.endsWith(BLOB_HOST_SUFFIX) && parsed.pathname.startsWith("/avatars/");
+  } catch {
+    return false;
+  }
+}
+
+/** Whether a URL is on the Vercel Blob host at all (any path). */
+export function isBlobHostUrl(url: string): boolean {
   try {
     return new URL(url).hostname.endsWith(BLOB_HOST_SUFFIX);
   } catch {
@@ -56,7 +70,7 @@ async function deleteOrphanedAvatars(
   token: string,
 ): Promise<number> {
   const candidates = [...new Set(avatarUrls)].filter(
-    (url): url is string => !!url && isBlobUrl(url),
+    (url): url is string => !!url && isBlobAvatarUrl(url),
   );
   if (candidates.length === 0) return 0;
 

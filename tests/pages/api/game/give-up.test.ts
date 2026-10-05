@@ -26,6 +26,19 @@ jest.mock("../../../../src/utils/analytics", () => ({
   recordEvent: (...args: unknown[]) => mockRecordEvent(...args),
 }));
 
+const mockGetSessionUserId = jest.fn();
+jest.mock("../../../../src/utils/getSessionUserId", () => ({
+  getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
+}));
+
+const mockMarkRunEnded = jest.fn();
+jest.mock("../../../../src/utils/game/scores", () => ({
+  ...jest.requireActual("../../../../src/utils/game/scores"),
+  markRunEnded: (...args: unknown[]) => mockMarkRunEnded(...args),
+}));
+
+jest.mock("../../../../src/utils/environment", () => ({ getCurrentEnvironment: () => "test" }));
+
 const handler = require("../../../../src/pages/api/[game]/give-up").default;
 
 describe.each(GAMES_UNDER_TEST)("$slug/give-up API", (game) => {
@@ -40,6 +53,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/give-up API", (game) => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockApplyRateLimit.mockResolvedValue(true);
+    mockGetSessionUserId.mockResolvedValue(null);
   });
 
   it("applies this game's own rate limiter", async () => {
@@ -87,6 +101,27 @@ describe.each(GAMES_UNDER_TEST)("$slug/give-up API", (game) => {
       expect.any(String),
       expect.anything(),
     );
+  });
+
+  it("ends the run for the token's owner so the revealed answer can't be replayed as a win", async () => {
+    mockGetSessionUserId.mockResolvedValue("user-1");
+    await giveUp({
+      [game.tokenField]: signGameState(makeState(game, { issuedForUserId: "user-1" })),
+    });
+    expect(mockMarkRunEnded).toHaveBeenCalledWith(
+      expect.objectContaining({ id: game.id }),
+      { userId: "user-1" },
+      "run-1",
+      2,
+    );
+  });
+
+  it("does not mark a run ended for a caller the token wasn't issued to", async () => {
+    mockGetSessionUserId.mockResolvedValue("user-2");
+    await giveUp({
+      [game.tokenField]: signGameState(makeState(game, { issuedForUserId: "user-1" })),
+    });
+    expect(mockMarkRunEnded).not.toHaveBeenCalled();
   });
 
   it.each<[string | null, string]>([
