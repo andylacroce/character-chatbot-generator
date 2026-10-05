@@ -229,6 +229,18 @@ describe("chat API", () => {
       expect(mockCreate).not.toHaveBeenCalled();
     });
 
+    it.each([
+      ["message", { message: "x".repeat(4001) }],
+      ["personality", { personality: "x".repeat(20001) }],
+      ["history", { conversationHistory: Array.from({ length: 201 }, () => "User: hi") }],
+    ])("returns 400 without calling Claude when the %s is oversized", async (_name, overrides) => {
+      const res = makeRes();
+      await handler(makeReq(overrides), res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
     it("returns 400 when the message is missing", async () => {
       const res = makeRes();
       await handler(makeReq({ message: "" }), res);

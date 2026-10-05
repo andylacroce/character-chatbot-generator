@@ -4,13 +4,15 @@
  */
 
 import fs from "fs";
+import os from "os";
+import path from "path";
 
 /** Whether this process is running on Vercel (file persistence is skipped there). */
 function isVercelEnv() {
   return !!process.env.VERCEL_ENV;
 }
 
-const CACHE_FILE = "/tmp/bot-reply-cache.json";
+const CACHE_FILE = path.join(os.tmpdir(), "bot-reply-cache.json");
 const MAX_CACHE_SIZE = 1000; // Maximum concurrent cache entries
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hour time-to-live in milliseconds
 

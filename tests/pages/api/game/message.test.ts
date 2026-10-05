@@ -99,6 +99,15 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
     mockMarkRunEnded.mockResolvedValue(undefined);
   });
 
+  it.each([
+    ["an oversized message", { message: "x".repeat(2001) }],
+    ["an oversized history", { message: "hi", conversationHistory: Array(101).fill("User: hi") }],
+  ])("returns 400 before any model call for %s", async (_label, body) => {
+    const res = await send(body);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockClassifyGuess).not.toHaveBeenCalled();
+  });
+
   it("applies this game's own rate limiter", async () => {
     classify("none");
     mockGetGameReply.mockResolvedValueOnce("ok");

@@ -40,6 +40,10 @@ import { synthesizeReplyAudio } from "../../../utils/ttsReply";
 import { getSessionUserId } from "../../../utils/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 
+/** Input ceilings; a real round's history is a few dozen short lines. */
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_HISTORY_ENTRIES = 100;
+
 /** Speaks `text` in the round's speaker voice, returning the audio URL (undefined if TTS fails). */
 function speak(game: ServerGame, state: GameState, text: string) {
   return synthesizeReplyAudio(
@@ -128,6 +132,14 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
 
   if (!message || typeof message !== "string") {
     res.status(400).json({ error: "Message is required" });
+    return;
+  }
+
+  if (
+    message.length > MAX_MESSAGE_LENGTH ||
+    (Array.isArray(conversationHistory) && conversationHistory.length > MAX_HISTORY_ENTRIES)
+  ) {
+    res.status(400).json({ error: "Message or history is too long" });
     return;
   }
 
