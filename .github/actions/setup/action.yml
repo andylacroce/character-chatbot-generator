@@ -9,7 +9,9 @@ runs:
         node-version: 24
         cache: "npm"
 
-    # Restoring node_modules skips the ~1 minute `npm ci` on every job when the lockfile is unchanged.
+    # Restoring node_modules skips the ~1 minute `npm ci` when nothing dependency-related changed. The key hashes every
+    # package.json too: a package.json-only change (Dependabot bumps in apps/mobile) must miss the cache so `npm ci`
+    # catches a lockfile that no longer matches.
     - name: Cache node_modules
       id: modules
       uses: actions/cache@v4
@@ -18,7 +20,7 @@ runs:
           node_modules
           apps/*/node_modules
           packages/*/node_modules
-        key: modules-${{ runner.os }}-node24-v2-${{ hashFiles('package-lock.json') }}
+        key: modules-${{ runner.os }}-node24-v2-${{ hashFiles('package-lock.json', 'package.json', 'apps/*/package.json', 'packages/*/package.json') }}
 
     - name: Install dependencies
       if: steps.modules.outputs.cache-hit != 'true'
