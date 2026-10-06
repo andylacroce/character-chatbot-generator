@@ -35,7 +35,7 @@ Coverage is enforced globally at 80% in `jest.config.cjs`.
   fix back). The pre-commit hook (`.githooks/pre-commit`, wired via `npm run prepare`) auto-formats
   staged files, so drift ideally never reaches either.
 - **Workflow setup is the shared composite action `.github/actions/setup`** (Node 24, `node_modules`
-  cached by lockfile hash so `npm ci` runs only when it changes); new jobs should use it.
+  cached by a hash of the lockfile and every package.json so `npm ci` runs only when one changes); new jobs should use it.
 - **Any step added to a `ci` script must also be added to the matching workflow;** the workflows
   list steps one by one rather than calling `npm run ci`. Workflows, required checks, the
   Dependabot/Expo upgrade flow, and the `EXPO_UPGRADE_TOKEN` secret are in `.github/CONTRIBUTING.md`.
