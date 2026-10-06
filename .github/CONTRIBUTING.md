@@ -73,9 +73,11 @@ not required to be up to date with `main` before merging ("strict" mode is off).
 ## Dependency updates
 
 Dependabot (`.github/dependabot.yml`) checks daily for the root workspace and for
-`apps/mobile`. It ignores only eslint and TypeScript major versions. Everything else,
-including React, React Native, and Expo packages, gets a PR, and **CI decides what
-lands**: `dependabot-auto-merge.yml` turns on auto-merge, so a PR merges by itself once
+`apps/mobile`. Minor and patch bumps are grouped into one PR per directory, so two bumps
+can't each pass CI alone and then conflict in the shared `package-lock.json` (an
+out-of-sync lockfile once broke `npm ci` on `main` this way). It ignores eslint and
+TypeScript majors, and every Expo and React Native package: the weekly SDK upgrade below
+owns those. `dependabot-auto-merge.yml` turns on auto-merge, so a PR merges by itself once
 the required checks pass and sits open if they don't.
 
 ### The Expo SDK check
