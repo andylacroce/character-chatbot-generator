@@ -1,9 +1,13 @@
 version: 2
 updates:
-  - package-ecosystem: "npm" # or yarn, pip, docker, etc.
-    directory: "/" # Directory where the package.json or other dependency files are located
+  - package-ecosystem: "npm"
+    directory: "/"
     schedule:
-      interval: "daily" # Schedule for checking updates (daily, weekly, monthly)
+      interval: "daily"
+    # One PR per run so two bumps can't each pass CI alone and then conflict in the shared lockfile.
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
     ignore:
       - dependency-name: "eslint"
         update-types:
@@ -11,9 +15,26 @@ updates:
       - dependency-name: "typescript"
         update-types:
           - "version-update:semver-major"
-  # No Expo/React Native ignores: a bump that doesn't match the Expo SDK fails
-  # Mobile CI's `deps:check` (`expo install --check`), so auto-merge never lands it.
+      # Native packages are pinned by the Expo SDK; expo-sdk-upgrade.yml owns them (see CONTRIBUTING.md).
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native/*"
+      - dependency-name: "@react-native-*"
   - package-ecosystem: "npm"
     directory: "/apps/mobile"
     schedule:
       interval: "daily"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native/*"
+      - dependency-name: "@react-native-*"
