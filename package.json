@@ -109,7 +109,9 @@
     "react-dom": "$react-dom",
     "undici": "^6.23.0",
     "postcss": "^8.5.15",
-    "js-yaml": "^4.3.0"
+    "js-yaml": "^4.3.0",
+    "smol-toml": "^1.9.0",
+    "katex": "^0.18.2"
   },
   "prettier": {
     "semi": true,
