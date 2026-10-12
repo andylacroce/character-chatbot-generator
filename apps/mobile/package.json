@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "@react-native/jest-preset": "^0.86.3",
-    "@testing-library/react-native": "^14.0.1",
+    "@testing-library/react-native": "^14.1.0",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
     "eslint": "^10.11.0",
