@@ -9,6 +9,13 @@ jest.mock("@anthropic-ai/sdk", () => ({
   __esModule: true,
 }));
 
+// The new-name moderation re-check (verdicts are set per test; default is a clean, recognized name).
+const mockClassify = jest.fn();
+jest.mock("../../../src/utils/characterClassifier", () => ({
+  classifyCharacterName: (...args: unknown[]) => mockClassify(...args),
+}));
+const CLEAN = { blocked: false, recognized: true, warningLevel: "none" };
+
 // Mock logger
 const mockLogEvent = jest.fn();
 const mockSanitize = jest.fn((m: unknown) => m);
@@ -80,6 +87,7 @@ describe("generate-avatar API", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockClassify.mockResolvedValue(CLEAN);
     process.env = {
       ...OLD_ENV,
       ANTHROPIC_API_KEY: "test-key",
@@ -547,6 +555,81 @@ describe("generate-avatar API", () => {
             gender: "female",
           }),
         );
+      });
+    });
+
+    it.each([
+      ["a blocked name", { ...CLEAN, blocked: true }],
+      ["an unrecognized name", { ...CLEAN, recognized: false }],
+      ["a copyright warning", { ...CLEAN, warningLevel: "warning" }],
+      ["a caution", { ...CLEAN, warningLevel: "caution" }],
+    ])(
+      "renders privately and never caches %s that was never validated",
+      async (_label, verdict) => {
+        mockClassify.mockResolvedValue(verdict);
+        await jest.isolateModulesAsync(async () => {
+          jest.resetModules();
+          process.env.DATABASE_URL = "postgres://user:pass@host/db";
+          const { mockInsert } = mockDbWith([]);
+          mockAnthropic();
+          global.fetch = jest.fn().mockResolvedValue({
+            ok: true,
+            arrayBuffer: async () => Buffer.from("pollinationsdata"),
+          }) as unknown as typeof fetch;
+          mockLoggerAndDeps();
+
+          const handler = require("../../../src/pages/api/generate-avatar").default;
+          const res = makeRes();
+          await handler({ method: "POST", body: { name: "Sneaky Name" } } as NextApiRequest, res);
+
+          expect(mockClassify).toHaveBeenCalledWith("Sneaky Name");
+          expect(mockInsert).not.toHaveBeenCalled();
+          expect(res.json).toHaveBeenCalledWith(
+            expect.objectContaining({ avatarUrl: expect.any(String) }),
+          );
+        });
+      },
+    );
+
+    it("fails closed: a failed moderation check renders privately and never caches", async () => {
+      mockClassify.mockRejectedValue(new Error("claude down"));
+      await jest.isolateModulesAsync(async () => {
+        jest.resetModules();
+        process.env.DATABASE_URL = "postgres://user:pass@host/db";
+        const { mockInsert } = mockDbWith([]);
+        mockAnthropic();
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: true,
+          arrayBuffer: async () => Buffer.from("pollinationsdata"),
+        }) as unknown as typeof fetch;
+        mockLoggerAndDeps();
+
+        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const res = makeRes();
+        await handler({ method: "POST", body: { name: "New Character" } } as NextApiRequest, res);
+
+        expect(mockInsert).not.toHaveBeenCalled();
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({ avatarUrl: expect.any(String) }),
+        );
+      });
+    });
+
+    it("never re-classifies a name that is already cached", async () => {
+      await jest.isolateModulesAsync(async () => {
+        jest.resetModules();
+        process.env.DATABASE_URL = "postgres://user:pass@host/db";
+        mockDbWith([{ avatarUrl: "https://blob.example.com/cached.png", gender: "male" }]);
+        mockAnthropic();
+        mockLoggerAndDeps();
+
+        const handler = require("../../../src/pages/api/generate-avatar").default;
+        await handler(
+          { method: "POST", body: { name: "Cached Character" } } as NextApiRequest,
+          makeRes(),
+        );
+
+        expect(mockClassify).not.toHaveBeenCalled();
       });
     });
 

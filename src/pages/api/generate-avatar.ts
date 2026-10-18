@@ -16,6 +16,8 @@ import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
 import { getOrGenerateAvatar } from "../../utils/avatarGeneration";
 import { isAllowlisted } from "../../utils/characterAllowlist";
 import { getBlocklistEntry } from "../../utils/characterBlocklist";
+import { classifyCharacterName } from "../../utils/characterClassifier";
+import { logEvent } from "../../utils/logger";
 import { withRequestLog } from "../../utils/withRequestLog";
 
 /** Rate limiter: 5 requests per minute per IP (avatar generation is expensive). */
@@ -118,7 +120,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   // A private render (skipPersistence) is never stored, so it needs no check. Otherwise a
   // content block gets no image at all and a copyright block is only rendered privately.
   let persist = skipPersistence !== true;
-  if (persist && !(await isAllowlisted(sanitizedName))) {
+  let allowlisted = false;
+  if (persist && !(allowlisted = await isAllowlisted(sanitizedName))) {
     const blocked = await getBlocklistEntry(sanitizedName);
     if (blocked?.category === "content") {
       res.status(200).json({ avatarUrl: "/silhouette.svg", gender: null });
@@ -126,7 +129,45 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     persist = !blocked;
   }
-  const result = await getOrGenerateAvatar(sanitizedName, { skipPersistence: !persist });
+  // This route is callable directly, so a brand-new name is re-classified here before it can reach the
+  // public Wall (a cached or allowlisted name was already vetted). Fails closed: any doubt renders privately.
+  const mayPersistNew =
+    persist && !allowlisted
+      ? async () => {
+          try {
+            const verdict = await classifyCharacterName(sanitizedName);
+            const ok =
+              !verdict.blocked && verdict.recognized === true && verdict.warningLevel === "none";
+            if (!ok) {
+              logEvent(
+                "info",
+                "avatar_persist_denied",
+                "New name not eligible for the public Wall",
+                {
+                  blocked: verdict.blocked,
+                  recognized: verdict.recognized,
+                  warningLevel: verdict.warningLevel,
+                },
+              );
+            }
+            return ok;
+          } catch (err) {
+            logEvent(
+              "error",
+              "avatar_persist_check_failed",
+              "Moderation check failed; rendering privately",
+              {
+                error: err instanceof Error ? err.message : String(err),
+              },
+            );
+            return false;
+          }
+        }
+      : undefined;
+  const result = await getOrGenerateAvatar(sanitizedName, {
+    skipPersistence: !persist,
+    mayPersistNew,
+  });
 
   res.status(200).json({ avatarUrl: result.avatarUrl, gender: result.gender });
 }

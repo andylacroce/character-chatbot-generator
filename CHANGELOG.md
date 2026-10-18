@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.28.3 - 2026-10-18 - Wall moderation at the point of publishing
+
+- A brand-new character name is now checked again, server-side, right before its portrait can be added to the public Character Wall. Names that are blocked, unrecognized, or flagged for copyright get a private portrait only; if the check itself fails, the portrait stays private. Names already on the Wall and curated names skip the extra check, and ordinary creation is unchanged apart from one extra quick check for a new name.
+- The name classifier now lives in one shared module used by both the creation check and the portrait route, and the creation route drops about 100 lines.
+
 ## v0.28.2 - 2026-10-18 - Shared chat rules for web and mobile
 
 - Web and the mobile app now take the intro prompt, the 20-turn history format, message validation, the adopt-the-longer-server-history rule, and the `/api/chat` request shape from one shared module instead of two hand-kept copies. The web chat controller drops three duplicate message filters.

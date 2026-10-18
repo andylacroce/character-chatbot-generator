@@ -30,6 +30,11 @@ export interface AvatarGenerationOptions {
   skipPersistence?: boolean;
   /** Skip the cache read and generate anew; the new image overwrites the cached row. */
   refresh?: boolean;
+  /**
+   * Consulted only on a cache miss, just before a brand-new portrait would be written to the shared
+   * (public) cache. Returning false renders it privately instead, as if skipPersistence were set.
+   */
+  mayPersistNew?: () => Promise<boolean>;
 }
 
 export interface AvatarGenerationResult {
@@ -286,8 +291,8 @@ export async function getOrGenerateAvatar(
   characterName: string,
   opts: AvatarGenerationOptions = {},
 ): Promise<AvatarGenerationResult> {
-  const bypassPersistence = opts.skipPersistence === true;
-  const bypassSharedCache = bypassPersistence;
+  let bypassPersistence = opts.skipPersistence === true;
+  let bypassSharedCache = bypassPersistence;
 
   const cached = bypassSharedCache || opts.refresh ? null : await getCachedAvatar(characterName);
   if (cached) {
@@ -303,6 +308,11 @@ export async function getOrGenerateAvatar(
       bypassSharedCache,
     });
     return { avatarUrl: cached.avatarUrl, gender: cached.gender, source: "cache" };
+  }
+
+  if (!bypassPersistence && opts.mayPersistNew && !(await opts.mayPersistNew())) {
+    bypassPersistence = true;
+    bypassSharedCache = true;
   }
 
   let genderOut: string | null = null;
