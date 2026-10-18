@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { authenticatedFetch } from "../../utils/api";
+import { logEvent, sanitizeLogMeta } from "../../utils/logger";
 import { hasNavigatedWithinSession } from "../../utils/clientNavigationState";
 import {
   CHARACTER_CATEGORIES,
@@ -22,6 +23,8 @@ import BackHomeLink from "./BackHomeLink";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/CharsPage.module.css";
 import { displayCharacterName } from "character-chatbot-shared";
+
+type AdminState = "idle" | "confirm" | "purging" | "regenerating" | "purgeError" | "regenError";
 
 interface CharEntry {
   name: string;
@@ -126,12 +129,14 @@ const PortraitMosaic: React.FC<{
 /** Public /chars gallery: paginated, infinite-scroll mosaic of recognized portraits. */
 const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialCharacterName }) => {
   const router = useRouter();
-  const { menuItems, modals } = useAccountMenu();
+  const { menuItems, modals, isAdmin } = useAccountMenu();
   const [characters, setCharacters] = useState<CharEntry[]>([]);
   const [initialLoad, setInitialLoad] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<CharEntry | null>(null);
+  // Admin portrait controls. Purge needs a second click ("confirm"); regenerate is one click.
+  const [adminState, setAdminState] = useState<AdminState>("idle");
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [sortBy, setSortBy] = useState<GallerySort>("newest");
   const [groupBy, setGroupBy] = useState<GalleryGroup>("none");
@@ -259,6 +264,59 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
     observer.unobserve(node);
     observer.observe(node);
   }, [characters]);
+
+  // Admin only: DELETE purges this character's cached portrait, POST regenerates it in place.
+  const adminPortraitCall = async (entry: CharEntry, method: "DELETE" | "POST") => {
+    const res = await authenticatedFetch("/api/admin/characters", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: entry.name }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res;
+  };
+
+  const purgePortrait = async (entry: CharEntry) => {
+    if (adminState !== "confirm") {
+      setAdminState("confirm");
+      return;
+    }
+    setAdminState("purging");
+    try {
+      await adminPortraitCall(entry, "DELETE");
+      setCharacters((prev) => prev.filter((c) => c.name !== entry.name));
+      dialogRef.current?.close();
+    } catch (err) {
+      logEvent(
+        "error",
+        "chars_purge_failed",
+        "Admin portrait purge failed",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
+      setAdminState("purgeError");
+    }
+  };
+
+  const regeneratePortrait = async (entry: CharEntry) => {
+    setAdminState("regenerating");
+    try {
+      const { avatarUrl } = (await (await adminPortraitCall(entry, "POST")).json()) as {
+        avatarUrl?: string;
+      };
+      if (!avatarUrl) throw new Error("missing avatarUrl");
+      setCharacters((prev) => prev.map((c) => (c.name === entry.name ? { ...c, avatarUrl } : c)));
+      setSelected({ ...entry, avatarUrl });
+      setAdminState("idle");
+    } catch (err) {
+      logEvent(
+        "error",
+        "chars_regenerate_failed",
+        "Admin portrait regeneration failed",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
+      setAdminState("regenError");
+    }
+  };
 
   // Opens the native <dialog> lightbox. Wrapped in the View Transitions API when
   // the browser supports it, for a smooth cross-fade/morph into the enlarged
@@ -481,7 +539,10 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
           onClick={(e) => {
             if (e.target === dialogRef.current) closeLightbox();
           }}
-          onClose={() => setSelected(null)}
+          onClose={() => {
+            setSelected(null);
+            setAdminState("idle");
+          }}
         >
           {selected && (
             <>
@@ -503,6 +564,36 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
               >
                 Chat with {displayCharacterName(selected.name)} &rarr;
               </Link>
+              {isAdmin && (
+                <div className={styles.lightboxAdmin}>
+                  <button
+                    type="button"
+                    className={styles.lightboxAdminButton}
+                    disabled={adminState === "purging" || adminState === "regenerating"}
+                    onClick={() => void regeneratePortrait(selected)}
+                  >
+                    {adminState === "regenerating"
+                      ? "Regenerating..."
+                      : adminState === "regenError"
+                        ? "Regenerate failed, retry"
+                        : "Regenerate portrait"}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.lightboxAdminButton} ${styles.lightboxPurge}`}
+                    disabled={adminState === "purging" || adminState === "regenerating"}
+                    onClick={() => void purgePortrait(selected)}
+                  >
+                    {adminState === "confirm"
+                      ? "Click again to purge"
+                      : adminState === "purging"
+                        ? "Purging..."
+                        : adminState === "purgeError"
+                          ? "Purge failed, retry"
+                          : "Purge portrait"}
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 className={styles.lightboxClose}

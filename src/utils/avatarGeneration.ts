@@ -22,11 +22,14 @@ import anthropic from "./anthropicClient";
 import { getDb } from "../db/client";
 import { avatarCache, bots } from "../db/schema";
 import { recordEvent } from "./analytics";
+import { deleteOrphanedAvatars } from "./userBlobs";
 import { isCharacterCategory, type CharacterCategory } from "character-chatbot-shared";
 
 /** Options controlling avatar cache/persistence behavior — see pages/api/generate-avatar.ts's @swagger block for the full rationale on each. */
 export interface AvatarGenerationOptions {
   skipPersistence?: boolean;
+  /** Skip the cache read and generate anew; the new image overwrites the cached row. */
+  refresh?: boolean;
 }
 
 export interface AvatarGenerationResult {
@@ -165,11 +168,7 @@ async function cacheAvatar(
 export async function scrubCachedAvatar(name: string): Promise<boolean> {
   if (!process.env.DATABASE_URL) return false;
   try {
-    const deleted = await getDb()
-      .delete(avatarCache)
-      .where(eq(avatarCache.characterName, avatarCacheKey(name)))
-      .returning({ characterName: avatarCache.characterName });
-    return deleted.length > 0;
+    return (await deleteAvatarRow(name)) !== null;
   } catch (err) {
     logEvent(
       "error",
@@ -179,6 +178,64 @@ export async function scrubCachedAvatar(name: string): Promise<boolean> {
     );
     return false;
   }
+}
+
+/** Deletes a name's `avatar_cache` row, resolving its old portrait URL (null if none). Throws on DB failure. */
+async function deleteAvatarRow(name: string): Promise<string | null> {
+  const deleted = await getDb()
+    .delete(avatarCache)
+    .where(eq(avatarCache.characterName, avatarCacheKey(name)))
+    .returning({ avatarUrl: avatarCache.avatarUrl });
+  return deleted[0]?.avatarUrl ?? null;
+}
+
+/**
+ * Admin purge of one character's shared portrait, so the next creation of that name
+ * generates a fresh one (it also drops off the Wall until then). Unlike a blocklist scrub it
+ * leaves users' saved characters alone; the old Blob image is deleted only if no saved
+ * character still uses it. Returns whether a row existed; throws on DB failure so the
+ * admin sees the error instead of a false "purged".
+ */
+export async function purgeCachedAvatar(name: string): Promise<boolean> {
+  if (!process.env.DATABASE_URL) return false;
+  const avatarUrl = await deleteAvatarRow(name);
+  if (avatarUrl === null) return false;
+  try {
+    await deleteOrphanedAvatars([avatarUrl]);
+  } catch (err) {
+    logEvent(
+      "warn",
+      "avatar_purge_blob_failed",
+      "Purged avatar_cache row but left its Blob image behind",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+  }
+  return true;
+}
+
+/**
+ * Admin regeneration of one character's shared portrait: generates a new image and swaps it
+ * into the cache row in place, so a failed generation leaves the old portrait untouched. The
+ * old Blob image is deleted afterwards if no saved character still uses it. Returns the new
+ * URL, or null when generation fell back to the silhouette (nothing changed).
+ */
+export async function regenerateCachedAvatar(name: string): Promise<string | null> {
+  const old = await getCachedAvatar(name);
+  const result = await getOrGenerateAvatar(name, { refresh: true });
+  if (result.source === "silhouette") return null;
+  if (old && old.avatarUrl !== result.avatarUrl) {
+    try {
+      await deleteOrphanedAvatars([old.avatarUrl]);
+    } catch (err) {
+      logEvent(
+        "warn",
+        "avatar_regenerate_blob_failed",
+        "Regenerated avatar but left the old Blob image behind",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
+    }
+  }
+  return result.avatarUrl;
 }
 
 /**
@@ -232,7 +289,7 @@ export async function getOrGenerateAvatar(
   const bypassPersistence = opts.skipPersistence === true;
   const bypassSharedCache = bypassPersistence;
 
-  const cached = bypassSharedCache ? null : await getCachedAvatar(characterName);
+  const cached = bypassSharedCache || opts.refresh ? null : await getCachedAvatar(characterName);
   if (cached) {
     logEvent(
       "info",
