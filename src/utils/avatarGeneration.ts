@@ -252,7 +252,7 @@ export async function regenerateCachedAvatar(name: string): Promise<string | nul
  * above) would leave a user's own already-saved copy of a now-blocked name — and its
  * full chat history — untouched, even though it's the same underlying concern. A
  * user's own saved bot is never public on its own (only the shared, `recognized`
- * avatar_cache rows populate /chars), but this app doesn't want to keep hosting it
+ * avatar_cache rows populate /characters), but this app doesn't want to keep hosting it
  * privately either once a name is blocked outright.
  *
  * `messages` rows cascade-delete automatically via their FK to `bots.id`

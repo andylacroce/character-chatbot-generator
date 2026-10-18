@@ -7,7 +7,14 @@ import { SITE_URL } from "../utils/site";
 // Read the Wall per request: a build-time snapshot would miss every character created afterward.
 export const dynamic = "force-dynamic";
 
-const STATIC_PATHS = ["", "/chars", "/guess-who", "/guess-who-next", "/leaderboard", "/privacy"];
+const STATIC_PATHS = [
+  "",
+  "/characters",
+  "/guess-who",
+  "/guess-who-next",
+  "/leaderboard",
+  "/privacy",
+];
 
 /** The public pages plus one entry per Wall character (static pages only when the database is unavailable). */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -19,7 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const slug = characterSlug(character.name);
       if (slug) {
         entries.push({
-          url: `${SITE_URL}/chars/${slug}`,
+          url: `${SITE_URL}/characters/${slug}`,
           lastModified: new Date(character.createdAtMs),
         });
       }

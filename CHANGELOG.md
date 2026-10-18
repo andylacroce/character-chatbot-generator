@@ -2,6 +2,15 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.29.1 - 2026-10-18 - Chat parity, a landing-page click fix, and /characters
+
+- The Character Wall and its pages moved from `/chars` to `/characters` (`/characters/<name>`). The old URLs redirect permanently, and the API route is unchanged.
+- Back is now one rule across pages: the Wall, Past chats, Leaderboard, Privacy, and Data deletion all go to the previous in-app page, or home when you arrived by link. Privacy and Data deletion used to always go home.
+- Fixes the landing page's carousel character name not being clickable: the creator form's bottom padding sat over it and swallowed the click.
+- Replies that aren't streamed (all of mobile's) now have `*action emotes*` stripped, like streamed ones.
+- Mobile chat now retries a failed send twice before showing an error, as web already did; the retry and the empty-reply check live once in the shared package.
+- Mobile no longer crashes on corrupt saved chat history; it starts that chat fresh.
+
 ## v0.29.0 - 2026-10-18 - Shareable character pages
 
 - Every character on the Wall now has its own page (`/chars/<name>`) with the portrait, name, category, and a "Chat with" button. Sharing a character's link shows a proper preview (title, description, and the portrait) in messages and social posts. The Wall's portrait view links to it as "Character page".

@@ -3,8 +3,10 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   INTRO_PROMPT,
   buildChatRequest,
+  chatReplyMessage,
   getReplayAudioUrl,
   longerHistory,
+  retryWithBackoff,
   type ChatMessage,
 } from "character-chatbot-shared";
 import { ApiError, getPersistedMessages, sendChatMessage } from "../api";
@@ -92,7 +94,7 @@ export default function ChatScreen({ route, navigation }: Props) {
             }),
           );
 
-          const introMessage: ChatMessage = { sender: bot.name, text: response.reply };
+          const { audioFileUrl: _, ...introMessage } = chatReplyMessage(bot.name, response);
           setMessages([introMessage]);
           await appendChatMessage(bot.name, introMessage);
           audio.play(response.audioFileUrl);
@@ -119,17 +121,18 @@ export default function ChatScreen({ route, navigation }: Props) {
     await appendChatMessage(bot.name, userMessage);
 
     try {
-      const response = await sendChatMessage(
-        buildChatRequest({
-          bot,
-          voiceConfig: bot.voiceConfig!,
-          message: text,
-          history: messages,
-          userName: userName !== "Me" ? userName : undefined,
-        }),
-      );
+      const request = buildChatRequest({
+        bot,
+        voiceConfig: bot.voiceConfig!,
+        message: text,
+        history: messages,
+        userName: userName !== "Me" ? userName : undefined,
+      });
+      const response = await retryWithBackoff(() => sendChatMessage(request), {
+        delayMs: process.env.NODE_ENV === "test" ? 1 : undefined,
+      });
 
-      const botMessage: ChatMessage = { sender: bot.name, text: response.reply };
+      const { audioFileUrl: _, ...botMessage } = chatReplyMessage(bot.name, response);
       setMessages((prev) => [...prev, botMessage]);
       await appendChatMessage(bot.name, botMessage);
       audio.play(response.audioFileUrl);

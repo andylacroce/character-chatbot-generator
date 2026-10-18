@@ -123,7 +123,7 @@ describe("BotCreator resume/new-chat interstitial", () => {
     expect(screen.queryByTestId("bot-creator-interstitial")).not.toBeInTheDocument();
   });
 
-  it("Cancel on a URL-driven interstitial navigates back to /chars without dispatching, and lets the same link work again later", async () => {
+  it("Cancel on a URL-driven interstitial navigates back to /characters without dispatching, and lets the same link work again later", async () => {
     mockSearchParams.set("name", "Sherlock Holmes");
     mockUseSession.mockReturnValue({ data: { user: { id: "u1" } }, status: "authenticated" });
     const savedBot = {
@@ -148,7 +148,7 @@ describe("BotCreator resume/new-chat interstitial", () => {
     fireEvent.click(screen.getByLabelText("Cancel"));
 
     expect(screen.queryByTestId("bot-creator-interstitial")).not.toBeInTheDocument();
-    expect(mockRouter.push).toHaveBeenCalledWith("/chars");
+    expect(mockRouter.push).toHaveBeenCalledWith("/characters");
 
     // Give the interstitial's deferred dispatch a chance to fire if it wasn't
     // actually cancelled — it must not be.
@@ -191,7 +191,7 @@ describe("BotCreator resume/new-chat interstitial", () => {
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
 
-  it("Cancel clicked further downstream (validating step, reached via ?name=X with no saved match) still kicks all the way back to /chars", async () => {
+  it("Cancel clicked further downstream (validating step, reached via ?name=X with no saved match) still kicks all the way back to /characters", async () => {
     // Regression: cancelling from the generation-progress screen (a step past the
     // interstitial) used to only clear loading/progress, leaving isLaunchingFromUrl
     // true and the guard already tripped — so it re-showed "Loading..." forever
@@ -218,7 +218,7 @@ describe("BotCreator resume/new-chat interstitial", () => {
 
     fireEvent.click(screen.getByLabelText("Cancel"));
 
-    expect(mockRouter.push).toHaveBeenCalledWith("/chars");
+    expect(mockRouter.push).toHaveBeenCalledWith("/characters");
     expect(screen.queryByTestId("bot-creator-auto-launch")).not.toBeInTheDocument();
     expect(onBotCreated).not.toHaveBeenCalled();
   });

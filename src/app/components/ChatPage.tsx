@@ -96,7 +96,7 @@ function ChatPage({
           <span>Download Transcript</span>
         </button>
       )}
-      <Link href="/chars" className={styles.menuItemLink} aria-label="View the character wall">
+      <Link href="/characters" className={styles.menuItemLink} aria-label="View the character wall">
         <FaImages size={18} className="menuIcon" />
         <span>Character Wall</span>
       </Link>

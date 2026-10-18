@@ -206,6 +206,21 @@ describe("ChatScreen", () => {
     expect(await utils.findByText("timed out")).toBeTruthy();
   });
 
+  it("retries a transient send failure instead of surfacing it", async () => {
+    (loadChatHistory as jest.Mock).mockResolvedValue(existingHistory);
+    mockedSend
+      .mockRejectedValueOnce(new Error("blip"))
+      .mockResolvedValue({ reply: "Indeed.", done: true });
+
+    const utils = await renderScreen();
+    await utils.findByText("hello");
+    await sendTyped(utils, "Are you well?");
+
+    expect(await utils.findByText("Indeed.")).toBeTruthy();
+    expect(utils.queryByText("blip")).toBeNull();
+    expect(mockedSend).toHaveBeenCalledTimes(2);
+  });
+
   it("falls back to a generic message for a non-Error send failure", async () => {
     (loadChatHistory as jest.Mock).mockResolvedValue(existingHistory);
     mockedSend.mockRejectedValue("boom");

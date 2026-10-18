@@ -60,3 +60,41 @@ export function buildChatRequest({
     ...(isIntro ? { isIntro: true } : {}),
   };
 }
+
+/** Turns an `/api/chat` response into the bot's transcript turn; a missing or empty reply throws rather than rendering a blank bubble. */
+export function chatReplyMessage(
+  botName: string,
+  response: { reply?: unknown; audioFileUrl?: string },
+): ChatMessage & { audioFileUrl?: string } {
+  if (typeof response.reply !== "string" || !response.reply) {
+    throw new Error("Invalid chat response: missing reply");
+  }
+  return { sender: botName, text: response.reply, audioFileUrl: response.audioFileUrl };
+}
+
+interface RetryOptions {
+  /** Extra attempts after the first. */
+  retries?: number;
+  /** Wait before the first retry; doubles each time. */
+  delayMs?: number;
+  /** Called before every attempt (0 is the first), so a UI can show "retrying". */
+  onAttempt?: (attempt: number) => void;
+}
+
+/** Runs a chat request, retrying transient failures with exponential backoff; the last error is rethrown. */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  { retries = 2, delayMs = 800, onAttempt }: RetryOptions = {},
+): Promise<T> {
+  let delay = delayMs;
+  for (let attempt = 0; ; attempt++) {
+    onAttempt?.(attempt);
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt >= retries) throw err;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+}

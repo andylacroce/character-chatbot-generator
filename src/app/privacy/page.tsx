@@ -3,7 +3,7 @@
  * @module PrivacyPage
  */
 
-import Link from "next/link";
+import { LegalBackLink } from "../components/BackLink";
 import { AnalyticsPreferences } from "../components/GoogleAnalyticsConsent";
 import styles from "../components/styles/LegalPage.module.css";
 
@@ -15,9 +15,7 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <div className={styles.page}>
-      <Link href="/" className={styles.back}>
-        &larr; Back to Portrayal
-      </Link>
+      <LegalBackLink />
       <h1 className={styles.title}>Privacy Policy</h1>
       <p className={styles.updated}>Last updated: September 24, 2026</p>
 

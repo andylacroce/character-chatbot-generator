@@ -32,10 +32,10 @@ describe("sitemap", () => {
     const urls = (await sitemap()).map((entry) => entry.url);
 
     expect(urls).toEqual(
-      expect.arrayContaining([`${ORIGIN}`, `${ORIGIN}/chars`, `${ORIGIN}/guess-who`]),
+      expect.arrayContaining([`${ORIGIN}`, `${ORIGIN}/characters`, `${ORIGIN}/guess-who`]),
     );
-    expect(urls).toContain(`${ORIGIN}/chars/joan-of-arc`);
-    expect(urls.filter((u) => u.includes("/chars/"))).toHaveLength(1);
+    expect(urls).toContain(`${ORIGIN}/characters/joan-of-arc`);
+    expect(urls.filter((u) => u.includes("/characters/"))).toHaveLength(1);
   });
 
   it("dates a character entry by when it was created", async () => {
@@ -52,6 +52,6 @@ describe("sitemap", () => {
     const urls = (await sitemap()).map((entry) => entry.url);
 
     expect(urls).toHaveLength(6);
-    expect(urls.some((u) => u.includes("/chars/"))).toBe(false);
+    expect(urls.some((u) => u.includes("/characters/"))).toBe(false);
   });
 });

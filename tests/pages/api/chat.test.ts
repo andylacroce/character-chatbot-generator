@@ -303,6 +303,15 @@ describe("chat API", () => {
       expect(mockSetReplyCache).toHaveBeenCalled();
     });
 
+    it("strips *action emotes* from the reply, as the streaming path does", async () => {
+      claudeSays("*smiles* Greetings, traveller.");
+      mockFs.existsSync.mockReturnValue(false);
+      const res = makeRes();
+      await handler(makeReq(), res);
+
+      expect((res.json as jest.Mock).mock.calls[0][0].reply).toBe("Greetings, traveller.");
+    });
+
     it("reuses existing audio instead of re-synthesizing", async () => {
       claudeSays("Greetings, traveller.");
       mockFs.existsSync.mockReturnValue(true);

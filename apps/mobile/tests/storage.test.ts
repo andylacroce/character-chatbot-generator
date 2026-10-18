@@ -75,6 +75,13 @@ describe("storage", () => {
     await expect(loadChatHistory("Nobody")).resolves.toEqual([]);
   });
 
+  it("treats corrupt or malformed stored chat history as empty", async () => {
+    await AsyncStorage.setItem(chatHistoryKey("Ada"), "{not json");
+    await expect(loadChatHistory("Ada")).resolves.toEqual([]);
+    await AsyncStorage.setItem(chatHistoryKey("Ada"), JSON.stringify([{ text: 1 }, "x"]));
+    await expect(loadChatHistory("Ada")).resolves.toEqual([]);
+  });
+
   it("stores chat history under the shared chatHistoryKey", async () => {
     const message: ChatMessage = { sender: "Me", text: "Hi" };
     await appendChatMessage(bot.name, message);

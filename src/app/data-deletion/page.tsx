@@ -3,7 +3,7 @@
  * @module DataDeletionPage
  */
 
-import Link from "next/link";
+import { LegalBackLink } from "../components/BackLink";
 import styles from "../components/styles/LegalPage.module.css";
 
 export const metadata = {
@@ -14,9 +14,7 @@ export const metadata = {
 export default function DataDeletionPage() {
   return (
     <div className={styles.page}>
-      <Link href="/" className={styles.back}>
-        &larr; Back to Portrayal
-      </Link>
+      <LegalBackLink />
       <h1 className={styles.title}>Data Deletion Instructions</h1>
       <p className={styles.updated}>Last updated: September 24, 2026</p>
 

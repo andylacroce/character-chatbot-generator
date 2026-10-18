@@ -1546,6 +1546,12 @@
   z-index: 1;
   /* Clears the carousel's bottom row (arrows + name pill, 44px targets on touch). */
   padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+  /* That padding overlays the carousel's controls, so only the content takes clicks. */
+  pointer-events: none;
+}
+
+.formInner > * {
+  pointer-events: auto;
 }
 
 /* Let the backdrop portrait show through; the blur keeps text over it legible. */

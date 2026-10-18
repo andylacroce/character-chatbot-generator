@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const category = getCharacterCategoryLabel(character.category);
   const title = `Chat with ${name} — Portrayal`;
   const description = `Talk with an AI portrayal of ${name} (${category}), or try to guess who a mystery character is. Free to try, no sign-up.`;
-  const url = `${SITE_URL}/chars/${characterSlug(character.name)}`;
+  const url = `${SITE_URL}/characters/${characterSlug(character.name)}`;
   // Data URLs (portraits stored without Vercel Blob) are not usable as preview images.
   const images = /^https:\/\//.test(character.avatarUrl) ? [character.avatarUrl] : undefined;
   return {
@@ -52,7 +52,7 @@ export default async function CharacterPage({ params }: Params) {
   const name = displayCharacterName(character.name);
   return (
     <div className={styles.page}>
-      <Link href="/chars" className={styles.back}>
+      <Link href="/characters" className={styles.back}>
         &larr; All characters
       </Link>
       {/* Plain <img>, not next/image: sources mix Vercel Blob URLs and base64 data URLs. */}

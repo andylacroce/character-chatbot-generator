@@ -22,7 +22,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - [Avatar Generation](#avatar-generation)
 - [API Security](#api-security)
 - [Account Persistence (Optional)](#account-persistence-optional)
-- [Character Wall (`/chars`)](#character-wall-chars)
+- [Character Wall (`/characters`)](#character-wall-characters)
 - [Guessing Games](#guessing-games)
 - [Personalized Greeting](#personalized-greeting)
 - [Internal Analytics (`/admin`)](#internal-analytics-admin)
@@ -45,7 +45,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 20 messages, with a rolling summary checkpoint for signed-in users so long conversations stay cheap
 - **Live Progress**: `Guess Who's Next` streams real, server-reported progress (Server-Sent Events) while it builds each new character
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
-- **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, presented as a responsive tattered-parchment mosaic — see [Character Wall](#character-wall-chars)
+- **Character Wall**: A public, no-auth gallery at `/characters` of every portrait the app has ever generated, presented as a responsive tattered-parchment mosaic — see [Character Wall](#character-wall-characters)
 - **Personalized Greeting**: Characters can greet you by name — a one-time, skippable prompt when you first start a conversation, editable anytime from the account menu — see [Personalized Greeting](#personalized-greeting)
 - **Privacy-conscious Analytics**: Cookie-free Vercel traffic metrics, consent-gated Google Analytics 4, and a small self-hosted product-usage log with an admin-only `/admin` stats view — see [Internal Analytics](#internal-analytics-admin)
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,400+ passing tests
@@ -256,7 +256,7 @@ Drizzle ORM), so both survive across devices and browser sessions:
 
 See `CLAUDE.md`'s "Account persistence" section for the full phase-by-phase design notes.
 
-## Character Wall (`/chars`)
+## Character Wall (`/characters`)
 
 A public gallery of every character portrait the app has ever generated — no sign-in
 required. It reads from the same global `avatar_cache` table described in
