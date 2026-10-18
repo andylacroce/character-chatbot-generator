@@ -418,6 +418,15 @@ discover a row by typing its name, so nothing new is disclosed). Every
   window, `documentElement`, and `scrollingElement` (`body` is the real scroll owner under the
   flex-root layout), appears after 360px, and uses `scrollIntoView()` on a marker before the
   header. A native `<dialog>` lightbox is wrapped in the View Transitions API when available.
+- **Character pages (`/chars/[slug]`):** a server-rendered, shareable page per Wall entry
+  (portrait, name, category, a "Chat with" link to `/?name=`), so a shared link previews with a
+  real title, description, canonical URL, and portrait (`generateMetadata`; a data-URL portrait gets
+  no image). The slug (`characterSlug` in shared) is lowercase ASCII words, so a name with no
+  ASCII letters has no page; an unknown slug or a missing database is a 404 with `noindex`. The
+  data read lives in `utils/charactersWall.ts` (shared with `/api/chars`). `app/sitemap.ts`
+  (static pages plus one entry per slug-able character, `force-dynamic` so it is never a build-time
+  snapshot, static pages only if the database read fails) and `app/robots.ts` (allows the site, hides
+  `/api/`, `/admin`, `/history`, `/auth/`) point crawlers at the production origin in `utils/site.ts`.
 - **Back control:** the header's arrow + "Back" calls browser history and falls back to `/` only
   when there's no same-app entry. It deliberately doesn't use `window.history.length` (a fresh tab
   already reads 2 because of `about:blank`); `src/utils/clientNavigationState.ts` holds an in-memory

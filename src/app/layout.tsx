@@ -4,14 +4,42 @@
  */
 
 import React from "react";
+import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { DarkModeProvider, DEFAULT_DARK_MODE } from "./components/DarkModeContext";
 import GoogleAnalyticsConsent from "./components/GoogleAnalyticsConsent";
 import Providers from "./components/Providers";
+import { SITE_URL } from "../utils/site";
 
 const PRODUCTION_GOOGLE_ANALYTICS_ID = "G-W01K2YSWH4";
+
+const DESCRIPTION = "Chat with history's greatest minds, legendary heroes, and literary icons.";
+
+/**
+ * Site-wide defaults for the document head. Next merges a page's own `metadata` over these and
+ * resolves the relative image paths against `metadataBase`, which link-preview scrapers require
+ * (hand-written <head> tags here duplicated every page's tags and used a relative og:image).
+ */
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: "Portrayal",
+  description: DESCRIPTION,
+  icons: { icon: { url: "/palette-icon.svg", type: "image/svg+xml" } },
+  openGraph: {
+    title: "Portrayal",
+    description: DESCRIPTION,
+    type: "website",
+    images: ["/og-image.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Portrayal",
+    description: DESCRIPTION,
+    images: ["/og-image.png"],
+  },
+};
 
 /**
  * Root layout component that wraps the entire application.
@@ -41,31 +69,6 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
     // extensions (e.g. Dark Reader) inject attributes into the server-rendered HTML
     // that don't exist on the client.
     <html lang="en" className={DEFAULT_DARK_MODE ? "dark" : ""} suppressHydrationWarning>
-      <head>
-        <title>Portrayal</title>
-        <meta
-          name="description"
-          content="Chat with history's greatest minds, legendary heroes, and literary icons."
-        />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/palette-icon.svg" type="image/svg+xml" />
-        {/* Open Graph / Facebook */}
-        <meta property="og:title" content="Portrayal" />
-        <meta
-          property="og:description"
-          content="Chat with history's greatest minds, legendary heroes, and literary icons."
-        />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="/og-image.png" />
-        {/* Twitter */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Portrayal" />
-        <meta
-          name="twitter:description"
-          content="Chat with history's greatest minds, legendary heroes, and literary icons."
-        />
-        <meta name="twitter:image" content="/og-image.png" />
-      </head>
       <body>
         <Providers>
           <DarkModeProvider>

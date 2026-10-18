@@ -18,7 +18,7 @@ jest.mock("../../../../src/utils/avatarGeneration", () => ({
 }));
 
 const mockClearCharactersCache = jest.fn();
-jest.mock("../../../../src/pages/api/chars", () => ({
+jest.mock("../../../../src/utils/charactersWall", () => ({
   clearCharactersCache: () => mockClearCharactersCache(),
 }));
 

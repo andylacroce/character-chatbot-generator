@@ -2,6 +2,14 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.29.0 - 2026-10-18 - Shareable character pages
+
+- Every character on the Wall now has its own page (`/chars/<name>`) with the portrait, name, category, and a "Chat with" button. Sharing a character's link shows a proper preview (title, description, and the portrait) in messages and social posts. The Wall's portrait view links to it as "Character page".
+- An unknown character link shows the usual not-found page. A sitemap (the public pages plus every character) and a `robots.txt` now point search engines at the site, hiding the API, admin, and account pages.
+- The Wall's data read moved into its own module, shared by the API and the new pages.
+- Fixes link previews site-wide: the page head used hand-written tags that duplicated every page's title and preview tags and gave the preview image as a relative path, which scrapers can't use. They are now generated once, with an absolute image URL, so shared links to any page preview correctly.
+- Removed 16 ambiguous, bare-name entries from the Wall (for example a bare "Beauty" or "Edmund"), which would have made thin, confusing pages.
+
 ## v0.28.3 - 2026-10-18 - Wall moderation at the point of publishing
 
 - A brand-new character name is now checked again, server-side, right before its portrait can be added to the public Character Wall. Names that are blocked, unrecognized, or flagged for copyright get a private portrait only; if the check itself fails, the portrait stays private. Names already on the Wall and curated names skip the extra check, and ordinary creation is unchanged apart from one extra quick check for a new name.
