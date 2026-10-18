@@ -65,10 +65,11 @@ export function isBlobHostUrl(url: string): boolean {
 }
 
 /** Deletes Blob avatars no remaining `avatar_cache`/`bots` row references; returns how many were removed. */
-async function deleteOrphanedAvatars(
+export async function deleteOrphanedAvatars(
   avatarUrls: (string | null)[],
-  token: string,
+  token = process.env.VERCEL_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN,
 ): Promise<number> {
+  if (!token) return 0;
   const candidates = [...new Set(avatarUrls)].filter(
     (url): url is string => !!url && isBlobAvatarUrl(url),
   );

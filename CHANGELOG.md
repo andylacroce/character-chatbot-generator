@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.28.0 - 2026-10-18 - Admin portrait purge and regenerate
+
+- Admins now see "Regenerate portrait" and "Purge portrait" in the Character Wall lightbox, to fix a bad portrait without touching the database. Regenerate makes a new portrait now and swaps it in place (the old one is kept if generation fails); purge removes the shared portrait so the next creation of that name builds a fresh one. Neither affects users' saved characters or the moderation lists. Both clear the Wall's cached list so a stale tile can't show a deleted image.
+- Adds stubbed end-to-end tests (character creation and chat, the copyright warning, the unrecognized-name stop, and a Guess Who round) plus phone-width layout checks, run on every PR without spending any API tokens.
+
 ## v0.27.1 - 2026-10-18 - Landing footer and chat keyboard fixes
 
 - The landing page footer no longer overflows for signed-in users: with "Past chats" added, the "Which characters can I create?" link shortens to "Characters" on screens 480px wide or less instead of the row wrapping.

@@ -19,8 +19,9 @@ jest.mock("next/navigation", () => ({
 // CharsGallery renders AuthControl, which needs a SessionProvider ancestor
 // (next-auth throws otherwise) — mock the hook directly instead, same pattern
 // as BotCreator.url.test.tsx.
+let mockSessionStatus = "unauthenticated";
 jest.mock("next-auth/react", () => ({
-  useSession: () => ({ data: null, status: "unauthenticated" }),
+  useSession: () => ({ data: null, status: mockSessionStatus }),
   signIn: jest.fn(),
   signOut: jest.fn(),
   getProviders: () => Promise.resolve({ google: { id: "google", name: "Google" } }),
@@ -51,6 +52,7 @@ let observers: Array<{ callback: IntersectionObserverCallback; target: Element |
 // callback on its own.
 let sentinelStaysVisible = false;
 beforeEach(() => {
+  mockSessionStatus = "unauthenticated";
   observers = [];
   sentinelStaysVisible = false;
   mockAuthenticatedFetch.mockReset();
@@ -220,6 +222,96 @@ describe("CharsGallery", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
     await waitFor(() => expect(dialog.open).toBe(false));
+  });
+
+  describe("admin portrait purge", () => {
+    /** Routes the gallery's and admin menu's fetches; `purge` handles both admin calls. */
+    function mockAdminFetch(
+      isAdmin: boolean,
+      purge: (init?: {
+        method?: string;
+      }) => Promise<{ ok: boolean; json?: () => Promise<unknown> }>,
+    ) {
+      mockSessionStatus = "authenticated";
+      mockAuthenticatedFetch.mockImplementation((url: string, init?: { method?: string }) => {
+        if (url.includes("/api/admin/is-admin")) {
+          return Promise.resolve({ json: async () => ({ isAdmin }) });
+        }
+        if (url.includes("/api/admin/characters")) return purge(init);
+        return Promise.resolve(mockPage([{ name: "Ada Lovelace", avatarUrl: "/a.png" }], false));
+      });
+    }
+
+    it("hides the purge button from non-admins", async () => {
+      mockAdminFetch(false, async () => ({ ok: true }));
+      render(<CharsGallery />);
+      await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
+      fireEvent.click(screen.getByTitle("Ada Lovelace"));
+      expect(screen.queryByRole("button", { name: /purge/i })).not.toBeInTheDocument();
+    });
+
+    it("purges on the second click and drops the tile", async () => {
+      const purge = jest.fn(async () => ({ ok: true }));
+      mockAdminFetch(true, purge);
+      render(<CharsGallery />);
+      await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
+      fireEvent.click(screen.getByTitle("Ada Lovelace"));
+
+      fireEvent.click(await screen.findByRole("button", { name: "Purge portrait" }));
+      expect(purge).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: /click again to purge/i }));
+
+      await waitFor(() => expect(screen.queryByTitle("Ada Lovelace")).not.toBeInTheDocument());
+      const call = mockAuthenticatedFetch.mock.calls.find(([url]) =>
+        String(url).includes("/api/admin/characters"),
+      );
+      expect(call?.[1]).toMatchObject({
+        method: "DELETE",
+        body: JSON.stringify({ name: "Ada Lovelace" }),
+      });
+    });
+
+    it("regenerates in one click and swaps the portrait in place", async () => {
+      const regen = jest.fn(async () => ({
+        ok: true,
+        json: async () => ({ ok: true, avatarUrl: "/new.png" }),
+      }));
+      mockAdminFetch(true, regen);
+      render(<CharsGallery />);
+      await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
+      fireEvent.click(screen.getByTitle("Ada Lovelace"));
+
+      fireEvent.click(await screen.findByRole("button", { name: "Regenerate portrait" }));
+
+      await waitFor(() => {
+        expect(document.querySelector("dialog img")).toHaveAttribute("src", "/new.png");
+      });
+      expect(regen).toHaveBeenCalledWith(expect.objectContaining({ method: "POST" }));
+      expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument();
+    });
+
+    it("offers a retry when regeneration fails", async () => {
+      mockAdminFetch(true, async () => ({ ok: false }));
+      render(<CharsGallery />);
+      await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
+      fireEvent.click(screen.getByTitle("Ada Lovelace"));
+
+      fireEvent.click(await screen.findByRole("button", { name: "Regenerate portrait" }));
+      expect(await screen.findByRole("button", { name: /regenerate failed/i })).toBeInTheDocument();
+    });
+
+    it("keeps the tile and offers a retry when the purge fails", async () => {
+      mockAdminFetch(true, async () => ({ ok: false }));
+      render(<CharsGallery />);
+      await waitFor(() => expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument());
+      fireEvent.click(screen.getByTitle("Ada Lovelace"));
+
+      fireEvent.click(await screen.findByRole("button", { name: "Purge portrait" }));
+      fireEvent.click(screen.getByRole("button", { name: /click again to purge/i }));
+
+      expect(await screen.findByRole("button", { name: /purge failed/i })).toBeInTheDocument();
+      expect(screen.getByTitle("Ada Lovelace")).toBeInTheDocument();
+    });
   });
 
   it("opens a deep-linked carousel portrait without waiting for its gallery page", async () => {

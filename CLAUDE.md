@@ -237,6 +237,16 @@ user's saved characters). On a validation error, `blocked` and `warningLevel` fa
   `scrubUserBotsByName` delete the shared cache row and every user's saved `bots` row for the name
   (case-insensitive, all users and environments; `messages` cascade). The manual admin add does the
   same immediately and defaults to `category: "content"` unless it passes `"copyright"`.
+- **Fixing a bad portrait (not a block):** an admin sees "Regenerate portrait" and "Purge portrait"
+  in the `/chars` lightbox (`useAccountMenu`'s `isAdmin`), both via `/api/admin/characters`.
+  Purge (`DELETE`, two clicks) → `purgeCachedAvatar` deletes only the shared `avatar_cache` row (the
+  tile leaves the Wall until someone recreates the name). Regenerate (`POST`, one click, one image
+  generation) → `regenerateCachedAvatar` generates past the cache and upserts the row in place, so a
+  failed generation (502) leaves the old portrait. Either way the old Blob image goes only if no
+  saved `bots` row still uses it, and `clearCharactersCache()` (in `chars.ts`) drops the Wall's
+  per-instance 60s list so a stale tile can't point at a deleted image (it showed as a broken
+  image). Users' saved characters, the blocklist, and the allowlist are untouched. Admin tooling is
+  web-only.
 - **The prompt separates** "a name meaningful only because of one corporate work" (`warning`:
   Spider-Man, Pikachu) from "a mythological, historical, or pre-1928 figure a studio also adapted"
   (`none`: Thor, Sherlock Holmes, Winnie-the-Pooh, Hercules), with those worked examples inline.

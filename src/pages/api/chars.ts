@@ -106,6 +106,11 @@ interface CharacterEntry {
 const CACHE_TTL_MS = 60_000;
 let cache: { entries: CharacterEntry[]; fetchedAt: number } | null = null;
 
+/** Drops the list cache so the next request re-reads `avatar_cache` (after an admin purge or regenerate). */
+export function clearCharactersCache() {
+  cache = null;
+}
+
 /** Returns every cached character's name/avatar, backed by the module-level TTL cache above. */
 async function getAllCharacters(): Promise<CharacterEntry[]> {
   if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) {
