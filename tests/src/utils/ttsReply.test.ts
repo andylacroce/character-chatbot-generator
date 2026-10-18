@@ -98,7 +98,7 @@ describe("synthesizeReplyAudio", () => {
     expect(mockLogEvent).toHaveBeenCalledWith(
       "error",
       "game_tts_failed",
-      "TTS synthesis failed for a guessing-game reply",
+      "TTS synthesis failed for a reply",
       expect.objectContaining({ error: "Google TTS is down" }),
     );
   });
@@ -112,7 +112,7 @@ describe("synthesizeReplyAudio", () => {
     expect(mockLogEvent).toHaveBeenCalledWith(
       "error",
       "game_tts_failed",
-      "TTS synthesis failed for a guessing-game reply",
+      "TTS synthesis failed for a reply",
       expect.objectContaining({ error: "quota exceeded" }),
     );
   });

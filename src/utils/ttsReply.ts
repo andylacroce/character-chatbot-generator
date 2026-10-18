@@ -1,13 +1,10 @@
 /**
- * Synthesizes TTS audio for a reply and returns its playable /api/audio URL, mirroring
- * pages/api/chat.ts's own audio pipeline (same cache-by-content-hash file naming, same
- * /api/audio query contract) so the guessing game gets the same audio experience as
- * ordinary chat, see CLAUDE.md's "Guessing game" section. Kept as its own copy rather
- * than extracted out of chat.ts, since chat.ts's inline version carries its own
- * extensive existing test coverage not worth risking for this reuse.
+ * The one TTS pipeline for ordinary chat and the guessing games: synthesizes (or reuses) a
+ * content-hash-named mp3 and returns its playable /api/audio URL, same file naming and query
+ * contract everywhere so a replay (`/api/audio`) finds what a reply produced.
  *
  * TTS is an enhancement, never a requirement: any failure here returns undefined rather
- * than throwing, so a synthesis hiccup degrades to a text-only reply, same as chat.ts.
+ * than throwing, so a synthesis hiccup degrades to a text-only reply.
  */
 
 import fs from "fs";
@@ -21,10 +18,26 @@ import { setReplyCache } from "./cache";
 import { logEvent, sanitizeLogMeta } from "./logger";
 import type { CharacterVoiceConfig } from "./characterVoices";
 
+/** Deterministic JSON (sorted object keys) so equal voice configs hash equally. */
+function stableStringify(obj: unknown): string {
+  if (obj === null || typeof obj !== "object") return JSON.stringify(obj);
+  if (Array.isArray(obj)) return "[" + obj.map(stableStringify).join(",") + "]";
+  const record = obj as Record<string, unknown>;
+  return (
+    "{" +
+    Object.keys(record)
+      .sort()
+      .map((k) => JSON.stringify(k) + ":" + stableStringify(record[k]))
+      .join(",") +
+    "}"
+  );
+}
+
 /**
  * Synthesizes (or reuses a cached) TTS file for `text` and returns its /api/audio URL, or undefined on failure.
  * `hideIdentity` keeps the speaker's name and gender out of the URL (a mystery speaker's answer);
  * the URL still carries the full voice config, which is all /api/audio needs to replay it.
+ * `logPrefix` namespaces the failure events by caller (`chat_tts_failed`, `game_tts_failed`).
  */
 export async function synthesizeReplyAudio(
   text: string,
@@ -32,10 +45,9 @@ export async function synthesizeReplyAudio(
   gender: string | null | undefined,
   voiceConfig: CharacterVoiceConfig,
   hideIdentity = false,
+  logPrefix: "chat" | "game" = "game",
 ): Promise<string | undefined> {
   try {
-    const selectedVoice = voiceConfig;
-    const ssmlText = buildSsml(text, selectedVoice);
     const tmpDir = os.tmpdir();
     if (!fs.existsSync(tmpDir)) {
       fs.mkdirSync(tmpDir, { recursive: true });
@@ -43,20 +55,37 @@ export async function synthesizeReplyAudio(
     const cacheKey = crypto
       .createHash("sha256")
       .update(text)
-      .update(JSON.stringify(selectedVoice))
+      .update(stableStringify(voiceConfig))
       .digest("hex");
     const audioFileName = sanitizeFilename(`${cacheKey}.mp3`);
     const audioFilePath = path.join(tmpDir, audioFileName);
+    const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
     if (!fs.existsSync(audioFilePath)) {
       await synthesizeSpeechToFile({
-        text: ssmlText,
+        text: buildSsml(text, voiceConfig),
         filePath: audioFilePath,
         ssml: true,
-        voice: selectedVoice,
+        voice: voiceConfig,
       });
-      const txtFilePath = audioFilePath.replace(/\.mp3$/, ".txt");
       fs.writeFileSync(txtFilePath, text, "utf8");
       setReplyCache(audioFileName, text);
+    } else {
+      // /api/audio checks this sidecar against the requested text; heal a missing or stale one.
+      try {
+        if (
+          !fs.existsSync(txtFilePath) ||
+          fs.readFileSync(txtFilePath, "utf8").trim() !== text.trim()
+        ) {
+          fs.writeFileSync(txtFilePath, text, "utf8");
+        }
+      } catch (err) {
+        logEvent(
+          "warn",
+          `${logPrefix}_txt_write_failed`,
+          "Failed to write .txt companion file for audio reply",
+          sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+        );
+      }
     }
     const urlName = hideIdentity ? "Character" : botName;
     const urlGender = hideIdentity ? "" : gender || "";
@@ -64,8 +93,8 @@ export async function synthesizeReplyAudio(
   } catch (err) {
     logEvent(
       "error",
-      "game_tts_failed",
-      "TTS synthesis failed for a guessing-game reply",
+      `${logPrefix}_tts_failed`,
+      "TTS synthesis failed for a reply",
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
     return undefined;

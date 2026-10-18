@@ -112,8 +112,11 @@ SSE frames are plain `data: JSON\n\n`. The final payload is
 `{ reply: string, audioFileUrl?: string, done: true }`; changing it requires updating
 `useChatController.ts` and every test that parses stream frames.
 
-- **TTS** (`src/utils/tts.ts`, `synthesizeSpeechToFile`) is keyed by a stable `getAudioCacheKey`
-  hash to avoid re-synthesizing identical audio. A TTS failure on any path (cache hit,
+- **TTS** (`src/utils/tts.ts`, `synthesizeSpeechToFile`) is keyed by a stable content hash
+  to avoid re-synthesizing identical audio. `ttsReply.ts`'s `synthesizeReplyAudio` is the one pipeline
+  (hash-named mp3 plus `.txt` sidecar, `/api/audio` URL) for chat on every path and both games; never
+  inline a second copy. `tests/integration/audioRoundTrip.test.ts` pins it against the real audio route.
+  `chatContext.ts` holds the history/summary resolution and system-prompt assembly for `chat.ts`. A TTS failure on any path (cache hit,
   non-streaming, streaming) never fails the chat request: it degrades to a text-only reply
   (`audioFileUrl` omitted), since losing audio beats discarding a generated reply.
 - **Voice shapes:** persisted configs use Google's `Voice` response shape (`languageCodes`), but
@@ -1112,7 +1115,6 @@ Jest (`jest-expo`) plus React Native Testing Library, tests under `apps/mobile/t
 - `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`: Cloudflare Workers AI as the primary avatar
   provider; without them Pollinations.ai runs with no config (see "Avatar generation").
 - `VERCEL_BLOB_READ_WRITE_TOKEN` / `BLOB_READ_WRITE_TOKEN`: Vercel Blob logging and durable avatar URLs.
-- `TTS_TMP_DIR`: defaults to the system temp dir.
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`):
   share rate-limit counters across instances.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`: account sign-in

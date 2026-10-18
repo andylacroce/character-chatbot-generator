@@ -1,4 +1,3 @@
-import path from "path";
 import type { NextApiRequest, NextApiResponse } from "next";
 import {
   bots as botsTable,
@@ -649,6 +648,7 @@ describe("chat API", () => {
       // The text was already fully streamed to the client at this point — a
       // TTS-only failure here is caught separately from genuine stream errors
       // below, so it doesn't discard the reply the client already has.
+      mockFs.existsSync.mockReturnValue(false);
       mockStream.mockReturnValueOnce(streamOf(["Greetings, ", "traveller."]));
       mockSynthesizeSpeechToFile.mockRejectedValueOnce(new Error("tts exploded"));
       const res = makeRes();
@@ -696,24 +696,6 @@ describe("chat API", () => {
 
       expect(sseFrames(res)).toEqual([{ error: "Streaming failed", done: true }]);
       expect(res.end).toHaveBeenCalled();
-    });
-
-    it("writes audio to TTS_TMP_DIR when it is configured", async () => {
-      const original = process.env.TTS_TMP_DIR;
-      process.env.TTS_TMP_DIR = "/tmp/custom-tts";
-      mockFs.existsSync.mockReturnValue(false);
-      mockStream.mockReturnValueOnce(streamOf(["Greetings."]));
-      await handler(makeReq({ stream: true }), makeRes());
-      if (original === undefined) delete process.env.TTS_TMP_DIR;
-      else process.env.TTS_TMP_DIR = original;
-
-      expect(mockFs.mkdirSync).toHaveBeenCalledWith("/tmp/custom-tts", { recursive: true });
-      expect(mockSynthesizeSpeechToFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          filePath: expect.stringContaining(path.normalize("/tmp/custom-tts") + path.sep),
-          ssml: true,
-        }),
-      );
     });
 
     it("ignores non-text chunks in the stream", async () => {
