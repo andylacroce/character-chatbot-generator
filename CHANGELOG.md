@@ -2,6 +2,13 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.27.0 - 2026-10-18 - Portrait backdrop landing page
+
+- The landing page's rotating character portraits are now a full-page backdrop (web, phone-width web and the mobile app) behind translucent panels, each with a random slow zoom and drift, instead of a small banner in the header. The header is slim and shows the Portrayal name and Beta badge (in the mobile app's native header too).
+- A bottom row has previous and next arrows at the page edges and the character's name centered between them, with touch-sized targets. Tapping the name opens that character (Character Wall on web, a new chat in the app).
+- Muted text and the footer links keep their contrast over any portrait in light and dark themes, and the footer stays on one line at every width.
+- The mobile app now sends its API key on GET requests too, so Expo Go on a phone can reach a LAN dev server.
+
 ## v0.26.2 - 2026-10-04 - Defect and security sweep
 
 - Guess Who no longer leaks the mystery character's name (or gender) in the audio URL of its replies.

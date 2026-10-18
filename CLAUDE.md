@@ -506,7 +506,7 @@ atomic single-class rule such as `.menuDivider` lives once in `globals.css` by l
   an "Admin" sub-section (Stats `FaUserShield`, Moderation `FaBan`) when `GET /api/admin/is-admin`
   reports true, then `<AuthControl onRequestSignIn={requestSignIn}>`. `modals` renders one shared
   `NameCaptureModal` and one `SignInModal` per page.
-- **Slots:** `BotCreator`'s `center` is `LandingCharacterCarousel`; `CharsGallery`'s is a
+- **Slots:** `BotCreator`'s `center` is the "Portrayal" wordmark + Beta badge (the carousel is now the page backdrop, below); `CharsGallery`'s is a
   `BackHomeLink` pill (`BackHomeLink.tsx`, also on the game start screen); chat and game (via
   `ChatShell.tsx`) use `menuSide="left"` with the character's avatar + name as `center` and a
   personal brand link as `extra`.
@@ -514,19 +514,19 @@ atomic single-class rule such as `.menuDivider` lives once in `globals.css` by l
   "/"`), since both are reachable mid-chat. `callbackUrl` alone isn't enough: `index.tsx`'s `Home`
   renders `ChatPage` whenever a bot session is in localStorage, so `clearStoredBot()` runs just before
   the Google/preview-stub `signIn()` and `signOut()` (not magic-link, which doesn't navigate).
-- **`LandingCharacterCarousel.tsx`** rotates through recognized characters via
-  `GET /api/chars?limit=100&sample=20` (the API samples, so the client doesn't download unused
-  portraits, including large base64 URLs). It advances every 4s, preloads the next portrait, and
-  pauses on hover/focus. The landing-only `wideCenter` mode is a one-row 3:1 grid with the image
-  fading toward the controls; desktop uses a taller face-level crop (about 42% from the top), mobile
-  a compact 22%. Clicking goes to `/chars?name=<encoded>`, which `CharsGallery` resolves via
-  `GET /api/chars?name=...` and opens in the lightbox without waiting for the page. Fixed
-  dimensions prevent layout shift. **The empty state paints the cached sample first:** the last
-  sample lives in `localStorage` (`landingCarouselCache`), read in the same effect as the fetch (not
-  a lazy `useState` initializer, which would hydration-mismatch the server placeholder); a fresh
-  non-empty response replaces both, and an empty or failed fetch keeps the cache. Only a first-ever
-  visit waits on the network, and its placeholder (`.portraitLoading`) pulses (respecting
-  `prefers-reduced-motion`).
+- **`LandingCharacterCarousel.tsx`** is the landing page's backdrop: a fixed full-page portrait
+  (rotating through recognized characters via `GET /api/chars?limit=100&sample=20`; the API
+  samples, so the client doesn't download unused portraits, including large base64 URLs) under a
+  light theme-colored veil, behind the translucent panels (62% surface, 3px blur; the blur was
+  tried at 10px and rejected). The image layer ignores pointer events so the form stays usable;
+  the name pill under the header's right edge (aligned to the 1080px content column) is the only
+  control, pausing rotation on hover/focus and linking to `/chars?name=<encoded>`, which
+  `CharsGallery` resolves via `GET /api/chars?name=...` and opens in the lightbox. It advances
+  every 6s and preloads the next portrait. Applies at every width (the header carousel it
+  replaced was removed). **The empty state paints the cached sample first:** the last sample
+  lives in `localStorage` (`landingCarouselCache`), read in the same effect as the fetch (not a
+  lazy `useState` initializer, which would hydration-mismatch); a fresh non-empty response
+  replaces both, and an empty or failed fetch keeps the cache. With no data it renders nothing.
 - **The landing page is a responsive dashboard:** the launcher is the dominant panel and both
   games a compact secondary panel. At 820px and below it is one column; game cards stay side by
   side on phones and stack only below 340px. Spacing and type use clamps; the form scroller is the
@@ -1007,8 +1007,10 @@ components are written natively, never shared with the DOM app.
   opaque in AsyncStorage; a guest's identity is a random SecureStore secret
   (`src/gameGuest.ts`) sent as `x-game-guest` in place of web's HttpOnly cookie. Correct and
   wrong guesses fire haptics (native-only extra).
-- **Every non-GET request carries `x-api-key`** (`EXPO_PUBLIC_API_SECRET`), because React
-  Native sends no `Origin`/`Referer` and so lands in `proxy.ts`'s external-origin branch. The
+- **Every request carries `x-api-key`** (`EXPO_PUBLIC_API_SECRET`), because React
+  Native sends no `Origin`/`Referer` and so lands in `proxy.ts`'s external-origin branch. GETs
+  carry it too (changed 2026-10-18) so a phone on Expo Go can reach a LAN dev server, whose host
+  isn't first-party, without changing `proxy.ts`. The
   secret is extractable from the APK; the per-route rate limiter is the real abuse ceiling
   (same caveat as "Security posture"). A documented tradeoff, not an oversight: discuss before
   changing. Env vars: `EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_API_SECRET` (`.env.example`).
@@ -1031,11 +1033,13 @@ components are written natively, never shared with the DOM app.
   overriding `headerLeft` would replace native-stack's back button.
 - **Navigate with `navigation.navigate`, not `replace`,** from Creator/CharWall into Chat;
   replacing left Chat with no back button.
-- **`CreatorScreen` must fit one screen with no scrolling** on modern Android phones (checked at
-  360x740 through 412x915 with a resume card showing). The carousel is the flexible element:
-  it is sized (110 to 210) from the measured leftover room, and the viewport keeps the tallest
-  height seen so the keyboard doesn't shrink it. Don't give the scroll container `flexGrow: 1`.
-  Anything tall added here needs re-checking via Expo web plus Playwright with `/api/chars` stubbed.
+- **`CreatorScreen`'s carousel is a full-screen portrait backdrop**, mirroring web's landing page:
+  `CharacterCarousel` renders first behind the screen (image layer ignores touches), with the
+  current name as a top-right pill that starts that character's chat. The form sits in a
+  62%-surface translucent panel under the pill, and the site name plus Beta badge live in the
+  native header (`BrandTitle`, set via `App.tsx`), not the body. The earlier spinning-halo
+  carousel and its fit-to-screen sizing were removed. Re-check layout on a short Android phone
+  (the panel scrolls if it doesn't fit).
 - **Keyboard avoidance in `ChatScreen`** uses `KeyboardAvoidingView` with `behavior="padding"` and
   `keyboardVerticalOffset={useHeaderHeight()}` (SDK 57's forced edge-to-edge disables
   `adjustResize`), and drops the input row's `insets.bottom` padding while the keyboard is open

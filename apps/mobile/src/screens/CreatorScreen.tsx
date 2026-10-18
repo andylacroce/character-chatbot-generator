@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   displayCharacterName,
   GUESS_WHO,
@@ -28,8 +29,7 @@ import { useAuth } from "../AuthContext";
 import { useUserName } from "../useUserName";
 import { BRAND } from "../theme";
 import Avatar from "../components/Avatar";
-import CharacterCarousel, { CAROUSEL_MAX_SIZE } from "../components/CharacterCarousel";
-import Wordmark from "../components/Wordmark";
+import CharacterCarousel from "../components/CharacterCarousel";
 import CopyrightWarningModal from "../components/CopyrightWarningModal";
 import NameCaptureModal from "../components/NameCaptureModal";
 import ModalCard from "../components/ModalCard";
@@ -37,10 +37,6 @@ import ModalCard from "../components/ModalCard";
 type Props = NativeStackScreenProps<RootStackParamList, "Creator">;
 
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
-/** Smallest the carousel halo shrinks to before the screen falls back to scrolling. */
-const CAROUSEL_MIN_SIZE = 110;
-/** Carousel height beyond its halo: stage margin + name label minHeight + bottom margin. */
-const CAROUSEL_CHROME = 66;
 
 /**
  * Character selection: established name → validation → personality → avatar → voice.
@@ -50,6 +46,7 @@ const CAROUSEL_CHROME = 66;
  */
 export default function CreatorScreen({ navigation }: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const auth = useAuth();
   const userNameCtx = useUserName();
@@ -74,20 +71,6 @@ export default function CreatorScreen({ navigation }: Props) {
     log: () => {},
   });
 
-  // The carousel is the one flexible element: it shrinks so the whole screen fits
-  // without scrolling on short Android displays. viewportH keeps the tallest height
-  // seen, so the Android keyboard doesn't also shrink the carousel.
-  const [viewportH, setViewportH] = useState(0);
-  const [contentH, setContentH] = useState(0);
-  const [carouselH, setCarouselH] = useState(0);
-  const carouselSize =
-    viewportH && contentH
-      ? Math.max(
-          CAROUSEL_MIN_SIZE,
-          Math.min(CAROUSEL_MAX_SIZE, viewportH - (contentH - carouselH) - CAROUSEL_CHROME),
-        )
-      : CAROUSEL_MAX_SIZE;
-
   const busy = creation.loading || creation.validating;
   const busyMessage = creation.validating ? "Validating character" : creation.loadingMessage;
 
@@ -96,153 +79,140 @@ export default function CreatorScreen({ navigation }: Props) {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
+      <CharacterCarousel onSelect={(name) => creation.createNamed(name)} disabled={busy} />
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 68 }]}
         keyboardShouldPersistTaps="handled"
-        onLayout={(e) => {
-          const h = e.nativeEvent.layout.height;
-          setViewportH((prev) => Math.max(prev, h));
-        }}
-        onContentSizeChange={(_w, h) => setContentH(h)}
       >
-        <Wordmark text={BRAND.name} />
-        <Text style={styles.betaBadge}>{BRAND.betaLabel}</Text>
+        <View style={styles.panel}>
+          {savedBot && !busy ? (
+            <Pressable
+              style={styles.resumeCard}
+              onPress={() => navigation.navigate("Chat", { bot: savedBot })}
+              android_ripple={{ color: colors.secondaryContainer }}
+            >
+              <Avatar name={savedBot.name} avatarUrl={savedBot.avatarUrl} size={36} />
+              <View style={styles.resumeTextWrap}>
+                <Text style={styles.resumeLabel}>Continue chatting with</Text>
+                <Text style={styles.resumeName}>{displayCharacterName(savedBot.name)}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={muted(colors)} />
+            </Pressable>
+          ) : null}
 
-        {savedBot && !busy ? (
-          <Pressable
-            style={styles.resumeCard}
-            onPress={() => navigation.navigate("Chat", { bot: savedBot })}
-            android_ripple={{ color: colors.secondaryContainer }}
-          >
-            <Avatar name={savedBot.name} avatarUrl={savedBot.avatarUrl} size={36} />
-            <View style={styles.resumeTextWrap}>
-              <Text style={styles.resumeLabel}>Continue chatting with</Text>
-              <Text style={styles.resumeName}>{displayCharacterName(savedBot.name)}</Text>
+          <Text style={styles.headline}>{BRAND.headline}</Text>
+          <Text style={styles.kicker}>{BRAND.kicker}</Text>
+
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Sherlock Holmes"
+              placeholderTextColor={colors.textSecondary}
+              value={creation.input}
+              onChangeText={creation.setInput}
+              editable={!busy && !creation.randomizing}
+              autoCapitalize="words"
+              autoCorrect={false}
+              returnKeyType="go"
+              onSubmitEditing={() => void creation.handleCreate()}
+            />
+            <Pressable
+              onPress={() => void creation.handleRandomCharacter()}
+              disabled={busy || creation.randomizing}
+              accessibilityLabel="Random character"
+              android_ripple={{ color: colors.secondaryContainer, borderless: true, radius: 24 }}
+              style={styles.diceButton}
+              hitSlop={8}
+            >
+              {creation.randomizing ? (
+                <ActivityIndicator size="small" color={colors.secondary} />
+              ) : (
+                <Ionicons name="shuffle-outline" size={20} color={colors.secondary} />
+              )}
+            </Pressable>
+          </View>
+
+          {creation.error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{creation.error}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </Pressable>
-        ) : null}
+          ) : null}
 
-        <View onLayout={(e) => setCarouselH(e.nativeEvent.layout.height)}>
-          <CharacterCarousel
-            onSelect={(name) => creation.createNamed(name)}
-            disabled={busy}
-            size={carouselSize}
-          />
-        </View>
-
-        <Text style={styles.headline}>{BRAND.headline}</Text>
-        <Text style={styles.kicker}>{BRAND.kicker}</Text>
-
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. Sherlock Holmes"
-            placeholderTextColor={colors.textSecondary}
-            value={creation.input}
-            onChangeText={creation.setInput}
-            editable={!busy && !creation.randomizing}
-            autoCapitalize="words"
-            autoCorrect={false}
-            returnKeyType="go"
-            onSubmitEditing={() => void creation.handleCreate()}
-          />
           <Pressable
-            onPress={() => void creation.handleRandomCharacter()}
-            disabled={busy || creation.randomizing}
-            accessibilityLabel="Random character"
-            android_ripple={{ color: colors.secondaryContainer, borderless: true, radius: 24 }}
-            style={styles.diceButton}
-            hitSlop={8}
+            onPress={() => void creation.handleCreate()}
+            disabled={busy}
+            android_ripple={{ color: "rgba(255,255,255,0.25)" }}
+            style={({ pressed }) => [
+              styles.createButton,
+              busy && styles.createButtonBusy,
+              pressed && Platform.OS === "ios" && styles.createButtonPressedIOS,
+            ]}
           >
-            {creation.randomizing ? (
-              <ActivityIndicator size="small" color={colors.secondary} />
+            {busy ? (
+              <View style={styles.createButtonRow}>
+                <ActivityIndicator color={colors.onPrimary} />
+                <Text style={styles.createButtonText}>{busyMessage}</Text>
+              </View>
             ) : (
-              <Ionicons name="shuffle-outline" size={20} color={colors.secondary} />
+              <Text style={styles.createButtonText}>Start chat</Text>
             )}
           </Pressable>
-        </View>
 
-        {creation.error ? (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorText}>{creation.error}</Text>
-          </View>
-        ) : null}
-
-        <Pressable
-          onPress={() => void creation.handleCreate()}
-          disabled={busy}
-          android_ripple={{ color: "rgba(255,255,255,0.25)" }}
-          style={({ pressed }) => [
-            styles.createButton,
-            busy && styles.createButtonBusy,
-            pressed && Platform.OS === "ios" && styles.createButtonPressedIOS,
-          ]}
-        >
           {busy ? (
-            <View style={styles.createButtonRow}>
-              <ActivityIndicator color={colors.onPrimary} />
-              <Text style={styles.createButtonText}>{busyMessage}</Text>
-            </View>
-          ) : (
-            <Text style={styles.createButtonText}>Start chat</Text>
-          )}
-        </Pressable>
-
-        {busy ? (
-          <Pressable
-            onPress={creation.handleCancel}
-            style={styles.cancelButton}
-            android_ripple={{ color: colors.outline, borderless: true }}
-            hitSlop={8}
-          >
-            <Text style={styles.cancelText}>Cancel</Text>
-          </Pressable>
-        ) : null}
-
-        <View style={styles.links}>
-          <Pressable
-            onPress={() => navigation.navigate("CharWall")}
-            style={styles.link}
-            android_ripple={{ color: colors.secondaryContainer, borderless: true }}
-          >
-            <Ionicons name="grid-outline" size={16} color={colors.secondary} />
-            <Text style={styles.linkText}>Character Wall</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => navigation.navigate("GuessWho")}
-            style={styles.link}
-            android_ripple={{ color: colors.secondaryContainer, borderless: true }}
-          >
-            <Ionicons name="sparkles-outline" size={16} color={colors.secondary} />
-            <Text style={styles.linkText}>{GUESS_WHO.copy.ctaLabel}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => navigation.navigate("GuessWhoNext")}
-            style={styles.link}
-            android_ripple={{ color: colors.secondaryContainer, borderless: true }}
-          >
-            <Ionicons name="help-circle-outline" size={16} color={colors.secondary} />
-            <Text style={styles.linkText}>{GUESS_WHO_NEXT.copy.ctaLabel}</Text>
-          </Pressable>
-          {auth.status === "signedIn" ? (
             <Pressable
-              onPress={() => navigation.navigate("History")}
+              onPress={creation.handleCancel}
+              style={styles.cancelButton}
+              android_ripple={{ color: colors.outline, borderless: true }}
+              hitSlop={8}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+          ) : null}
+
+          <View style={styles.links}>
+            <Pressable
+              onPress={() => navigation.navigate("CharWall")}
               style={styles.link}
               android_ripple={{ color: colors.secondaryContainer, borderless: true }}
             >
-              <Ionicons name="time-outline" size={16} color={colors.secondary} />
-              <Text style={styles.linkText}>Past chats</Text>
+              <Ionicons name="grid-outline" size={16} color={colors.secondary} />
+              <Text style={styles.linkText}>Character Wall</Text>
             </Pressable>
-          ) : null}
-          <Pressable
-            onPress={() => setShowDisclaimerModal(true)}
-            style={styles.link}
-            android_ripple={{ color: colors.secondaryContainer, borderless: true }}
-          >
-            <Ionicons name="information-circle-outline" size={16} color={colors.secondary} />
-            <Text style={styles.linkText}>Disclaimer</Text>
-          </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate("GuessWho")}
+              style={styles.link}
+              android_ripple={{ color: colors.secondaryContainer, borderless: true }}
+            >
+              <Ionicons name="sparkles-outline" size={16} color={colors.secondary} />
+              <Text style={styles.linkText}>{GUESS_WHO.copy.ctaLabel}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate("GuessWhoNext")}
+              style={styles.link}
+              android_ripple={{ color: colors.secondaryContainer, borderless: true }}
+            >
+              <Ionicons name="help-circle-outline" size={16} color={colors.secondary} />
+              <Text style={styles.linkText}>{GUESS_WHO_NEXT.copy.ctaLabel}</Text>
+            </Pressable>
+            {auth.status === "signedIn" ? (
+              <Pressable
+                onPress={() => navigation.navigate("History")}
+                style={styles.link}
+                android_ripple={{ color: colors.secondaryContainer, borderless: true }}
+              >
+                <Ionicons name="time-outline" size={16} color={colors.secondary} />
+                <Text style={styles.linkText}>Past chats</Text>
+              </Pressable>
+            ) : null}
+            <Pressable
+              onPress={() => setShowDisclaimerModal(true)}
+              style={styles.link}
+              android_ripple={{ color: colors.secondaryContainer, borderless: true }}
+            >
+              <Ionicons name="information-circle-outline" size={16} color={colors.secondary} />
+              <Text style={styles.linkText}>Disclaimer</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
 
@@ -274,32 +244,34 @@ export default function CreatorScreen({ navigation }: Props) {
   );
 }
 
+/**
+ * Muted text color for use inside the translucent panel: the primary text color at 85%,
+ * not the lighter textSecondary, which loses contrast when the backdrop art shows through.
+ */
+const muted = (colors: ThemeColors) => `${colors.text}d9`;
+
 function makeStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    scroll: { padding: 24, paddingTop: 20, alignItems: "center" },
+    // Bottom padding (set inline from the safe-area inset) clears the carousel's arrow row.
+    scroll: { flexGrow: 1, padding: 12 },
+    // Translucent like web's .creatorPanel: 62% surface over the portrait.
+    panel: {
+      alignItems: "center",
+      padding: 20,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.outline,
+      backgroundColor: `${colors.surface}9e`,
+    },
     kicker: {
       fontSize: 11,
       fontWeight: "600",
       letterSpacing: 2,
       textTransform: "uppercase",
-      color: colors.textSecondary,
+      color: muted(colors),
       marginTop: 0,
       marginBottom: 16,
-    },
-    betaBadge: {
-      fontSize: 10,
-      fontWeight: "700",
-      letterSpacing: 1,
-      textTransform: "uppercase",
-      color: colors.warning,
-      borderWidth: 1,
-      borderColor: colors.warning,
-      borderRadius: 999,
-      paddingVertical: 2,
-      paddingHorizontal: 8,
-      marginBottom: 10,
-      overflow: "hidden",
     },
     disclaimerText: {
       fontSize: 14,
@@ -316,10 +288,10 @@ function makeStyles(colors: ThemeColors) {
       borderRadius: 14,
       padding: 10,
       marginBottom: 14,
-      backgroundColor: colors.surface,
+      backgroundColor: `${colors.surface}9e`,
     },
     resumeTextWrap: { flex: 1 },
-    resumeLabel: { color: colors.textSecondary, fontSize: 11 },
+    resumeLabel: { color: muted(colors), fontSize: 11 },
     resumeName: { color: colors.text, fontSize: 16, fontWeight: "600", fontFamily: serif },
     headline: {
       fontFamily: serif,
@@ -382,7 +354,7 @@ function makeStyles(colors: ThemeColors) {
     createButtonRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     createButtonText: { color: colors.onPrimary, fontSize: 16, fontWeight: "600" },
     cancelButton: { marginTop: 16, alignItems: "center", alignSelf: "center", padding: 8 },
-    cancelText: { color: colors.textSecondary, fontSize: 14 },
+    cancelText: { color: muted(colors), fontSize: 14 },
     links: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -391,6 +363,6 @@ function makeStyles(colors: ThemeColors) {
       marginTop: 12,
     },
     link: { flexDirection: "row", alignItems: "center", gap: 8, padding: 8 },
-    linkText: { color: colors.secondary, fontSize: 14, fontWeight: "600" },
+    linkText: { color: colors.text, fontSize: 14, fontWeight: "600" },
   });
 }
