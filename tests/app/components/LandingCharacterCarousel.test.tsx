@@ -34,25 +34,42 @@ describe("LandingCharacterCarousel", () => {
     jest.restoreAllMocks();
   });
 
-  it("reserves the carousel space while loading and when the list is empty", async () => {
+  it("renders nothing while loading and when the list is empty", async () => {
     mockAuthenticatedFetch.mockResolvedValue({ json: async () => ({ characters: [] }) });
     const { container } = render(<LandingCharacterCarousel />);
-    expect(container.firstChild).toHaveAttribute("aria-hidden", "true");
-    expect(container.querySelector("img")).toBeNull();
+    expect(container.firstChild).toBeNull();
     await act(async () => {});
     expect(mockAuthenticatedFetch).toHaveBeenCalledWith("/api/chars?limit=100&sample=20");
-    expect(container.firstChild).toHaveAttribute("aria-hidden", "true");
+    expect(container.firstChild).toBeNull();
   });
 
-  it("keeps the reserved space when the fetch fails", async () => {
+  it("renders nothing when the fetch fails", async () => {
     mockAuthenticatedFetch.mockRejectedValue(new Error("network down"));
     const { container } = render(<LandingCharacterCarousel />);
     await act(async () => {});
     expect(mockAuthenticatedFetch).toHaveBeenCalled();
-    expect(container.firstChild).toHaveAttribute("aria-hidden", "true");
+    expect(container.firstChild).toBeNull();
   });
 
-  it("shows the first character and opens it on the Character Wall", async () => {
+  it("shows the first character as a backdrop and opens it on the Character Wall", async () => {
+    mockAuthenticatedFetch.mockResolvedValue({
+      json: async () => ({
+        characters: [
+          { name: "Sherlock Holmes", avatarUrl: "/a.png" },
+          { name: "Cleopatra", avatarUrl: "/b.png" },
+        ],
+      }),
+    });
+    const { container } = render(<LandingCharacterCarousel />);
+
+    const caption = await screen.findByLabelText("View Sherlock Holmes on the Character Wall");
+    expect(container.querySelector("img")).toHaveAttribute("loading", "eager");
+    expect(container.querySelector("img")).toHaveAttribute("alt", "");
+    fireEvent.click(caption);
+    expect(mockPush).toHaveBeenCalledWith("/chars?name=Sherlock%20Holmes");
+  });
+
+  it("steps forward and back with the arrow buttons, wrapping at the ends", async () => {
     mockAuthenticatedFetch.mockResolvedValue({
       json: async () => ({
         characters: [
@@ -62,12 +79,14 @@ describe("LandingCharacterCarousel", () => {
       }),
     });
     render(<LandingCharacterCarousel />);
+    await screen.findByLabelText("View Sherlock Holmes on the Character Wall");
 
-    const carousel = await screen.findByLabelText("View Sherlock Holmes on the Character Wall");
-    expect(carousel.querySelector("img")).toHaveAttribute("loading", "eager");
-    expect(carousel.querySelector("img")).toHaveAttribute("alt", "");
-    fireEvent.click(carousel);
-    expect(mockPush).toHaveBeenCalledWith("/chars?name=Sherlock%20Holmes");
+    fireEvent.click(screen.getByLabelText("Next character"));
+    expect(screen.getByLabelText("View Cleopatra on the Character Wall")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Next character"));
+    expect(screen.getByLabelText("View Sherlock Holmes on the Character Wall")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Previous character"));
+    expect(screen.getByLabelText("View Cleopatra on the Character Wall")).toBeInTheDocument();
   });
 
   it("auto-advances to the next character after the rotation interval", async () => {

@@ -9,6 +9,7 @@ export * from "./useGameSession";
 export * from "./useLeaderboard";
 export * from "./useUserNameState";
 export * from "./useCharacterCarousel";
+export * from "./carouselDrift";
 export * from "./characterCreation";
 export * from "./useCharacterCreation";
 export * from "./replayAudio";

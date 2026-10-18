@@ -7,7 +7,7 @@
  * between portraits with haptics).
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { CharacterEntry } from "./types";
 
 /** Newest 100 recognized characters, 20 of them sampled at random by the server. */
@@ -64,11 +64,21 @@ export function useCharacterCarousel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // `index` is a dependency so a manual step restarts the countdown to the next auto-advance.
   useEffect(() => {
     if (paused || characters.length < 2) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % characters.length), rotationMs);
     return () => clearInterval(id);
-  }, [paused, characters.length, rotationMs]);
+  }, [paused, characters.length, rotationMs, index]);
 
-  return { characters, index: characters.length ? index % characters.length : 0 };
+  /** Moves to the next (`1`) or previous (`-1`) portrait, wrapping at both ends. */
+  const step = useCallback(
+    (delta: number) =>
+      setIndex((i) =>
+        characters.length ? (i + delta + characters.length) % characters.length : 0,
+      ),
+    [characters.length],
+  );
+
+  return { characters, index: characters.length ? index % characters.length : 0, step };
 }

@@ -259,7 +259,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // clearing `interstitial` is enough, since the ordinary form is already what
   // re-appears once isBusy/interstitial are both false, no navigation needed. A
   // launch WITH nameFromUrl came from another page (the Character Wall, Past
-  // Chats, or the header carousel), so cancelling goes Back to it; a direct
+  // Chats, or the landing backdrop's name pill), so cancelling goes Back to it; a direct
   // hard-load of /?name=X has no in-app Back target and falls back to /chars.
   // Setting launchCancelled makes isLaunchingFromUrl false immediately, for
   // this mounted instance, regardless of how long the navigation takes
@@ -364,8 +364,18 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus, launchCancelled]);
   return (
     <>
-      <AppHeader menuItems={menuItems} center={<LandingCharacterCarousel />} wideCenter />
+      <AppHeader
+        menuItems={menuItems}
+        center={
+          <span className={styles.headerBrand}>
+            <span className={styles.headerWordmark}>{BRAND.name}</span>
+            <span className={styles.betaBadge}>{BRAND.betaLabel}</span>
+          </span>
+        }
+        wideCenter
+      />
       <form onSubmit={handleFormSubmit} className={styles.formContainer} autoComplete="off">
+        <LandingCharacterCarousel />
         <div className={styles.formInner}>
           {!isLaunchingFromUrl && !interstitial && (
             <div className={styles.landingLayout}>

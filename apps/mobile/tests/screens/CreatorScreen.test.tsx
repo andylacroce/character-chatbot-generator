@@ -1,6 +1,7 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import type { Bot } from "character-chatbot-shared";
 import CreatorScreen from "../../src/screens/CreatorScreen";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ThemeProvider } from "../../src/ThemeContext";
 
 jest.mock("../../src/api", () => ({
@@ -89,9 +90,16 @@ async function renderScreen() {
   };
   const navigation = { navigate, addListener };
   const utils = await render(
-    <ThemeProvider>
-      <CreatorScreen navigation={navigation as never} route={{} as never} />
-    </ThemeProvider>,
+    <SafeAreaProvider
+      initialMetrics={{
+        insets: { top: 0, left: 0, right: 0, bottom: 0 },
+        frame: { x: 0, y: 0, width: 0, height: 0 },
+      }}
+    >
+      <ThemeProvider>
+        <CreatorScreen navigation={navigation as never} route={{} as never} />
+      </ThemeProvider>
+    </SafeAreaProvider>,
   );
   const focus = () => act(() => focusListeners.forEach((cb) => cb()));
   return { ...utils, navigate, focus };
