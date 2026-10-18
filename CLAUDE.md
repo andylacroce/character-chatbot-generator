@@ -165,9 +165,10 @@ failure, a base64 data URL. Rate-limited to 5/min/IP.
 
 - **The route re-checks moderation itself:** `generate-avatar.ts` is callable directly, so a
   blocklisted name never gets a shared or persisted portrait (content blocks get the silhouette,
-  copyright blocks only the private `skipPersistence` render); the allowlist wins. A never-validated
-  new name can still reach the Wall by calling it directly (a signed proof from validate-character
-  would be needed to close that).
+  copyright blocks only the private `skipPersistence` render); the allowlist wins. A brand-new name is
+  re-classified here (`characterClassifier.ts`, the same call `validate-character` makes) via
+  `getOrGenerateAvatar`'s `mayPersistNew` hook, only on a cache miss; anything not blocked, recognized,
+  and `warningLevel: "none"`, or any check failure, renders privately instead (fails closed).
 - **`avatar_cache`** (global, deliberately not environment-scoped, or the cost savings vanish) is
   keyed by lowercased name and checked before any generation. Only real generations are cached,
   never the `/silhouette.svg` fallback. `gender` is cached too (callers need it for voice
