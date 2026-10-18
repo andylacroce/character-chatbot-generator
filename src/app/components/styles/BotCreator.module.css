@@ -1385,8 +1385,9 @@
 }
 
 .footerLinks {
-  margin-top: auto;
-  padding-top: clamp(0.75rem, 2vh, 1.1rem);
+  /* One panel-gap below the panels (extra height goes above them, not between). */
+  margin-top: clamp(0.9rem, 2.4vw, 1.5rem);
+  padding-top: 0;
   gap: 0.7rem 1.15rem;
 }
 
@@ -1398,6 +1399,10 @@
   .landingLayout {
     grid-template-columns: 1fr;
     gap: 0.75rem;
+  }
+
+  .footerLinks {
+    margin-top: 0.75rem;
   }
 
   .creatorPanel {
@@ -1499,7 +1504,6 @@
   }
 
   .footerLinks {
-    padding-top: 0.65rem;
     font-size: 0.75rem;
   }
 }
@@ -1566,6 +1570,22 @@
 .footerLink {
   white-space: nowrap;
   font-size: min(0.78rem, 3.3vw);
+}
+
+/* With "Past chats" added (signed in) the row can't fit on one line on a phone, so the long
+   label gets a short form on narrow screens instead of the row wrapping. */
+.footerLabelShort {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .footerLinksDense .footerLabelFull {
+    display: none;
+  }
+
+  .footerLinksDense .footerLabelShort {
+    display: inline;
+  }
 }
 
 .footerLinks {

@@ -22,7 +22,14 @@
 .chatLayout {
   display: grid;
   grid-template-rows: auto 1fr auto;
+  /* The visual viewport, so the input row stays above a phone's on-screen keyboard (set by
+     useMobileKeyboardViewportAdjustment.ts); 100dvh until it runs or where it's unsupported.
+     `top` (not a transform) shifts it with iOS's keyboard scroll without creating a
+     containing block for fixed descendants. */
   height: 100vh;
+  height: var(--vv-height, 100dvh);
+  position: relative;
+  top: var(--vv-offset-top, 0px);
   min-height: 0;
   background: var(--color-background);
   color: var(--color-text);
@@ -45,24 +52,7 @@
   font-family: var(--font-primary);
   padding-top: 20px;
   position: relative;
-  /* Smoothly animate padding-bottom changes caused by on-screen keyboard */
-  transition: padding-bottom 180ms ease;
   /* Grid item that fills available space */
-}
-
-/* Mobile keyboard input focus workaround — moved here from globals.css, which could
-   never actually apply it: `.chatMessagesScroll` there was a bare, unhashed class name,
-   but this file is a CSS Module, so the real class on the element is always a mangled
-   token (e.g. `ChatPage-module__xxxxx__chatMessagesScroll`), never the literal string
-   `chatMessagesScroll` — so `.mobile-keyboard-open .chatMessagesScroll` could never
-   match in any build, and this reserved-space compensation silently never ran. `.
-   ff-android-input-focus`/`.mobile-keyboard-open` are still toggled by JS on
-   <html> (useChatController.ts's visualViewport effect, useChatScrollAndFocus.ts) — a
-   plain, unscoped element — so the ancestor half of the selector has to stay wrapped in
-   `:global(...)` while the target half resolves to this module's real local class. */
-:global(.ff-android-input-focus) .chatMessagesScroll,
-:global(.mobile-keyboard-open) .chatMessagesScroll {
-  padding-bottom: var(--vv-keyboard-pad, 220px) !important;
 }
 
 /*

@@ -642,7 +642,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
             onCancel={handleCancelLaunch}
           />
           {!isLaunchingFromUrl && !interstitial && (
-            <div className={styles.footerLinks}>
+            <div
+              className={`${styles.footerLinks} ${sessionStatus === "authenticated" ? styles.footerLinksDense : ""}`.trim()}
+            >
               {sessionStatus === "authenticated" && (
                 <Link href="/history" className={styles.footerLink}>
                   Past chats
@@ -654,7 +656,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                 onClick={() => setShowCharacterInfoModal(true)}
                 className={styles.footerLink}
               >
-                Which characters can I create?
+                <span className={styles.footerLabelFull}>Which characters can I create?</span>
+                <span className={styles.footerLabelShort}>Characters</span>
               </button>
               <button
                 type="button"
