@@ -108,7 +108,7 @@ jobs:
           npm run build
           wait $browsers
 
-      - name: Run smoke synthetics (no Claude calls)
+      - name: Run e2e synthetics (stubbed, no Claude calls)
         run: npm run e2e
 
       - name: Upload traces on failure

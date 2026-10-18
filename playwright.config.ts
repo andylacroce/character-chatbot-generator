@@ -1,4 +1,4 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3100;
 
@@ -11,6 +11,15 @@ export default defineConfig({
   fullyParallel: true,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
+  projects: [
+    // Desktop runs everything; the phone project re-runs the flows and layout checks at 412px.
+    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "mobile",
+      testMatch: /(flows|layout)\.spec\.ts/,
+      use: { ...devices["Pixel 7"] },
+    },
+  ],
   use: { baseURL: `http://localhost:${PORT}`, trace: "retain-on-failure" },
   webServer: {
     command: `npm run start -- -p ${PORT}`,

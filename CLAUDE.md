@@ -932,7 +932,13 @@ and the script normalizes to forward slashes because `swagger-jsdoc` doesn't mat
   page errors, the random button works, 404s) against a production build on port 3100, inside the
   `build` job in `ci.yml` (reusing that build; Chromium installs in parallel with it). **It must never spend Claude/Google/image tokens:** the server gets a dummy
   `ANTHROPIC_API_KEY`, and `smoke.spec.ts` throws on any request matching `BILLED_API`. Extend it
-  only with synthetics that stay off those routes (stub them with `page.route` if a flow needs them).
+  only with synthetics that stay off those routes. `e2e/helpers.ts` has `blockBilledApi` (the
+  guard) and `stubApi`/`stubSse` (canned JSON/SSE for a billed route; register the guard first,
+  since the latest matching route wins). `flows.spec.ts` stubs the create-and-chat, copyright,
+  unrecognized-name, and Guess Who round flows; `layout.spec.ts` checks horizontal overflow.
+  `playwright.config.ts` runs everything on `desktop` and flows plus layout again on a `mobile`
+  (Pixel 7, Chromium) project. A first creation hits the name gate, so flows click "Skip for now",
+  and they wait for `networkidle` first (a click before hydration does nothing).
 
 - Tests live under `tests/`, mirroring source (`tests/api`, `tests/app`, `tests/pages`, `tests/src`,
   `tests/utils`, `tests/integration`, `tests/unit`).
