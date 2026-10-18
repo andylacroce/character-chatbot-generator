@@ -2,6 +2,13 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.28.1 - 2026-10-18 - One audio pipeline for chat and the games
+
+- Chat replies and both guessing games now build their spoken audio through a single shared routine instead of four hand-copied versions, and `chat.ts` shrinks from 801 to 463 lines. Streamed replies now share cached audio with ordinary replies and keep the same text companion file, so replaying them works the same way.
+- Fixes streamed audio being written to `TTS_TMP_DIR` while the audio route only ever reads the system temp directory. The `TTS_TMP_DIR` setting is gone as a result.
+- Chat reply logging is consolidated: one `chat_reply_sent` event on every path and a single `chat_tts_failed` event for a speech failure. The `chat_tts_voice_selected` event and the per-path `chat_tts_failed_cache_hit`/`chat_tts_failed_streaming` events are removed.
+- Adds an integration test that runs the real audio helper and the real audio route together on a real temp directory, so a reply's audio URL is proven to replay.
+
 ## v0.28.0 - 2026-10-18 - Admin portrait purge and regenerate
 
 - Admins now see "Regenerate portrait" and "Purge portrait" in the Character Wall lightbox, to fix a bad portrait without touching the database. Regenerate makes a new portrait now and swaps it in place (the old one is kept if generation fails); purge removes the shared portrait so the next creation of that name builds a fresh one. Neither affects users' saved characters or the moderation lists. Both clear the Wall's cached list so a stale tile can't show a deleted image.

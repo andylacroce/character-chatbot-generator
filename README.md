@@ -102,7 +102,6 @@ NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
 CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
 CLOUDFLARE_API_TOKEN=your_cloudflare_api_token
 VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_token
-TTS_TMP_DIR=/custom/temp/path
 # Optional, deployment only: makes API rate limits global instead of per-instance.
 # Leave unset locally — the in-process limiter is the right fit for one dev server.
 KV_REST_API_URL=https://your-store.upstash.io
@@ -172,7 +171,6 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 - `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` — Overrides the production site's built-in GA4 measurement ID, or enables the consent flow during local development. Use a web data stream's `G-...` ID; the Google tag is not loaded until a visitor explicitly opts in, and client-side route changes are tracked automatically when GA4 Enhanced Measurement has browser-history page changes enabled.
 - `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` — Enables Cloudflare Workers AI (Flux Schnell) as the primary avatar image provider. Without them, avatar generation still works via the Pollinations.ai fallback with no config at all
 - `VERCEL_BLOB_READ_WRITE_TOKEN` (or `BLOB_READ_WRITE_TOKEN`) — Enables logging to Vercel Blob storage, and durable Blob-hosted avatar URLs instead of base64 data URLs
-- `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Redis REST endpoint (Vercel KV / Marketplace Redis) used to share API rate-limit counters across serverless instances. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` work too. With neither pair set, limits fall back to an in-process counter, which is per-instance on Vercel and exactly right for local development.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — Enables optional Google account sign-in and server-side persistence (see [Account Persistence](#account-persistence-optional) below). The app is fully functional as a guest with none of these set.
 - `EMAIL_SERVER` + `EMAIL_FROM` — Enables passwordless magic-link sign-in alongside Google (a plain SMTP connection string works — Gmail App Password, Resend, etc.). Needs `DATABASE_URL` set too.
