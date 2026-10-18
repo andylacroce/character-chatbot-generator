@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.28.2 - 2026-10-18 - Shared chat rules for web and mobile
+
+- Web and the mobile app now take the intro prompt, the 20-turn history format, message validation, the adopt-the-longer-server-history rule, and the `/api/chat` request shape from one shared module instead of two hand-kept copies. The web chat controller drops three duplicate message filters.
+- On mobile, a character's opening line now addresses the visitor by name when they have set one, matching web. The mobile intro request previously left the name out.
+
 ## v0.28.1 - 2026-10-18 - One audio pipeline for chat and the games
 
 - Chat replies and both guessing games now build their spoken audio through a single shared routine instead of four hand-copied versions, and `chat.ts` shrinks from 801 to 463 lines. Streamed replies now share cached audio with ordinary replies and keep the same text companion file, so replaying them works the same way.

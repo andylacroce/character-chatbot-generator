@@ -1017,6 +1017,7 @@ components are written natively, never shared with the DOM app.
   cross-platform**, an npm workspace resolved locally (edit it and re-run type-check, no
   install step). It holds API types (`types.ts`, mirroring the `@swagger` blocks), validation,
   storage keys, brand theme/copy, game and leaderboard state machines, character-creation flow,
+  chat rules (`chat.ts`: intro prompt, history format/trim, adopt-longer-history, `/api/chat` request builder),
   category taxonomy, and `formatRelativeTime`. Colors are authored once in
   `packages/shared/src/tokens/{light,dark}.json`; mobile flattens them and
   `scripts/generate-theme-css.cjs` feeds the same files to Style Dictionary for web's

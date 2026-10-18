@@ -13,5 +13,6 @@ export * from "./carouselDrift";
 export * from "./characterCreation";
 export * from "./useCharacterCreation";
 export * from "./replayAudio";
+export * from "./chat";
 export * from "./account";
 export * from "./characterCategories";

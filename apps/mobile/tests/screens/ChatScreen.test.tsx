@@ -232,6 +232,18 @@ describe("ChatScreen", () => {
     );
   });
 
+  it("greets a named visitor: the intro request carries their name", async () => {
+    mockedUseUserName.mockReturnValue({ name: "Andy" });
+    mockedSend.mockResolvedValue({ reply: "Welcome, Andy.", done: true });
+
+    const utils = await renderScreen();
+    await utils.findByText("Welcome, Andy.");
+
+    expect(mockedSend).toHaveBeenCalledWith(
+      expect.objectContaining({ isIntro: true, userName: "Andy" }),
+    );
+  });
+
   it("replays a past character message through the TTS endpoint", async () => {
     (loadChatHistory as jest.Mock).mockResolvedValue(existingHistory);
     const utils = await renderScreen();
