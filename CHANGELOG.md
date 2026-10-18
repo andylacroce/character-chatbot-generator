@@ -6,6 +6,7 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 
 - The landing page footer no longer overflows for signed-in users: with "Past chats" added, the "Which characters can I create?" link shortens to "Characters" on screens 480px wide or less instead of the row wrapping.
 - On phone browsers the chat (and the games) now size themselves to the visible area, so the input row stays fully above the on-screen keyboard instead of sitting behind it.
+- The landing page footer now sits the same distance below the panels as the panels sit from each other.
 
 ## v0.27.0 - 2026-10-18 - Portrait backdrop landing page
 
