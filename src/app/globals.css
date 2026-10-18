@@ -16,7 +16,7 @@
    Color and font custom properties (--color-*, --font-*, --disabled-*,
    --scrollbar-*) are generated from packages/shared/src/theme-tokens.json — the
    "Museum Placard" archival theme, the same restrained sepia-and-patina palette
-   as the Character Wall (/chars), extended app-wide — via
+   as the Character Wall (/characters), extended app-wide — via
    scripts/generate-theme-css.cjs (npm run theme:generate, wired into predev/build).
    That JSON file is the single source shared with the mobile app; edit values
    there, never in the generated file below or by hand-copying a hex code here. */

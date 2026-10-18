@@ -120,7 +120,7 @@ const LandingCharacterCarousel: React.FC = () => {
         <button
           type="button"
           className={styles.backdropCaption}
-          onClick={() => router.push(`/chars?name=${encodeURIComponent(current.name)}`)}
+          onClick={() => router.push(`/characters?name=${encodeURIComponent(current.name)}`)}
           aria-label={`View ${displayCharacterName(current.name)} on the Character Wall`}
         >
           {displayCharacterName(current.name)}

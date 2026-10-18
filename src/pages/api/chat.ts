@@ -428,7 +428,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new Error("Generated bot response is empty.");
     }
 
-    botReply = gracefullyWrapResponse(botReply);
+    botReply = stripActionEmotes(gracefullyWrapResponse(botReply));
 
     const audioFileUrl = await synthesizeReplyAudio(
       botReply,

@@ -47,7 +47,7 @@ export interface CharacterValidationResult {
   // historical/deceased figures however controversial, and ordinary celebrity/
   // political controversy; only serious real-world criminal conduct by someone
   // still alive today). A blocked name has no override either way: the character
-  // wall at /chars is public, so a name like this can't be allowed to exist at all,
+  // wall at /characters is public, so a name like this can't be allowed to exist at all,
   // not just flagged with a warning.
   blocked?: boolean;
   // True when this is an established character/person Claude has real knowledge of.
@@ -84,7 +84,7 @@ export interface CharacterValidationResult {
  *       independent checks: whether the name is public-domain-safe, cautionary, or a
  *       clear copyright/trademark violation (warningLevel — always overridable), and
  *       whether the name must be hard-blocked (blocked — never overridable, since
- *       created characters appear on the public /chars gallery) because it's itself
+ *       created characters appear on the public /characters gallery) because it's itself
  *       profane/abusive OR identifies a real, currently-living person with a serious
  *       real-world criminal conviction/allegation (historical/deceased figures and
  *       ordinary celebrity controversy are deliberately excluded from this second
@@ -139,7 +139,7 @@ export interface CharacterValidationResult {
  *                     a real, currently-living person with a serious real-world
  *                     criminal conviction/allegation — distinct from warningLevel
  *                     (copyright-only, always overridable). Never overridable: the
- *                     character wall at /chars is public.
+ *                     character wall at /characters is public.
  *                 recognized:
  *                   type: boolean
  *                   description: >

@@ -11,17 +11,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { FaTrashAlt } from "react-icons/fa";
 import { authenticatedFetch } from "../../utils/api";
-import { hasNavigatedWithinSession } from "../../utils/clientNavigationState";
 import { formatRelativeTime } from "character-chatbot-shared";
 import { clearStoredBot, getValidBotFromStorage } from "../../utils/getValidBotFromStorage";
 import { removeItem, removeItemsWhere } from "../../utils/storage";
 import AppHeader from "./AppHeader";
 import ConfirmDialog from "./ConfirmDialog";
-import BackHomeLink from "./BackHomeLink";
+import { BackLink } from "./BackLink";
 import type { PersistedBot } from "./BotCreator";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/History.module.css";
@@ -42,7 +40,6 @@ async function deleteSavedChats(id?: string) {
 
 /** Full-page list of the signed-in user's saved characters. */
 export default function HistoryPage() {
-  const router = useRouter();
   const { status } = useSession();
   const { menuItems, modals, requestSignIn } = useAccountMenu();
   const [bots, setBots] = useState<PersistedBot[] | null>(null);
@@ -127,20 +124,7 @@ export default function HistoryPage() {
 
   return (
     <div className={styles.page}>
-      <AppHeader
-        menuItems={menuItems}
-        left={
-          <BackHomeLink
-            label="Back"
-            icon="back"
-            onClick={(event) => {
-              event.preventDefault();
-              if (hasNavigatedWithinSession()) router.back();
-              else router.push("/");
-            }}
-          />
-        }
-      />
+      <AppHeader menuItems={menuItems} left={<BackLink />} />
       {modals}
       <main className={styles.main}>
         <div className={styles.heading}>

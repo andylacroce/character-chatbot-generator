@@ -66,7 +66,7 @@ describe("LandingCharacterCarousel", () => {
     expect(container.querySelector("img")).toHaveAttribute("loading", "eager");
     expect(container.querySelector("img")).toHaveAttribute("alt", "");
     fireEvent.click(caption);
-    expect(mockPush).toHaveBeenCalledWith("/chars?name=Sherlock%20Holmes");
+    expect(mockPush).toHaveBeenCalledWith("/characters?name=Sherlock%20Holmes");
   });
 
   it("steps forward and back with the arrow buttons, wrapping at the ends", async () => {

@@ -8,10 +8,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { authenticatedFetch } from "../../utils/api";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { hasNavigatedWithinSession } from "../../utils/clientNavigationState";
 import {
   CHARACTER_CATEGORIES,
   getCharacterCategoryLabel,
@@ -19,7 +17,7 @@ import {
   type CharacterCategory,
 } from "character-chatbot-shared";
 import AppHeader from "./AppHeader";
-import BackHomeLink from "./BackHomeLink";
+import { BackLink } from "./BackLink";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/CharsPage.module.css";
 import { characterSlug, displayCharacterName } from "character-chatbot-shared";
@@ -126,9 +124,8 @@ const PortraitMosaic: React.FC<{
   </div>
 );
 
-/** Public /chars gallery: paginated, infinite-scroll mosaic of recognized portraits. */
+/** Public /characters gallery: paginated, infinite-scroll mosaic of recognized portraits. */
 const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialCharacterName }) => {
-  const router = useRouter();
   const { menuItems, modals, isAdmin } = useAccountMenu();
   const [characters, setCharacters] = useState<CharEntry[]>([]);
   const [initialLoad, setInitialLoad] = useState(true);
@@ -413,20 +410,7 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
         data-testid="gallery-top-marker"
         aria-hidden="true"
       />
-      <AppHeader
-        menuItems={menuItems}
-        left={
-          <BackHomeLink
-            label="Back"
-            icon="back"
-            onClick={(event) => {
-              event.preventDefault();
-              if (hasNavigatedWithinSession()) router.back();
-              else router.push("/");
-            }}
-          />
-        }
-      />
+      <AppHeader menuItems={menuItems} left={<BackLink />} />
       {modals}
       <div className={styles.page}>
         <div className={styles.header}>
@@ -566,7 +550,7 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
               </Link>
               {characterSlug(selected.name) && (
                 <Link
-                  href={`/chars/${characterSlug(selected.name)}`}
+                  href={`/characters/${characterSlug(selected.name)}`}
                   className={styles.lightboxShare}
                 >
                   Character page

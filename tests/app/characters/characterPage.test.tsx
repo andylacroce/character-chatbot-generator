@@ -9,7 +9,7 @@ const mockNotFound = jest.fn(() => {
 });
 jest.mock("next/navigation", () => ({ notFound: () => mockNotFound() }));
 
-import CharacterPage, { generateMetadata } from "../../../src/app/chars/[slug]/page";
+import CharacterPage, { generateMetadata } from "../../../src/app/characters/[slug]/page";
 
 const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
 const joan = {
@@ -31,7 +31,7 @@ describe("generateMetadata", () => {
     expect(meta.title).toBe("Chat with Joan of Arc — Portrayal");
     expect(meta.description).toContain("Historical Figures");
     expect(meta.alternates?.canonical).toBe(
-      "https://character-chatbot-generator.vercel.app/chars/joan-of-arc",
+      "https://character-chatbot-generator.vercel.app/characters/joan-of-arc",
     );
     expect(meta.openGraph?.images).toEqual([joan.avatarUrl]);
     expect(meta.twitter).toMatchObject({ card: "summary_large_image" });
@@ -72,7 +72,10 @@ describe("CharacterPage", () => {
       "href",
       "/?name=Joan%20of%20Arc",
     );
-    expect(screen.getByRole("link", { name: /All characters/ })).toHaveAttribute("href", "/chars");
+    expect(screen.getByRole("link", { name: /All characters/ })).toHaveAttribute(
+      "href",
+      "/characters",
+    );
   });
 
   it("hides a disambiguation qualifier from display but keeps it in the chat link", async () => {

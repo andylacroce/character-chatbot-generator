@@ -60,6 +60,13 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,
+  // The Wall lived at /chars before v0.29.1; keep shared links and indexed URLs working.
+  async redirects() {
+    return [
+      { source: "/chars", destination: "/characters", permanent: true },
+      { source: "/chars/:slug", destination: "/characters/:slug", permanent: true },
+    ];
+  },
   // Security headers
   async headers() {
     return [

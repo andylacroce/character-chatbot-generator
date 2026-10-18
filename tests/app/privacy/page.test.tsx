@@ -2,11 +2,13 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import PrivacyPage, { metadata } from "../../../src/app/privacy/page";
 
+jest.mock("next/navigation", () => ({ useRouter: () => ({ back: jest.fn(), push: jest.fn() }) }));
+
 describe("PrivacyPage", () => {
   it("renders the title and a link back to the app", () => {
     render(<PrivacyPage />);
     expect(screen.getByRole("heading", { name: "Privacy Policy" })).toBeInTheDocument();
-    expect(screen.getByText(/Back to Portrayal/)).toHaveAttribute("href", "/");
+    expect(screen.getByText(/Back/)).toHaveAttribute("href", "/");
   });
 
   it("explains guest (no-account) data stays local", () => {

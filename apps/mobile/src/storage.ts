@@ -12,6 +12,7 @@ import {
   isPersonalStorageKey,
   isChatHistoryStorageKey,
   chatStorageKeys,
+  parseChatMessages,
   type Bot,
   type CarouselCache,
   type CharacterEntry,
@@ -49,7 +50,11 @@ export async function appendChatMessage(botName: string, message: ChatMessage): 
 /** Loads a character's stored chat history, oldest first. */
 export async function loadChatHistory(botName: string): Promise<ChatMessage[]> {
   const raw = await AsyncStorage.getItem(chatHistoryKey(botName));
-  return raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+  try {
+    return raw ? parseChatMessages(JSON.parse(raw)) : [];
+  } catch {
+    return [];
+  }
 }
 
 /** Reads the visitor's own preferred name (see the web app's "Personalized greeting"). */

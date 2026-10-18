@@ -231,7 +231,7 @@ well-documented criminal conviction or extensive credible allegations of serious
 (the prompt carries a worked example). The second is deliberately narrow: never historical or
 deceased figures however controversial, never ordinary celebrity or political controversy.
 `useBotCreation.ts` short-circuits to a plain error without showing the modal's "Continue Anyway",
-because every created name and portrait can land on the public `/chars` wall (and, privately, in a
+because every created name and portrait can land on the public `/characters` wall (and, privately, in a
 user's saved characters). On a validation error, `blocked` and `warningLevel` fail open
 (`false`/`"none"`), so a Claude outage doesn't block creation.
 
@@ -242,7 +242,7 @@ user's saved characters). On a validation error, `blocked` and `warningLevel` fa
   (case-insensitive, all users and environments; `messages` cascade). The manual admin add does the
   same immediately and defaults to `category: "content"` unless it passes `"copyright"`.
 - **Fixing a bad portrait (not a block):** an admin sees "Regenerate portrait" and "Purge portrait"
-  in the `/chars` lightbox (`useAccountMenu`'s `isAdmin`), both via `/api/admin/characters`.
+  in the `/characters` lightbox (`useAccountMenu`'s `isAdmin`), both via `/api/admin/characters`.
   Purge (`DELETE`, two clicks) → `purgeCachedAvatar` deletes only the shared `avatar_cache` row (the
   tile leaves the Wall until someone recreates the name). Regenerate (`POST`, one click, one image
   generation) → `regenerateCachedAvatar` generates past the cache and upserts the row in place, so a
@@ -393,7 +393,9 @@ route output. `next.config.mjs` uses an explicit `.mjs` extension so it's still 
 
 ## Features
 
-### Character Wall (`/chars`)
+### Character Wall (`/characters`)
+
+The page route was `/chars` until v0.29.1 and still redirects (`next.config.mjs`); the API stays `/api/chars` because released mobile builds call it.
 
 A public, no-auth gallery of every supported portrait in `avatar_cache` (anyone can already
 discover a row by typing its name, so nothing new is disclosed). Every
@@ -418,7 +420,7 @@ discover a row by typing its name, so nothing new is disclosed). Every
   window, `documentElement`, and `scrollingElement` (`body` is the real scroll owner under the
   flex-root layout), appears after 360px, and uses `scrollIntoView()` on a marker before the
   header. A native `<dialog>` lightbox is wrapped in the View Transitions API when available.
-- **Character pages (`/chars/[slug]`):** a server-rendered, shareable page per Wall entry
+- **Character pages (`/characters/[slug]`):** a server-rendered, shareable page per Wall entry
   (portrait, name, category, a "Chat with" link to `/?name=`), so a shared link previews with a
   real title, description, canonical URL, and portrait (`generateMetadata`; a data-URL portrait gets
   no image). The slug (`characterSlug` in shared) is lowercase ASCII words, so a name with no
@@ -543,7 +545,7 @@ atomic single-class rule such as `.menuDivider` lives once in `globals.css` by l
   light theme-colored veil, behind the translucent panels (62% surface, 3px blur; the blur was
   tried at 10px and rejected). The image layer ignores pointer events so the form stays usable;
   the name pill under the header's right edge (aligned to the 1080px content column) is the only
-  control, pausing rotation on hover/focus and linking to `/chars?name=<encoded>`, which
+  control, pausing rotation on hover/focus and linking to `/characters?name=<encoded>`, which
   `CharsGallery` resolves via `GET /api/chars?name=...` and opens in the lightbox. It advances
   every 6s and preloads the next portrait. Applies at every width (the header carousel it
   replaced was removed). **The empty state paints the cached sample first:** the last sample
@@ -1027,7 +1029,7 @@ components are written natively, never shared with the DOM app.
   cross-platform**, an npm workspace resolved locally (edit it and re-run type-check, no
   install step). It holds API types (`types.ts`, mirroring the `@swagger` blocks), validation,
   storage keys, brand theme/copy, game and leaderboard state machines, character-creation flow,
-  chat rules (`chat.ts`: intro prompt, history format/trim, adopt-longer-history, `/api/chat` request builder),
+  chat rules (`chat.ts`: intro prompt, history format/trim, adopt-longer-history, `/api/chat` request builder, reply validation, send retry with backoff),
   category taxonomy, and `formatRelativeTime`. Colors are authored once in
   `packages/shared/src/tokens/{light,dark}.json`; mobile flattens them and
   `scripts/generate-theme-css.cjs` feeds the same files to Style Dictionary for web's

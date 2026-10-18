@@ -20,9 +20,11 @@ import {
   STORAGE_KEYS,
   buildChatRequest,
   chatHistoryKey,
+  chatReplyMessage,
   getReplayAudioUrl,
   longerHistory,
   parseChatMessages,
+  retryWithBackoff,
 } from "character-chatbot-shared";
 
 /**
@@ -380,14 +382,7 @@ export function useChatController(
             }),
           );
           if (cancelled) return;
-          if (typeof response.reply !== "string" || !response.reply) {
-            throw new Error("Invalid intro response: missing reply");
-          }
-          const introMsg: Message = {
-            sender: bot.name,
-            text: response.reply,
-            audioFileUrl: response.audioFileUrl,
-          };
+          const introMsg: Message = chatReplyMessage(bot.name, response);
           setMessages([introMsg]);
           logMessage(introMsg);
           setIntroError(null);
@@ -433,52 +428,6 @@ export function useChatController(
   ]);
 
   const sendMessage = useCallback(async () => {
-    /** Retries an async operation with exponential backoff. */
-    async function retryWithBackoff<T>(
-      fn: () => Promise<T>,
-      maxRetries = 2,
-      initialDelay = 800,
-    ): Promise<T> {
-      let delay = initialDelay;
-      let lastError;
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        if (attempt > 0) {
-          setRetrying(true);
-          if (process.env.NODE_ENV === "test") {
-            await new Promise((res) => setTimeout(res, 10)); // Minimal delay in tests
-          } else {
-            await Promise.resolve();
-          }
-        }
-        setError("");
-        try {
-          const result = await fn();
-          if (process.env.NODE_ENV === "test") {
-            await new Promise((res) => setTimeout(res, 1)); // Minimal delay in tests
-          }
-          setRetrying(false);
-          return result;
-        } catch (err: unknown) {
-          lastError = err;
-          if (attempt === maxRetries) {
-            if (process.env.NODE_ENV === "test") {
-              await new Promise((res) => setTimeout(res, 1)); // Minimal delay in tests
-            }
-            setRetrying(false);
-            throw err;
-          }
-          if (process.env.NODE_ENV === "test") {
-            await new Promise((res) => setTimeout(res, 10)); // Minimal delay in tests
-          } else {
-            await new Promise((res) => setTimeout(res, delay));
-          }
-          delay *= 2;
-        }
-      }
-      setRetrying(false);
-      throw lastError || new Error("Max retries reached");
-    }
-
     if (!input.trim() || !apiAvailable || loading) return;
     const userMessage: Message = { sender: "User", text: input };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
@@ -530,22 +479,20 @@ export function useChatController(
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return res.json();
           }),
-        2,
-        800,
+        {
+          delayMs: process.env.NODE_ENV === "test" ? 10 : undefined,
+          onAttempt: (attempt) => {
+            if (attempt > 0) setRetrying(true);
+            setError("");
+          },
+        },
       );
       if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
         logEvent("info", "chat_send_retry_success", "Message send succeeded", {
           botName: bot.name,
         });
       }
-      if (typeof response.reply !== "string" || !response.reply) {
-        throw new Error("Invalid chat response: missing reply");
-      }
-      const botReply: Message = {
-        sender: bot.name,
-        text: response.reply,
-        audioFileUrl: response.audioFileUrl,
-      };
+      const botReply: Message = chatReplyMessage(bot.name, response);
       setMessages((prevMessages) => [...prevMessages, botReply]);
       logMessage(botReply);
     } catch (e) {
@@ -567,6 +514,7 @@ export function useChatController(
         );
       }
     } finally {
+      setRetrying(false);
       setLoading(false);
     }
   }, [

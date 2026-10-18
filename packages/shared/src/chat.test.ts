@@ -1,9 +1,11 @@
 import {
   INTRO_PROMPT,
   buildChatRequest,
+  chatReplyMessage,
   formatChatHistory,
   longerHistory,
   parseChatMessages,
+  retryWithBackoff,
 } from "./chat";
 import type { CharacterVoiceConfig } from "./types";
 
@@ -100,5 +102,40 @@ describe("buildChatRequest", () => {
       isIntro: true,
       gender: undefined,
     });
+  });
+});
+
+describe("chatReplyMessage", () => {
+  it("builds the bot's turn with its audio", () => {
+    expect(chatReplyMessage("Ada", { reply: "Hello.", audioFileUrl: "/a.mp3" })).toEqual({
+      sender: "Ada",
+      text: "Hello.",
+      audioFileUrl: "/a.mp3",
+    });
+  });
+
+  it.each([{}, { reply: "" }, { reply: 7 }])("rejects a missing or empty reply: %j", (response) => {
+    expect(() => chatReplyMessage("Ada", response)).toThrow("missing reply");
+  });
+});
+
+describe("retryWithBackoff", () => {
+  it("returns the first success without retrying", async () => {
+    const fn = jest.fn().mockResolvedValue("ok");
+    await expect(retryWithBackoff(fn, { delayMs: 1 })).resolves.toBe("ok");
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries transient failures and reports each attempt", async () => {
+    const fn = jest.fn().mockRejectedValueOnce(new Error("a")).mockResolvedValue("ok");
+    const onAttempt = jest.fn();
+    await expect(retryWithBackoff(fn, { delayMs: 1, onAttempt })).resolves.toBe("ok");
+    expect(onAttempt.mock.calls).toEqual([[0], [1]]);
+  });
+
+  it("gives up after the configured retries and rethrows the last error", async () => {
+    const fn = jest.fn().mockRejectedValue(new Error("down"));
+    await expect(retryWithBackoff(fn, { retries: 2, delayMs: 1 })).rejects.toThrow("down");
+    expect(fn).toHaveBeenCalledTimes(3);
   });
 });
