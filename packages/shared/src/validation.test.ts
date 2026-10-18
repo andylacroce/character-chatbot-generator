@@ -1,4 +1,9 @@
-import { displayCharacterName, sanitizeCharacterName, sanitizeUserName } from "./validation";
+import {
+  characterSlug,
+  displayCharacterName,
+  sanitizeCharacterName,
+  sanitizeUserName,
+} from "./validation";
 
 describe("sanitizeCharacterName", () => {
   it("strips HTML/script injection characters and trims", () => {
@@ -49,5 +54,23 @@ describe("displayCharacterName", () => {
 
   it("never returns an empty name", () => {
     expect(displayCharacterName("(Anonymous)")).toBe("(Anonymous)");
+  });
+});
+
+describe("characterSlug", () => {
+  it.each([
+    ["Joan of Arc", "joan-of-arc"],
+    ["  Sherlock   Holmes  ", "sherlock-holmes"],
+    ["Molière", "moliere"],
+    ["David Copperfield (Charles Dickens novel)", "david-copperfield-charles-dickens-novel"],
+    ["Winnie-the-Pooh", "winnie-the-pooh"],
+    ["Ramesses II!", "ramesses-ii"],
+  ])("slugs %p as %p", (name, slug) => {
+    expect(characterSlug(name)).toBe(slug);
+  });
+
+  it("returns an empty slug for a name with no ASCII letters or digits", () => {
+    expect(characterSlug("孔子")).toBe("");
+    expect(characterSlug("   ")).toBe("");
   });
 });

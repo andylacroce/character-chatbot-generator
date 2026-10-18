@@ -41,3 +41,17 @@ export function displayCharacterName(name: string): string {
   if (open <= 0 || trimmed.slice(open + 1, -1).includes(")")) return name;
   return trimmed.slice(0, open).trimEnd() || name;
 }
+
+/**
+ * URL slug for a character's public page: lowercase ASCII words joined by "-" ("Joan of Arc" ->
+ * "joan-of-arc"). Names with no ASCII letters or digits slug to "" and get no page.
+ */
+export function characterSlug(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-/, "")
+    .replace(/-$/, "");
+}

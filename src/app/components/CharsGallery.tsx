@@ -22,7 +22,7 @@ import AppHeader from "./AppHeader";
 import BackHomeLink from "./BackHomeLink";
 import { useAccountMenu } from "./useAccountMenu";
 import styles from "./styles/CharsPage.module.css";
-import { displayCharacterName } from "character-chatbot-shared";
+import { characterSlug, displayCharacterName } from "character-chatbot-shared";
 
 type AdminState = "idle" | "confirm" | "purging" | "regenerating" | "purgeError" | "regenError";
 
@@ -564,6 +564,14 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
               >
                 Chat with {displayCharacterName(selected.name)} &rarr;
               </Link>
+              {characterSlug(selected.name) && (
+                <Link
+                  href={`/chars/${characterSlug(selected.name)}`}
+                  className={styles.lightboxShare}
+                >
+                  Character page
+                </Link>
+              )}
               {isAdmin && (
                 <div className={styles.lightboxAdmin}>
                   <button

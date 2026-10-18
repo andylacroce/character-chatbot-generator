@@ -11,7 +11,7 @@ import { readAdminName, requireAdmin } from "../../../utils/adminGuard";
 import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { purgeCachedAvatar, regenerateCachedAvatar } from "../../../utils/avatarGeneration";
-import { clearCharactersCache } from "../chars";
+import { clearCharactersCache } from "../../../utils/charactersWall";
 import { withRequestLog } from "../../../utils/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */

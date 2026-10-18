@@ -694,6 +694,16 @@
   text-align: center;
 }
 
+.lightboxShare {
+  display: block;
+  margin-top: 0.6rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: inherit;
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
 .lightboxChat {
   display: block;
   width: fit-content;
