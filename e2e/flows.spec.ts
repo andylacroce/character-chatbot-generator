@@ -1,10 +1,7 @@
-import { expect, test } from "@playwright/test";
-import { blockBilledApi, stubApi, stubSse } from "./helpers";
-
-const VOICE = { languageCodes: ["en-US"], name: "en-US-Neural2-D", ssmlGender: 1 };
+import type { Page } from "@playwright/test";
+import { expect, fixtures, stubApi, stubSse, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
-  await blockBilledApi(page);
   // Skip the first-visit instructions modal so the game flow starts on the real UI.
   await page.addInitScript(() => {
     localStorage.setItem("chatbot-guess-who-instructions-seen", "true");
@@ -12,22 +9,16 @@ test.beforeEach(async ({ page }) => {
 });
 
 /** Stubs the creation pipeline for `name` and the chat reply. */
-async function stubCreation(page: import("@playwright/test").Page, name: string) {
-  await stubApi(page, "/api/validate-character", {
-    characterName: name,
-    isPublicDomain: true,
-    isSafe: true,
-    warningLevel: "none",
-    recognized: true,
-  });
+async function stubCreation(page: Page, name: string) {
+  await stubApi(page, "/api/validate-character", fixtures.validation(name));
   await stubApi(page, "/api/generate-personality", { personality: "Wise.", correctedName: name });
   await stubApi(page, "/api/generate-avatar", { avatarUrl: "/silhouette.svg", gender: "male" });
-  await stubApi(page, "/api/get-voice-config", VOICE);
+  await stubApi(page, "/api/get-voice-config", fixtures.voice);
   await stubApi(page, "/api/health", { status: "ok" });
   await stubApi(page, "/api/chat", { reply: "Greetings, traveler." });
 }
 
-async function startChat(page: import("@playwright/test").Page, name: string) {
+async function startChat(page: Page, name: string) {
   await page.goto("/");
   // Wait for hydration: an early click lands before React attaches the handler.
   await page.waitForLoadState("networkidle");
@@ -49,14 +40,15 @@ test("create a character, then chat", async ({ page }) => {
 
 test("a copyright warning shows the modal", async ({ page }) => {
   await stubCreation(page, "Mickey Mouse");
-  await stubApi(page, "/api/validate-character", {
-    characterName: "Mickey Mouse",
-    isPublicDomain: false,
-    isSafe: true,
-    warningLevel: "warning",
-    reason: "Mickey Mouse is a protected character.",
-    recognized: true,
-  });
+  await stubApi(
+    page,
+    "/api/validate-character",
+    fixtures.validation("Mickey Mouse", {
+      isPublicDomain: false,
+      warningLevel: "warning",
+      reason: "Mickey Mouse is a protected character.",
+    }),
+  );
   await startChat(page, "Mickey Mouse");
 
   await expect(page.getByText("Continue Anyway")).toBeVisible();
@@ -65,13 +57,11 @@ test("a copyright warning shows the modal", async ({ page }) => {
 
 test("an unrecognized name is a hard stop", async ({ page }) => {
   await stubCreation(page, "Zxqv Blorp");
-  await stubApi(page, "/api/validate-character", {
-    characterName: "Zxqv Blorp",
-    isPublicDomain: true,
-    isSafe: true,
-    warningLevel: "none",
-    recognized: false,
-  });
+  await stubApi(
+    page,
+    "/api/validate-character",
+    fixtures.validation("Zxqv Blorp", { recognized: false }),
+  );
   await startChat(page, "Zxqv Blorp");
 
   await expect(page.getByText(/couldn.t identify/i)).toBeVisible();

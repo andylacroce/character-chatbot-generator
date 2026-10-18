@@ -38,6 +38,7 @@ never be the thing that fails late), then runs, in order:
 8. `docs:code` (TypeDoc; fails on a doc generation error)
 9. `test:coverage` (Jest, 80% global threshold in `jest.config.cjs`)
 10. `build` (production Next.js build)
+11. `e2e` (Playwright synthetics, stubbed so they never spend tokens; runs in the `Production build` job, so that required check covers it)
 
 ## GitHub Actions workflows
 

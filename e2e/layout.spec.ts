@@ -1,7 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { blockBilledApi } from "./helpers";
-
-test.beforeEach(({ page }) => blockBilledApi(page));
+import { expect, test } from "./helpers";
 
 for (const path of ["/", "/chars", "/leaderboard", "/privacy", "/guess-who", "/guess-who-next"]) {
   test(`${path} has no horizontal overflow`, async ({ page }) => {

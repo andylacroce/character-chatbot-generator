@@ -932,13 +932,17 @@ and the script normalizes to forward slashes because `swagger-jsdoc` doesn't mat
   page errors, the random button works, 404s) against a production build on port 3100, inside the
   `build` job in `ci.yml` (reusing that build; Chromium installs in parallel with it). **It must never spend Claude/Google/image tokens:** the server gets a dummy
   `ANTHROPIC_API_KEY`, and `smoke.spec.ts` throws on any request matching `BILLED_API`. Extend it
-  only with synthetics that stay off those routes. `e2e/helpers.ts` has `blockBilledApi` (the
-  guard) and `stubApi`/`stubSse` (canned JSON/SSE for a billed route; register the guard first,
-  since the latest matching route wins). `flows.spec.ts` stubs the create-and-chat, copyright,
-  unrecognized-name, and Guess Who round flows; `layout.spec.ts` checks horizontal overflow.
-  `playwright.config.ts` runs everything on `desktop` and flows plus layout again on a `mobile`
-  (Pixel 7, Chromium) project. A first creation hits the name gate, so flows click "Skip for now",
-  and they wait for `networkidle` first (a click before hydration does nothing).
+  only with synthetics that stay off those routes. To add one:
+  1. Import `test`/`expect` from `e2e/helpers.ts`, never `@playwright/test` (ESLint enforces it).
+     Its `test` auto-blocks every billed endpoint; a stub registered inside a test wins.
+  2. Stub what the flow needs with `stubApi` (JSON) or `stubSse` (streamed game rounds), building
+     bodies from `fixtures` (typed against `packages/shared/src/types.ts`, so a stub can't drift
+     from the real shape). Add a fixture rather than an inline literal when a shape repeats.
+  3. `await page.waitForLoadState("networkidle")` after `goto` before clicking (a click before
+     hydration does nothing). A first creation hits the name gate, so click "Skip for now".
+  4. Layout-sensitive checks belong in `layout.spec.ts`. `playwright.config.ts` runs everything on
+     `desktop` and only `flows`/`layout` again on `mobile` (Pixel 7, Chromium).
+  CI uploads the HTML report, traces, and failure screenshots as the `playwright-report` artifact.
 
 - Tests live under `tests/`, mirroring source (`tests/api`, `tests/app`, `tests/pages`, `tests/src`,
   `tests/utils`, `tests/integration`, `tests/unit`).
