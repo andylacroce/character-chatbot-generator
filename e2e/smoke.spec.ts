@@ -1,14 +1,4 @@
-import { expect, test } from "@playwright/test";
-
-/** Endpoints that call Claude, Google, or an image provider; a synthetic must never reach them. */
-const BILLED_API =
-  /\/api\/(chat|validate-character|generate-|get-voice-config|audio|health|[\w-]+\/(start|continue|message))/;
-
-test.beforeEach(async ({ page }) => {
-  await page.route(BILLED_API, (route) => {
-    throw new Error(`e2e hit a billed endpoint: ${route.request().url()}`);
-  });
-});
+import { expect, test } from "./helpers";
 
 const PAGES = ["/", "/chars", "/leaderboard", "/privacy", "/guess-who", "/guess-who-next"];
 
