@@ -112,6 +112,51 @@ describe("useChatController visualViewport keyboard handling", () => {
     expect(document.documentElement.classList.contains("mobile-keyboard-open")).toBe(false);
   });
 
+  it("publishes the visual viewport's height and offset for the layout and clears them on unmount", async () => {
+    const listeners: Record<string, EventListener[]> = {};
+    const vv = {
+      height: 520,
+      offsetTop: 40,
+      addEventListener: (ev: string, cb: EventListener) => {
+        listeners[ev] = [...(listeners[ev] || []), cb];
+      },
+      removeEventListener: (ev: string, cb: EventListener) => {
+        listeners[ev] = (listeners[ev] || []).filter((f) => f !== cb);
+      },
+    };
+    (global as unknown as { visualViewport?: unknown }).visualViewport = vv;
+    (global as unknown as { innerHeight?: number }).innerHeight = 900;
+
+    function Harness() {
+      const ctrl = useChatController(mockBot as unknown as Bot);
+      return (
+        <div>
+          <div data-testid="chat" ref={ctrl.chatBoxRef as unknown as React.Ref<HTMLDivElement>} />
+          <input ref={ctrl.inputRef as unknown as React.Ref<HTMLInputElement>} />
+        </div>
+      );
+    }
+
+    const { unmount } = render(<Harness />);
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--vv-height")).toBe("520px");
+    expect(root.style.getPropertyValue("--vv-offset-top")).toBe("40px");
+
+    // The keyboard opening shrinks the visual viewport; the variables follow it.
+    vv.height = 300;
+    vv.offsetTop = 0;
+    await act(async () => {
+      (listeners.resize || []).forEach((cb) => cb(new Event("resize")));
+      await new Promise((res) => setTimeout(res, 40));
+    });
+    expect(root.style.getPropertyValue("--vv-height")).toBe("300px");
+    expect(root.style.getPropertyValue("--vv-offset-top")).toBe("0px");
+
+    unmount();
+    expect(root.style.getPropertyValue("--vv-height")).toBe("");
+    expect(root.style.getPropertyValue("--vv-offset-top")).toBe("");
+  });
+
   it("renders safely when visualViewport is undefined", async () => {
     (global as unknown as { visualViewport?: VisualViewport }).visualViewport = undefined;
     (global as unknown as { innerHeight?: number }).innerHeight = 800;

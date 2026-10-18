@@ -1568,6 +1568,22 @@
   font-size: min(0.78rem, 3.3vw);
 }
 
+/* With "Past chats" added (signed in) the row can't fit on one line on a phone, so the long
+   label gets a short form on narrow screens instead of the row wrapping. */
+.footerLabelShort {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .footerLinksDense .footerLabelFull {
+    display: none;
+  }
+
+  .footerLinksDense .footerLabelShort {
+    display: inline;
+  }
+}
+
 .footerLinks {
   align-self: center;
   width: fit-content;

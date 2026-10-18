@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.27.1 - 2026-10-18 - Landing footer and chat keyboard fixes
+
+- The landing page footer no longer overflows for signed-in users: with "Past chats" added, the "Which characters can I create?" link shortens to "Characters" on screens 480px wide or less instead of the row wrapping.
+- On phone browsers the chat (and the games) now size themselves to the visible area, so the input row stays fully above the on-screen keyboard instead of sitting behind it.
+
 ## v0.27.0 - 2026-10-18 - Portrait backdrop landing page
 
 - The landing page's rotating character portraits are now a full-page backdrop (web, phone-width web and the mobile app) behind translucent panels, each with a random slow zoom and drift, instead of a small banner in the header. The header is slim and shows the Portrayal name and Beta badge (in the mobile app's native header too).
