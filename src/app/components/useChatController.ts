@@ -15,7 +15,15 @@ import storage from "../../utils/storage";
 import type { Message } from "../../types/message";
 import type { Bot } from "./BotCreator";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { STORAGE_KEYS, chatHistoryKey, getReplayAudioUrl } from "character-chatbot-shared";
+import {
+  INTRO_PROMPT,
+  STORAGE_KEYS,
+  buildChatRequest,
+  chatHistoryKey,
+  getReplayAudioUrl,
+  longerHistory,
+  parseChatMessages,
+} from "character-chatbot-shared";
 
 /**
  * The visitor's own preferred name (see useUserName.ts), read directly from localStorage
@@ -56,18 +64,7 @@ export function useChatController(
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const saved = storage.getItem(historyKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(
-            (m): m is Message =>
-              m !== null &&
-              typeof m === "object" &&
-              typeof m.text === "string" &&
-              typeof m.sender === "string",
-          );
-        }
-      }
+      if (saved) return parseChatMessages(JSON.parse(saved));
     } catch {}
     return [];
   });
@@ -120,18 +117,7 @@ export function useChatController(
     try {
       const saved = storage.getItem(newHistoryKey);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        setMessages(
-          Array.isArray(parsed)
-            ? parsed.filter(
-                (m): m is Message =>
-                  m !== null &&
-                  typeof m === "object" &&
-                  typeof m.text === "string" &&
-                  typeof m.sender === "string",
-              )
-            : [],
-        );
+        setMessages(parseChatMessages(JSON.parse(saved)));
       } else setMessages([]);
     } catch {
       setMessages([]);
@@ -191,16 +177,8 @@ export function useChatController(
       .then((res) => res.json())
       .then((data) => {
         if (!mounted || !Array.isArray(data?.messages)) return;
-        const serverMessages: Message[] = data.messages.filter(
-          (m: unknown): m is Message =>
-            m !== null &&
-            typeof m === "object" &&
-            typeof (m as Message).text === "string" &&
-            typeof (m as Message).sender === "string",
-        );
-        setMessages((current) =>
-          serverMessages.length > current.length ? serverMessages : current,
-        );
+        const serverMessages = parseChatMessages(data.messages);
+        setMessages((current) => longerHistory(current, serverMessages));
       })
       .catch(() => {
         // Best-effort — local storage already has whatever this device has seen.
@@ -386,19 +364,16 @@ export function useChatController(
             authenticatedFetch("/api/chat", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                message: "Introduce yourself in 2 sentences or less.",
-                personality: bot.personality,
-                botName: bot.name,
-                voiceConfig,
-                gender: bot.gender,
-                conversationHistory: [],
-                userName: getStoredUserName(),
-                // This prompt is an internal mechanism to elicit an introduction, not
-                // something the user typed — tells the server not to persist it as a
-                // real "User" turn in a signed-in user's saved chat history.
-                isIntro: true,
-              }),
+              // isIntro tells the server this internal prompt isn't a real "User" turn to persist.
+              body: JSON.stringify(
+                buildChatRequest({
+                  bot,
+                  voiceConfig,
+                  message: INTRO_PROMPT,
+                  userName: getStoredUserName(),
+                  isIntro: true,
+                }),
+              ),
             }).then((res) => {
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
               return res.json();
@@ -537,24 +512,20 @@ export function useChatController(
           botName: bot.name,
         });
       }
-      // Convert messages to conversation history format for API
-      const conversationHistory = messages
-        .slice(-20)
-        .map((msg) => (msg.sender === bot.name ? `Bot: ${msg.text}` : `User: ${msg.text}`));
       const response = await retryWithBackoff(
         () =>
           authenticatedFetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: currentInput,
-              personality: bot.personality,
-              botName: bot.name,
-              voiceConfig,
-              gender: bot.gender,
-              conversationHistory,
-              userName: getStoredUserName(),
-            }),
+            body: JSON.stringify(
+              buildChatRequest({
+                bot,
+                voiceConfig,
+                message: currentInput,
+                history: messages,
+                userName: getStoredUserName(),
+              }),
+            ),
           }).then((res) => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return res.json();
