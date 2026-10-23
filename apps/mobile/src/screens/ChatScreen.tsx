@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { getReplayAudioUrl, type ChatMessage } from "character-chatbot-shared";
-import { ApiError, type ChatRequestBody, getPersistedMessages, sendChatMessage } from "../api";
+import {
+  INTRO_PROMPT,
+  buildChatRequest,
+  chatReplyMessage,
+  getReplayAudioUrl,
+  longerHistory,
+  retryWithBackoff,
+  type ChatMessage,
+} from "character-chatbot-shared";
+import { ApiError, getPersistedMessages, sendChatMessage } from "../api";
 import { appendChatMessage, loadChatHistory } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useAuth } from "../AuthContext";
@@ -12,13 +20,6 @@ import CharacterHeaderTitle from "../components/CharacterHeaderTitle";
 import PortraitLightbox from "../components/PortraitLightbox";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Chat">;
-
-/** Formats stored ChatMessage turns into the "User: "/"Bot: " strings chat.ts expects. */
-function formatHistory(messages: ChatMessage[], botName: string): string[] {
-  return messages
-    .slice(-20)
-    .map((m) => (m.sender === botName ? `Bot: ${m.text}` : `User: ${m.text}`));
-}
 
 function logChatError(label: string, err: unknown) {
   if (err instanceof ApiError) {
@@ -62,15 +63,15 @@ export default function ChatScreen({ route, navigation }: Props) {
 
       // Signed-in users: reconcile with the server's copy before deciding whether this
       // is a "fresh chat" — a new device with no local history but real server history
-      // must not fire the intro turn. Mirrors useChatController.ts's exact rule: adopt
-      // the server list only if it's longer than what's already loaded.
+      // must not fire the intro turn (same shared adopt-if-longer rule as web).
       if (auth.status === "signedIn") {
         try {
-          const serverMessages = await getPersistedMessages(bot.name);
-          if (serverMessages.length > history.length) {
-            history = serverMessages.map((m) => ({ sender: m.sender, text: m.text }));
-            setMessages(history);
-          }
+          const serverMessages = (await getPersistedMessages(bot.name)).map((m) => ({
+            sender: m.sender,
+            text: m.text,
+          }));
+          history = longerHistory(history, serverMessages);
+          setMessages(history);
         } catch {
           // Best effort — local history already rendered above.
         }
@@ -83,18 +84,17 @@ export default function ChatScreen({ route, navigation }: Props) {
         introSentRef.current = true;
         setSending(true);
         try {
-          const introBody: ChatRequestBody = {
-            message: "Introduce yourself in 2 sentences or less.",
-            personality: bot.personality,
-            botName: bot.name,
-            gender: bot.gender ?? undefined,
-            conversationHistory: [],
-            voiceConfig: bot.voiceConfig!,
-            isIntro: true,
-          };
-          const response = await sendChatMessage(introBody);
+          const response = await sendChatMessage(
+            buildChatRequest({
+              bot,
+              voiceConfig: bot.voiceConfig!,
+              message: INTRO_PROMPT,
+              userName: userName !== "Me" ? userName : undefined,
+              isIntro: true,
+            }),
+          );
 
-          const introMessage: ChatMessage = { sender: bot.name, text: response.reply };
+          const { audioFileUrl: _, ...introMessage } = chatReplyMessage(bot.name, response);
           setMessages([introMessage]);
           await appendChatMessage(bot.name, introMessage);
           audio.play(response.audioFileUrl);
@@ -121,18 +121,18 @@ export default function ChatScreen({ route, navigation }: Props) {
     await appendChatMessage(bot.name, userMessage);
 
     try {
-      const body: ChatRequestBody = {
-        message: text,
-        personality: bot.personality,
-        botName: bot.name,
-        gender: bot.gender ?? undefined,
-        conversationHistory: formatHistory(messages, bot.name),
+      const request = buildChatRequest({
+        bot,
         voiceConfig: bot.voiceConfig!,
+        message: text,
+        history: messages,
         userName: userName !== "Me" ? userName : undefined,
-      };
-      const response = await sendChatMessage(body);
+      });
+      const response = await retryWithBackoff(() => sendChatMessage(request), {
+        delayMs: process.env.NODE_ENV === "test" ? 1 : undefined,
+      });
 
-      const botMessage: ChatMessage = { sender: bot.name, text: response.reply };
+      const { audioFileUrl: _, ...botMessage } = chatReplyMessage(bot.name, response);
       setMessages((prev) => [...prev, botMessage]);
       await appendChatMessage(bot.name, botMessage);
       audio.play(response.audioFileUrl);

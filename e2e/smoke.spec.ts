@@ -1,16 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./helpers";
 
-/** Endpoints that call Claude, Google, or an image provider; a synthetic must never reach them. */
-const BILLED_API =
-  /\/api\/(chat|validate-character|generate-|get-voice-config|audio|health|[\w-]+\/(start|continue|message))/;
-
-test.beforeEach(async ({ page }) => {
-  await page.route(BILLED_API, (route) => {
-    throw new Error(`e2e hit a billed endpoint: ${route.request().url()}`);
-  });
-});
-
-const PAGES = ["/", "/chars", "/leaderboard", "/privacy", "/guess-who", "/guess-who-next"];
+const PAGES = ["/", "/characters", "/leaderboard", "/privacy", "/guess-who", "/guess-who-next"];
 
 for (const path of PAGES) {
   test(`${path} renders without errors`, async ({ page }) => {
@@ -33,10 +23,40 @@ test("landing page: random button fills the name field", async ({ page }) => {
 test("unknown route and admin page 404", async ({ page }) => {
   expect((await page.goto("/no-such-page"))?.status()).toBe(404);
   expect((await page.goto("/admin"))?.status()).toBe(404);
+  // A character page with no database (or an unknown slug) is a clean 404, not a crash.
+  expect((await page.goto("/characters/no-such-character"))?.status()).toBe(404);
 });
 
 test("random-character API returns a name", async ({ request }) => {
   const res = await request.get("/api/random-character");
   expect(res.ok()).toBe(true);
   expect((await res.json()).name).toBeTruthy();
+});
+
+test("robots.txt and sitemap.xml point crawlers at the production origin", async ({ request }) => {
+  const robots = await request.get("/robots.txt");
+  expect(robots.ok()).toBe(true);
+  expect(await robots.text()).toContain("character-chatbot-generator.vercel.app/sitemap.xml");
+
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.ok()).toBe(true);
+  expect(await sitemap.text()).toContain(
+    "<loc>https://character-chatbot-generator.vercel.app/characters</loc>",
+  );
+});
+
+test("link-preview tags are unique and absolute", async ({ page }) => {
+  await page.goto("/privacy");
+  const image = page.locator('meta[property="og:image"]');
+  expect(await image.count()).toBe(1);
+  expect(await image.getAttribute("content")).toMatch(/^https:\/\/[^/]+\/og-image\.png$/);
+  expect(await page.locator("title").count()).toBe(1);
+});
+
+test("the old /chars URLs redirect to /characters", async ({ request }) => {
+  const page = await request.get("/chars", { maxRedirects: 0 });
+  expect(page.status()).toBe(308);
+  expect(page.headers().location).toBe("/characters");
+  const character = await request.get("/chars/joan-of-arc", { maxRedirects: 0 });
+  expect(character.headers().location).toBe("/characters/joan-of-arc");
 });

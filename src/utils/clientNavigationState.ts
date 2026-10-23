@@ -4,7 +4,7 @@
  *
  * `window.history.length` cannot answer "does Back have a same-app destination?" — a
  * brand-new tab already starts with an `about:blank` entry ahead of the first real
- * navigation, so `history.length` reads 2 (not 1) the moment `/chars` loads directly,
+ * navigation, so `history.length` reads 2 (not 1) the moment `/characters` loads directly,
  * making a naive `history.length > 1` check call `router.back()` into that blank entry
  * instead of falling back to `/`. This module-level flag is reset only by a hard reload
  * or a fresh tab (exactly the cases with no meaningful in-app Back target), and set the

@@ -38,7 +38,7 @@ describe("Providers client-navigation tracking", () => {
     );
     expect(hasNavigatedWithinSession()).toBe(false);
 
-    mockPathname = "/chars";
+    mockPathname = "/characters";
     rerender(
       <Providers>
         <div />

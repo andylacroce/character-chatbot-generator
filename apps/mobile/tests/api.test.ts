@@ -43,13 +43,13 @@ describe("api", () => {
   });
 
   describe("apiFetch", () => {
-    it("GETs without an x-api-key header", async () => {
+    it("sends x-api-key on a GET too", async () => {
       mockFetchOnce({ ok: true, json: async () => ({ hello: "world" }) } as Response);
       const result = await apiFetch("/api/health");
       expect(result).toEqual({ hello: "world" });
       const [url, options] = (globalThis.fetch as jest.Mock).mock.calls[0];
       expect(url).toBe(`${API_BASE_URL}/api/health`);
-      expect((options.headers as Record<string, string>)["x-api-key"]).toBeUndefined();
+      expect((options.headers as Record<string, string>)["x-api-key"]).toBe("test-secret");
     });
 
     it("sends x-api-key on a non-GET request", async () => {

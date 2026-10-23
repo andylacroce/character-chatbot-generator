@@ -211,7 +211,7 @@ export const avatarCache = pgTable("avatar_cache", {
  *   (profane/slur/sexual), or it identifies a real, currently-living person with a
  *   serious, well-documented real-world criminal conviction/allegation (added
  *   2026-09-17 after a live report that a name like this had no guardrail at all —
- *   the character wall at /chars is public, and impersonating a living person with
+ *   the character wall at /characters is public, and impersonating a living person with
  *   this kind of history is a legal/reputational risk independent of copyright).
  *   Deliberately excludes historical/deceased figures, however controversial, and
  *   ordinary celebrity/political controversy — only serious real-world criminal

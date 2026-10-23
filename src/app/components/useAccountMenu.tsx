@@ -46,6 +46,8 @@ export interface AccountMenu {
    * point (e.g. BotCreator's post-creation name gate) to reuse the same instance.
    */
   requestSignIn: () => void;
+  /** Whether the signed-in user is an admin (UX only; admin routes enforce it themselves). */
+  isAdmin: boolean;
 }
 
 /** Builds the identity chip label, menu items, and modals shared by every page's account menu. */
@@ -184,5 +186,5 @@ export function useAccountMenu(): AccountMenu {
     </>
   );
 
-  return { userNameCtx, menuItems, modals, requestSignIn };
+  return { userNameCtx, menuItems, modals, requestSignIn, isAdmin };
 }

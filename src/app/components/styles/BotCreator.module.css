@@ -1385,8 +1385,9 @@
 }
 
 .footerLinks {
-  margin-top: auto;
-  padding-top: clamp(0.75rem, 2vh, 1.1rem);
+  /* One panel-gap below the panels (extra height goes above them, not between). */
+  margin-top: clamp(0.9rem, 2.4vw, 1.5rem);
+  padding-top: 0;
   gap: 0.7rem 1.15rem;
 }
 
@@ -1398,6 +1399,10 @@
   .landingLayout {
     grid-template-columns: 1fr;
     gap: 0.75rem;
+  }
+
+  .footerLinks {
+    margin-top: 0.75rem;
   }
 
   .creatorPanel {
@@ -1499,7 +1504,6 @@
   }
 
   .footerLinks {
-    padding-top: 0.65rem;
     font-size: 0.75rem;
   }
 }
@@ -1512,6 +1516,99 @@
   .wallCta small {
     white-space: normal;
   }
+}
+
+/* Desktop: the rotating portrait is the page backdrop (LandingCharacterCarousel's
+   "backdrop" variant) and the header slims down to the site name, so the hero's own
+   wordmark would just repeat it. */
+.headerBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.1rem 0;
+}
+
+.headerWordmark {
+  font-family: var(--font-secondary), serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--color-primary);
+}
+
+.formContainer,
+:global(.dark) .formContainer {
+  background: transparent;
+}
+
+.formInner {
+  position: relative;
+  z-index: 1;
+  /* Clears the carousel's bottom row (arrows + name pill, 44px targets on touch). */
+  padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+  /* That padding overlays the carousel's controls, so only the content takes clicks. */
+  pointer-events: none;
+}
+
+.formInner > * {
+  pointer-events: auto;
+}
+
+/* Let the backdrop portrait show through; the blur keeps text over it legible. */
+.creatorPanel,
+.playPanel,
+:global(.dark) .creatorPanel,
+:global(.dark) .playPanel {
+  background: color-mix(in srgb, var(--color-surface) 62%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+/* The backdrop art can be any brightness, so muted text and the accent are pulled toward
+   the primary text color inside the translucent panels, and the footer links get their own
+   chip (they sit directly on the art). Both are theme tokens, so light and dark follow. */
+.creatorPanel,
+.playPanel,
+.footerLinks {
+  --color-text-secondary: color-mix(in srgb, var(--color-text) 86%, var(--color-surface));
+  --color-accent: color-mix(in srgb, var(--color-accent) 55%, var(--color-text));
+}
+
+.footerLink {
+  white-space: nowrap;
+  font-size: min(0.78rem, 3.3vw);
+}
+
+/* With "Past chats" added (signed in) the row can't fit on one line on a phone, so the long
+   label gets a short form on narrow screens instead of the row wrapping. */
+.footerLabelShort {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .footerLinksDense .footerLabelFull {
+    display: none;
+  }
+
+  .footerLinksDense .footerLabelShort {
+    display: inline;
+  }
+}
+
+.footerLinks {
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  /* One line at every width: the type and gaps shrink with the viewport instead of wrapping. */
+  flex-wrap: nowrap;
+  gap: clamp(0.7rem, 3.2vw, 1.15rem);
+  padding: 0.45rem clamp(0.7rem, 3vw, 1.1rem);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-outline) 70%, transparent);
+}
+
+.brandLine {
+  display: none;
 }
 
 @media (max-height: 700px) and (min-width: 821px) {

@@ -18,6 +18,7 @@ import { useAudioPlayer } from "./useAudioPlayer";
 import { useAudioEnabled } from "./useAudioEnabled";
 import { useSpeechRecognition } from "./useSpeechRecognition";
 import { useChatScrollAndFocus } from "./useChatScrollAndFocus";
+import { useMobileKeyboardViewportAdjustment } from "./useMobileKeyboardViewportAdjustment";
 import type { LoadingStage } from "./CharacterLoadingOverlay";
 import { fetchRoundWithProgress, initialRoundStages } from "./useGameRoundProgress";
 
@@ -124,6 +125,7 @@ export function useGameController(game: GameDefinition) {
   } = session;
 
   useChatScrollAndFocus({ chatBoxRef, inputRef, messages, loading });
+  useMobileKeyboardViewportAdjustment(chatBoxRef, inputRef);
 
   const {
     isSupported: isSpeechSupported,

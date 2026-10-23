@@ -112,8 +112,11 @@ SSE frames are plain `data: JSON\n\n`. The final payload is
 `{ reply: string, audioFileUrl?: string, done: true }`; changing it requires updating
 `useChatController.ts` and every test that parses stream frames.
 
-- **TTS** (`src/utils/tts.ts`, `synthesizeSpeechToFile`) is keyed by a stable `getAudioCacheKey`
-  hash to avoid re-synthesizing identical audio. A TTS failure on any path (cache hit,
+- **TTS** (`src/utils/tts.ts`, `synthesizeSpeechToFile`) is keyed by a stable content hash
+  to avoid re-synthesizing identical audio. `ttsReply.ts`'s `synthesizeReplyAudio` is the one pipeline
+  (hash-named mp3 plus `.txt` sidecar, `/api/audio` URL) for chat on every path and both games; never
+  inline a second copy. `tests/integration/audioRoundTrip.test.ts` pins it against the real audio route.
+  `chatContext.ts` holds the history/summary resolution and system-prompt assembly for `chat.ts`. A TTS failure on any path (cache hit,
   non-streaming, streaming) never fails the chat request: it degrades to a text-only reply
   (`audioFileUrl` omitted), since losing audio beats discarding a generated reply.
 - **Voice shapes:** persisted configs use Google's `Voice` response shape (`languageCodes`), but
@@ -162,9 +165,10 @@ failure, a base64 data URL. Rate-limited to 5/min/IP.
 
 - **The route re-checks moderation itself:** `generate-avatar.ts` is callable directly, so a
   blocklisted name never gets a shared or persisted portrait (content blocks get the silhouette,
-  copyright blocks only the private `skipPersistence` render); the allowlist wins. A never-validated
-  new name can still reach the Wall by calling it directly (a signed proof from validate-character
-  would be needed to close that).
+  copyright blocks only the private `skipPersistence` render); the allowlist wins. A brand-new name is
+  re-classified here (`characterClassifier.ts`, the same call `validate-character` makes) via
+  `getOrGenerateAvatar`'s `mayPersistNew` hook, only on a cache miss; anything not blocked, recognized,
+  and `warningLevel: "none"`, or any check failure, renders privately instead (fails closed).
 - **`avatar_cache`** (global, deliberately not environment-scoped, or the cost savings vanish) is
   keyed by lowercased name and checked before any generation. Only real generations are cached,
   never the `/silhouette.svg` fallback. `gender` is cached too (callers need it for voice
@@ -227,7 +231,7 @@ well-documented criminal conviction or extensive credible allegations of serious
 (the prompt carries a worked example). The second is deliberately narrow: never historical or
 deceased figures however controversial, never ordinary celebrity or political controversy.
 `useBotCreation.ts` short-circuits to a plain error without showing the modal's "Continue Anyway",
-because every created name and portrait can land on the public `/chars` wall (and, privately, in a
+because every created name and portrait can land on the public `/characters` wall (and, privately, in a
 user's saved characters). On a validation error, `blocked` and `warningLevel` fail open
 (`false`/`"none"`), so a Claude outage doesn't block creation.
 
@@ -237,6 +241,16 @@ user's saved characters). On a validation error, `blocked` and `warningLevel` fa
   `scrubUserBotsByName` delete the shared cache row and every user's saved `bots` row for the name
   (case-insensitive, all users and environments; `messages` cascade). The manual admin add does the
   same immediately and defaults to `category: "content"` unless it passes `"copyright"`.
+- **Fixing a bad portrait (not a block):** an admin sees "Regenerate portrait" and "Purge portrait"
+  in the `/characters` lightbox (`useAccountMenu`'s `isAdmin`), both via `/api/admin/characters`.
+  Purge (`DELETE`, two clicks) → `purgeCachedAvatar` deletes only the shared `avatar_cache` row (the
+  tile leaves the Wall until someone recreates the name). Regenerate (`POST`, one click, one image
+  generation) → `regenerateCachedAvatar` generates past the cache and upserts the row in place, so a
+  failed generation (502) leaves the old portrait. Either way the old Blob image goes only if no
+  saved `bots` row still uses it, and `clearCharactersCache()` (in `chars.ts`) drops the Wall's
+  per-instance 60s list so a stale tile can't point at a deleted image (it showed as a broken
+  image). Users' saved characters, the blocklist, and the allowlist are untouched. Admin tooling is
+  web-only.
 - **The prompt separates** "a name meaningful only because of one corporate work" (`warning`:
   Spider-Man, Pikachu) from "a mythological, historical, or pre-1928 figure a studio also adapted"
   (`none`: Thor, Sherlock Holmes, Winnie-the-Pooh, Hercules), with those worked examples inline.
@@ -379,7 +393,9 @@ route output. `next.config.mjs` uses an explicit `.mjs` extension so it's still 
 
 ## Features
 
-### Character Wall (`/chars`)
+### Character Wall (`/characters`)
+
+The page route was `/chars` until v0.29.1 and still redirects (`next.config.mjs`); the API stays `/api/chars` because released mobile builds call it.
 
 A public, no-auth gallery of every supported portrait in `avatar_cache` (anyone can already
 discover a row by typing its name, so nothing new is disclosed). Every
@@ -404,6 +420,15 @@ discover a row by typing its name, so nothing new is disclosed). Every
   window, `documentElement`, and `scrollingElement` (`body` is the real scroll owner under the
   flex-root layout), appears after 360px, and uses `scrollIntoView()` on a marker before the
   header. A native `<dialog>` lightbox is wrapped in the View Transitions API when available.
+- **Character pages (`/characters/[slug]`):** a server-rendered, shareable page per Wall entry
+  (portrait, name, category, a "Chat with" link to `/?name=`), so a shared link previews with a
+  real title, description, canonical URL, and portrait (`generateMetadata`; a data-URL portrait gets
+  no image). The slug (`characterSlug` in shared) is lowercase ASCII words, so a name with no
+  ASCII letters has no page; an unknown slug or a missing database is a 404 with `noindex`. The
+  data read lives in `utils/charactersWall.ts` (shared with `/api/chars`). `app/sitemap.ts`
+  (static pages plus one entry per slug-able character, `force-dynamic` so it is never a build-time
+  snapshot, static pages only if the database read fails) and `app/robots.ts` (allows the site, hides
+  `/api/`, `/admin`, `/history`, `/auth/`) point crawlers at the production origin in `utils/site.ts`.
 - **Back control:** the header's arrow + "Back" calls browser history and falls back to `/` only
   when there's no same-app entry. It deliberately doesn't use `window.history.length` (a fresh tab
   already reads 2 because of `about:blank`); `src/utils/clientNavigationState.ts` holds an in-memory
@@ -506,7 +531,7 @@ atomic single-class rule such as `.menuDivider` lives once in `globals.css` by l
   an "Admin" sub-section (Stats `FaUserShield`, Moderation `FaBan`) when `GET /api/admin/is-admin`
   reports true, then `<AuthControl onRequestSignIn={requestSignIn}>`. `modals` renders one shared
   `NameCaptureModal` and one `SignInModal` per page.
-- **Slots:** `BotCreator`'s `center` is `LandingCharacterCarousel`; `CharsGallery`'s is a
+- **Slots:** `BotCreator`'s `center` is the "Portrayal" wordmark + Beta badge (the carousel is now the page backdrop, below); `CharsGallery`'s is a
   `BackHomeLink` pill (`BackHomeLink.tsx`, also on the game start screen); chat and game (via
   `ChatShell.tsx`) use `menuSide="left"` with the character's avatar + name as `center` and a
   personal brand link as `extra`.
@@ -514,19 +539,19 @@ atomic single-class rule such as `.menuDivider` lives once in `globals.css` by l
   "/"`), since both are reachable mid-chat. `callbackUrl` alone isn't enough: `index.tsx`'s `Home`
   renders `ChatPage` whenever a bot session is in localStorage, so `clearStoredBot()` runs just before
   the Google/preview-stub `signIn()` and `signOut()` (not magic-link, which doesn't navigate).
-- **`LandingCharacterCarousel.tsx`** rotates through recognized characters via
-  `GET /api/chars?limit=100&sample=20` (the API samples, so the client doesn't download unused
-  portraits, including large base64 URLs). It advances every 4s, preloads the next portrait, and
-  pauses on hover/focus. The landing-only `wideCenter` mode is a one-row 3:1 grid with the image
-  fading toward the controls; desktop uses a taller face-level crop (about 42% from the top), mobile
-  a compact 22%. Clicking goes to `/chars?name=<encoded>`, which `CharsGallery` resolves via
-  `GET /api/chars?name=...` and opens in the lightbox without waiting for the page. Fixed
-  dimensions prevent layout shift. **The empty state paints the cached sample first:** the last
-  sample lives in `localStorage` (`landingCarouselCache`), read in the same effect as the fetch (not
-  a lazy `useState` initializer, which would hydration-mismatch the server placeholder); a fresh
-  non-empty response replaces both, and an empty or failed fetch keeps the cache. Only a first-ever
-  visit waits on the network, and its placeholder (`.portraitLoading`) pulses (respecting
-  `prefers-reduced-motion`).
+- **`LandingCharacterCarousel.tsx`** is the landing page's backdrop: a fixed full-page portrait
+  (rotating through recognized characters via `GET /api/chars?limit=100&sample=20`; the API
+  samples, so the client doesn't download unused portraits, including large base64 URLs) under a
+  light theme-colored veil, behind the translucent panels (62% surface, 3px blur; the blur was
+  tried at 10px and rejected). The image layer ignores pointer events so the form stays usable;
+  the name pill under the header's right edge (aligned to the 1080px content column) is the only
+  control, pausing rotation on hover/focus and linking to `/characters?name=<encoded>`, which
+  `CharsGallery` resolves via `GET /api/chars?name=...` and opens in the lightbox. It advances
+  every 6s and preloads the next portrait. Applies at every width (the header carousel it
+  replaced was removed). **The empty state paints the cached sample first:** the last sample
+  lives in `localStorage` (`landingCarouselCache`), read in the same effect as the fetch (not a
+  lazy `useState` initializer, which would hydration-mismatch); a fresh non-empty response
+  replaces both, and an empty or failed fetch keeps the cache. With no data it renders nothing.
 - **The landing page is a responsive dashboard:** the launcher is the dominant panel and both
   games a compact secondary panel. At 820px and below it is one column; game cards stay side by
   side on phones and stack only below 340px. Spacing and type use clamps; the form scroller is the
@@ -932,7 +957,17 @@ and the script normalizes to forward slashes because `swagger-jsdoc` doesn't mat
   page errors, the random button works, 404s) against a production build on port 3100, inside the
   `build` job in `ci.yml` (reusing that build; Chromium installs in parallel with it). **It must never spend Claude/Google/image tokens:** the server gets a dummy
   `ANTHROPIC_API_KEY`, and `smoke.spec.ts` throws on any request matching `BILLED_API`. Extend it
-  only with synthetics that stay off those routes (stub them with `page.route` if a flow needs them).
+  only with synthetics that stay off those routes. To add one:
+  1. Import `test`/`expect` from `e2e/helpers.ts`, never `@playwright/test` (ESLint enforces it).
+     Its `test` auto-blocks every billed endpoint; a stub registered inside a test wins.
+  2. Stub what the flow needs with `stubApi` (JSON) or `stubSse` (streamed game rounds), building
+     bodies from `fixtures` (typed against `packages/shared/src/types.ts`, so a stub can't drift
+     from the real shape). Add a fixture rather than an inline literal when a shape repeats.
+  3. `await page.waitForLoadState("networkidle")` after `goto` before clicking (a click before
+     hydration does nothing). A first creation hits the name gate, so click "Skip for now".
+  4. Layout-sensitive checks belong in `layout.spec.ts`. `playwright.config.ts` runs everything on
+     `desktop` and only `flows`/`layout` again on `mobile` (Pixel 7, Chromium).
+  CI uploads the HTML report, traces, and failure screenshots as the `playwright-report` artifact.
 
 - Tests live under `tests/`, mirroring source (`tests/api`, `tests/app`, `tests/pages`, `tests/src`,
   `tests/utils`, `tests/integration`, `tests/unit`).
@@ -994,6 +1029,7 @@ components are written natively, never shared with the DOM app.
   cross-platform**, an npm workspace resolved locally (edit it and re-run type-check, no
   install step). It holds API types (`types.ts`, mirroring the `@swagger` blocks), validation,
   storage keys, brand theme/copy, game and leaderboard state machines, character-creation flow,
+  chat rules (`chat.ts`: intro prompt, history format/trim, adopt-longer-history, `/api/chat` request builder, reply validation, send retry with backoff),
   category taxonomy, and `formatRelativeTime`. Colors are authored once in
   `packages/shared/src/tokens/{light,dark}.json`; mobile flattens them and
   `scripts/generate-theme-css.cjs` feeds the same files to Style Dictionary for web's
@@ -1007,8 +1043,10 @@ components are written natively, never shared with the DOM app.
   opaque in AsyncStorage; a guest's identity is a random SecureStore secret
   (`src/gameGuest.ts`) sent as `x-game-guest` in place of web's HttpOnly cookie. Correct and
   wrong guesses fire haptics (native-only extra).
-- **Every non-GET request carries `x-api-key`** (`EXPO_PUBLIC_API_SECRET`), because React
-  Native sends no `Origin`/`Referer` and so lands in `proxy.ts`'s external-origin branch. The
+- **Every request carries `x-api-key`** (`EXPO_PUBLIC_API_SECRET`), because React
+  Native sends no `Origin`/`Referer` and so lands in `proxy.ts`'s external-origin branch. GETs
+  carry it too (changed 2026-10-18) so a phone on Expo Go can reach a LAN dev server, whose host
+  isn't first-party, without changing `proxy.ts`. The
   secret is extractable from the APK; the per-route rate limiter is the real abuse ceiling
   (same caveat as "Security posture"). A documented tradeoff, not an oversight: discuss before
   changing. Env vars: `EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_API_SECRET` (`.env.example`).
@@ -1031,11 +1069,13 @@ components are written natively, never shared with the DOM app.
   overriding `headerLeft` would replace native-stack's back button.
 - **Navigate with `navigation.navigate`, not `replace`,** from Creator/CharWall into Chat;
   replacing left Chat with no back button.
-- **`CreatorScreen` must fit one screen with no scrolling** on modern Android phones (checked at
-  360x740 through 412x915 with a resume card showing). The carousel is the flexible element:
-  it is sized (110 to 210) from the measured leftover room, and the viewport keeps the tallest
-  height seen so the keyboard doesn't shrink it. Don't give the scroll container `flexGrow: 1`.
-  Anything tall added here needs re-checking via Expo web plus Playwright with `/api/chars` stubbed.
+- **`CreatorScreen`'s carousel is a full-screen portrait backdrop**, mirroring web's landing page:
+  `CharacterCarousel` renders first behind the screen (image layer ignores touches), with the
+  current name as a top-right pill that starts that character's chat. The form sits in a
+  62%-surface translucent panel under the pill, and the site name plus Beta badge live in the
+  native header (`BrandTitle`, set via `App.tsx`), not the body. The earlier spinning-halo
+  carousel and its fit-to-screen sizing were removed. Re-check layout on a short Android phone
+  (the panel scrolls if it doesn't fit).
 - **Keyboard avoidance in `ChatScreen`** uses `KeyboardAvoidingView` with `behavior="padding"` and
   `keyboardVerticalOffset={useHeaderHeight()}` (SDK 57's forced edge-to-edge disables
   `adjustResize`), and drops the input row's `insets.bottom` padding while the keyboard is open
@@ -1088,7 +1128,6 @@ Jest (`jest-expo`) plus React Native Testing Library, tests under `apps/mobile/t
 - `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`: Cloudflare Workers AI as the primary avatar
   provider; without them Pollinations.ai runs with no config (see "Avatar generation").
 - `VERCEL_BLOB_READ_WRITE_TOKEN` / `BLOB_READ_WRITE_TOKEN`: Vercel Blob logging and durable avatar URLs.
-- `TTS_TMP_DIR`: defaults to the system temp dir.
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`):
   share rate-limit counters across instances.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`: account sign-in

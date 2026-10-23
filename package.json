@@ -1,6 +1,6 @@
 {
   "name": "portrayal",
-  "version": "0.26.2",
+  "version": "0.29.1",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -42,7 +42,7 @@
     "db:studio": "drizzle-kit studio --config config/drizzle.config.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.131.0",
+    "@anthropic-ai/sdk": "^0.135.0",
     "@auth/drizzle-adapter": "^1.11.3",
     "@google-cloud/text-to-speech": "^7.1.0",
     "@neondatabase/serverless": "^1.1.0",
@@ -59,8 +59,8 @@
     "next": "^16.3.5",
     "next-auth": "^4.24.15",
     "nodemailer": "^10.0.10",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-icons": "^5.7.0",
     "react-window": "^2.3.1",
     "sanitize-filename": "^1.6.3",
@@ -71,7 +71,7 @@
     "@babel/preset-typescript": "^8.0.1",
     "@next/bundle-analyzer": "^16.3.5",
     "@playwright/test": "^1.63.0",
-    "@react-native/jest-preset": "^0.86.3",
+    "@react-native/jest-preset": "^0.88.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
@@ -98,7 +98,7 @@
     "node-mocks-http": "^1.18.1",
     "postcss": "^8.5.15",
     "prettier": "^3.9.8",
-    "react-native": "^0.86.3",
+    "react-native": "^0.88.0",
     "style-dictionary": "^5.5.5",
     "swagger-jsdoc": "^6.3.0",
     "typedoc": "^0.28.20",

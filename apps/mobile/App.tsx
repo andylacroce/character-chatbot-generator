@@ -4,6 +4,7 @@ import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { StatusBar } from "expo-status-bar";
 import CreatorScreen from "./src/screens/CreatorScreen";
+import BrandTitle from "./src/components/BrandTitle";
 import ChatScreen from "./src/screens/ChatScreen";
 import CharWallScreen from "./src/screens/CharWallScreen";
 import HistoryScreen from "./src/screens/HistoryScreen";
@@ -66,7 +67,11 @@ function AppNavigator() {
           headerRight: () => <DefaultHeaderRight navigation={navigation} />,
         })}
       >
-        <Stack.Screen name="Creator" component={CreatorScreen} options={{ title: "" }} />
+        <Stack.Screen
+          name="Creator"
+          component={CreatorScreen}
+          options={{ headerTitle: () => <BrandTitle />, headerTitleAlign: "left" }}
+        />
         <Stack.Screen
           name="CharWall"
           component={CharWallScreen}

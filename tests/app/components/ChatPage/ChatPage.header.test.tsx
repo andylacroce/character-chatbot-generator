@@ -100,7 +100,7 @@ describe("ChatPage header content (moved from ChatHeader into AppHeader's slots)
     fireEvent.click(screen.getByLabelText(/open menu/i));
     const link = screen.getByLabelText(/view the character wall/i);
     expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute("href", "/chars");
+    expect(link).toHaveAttribute("href", "/characters");
   });
 
   it("offers to add a name from the menu, and opens the name-capture modal", () => {

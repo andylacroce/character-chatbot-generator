@@ -136,12 +136,12 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
 
   // Set once the user cancels a URL-driven launch (see handleCancelLaunch). Read by
   // isLaunchingFromUrl and the URL-launch effect's own guard below so cancelling is
-  // immediate and deterministic — it doesn't depend on router.push('/chars') having
+  // immediate and deterministic — it doesn't depend on router.push('/characters') having
   // actually completed its navigation (and thus unmounted this component) before some
   // other render/effect tick could otherwise let the launch silently resume.
   const [launchCancelled, setLaunchCancelled] = useState(false);
 
-  // Launching via /?name=X (e.g. the /chars "Chat with this character" link) should
+  // Launching via /?name=X (e.g. the /characters "Chat with this character" link) should
   // read as going straight into a chat, not "landing on the creator page, which then
   // happens to fill itself in" — so the ordinary hero/input/footer UI stays hidden
   // for as long as a URL-driven launch is in flight. Falls back to showing the normal
@@ -259,8 +259,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   // clearing `interstitial` is enough, since the ordinary form is already what
   // re-appears once isBusy/interstitial are both false, no navigation needed. A
   // launch WITH nameFromUrl came from another page (the Character Wall, Past
-  // Chats, or the header carousel), so cancelling goes Back to it; a direct
-  // hard-load of /?name=X has no in-app Back target and falls back to /chars.
+  // Chats, or the landing backdrop's name pill), so cancelling goes Back to it; a direct
+  // hard-load of /?name=X has no in-app Back target and falls back to /characters.
   // Setting launchCancelled makes isLaunchingFromUrl false immediately, for
   // this mounted instance, regardless of how long the navigation takes
   // to actually complete its navigation — it doesn't rely on that navigation
@@ -271,7 +271,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     if (nameFromUrl) {
       setLaunchCancelled(true);
       if (hasNavigatedWithinSession()) router.back();
-      else router.push("/chars");
+      else router.push("/characters");
     }
   };
 
@@ -287,7 +287,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
     }
   }, [returningToCreator, setInput]);
 
-  // Launching /?name=X (e.g. from the /chars "Chat with this character" link) should
+  // Launching /?name=X (e.g. from the /characters "Chat with this character" link) should
   // resume a signed-in user's own saved character by that name if one exists (this is
   // also how /history's rows resume) — rather than always generating a fresh (and likely different) personality for a name that's already
   // been created. Falls back to a fresh handleCreate() for guests, or when no saved
@@ -364,8 +364,18 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
   }, [nameFromUrl, input, isBusy, returningToCreator, sessionStatus, launchCancelled]);
   return (
     <>
-      <AppHeader menuItems={menuItems} center={<LandingCharacterCarousel />} wideCenter />
+      <AppHeader
+        menuItems={menuItems}
+        center={
+          <span className={styles.headerBrand}>
+            <span className={styles.headerWordmark}>{BRAND.name}</span>
+            <span className={styles.betaBadge}>{BRAND.betaLabel}</span>
+          </span>
+        }
+        wideCenter
+      />
       <form onSubmit={handleFormSubmit} className={styles.formContainer} autoComplete="off">
+        <LandingCharacterCarousel />
         <div className={styles.formInner}>
           {!isLaunchingFromUrl && !interstitial && (
             <div className={styles.landingLayout}>
@@ -529,7 +539,7 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                     </div>
                   </div>
 
-                  <Link href="/chars" className={styles.wallCta}>
+                  <Link href="/characters" className={styles.wallCta}>
                     <svg
                       width="17"
                       height="17"
@@ -632,7 +642,9 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
             onCancel={handleCancelLaunch}
           />
           {!isLaunchingFromUrl && !interstitial && (
-            <div className={styles.footerLinks}>
+            <div
+              className={`${styles.footerLinks} ${sessionStatus === "authenticated" ? styles.footerLinksDense : ""}`.trim()}
+            >
               {sessionStatus === "authenticated" && (
                 <Link href="/history" className={styles.footerLink}>
                   Past chats
@@ -644,7 +656,8 @@ const BotCreator: React.FC<BotCreatorProps> = ({ onBotCreated, returningToCreato
                 onClick={() => setShowCharacterInfoModal(true)}
                 className={styles.footerLink}
               >
-                Which characters can I create?
+                <span className={styles.footerLabelFull}>Which characters can I create?</span>
+                <span className={styles.footerLabelShort}>Characters</span>
               </button>
               <button
                 type="button"

@@ -1,75 +1,23 @@
 /* =============================
    LandingCharacterCarousel.module.css
-   - Rotating portrait "stage" across the left three-quarters of the landing header.
-     The portrait fills a slim banner, then fades into the header toward the right,
-     with the character's name overlaid on a scrim rather than in a separate row — this
-     keeps the header's own vertical footprint small (a real constraint on this page:
-     the landing page targets fitting one screen with no scroll across phone-through-
-     desktop heights) while still putting the same amount of image on screen.
+   - The rotating portrait is the landing page's backdrop, fixed behind the
+     (translucent) panels and under the sticky header, with the character's name as a
+     small pill under the header's right edge.
    ============================= */
 
-.carousel {
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-start;
-  /* AppHeader's wide-center mode assigns this the left three-quarters of the row;
-     filling that track keeps the right-side controls in their own adjacent column. */
-  align-self: flex-start;
-  width: 100%;
-  height: clamp(96px, 12svh, 112px);
-  border: none;
-  border-radius: 12px 0 0 12px;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-  cursor: pointer;
-  background: transparent;
-  transition: filter 0.2s ease;
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
-.carousel:hover {
-  filter: saturate(1.08) brightness(1.04);
-}
-
-.carousel:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.portraitWrap {
+.backdropImage {
   position: absolute;
   inset: 0;
   /* New key per character (see the component) re-triggers this animation, giving a
      soft cross-fade on every rotation instead of a hard cut. */
-  animation: portraitIn 0.6s ease both;
-  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 100%);
-  mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 100%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .portraitWrap,
-  .portrait,
-  .nameLabel,
-  .portraitLoading {
-    animation: none !important;
-  }
-}
-
-/* Reads as "loading", not "stuck" — shown only while there's no cached sample yet to
-   paint immediately (see the component's effect). */
-.portraitLoading {
-  animation: portraitPulse 1.4s ease-in-out infinite;
-}
-
-@keyframes portraitPulse {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 0.65;
-  }
+  animation: portraitIn 0.9s ease both;
 }
 
 @keyframes portraitIn {
@@ -88,67 +36,121 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Start around eye level, then reveal more of the portrait before the next slide. */
-  object-position: center 42%;
+  object-position: center 30%;
   background: var(--color-surface-variant);
   filter: saturate(1.05);
+  /* Slow random push-in/pull-out and drift while each portrait shows. Runs a little longer than the
+     6s rotation so it is still moving when the next portrait cross-fades in. */
+  animation: backdropDrift 7s ease-out both;
 }
 
-.portrait:not(.portraitLoading) {
-  animation: portraitPan 6s linear both;
-}
-
-@keyframes portraitPan {
+/* Per-portrait values come from shared randomDrift() via inline custom properties. */
+@keyframes backdropDrift {
   from {
-    object-position: center top;
+    scale: var(--drift-scale-from, 1.06);
+    translate: var(--drift-from, 0 0);
   }
   to {
-    object-position: center 76%;
+    scale: var(--drift-scale-to, 1.2);
+    translate: var(--drift-to, 0 0);
   }
 }
 
-/* Darkens the image behind the left-aligned name while following the portrait's
-   right-edge fade into the header background. */
-.scrim {
+/* Tints the art toward the theme background so panels and text stay legible and the
+   portrait reads as atmosphere, not content. */
+.backdropVeil {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(20, 16, 10, 0.02) 35%, rgba(20, 16, 10, 0.72) 100%),
-    linear-gradient(90deg, rgba(20, 16, 10, 0.22), transparent 70%);
-  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 100%);
-  mask-image: linear-gradient(to right, #000 0%, #000 62%, transparent 100%);
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--color-background) 8%, transparent),
+    color-mix(in srgb, var(--color-background) 35%, transparent) 100%
+  );
 }
 
-.nameLabel {
-  position: relative;
-  z-index: 1;
-  font-family: var(--font-secondary), serif;
-  font-size: clamp(0.85rem, 2.6vw, 1.05rem);
-  font-weight: 600;
-  line-height: 1.2;
-  /* Always a fixed light color with a shadow, not a theme token — this sits directly
-     on a photo, not a themed surface, so it needs to read against any portrait in
-     either light or dark mode rather than tracking --color-text. */
+.backdropNav {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  /* Arrows at the page edges, name centered between them. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  /* The row spans the page; only the controls themselves take pointer events. */
+  pointer-events: none;
+}
+
+.backdropNav > * {
+  pointer-events: auto;
+}
+
+/* Fixed light color on a dark pill, not theme tokens: these sit on a photo, not a
+   themed surface, so they must read against any portrait in either theme. */
+.backdropCaption,
+.backdropArrow {
+  border: none;
+  cursor: pointer;
   color: #f5f1e6;
-  text-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.65),
-    0 0 10px rgba(0, 0, 0, 0.35);
-  padding: 0.3rem 0.6rem 0.4rem;
+  background: rgba(20, 16, 10, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.backdropCaption {
+  justify-self: center;
   max-width: 100%;
-  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  font-family: var(--font-secondary), serif;
+  font-size: 0.9rem;
+  font-weight: 600;
   animation: portraitIn 0.6s ease both;
 }
 
-@media (max-width: 600px) {
-  .carousel {
-    height: clamp(52px, 9svh, 76px);
+.backdropArrow {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border-radius: 50%;
+}
+
+/* Touch screens: every control is at least a 44px target. */
+@media (pointer: coarse) {
+  .backdropCaption {
+    min-height: 44px;
+    padding: 0.3rem 1rem;
   }
 
-  .portrait {
-    /* The narrower phone banner already showed the intended amount of each face. */
-    object-position: center 22%;
+  .backdropArrow {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+.backdropCaption:hover,
+.backdropArrow:hover {
+  background: rgba(20, 16, 10, 0.75);
+}
+
+.backdropCaption:focus-visible,
+.backdropArrow:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdropImage,
+  .portrait,
+  .backdropCaption {
     animation: none;
   }
 }

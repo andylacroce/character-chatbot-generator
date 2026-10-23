@@ -58,6 +58,24 @@ module.exports = [
     },
   },
   {
+    // e2e specs get Playwright's `test` from ./helpers, which blocks billed endpoints automatically.
+    files: ["e2e/*.spec.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@playwright/test",
+              message: "Import test/expect from ./helpers so billed endpoints stay blocked.",
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["**/*.test.{ts,tsx}", "tests/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",

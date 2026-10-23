@@ -1,6 +1,6 @@
 /**
  * Thin fetch wrapper for talking to the character-chatbot-generator backend.
- * Every POST needs `x-api-key` because React Native's fetch sends no
+ * Every request carries `x-api-key` because React Native's fetch sends no
  * Origin/Referer header, so proxy.ts's browser-CSRF check always falls through
  * to the API-key branch for this client (see .env.example).
  */
@@ -50,14 +50,11 @@ export class ApiError extends Error {
 
 /** Calls a character-chatbot-generator API route and returns the parsed JSON body. */
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const method = (options.method ?? "GET").toUpperCase();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> | undefined),
   };
-  if (method !== "GET" && method !== "HEAD") {
-    headers["x-api-key"] = API_SECRET;
-  }
+  headers["x-api-key"] = API_SECRET;
   const authToken = getCachedAuthToken();
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;

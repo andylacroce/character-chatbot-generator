@@ -2,11 +2,13 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import DataDeletionPage, { metadata } from "../../../src/app/data-deletion/page";
 
+jest.mock("next/navigation", () => ({ useRouter: () => ({ back: jest.fn(), push: jest.fn() }) }));
+
 describe("DataDeletionPage", () => {
   it("renders the title and a link back to the app", () => {
     render(<DataDeletionPage />);
     expect(screen.getByRole("heading", { name: "Data Deletion Instructions" })).toBeInTheDocument();
-    expect(screen.getByText(/Back to Portrayal/)).toHaveAttribute("href", "/");
+    expect(screen.getByText(/Back/)).toHaveAttribute("href", "/");
   });
 
   it("explains guest data needs no request", () => {

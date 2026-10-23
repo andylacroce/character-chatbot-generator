@@ -22,7 +22,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - [Avatar Generation](#avatar-generation)
 - [API Security](#api-security)
 - [Account Persistence (Optional)](#account-persistence-optional)
-- [Character Wall (`/chars`)](#character-wall-chars)
+- [Character Wall (`/characters`)](#character-wall-characters)
 - [Guessing Games](#guessing-games)
 - [Personalized Greeting](#personalized-greeting)
 - [Internal Analytics (`/admin`)](#internal-analytics-admin)
@@ -45,7 +45,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 - **Smart Context Management**: Automatic conversation summarization when history exceeds 20 messages, with a rolling summary checkpoint for signed-in users so long conversations stay cheap
 - **Live Progress**: `Guess Who's Next` streams real, server-reported progress (Server-Sent Events) while it builds each new character
 - **Optional Accounts**: Google sign-in persists a user's characters and chat history server-side (Neon Postgres); guest usage works fully without it — see [Account Persistence](#account-persistence-optional)
-- **Character Wall**: A public, no-auth gallery at `/chars` of every portrait the app has ever generated, presented as a responsive tattered-parchment mosaic — see [Character Wall](#character-wall-chars)
+- **Character Wall**: A public, no-auth gallery at `/characters` of every portrait the app has ever generated, presented as a responsive tattered-parchment mosaic — see [Character Wall](#character-wall-characters)
 - **Personalized Greeting**: Characters can greet you by name — a one-time, skippable prompt when you first start a conversation, editable anytime from the account menu — see [Personalized Greeting](#personalized-greeting)
 - **Privacy-conscious Analytics**: Cookie-free Vercel traffic metrics, consent-gated Google Analytics 4, and a small self-hosted product-usage log with an admin-only `/admin` stats view — see [Internal Analytics](#internal-analytics-admin)
 - **Comprehensive Testing**: Jest test suite with 80%+ branch coverage and 1,400+ passing tests
@@ -102,7 +102,6 @@ NEXT_PUBLIC_GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
 CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id
 CLOUDFLARE_API_TOKEN=your_cloudflare_api_token
 VERCEL_BLOB_READ_WRITE_TOKEN=vercel_blob_token
-TTS_TMP_DIR=/custom/temp/path
 # Optional, deployment only: makes API rate limits global instead of per-instance.
 # Leave unset locally — the in-process limiter is the right fit for one dev server.
 KV_REST_API_URL=https://your-store.upstash.io
@@ -172,7 +171,6 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 - `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID` — Overrides the production site's built-in GA4 measurement ID, or enables the consent flow during local development. Use a web data stream's `G-...` ID; the Google tag is not loaded until a visitor explicitly opts in, and client-side route changes are tracked automatically when GA4 Enhanced Measurement has browser-history page changes enabled.
 - `CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN` — Enables Cloudflare Workers AI (Flux Schnell) as the primary avatar image provider. Without them, avatar generation still works via the Pollinations.ai fallback with no config at all
 - `VERCEL_BLOB_READ_WRITE_TOKEN` (or `BLOB_READ_WRITE_TOKEN`) — Enables logging to Vercel Blob storage, and durable Blob-hosted avatar URLs instead of base64 data URLs
-- `TTS_TMP_DIR` — Custom path for temporary TTS files (defaults to system temp)
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` — Redis REST endpoint (Vercel KV / Marketplace Redis) used to share API rate-limit counters across serverless instances. `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` work too. With neither pair set, limits fall back to an in-process counter, which is per-instance on Vercel and exactly right for local development.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` — Enables optional Google account sign-in and server-side persistence (see [Account Persistence](#account-persistence-optional) below). The app is fully functional as a guest with none of these set.
 - `EMAIL_SERVER` + `EMAIL_FROM` — Enables passwordless magic-link sign-in alongside Google (a plain SMTP connection string works — Gmail App Password, Resend, etc.). Needs `DATABASE_URL` set too.
@@ -258,7 +256,7 @@ Drizzle ORM), so both survive across devices and browser sessions:
 
 See `CLAUDE.md`'s "Account persistence" section for the full phase-by-phase design notes.
 
-## Character Wall (`/chars`)
+## Character Wall (`/characters`)
 
 A public gallery of every character portrait the app has ever generated — no sign-in
 required. It reads from the same global `avatar_cache` table described in

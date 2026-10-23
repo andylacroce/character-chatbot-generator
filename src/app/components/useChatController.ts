@@ -15,7 +15,17 @@ import storage from "../../utils/storage";
 import type { Message } from "../../types/message";
 import type { Bot } from "./BotCreator";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { STORAGE_KEYS, chatHistoryKey, getReplayAudioUrl } from "character-chatbot-shared";
+import {
+  INTRO_PROMPT,
+  STORAGE_KEYS,
+  buildChatRequest,
+  chatHistoryKey,
+  chatReplyMessage,
+  getReplayAudioUrl,
+  longerHistory,
+  parseChatMessages,
+  retryWithBackoff,
+} from "character-chatbot-shared";
 
 /**
  * The visitor's own preferred name (see useUserName.ts), read directly from localStorage
@@ -56,18 +66,7 @@ export function useChatController(
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const saved = storage.getItem(historyKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(
-            (m): m is Message =>
-              m !== null &&
-              typeof m === "object" &&
-              typeof m.text === "string" &&
-              typeof m.sender === "string",
-          );
-        }
-      }
+      if (saved) return parseChatMessages(JSON.parse(saved));
     } catch {}
     return [];
   });
@@ -120,18 +119,7 @@ export function useChatController(
     try {
       const saved = storage.getItem(newHistoryKey);
       if (saved) {
-        const parsed = JSON.parse(saved);
-        setMessages(
-          Array.isArray(parsed)
-            ? parsed.filter(
-                (m): m is Message =>
-                  m !== null &&
-                  typeof m === "object" &&
-                  typeof m.text === "string" &&
-                  typeof m.sender === "string",
-              )
-            : [],
-        );
+        setMessages(parseChatMessages(JSON.parse(saved)));
       } else setMessages([]);
     } catch {
       setMessages([]);
@@ -191,16 +179,8 @@ export function useChatController(
       .then((res) => res.json())
       .then((data) => {
         if (!mounted || !Array.isArray(data?.messages)) return;
-        const serverMessages: Message[] = data.messages.filter(
-          (m: unknown): m is Message =>
-            m !== null &&
-            typeof m === "object" &&
-            typeof (m as Message).text === "string" &&
-            typeof (m as Message).sender === "string",
-        );
-        setMessages((current) =>
-          serverMessages.length > current.length ? serverMessages : current,
-        );
+        const serverMessages = parseChatMessages(data.messages);
+        setMessages((current) => longerHistory(current, serverMessages));
       })
       .catch(() => {
         // Best-effort — local storage already has whatever this device has seen.
@@ -386,33 +366,23 @@ export function useChatController(
             authenticatedFetch("/api/chat", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                message: "Introduce yourself in 2 sentences or less.",
-                personality: bot.personality,
-                botName: bot.name,
-                voiceConfig,
-                gender: bot.gender,
-                conversationHistory: [],
-                userName: getStoredUserName(),
-                // This prompt is an internal mechanism to elicit an introduction, not
-                // something the user typed — tells the server not to persist it as a
-                // real "User" turn in a signed-in user's saved chat history.
-                isIntro: true,
-              }),
+              // isIntro tells the server this internal prompt isn't a real "User" turn to persist.
+              body: JSON.stringify(
+                buildChatRequest({
+                  bot,
+                  voiceConfig,
+                  message: INTRO_PROMPT,
+                  userName: getStoredUserName(),
+                  isIntro: true,
+                }),
+              ),
             }).then((res) => {
               if (!res.ok) throw new Error(`HTTP ${res.status}`);
               return res.json();
             }),
           );
           if (cancelled) return;
-          if (typeof response.reply !== "string" || !response.reply) {
-            throw new Error("Invalid intro response: missing reply");
-          }
-          const introMsg: Message = {
-            sender: bot.name,
-            text: response.reply,
-            audioFileUrl: response.audioFileUrl,
-          };
+          const introMsg: Message = chatReplyMessage(bot.name, response);
           setMessages([introMsg]);
           logMessage(introMsg);
           setIntroError(null);
@@ -458,52 +428,6 @@ export function useChatController(
   ]);
 
   const sendMessage = useCallback(async () => {
-    /** Retries an async operation with exponential backoff. */
-    async function retryWithBackoff<T>(
-      fn: () => Promise<T>,
-      maxRetries = 2,
-      initialDelay = 800,
-    ): Promise<T> {
-      let delay = initialDelay;
-      let lastError;
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        if (attempt > 0) {
-          setRetrying(true);
-          if (process.env.NODE_ENV === "test") {
-            await new Promise((res) => setTimeout(res, 10)); // Minimal delay in tests
-          } else {
-            await Promise.resolve();
-          }
-        }
-        setError("");
-        try {
-          const result = await fn();
-          if (process.env.NODE_ENV === "test") {
-            await new Promise((res) => setTimeout(res, 1)); // Minimal delay in tests
-          }
-          setRetrying(false);
-          return result;
-        } catch (err: unknown) {
-          lastError = err;
-          if (attempt === maxRetries) {
-            if (process.env.NODE_ENV === "test") {
-              await new Promise((res) => setTimeout(res, 1)); // Minimal delay in tests
-            }
-            setRetrying(false);
-            throw err;
-          }
-          if (process.env.NODE_ENV === "test") {
-            await new Promise((res) => setTimeout(res, 10)); // Minimal delay in tests
-          } else {
-            await new Promise((res) => setTimeout(res, delay));
-          }
-          delay *= 2;
-        }
-      }
-      setRetrying(false);
-      throw lastError || new Error("Max retries reached");
-    }
-
     if (!input.trim() || !apiAvailable || loading) return;
     const userMessage: Message = { sender: "User", text: input };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
@@ -537,44 +461,38 @@ export function useChatController(
           botName: bot.name,
         });
       }
-      // Convert messages to conversation history format for API
-      const conversationHistory = messages
-        .slice(-20)
-        .map((msg) => (msg.sender === bot.name ? `Bot: ${msg.text}` : `User: ${msg.text}`));
       const response = await retryWithBackoff(
         () =>
           authenticatedFetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: currentInput,
-              personality: bot.personality,
-              botName: bot.name,
-              voiceConfig,
-              gender: bot.gender,
-              conversationHistory,
-              userName: getStoredUserName(),
-            }),
+            body: JSON.stringify(
+              buildChatRequest({
+                bot,
+                voiceConfig,
+                message: currentInput,
+                history: messages,
+                userName: getStoredUserName(),
+              }),
+            ),
           }).then((res) => {
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             return res.json();
           }),
-        2,
-        800,
+        {
+          delayMs: process.env.NODE_ENV === "test" ? 10 : undefined,
+          onAttempt: (attempt) => {
+            if (attempt > 0) setRetrying(true);
+            setError("");
+          },
+        },
       );
       if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
         logEvent("info", "chat_send_retry_success", "Message send succeeded", {
           botName: bot.name,
         });
       }
-      if (typeof response.reply !== "string" || !response.reply) {
-        throw new Error("Invalid chat response: missing reply");
-      }
-      const botReply: Message = {
-        sender: bot.name,
-        text: response.reply,
-        audioFileUrl: response.audioFileUrl,
-      };
+      const botReply: Message = chatReplyMessage(bot.name, response);
       setMessages((prevMessages) => [...prevMessages, botReply]);
       logMessage(botReply);
     } catch (e) {
@@ -596,6 +514,7 @@ export function useChatController(
         );
       }
     } finally {
+      setRetrying(false);
       setLoading(false);
     }
   }, [

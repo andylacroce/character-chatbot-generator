@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 
 /**
- * Adjusts CSS variables/classes so the chat layout leaves room for the on-screen keyboard on
- * mobile, using the `.ff-android-input-focus` pattern already defined in globals.css. Extracted
+ * Keeps the chat layout inside the visible area when the on-screen keyboard opens on mobile
+ * (`--vv-height`/`--vv-offset-top`, consumed by ChatPage.module.css), and still toggles the
+ * older `.mobile-keyboard-open` classes and `--vv-keyboard-pad`. Extracted
  * out of useChatController.ts — this effect is fully self-contained (only touches refs and the
  * DOM), with no dependency on chat/message/voice state.
  */
@@ -49,8 +50,19 @@ export function useMobileKeyboardViewportAdjustment(
       });
     };
 
+    // The layout sizes itself to the visual viewport (see ChatPage.module.css's .chatLayout):
+    // phone browsers shrink only the visual viewport when the keyboard opens, so a fixed
+    // 100vh page leaves the input row behind the keyboard. offsetTop covers iOS scrolling
+    // the layout viewport up to reveal a focused input.
+    const setViewportVars = () => {
+      if (!root || !vv) return;
+      root.style.setProperty("--vv-height", `${vv.height}px`);
+      root.style.setProperty("--vv-offset-top", `${vv.offsetTop ?? 0}px`);
+    };
+
     const onViewportChange = () => {
       try {
+        setViewportVars();
         // Prefer visualViewport when available
         let heightDiff = 0;
         if (vv) {
@@ -99,6 +111,7 @@ export function useMobileKeyboardViewportAdjustment(
       setCssPad(0);
     };
 
+    setViewportVars();
     if (vv) {
       vv.addEventListener("resize", scheduleViewportChange);
       vv.addEventListener("scroll", scheduleViewportChange);
@@ -128,6 +141,8 @@ export function useMobileKeyboardViewportAdjustment(
         if (root) {
           KEYBOARD_CLASSES.forEach((c) => root.classList.remove(c));
           root.style.removeProperty("--vv-keyboard-pad");
+          root.style.removeProperty("--vv-height");
+          root.style.removeProperty("--vv-offset-top");
         }
         if (vvRaf !== null) {
           window.cancelAnimationFrame(vvRaf);

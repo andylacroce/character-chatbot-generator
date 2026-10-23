@@ -2,6 +2,58 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.29.1 - 2026-10-18 - Chat parity, a landing-page click fix, and /characters
+
+- The Character Wall and its pages moved from `/chars` to `/characters` (`/characters/<name>`). The old URLs redirect permanently, and the API route is unchanged.
+- Back is now one rule across pages: the Wall, Past chats, Leaderboard, Privacy, and Data deletion all go to the previous in-app page, or home when you arrived by link. Privacy and Data deletion used to always go home.
+- Fixes the landing page's carousel character name not being clickable: the creator form's bottom padding sat over it and swallowed the click.
+- Replies that aren't streamed (all of mobile's) now have `*action emotes*` stripped, like streamed ones.
+- Mobile chat now retries a failed send twice before showing an error, as web already did; the retry and the empty-reply check live once in the shared package.
+- Mobile no longer crashes on corrupt saved chat history; it starts that chat fresh.
+
+## v0.29.0 - 2026-10-18 - Shareable character pages
+
+- Every character on the Wall now has its own page (`/chars/<name>`) with the portrait, name, category, and a "Chat with" button. Sharing a character's link shows a proper preview (title, description, and the portrait) in messages and social posts. The Wall's portrait view links to it as "Character page".
+- An unknown character link shows the usual not-found page. A sitemap (the public pages plus every character) and a `robots.txt` now point search engines at the site, hiding the API, admin, and account pages.
+- The Wall's data read moved into its own module, shared by the API and the new pages.
+- Fixes link previews site-wide: the page head used hand-written tags that duplicated every page's title and preview tags and gave the preview image as a relative path, which scrapers can't use. They are now generated once, with an absolute image URL, so shared links to any page preview correctly.
+- Removed 16 ambiguous, bare-name entries from the Wall (for example a bare "Beauty" or "Edmund"), which would have made thin, confusing pages.
+
+## v0.28.3 - 2026-10-18 - Wall moderation at the point of publishing
+
+- A brand-new character name is now checked again, server-side, right before its portrait can be added to the public Character Wall. Names that are blocked, unrecognized, or flagged for copyright get a private portrait only; if the check itself fails, the portrait stays private. Names already on the Wall and curated names skip the extra check, and ordinary creation is unchanged apart from one extra quick check for a new name.
+- The name classifier now lives in one shared module used by both the creation check and the portrait route, and the creation route drops about 100 lines.
+
+## v0.28.2 - 2026-10-18 - Shared chat rules for web and mobile
+
+- Web and the mobile app now take the intro prompt, the 20-turn history format, message validation, the adopt-the-longer-server-history rule, and the `/api/chat` request shape from one shared module instead of two hand-kept copies. The web chat controller drops three duplicate message filters.
+- On mobile, a character's opening line now addresses the visitor by name when they have set one, matching web. The mobile intro request previously left the name out.
+
+## v0.28.1 - 2026-10-18 - One audio pipeline for chat and the games
+
+- Chat replies and both guessing games now build their spoken audio through a single shared routine instead of four hand-copied versions, and `chat.ts` shrinks from 801 to 463 lines. Streamed replies now share cached audio with ordinary replies and keep the same text companion file, so replaying them works the same way.
+- Fixes streamed audio being written to `TTS_TMP_DIR` while the audio route only ever reads the system temp directory. The `TTS_TMP_DIR` setting is gone as a result.
+- Chat reply logging is consolidated: one `chat_reply_sent` event on every path and a single `chat_tts_failed` event for a speech failure. The `chat_tts_voice_selected` event and the per-path `chat_tts_failed_cache_hit`/`chat_tts_failed_streaming` events are removed.
+- Adds an integration test that runs the real audio helper and the real audio route together on a real temp directory, so a reply's audio URL is proven to replay.
+
+## v0.28.0 - 2026-10-18 - Admin portrait purge and regenerate
+
+- Admins now see "Regenerate portrait" and "Purge portrait" in the Character Wall lightbox, to fix a bad portrait without touching the database. Regenerate makes a new portrait now and swaps it in place (the old one is kept if generation fails); purge removes the shared portrait so the next creation of that name builds a fresh one. Neither affects users' saved characters or the moderation lists. Both clear the Wall's cached list so a stale tile can't show a deleted image.
+- Adds stubbed end-to-end tests (character creation and chat, the copyright warning, the unrecognized-name stop, and a Guess Who round) plus phone-width layout checks, run on every PR without spending any API tokens.
+
+## v0.27.1 - 2026-10-18 - Landing footer and chat keyboard fixes
+
+- The landing page footer no longer overflows for signed-in users: with "Past chats" added, the "Which characters can I create?" link shortens to "Characters" on screens 480px wide or less instead of the row wrapping.
+- On phone browsers the chat (and the games) now size themselves to the visible area, so the input row stays fully above the on-screen keyboard instead of sitting behind it.
+- The landing page footer now sits the same distance below the panels as the panels sit from each other.
+
+## v0.27.0 - 2026-10-18 - Portrait backdrop landing page
+
+- The landing page's rotating character portraits are now a full-page backdrop (web, phone-width web and the mobile app) behind translucent panels, each with a random slow zoom and drift, instead of a small banner in the header. The header is slim and shows the Portrayal name and Beta badge (in the mobile app's native header too).
+- A bottom row has previous and next arrows at the page edges and the character's name centered between them, with touch-sized targets. Tapping the name opens that character (Character Wall on web, a new chat in the app).
+- Muted text and the footer links keep their contrast over any portrait in light and dark themes, and the footer stays on one line at every width.
+- The mobile app now sends its API key on GET requests too, so Expo Go on a phone can reach a LAN dev server.
+
 ## v0.26.2 - 2026-10-04 - Defect and security sweep
 
 - Guess Who no longer leaks the mystery character's name (or gender) in the audio URL of its replies.
