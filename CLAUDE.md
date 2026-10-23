@@ -968,6 +968,10 @@ and the script normalizes to forward slashes because `swagger-jsdoc` doesn't mat
   4. Layout-sensitive checks belong in `layout.spec.ts`. `playwright.config.ts` runs everything on
      `desktop` and only `flows`/`layout` again on `mobile` (Pixel 7, Chromium).
   CI uploads the HTML report, traces, and failure screenshots as the `playwright-report` artifact.
+  **Sandbox browser mismatch:** a Playwright bump can expect a newer Chromium build than a sandbox
+  preinstalls (Claude Code cloud has `/opt/pw-browsers`), failing every test with "Executable doesn't
+  exist". Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to the installed binary (e.g.
+  `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`) instead of running `playwright install`.
 
 - Tests live under `tests/`, mirroring source (`tests/api`, `tests/app`, `tests/pages`, `tests/src`,
   `tests/utils`, `tests/integration`, `tests/unit`).
