@@ -85,7 +85,7 @@
     "@typescript-eslint/parser": "^8.70.0",
     "babel-jest": "^30.4.1",
     "dotenv": "^18.0.4",
-    "drizzle-kit": "^0.31.10",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.3",
     "eslint-plugin-jsdoc": "^65.4.2",
@@ -111,7 +111,8 @@
     "postcss": "^8.5.15",
     "js-yaml": "^4.3.0",
     "smol-toml": "^1.9.0",
-    "katex": "^0.18.2"
+    "katex": "^0.18.2",
+    "esbuild": "^0.21.0"
   },
   "prettier": {
     "semi": true,
