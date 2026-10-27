@@ -2,6 +2,11 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3100;
 
+// Optional override for sandboxes whose preinstalled Chromium lags the Playwright version
+// (set PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH). Unset in CI, where Playwright installs its own.
+const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+const launchOptions = executablePath ? { executablePath } : {};
+
 /**
  * Smoke synthetics against a production build (`npm run build` first).
  * The server gets a dummy Anthropic key on purpose: these tests must never spend real tokens.
@@ -13,11 +18,11 @@ export default defineConfig({
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   projects: [
     // Desktop runs everything; the phone project re-runs the flows and layout checks at 412px.
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], launchOptions } },
     {
       name: "mobile",
       testMatch: /(flows|layout)\.spec\.ts/,
-      use: { ...devices["Pixel 7"] },
+      use: { ...devices["Pixel 7"], launchOptions },
     },
   ],
   use: {
