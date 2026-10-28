@@ -87,13 +87,9 @@ const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
  *                 type: string
  *               conversationHistory:
  *                 type: array
+ *                 description: Prior turns, oldest first, each prefixed with its speaker ("User: ..." or "Bot: ...").
  *                 items:
- *                   type: object
- *                   properties:
- *                     sender:
- *                       type: string
- *                     text:
- *                       type: string
+ *                   type: string
  *               voiceConfig:
  *                 type: object
  *               stream:
