@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.29.2 - 2026-10-27 - Anthropic SDK 1.x without temperature
+
+- Moved to `@anthropic-ai/sdk` 1.x (API version 2026-10-21), which removes `temperature`, `top_p`, and `top_k` and rejects any request that sends one. Every call site dropped `temperature`.
+- The three judgment calls that relied on `temperature: 0` (guess judging, character validation, leaderboard-name moderation) now use schema-constrained JSON output with the reasoning written before the verdict, so their answers are always well-formed.
+
 ## v0.29.1 - 2026-10-18 - Chat parity, a landing-page click fix, and /characters
 
 - The Character Wall and its pages moved from `/chars` to `/characters` (`/characters/<name>`). The old URLs redirect permanently, and the API route is unchanged.
