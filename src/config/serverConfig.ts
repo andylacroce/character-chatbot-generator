@@ -112,7 +112,6 @@ Guidelines:
       system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
       max_tokens: 300,
-      temperature: 0.4,
     });
 
     const content = extractJson(

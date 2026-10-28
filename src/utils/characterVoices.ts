@@ -272,7 +272,6 @@ ${voiceCatalog}
         system: systemPrompt,
         messages,
         max_tokens: 250,
-        temperature: 0.3,
       });
 
       const content = extractJson(

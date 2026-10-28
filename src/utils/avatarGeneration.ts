@@ -357,7 +357,6 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
   - "other" only when none of the above fits`,
           },
         ],
-        temperature: 0.3,
         max_tokens: 300,
       });
 

@@ -40,7 +40,6 @@ export async function summarizeConversation(
         "Summarize this conversation concisely, capturing key topics, emotional tone, and important context. If given an existing summary plus newer messages, produce one updated summary covering both. Keep it under 150 words.",
       messages: [{ role: "user", content: userContent }],
       max_tokens: 200,
-      temperature: 0.3,
     });
 
     return summaryResponse.content[0]?.type === "text"

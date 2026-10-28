@@ -79,7 +79,6 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
     system: systemPrompt + turnNote,
     messages,
     max_tokens: 220,
-    temperature: 0.8,
     stop_sequences: ["User:", "Bot:"],
   });
 
@@ -240,7 +239,6 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
       system: systemPrompt,
       messages,
       max_tokens: 160,
-      temperature: 0.8,
       stop_sequences: ["User:", "Bot:"],
     });
     if (!isClaudeResponse(result)) throw new Error("Invalid response from Claude");

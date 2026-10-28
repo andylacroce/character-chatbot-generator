@@ -56,14 +56,14 @@ const CLASSIFIER_SYSTEM_PROMPT = `You are a content-safety and copyright/tradema
    role/archetype; nothing about the bare name identifies a specific individual, even
    though it happens to also be a minor character's name in one Shakespeare play.
 
-Return ONLY valid JSON with this exact schema:
+Return ONLY valid JSON with this exact schema ("reason" comes first so you think before you decide):
 {
+  "reason": "Brief explanation (1-2 sentences)",
   "blocked": boolean,
   "isPublicDomain": boolean,
   "isSafe": boolean,
   "warningLevel": "none" | "caution" | "warning",
   "recognized": boolean,
-  "reason": "Brief explanation (1-2 sentences)",
   "suggestions": ["alternative1", "alternative2", "alternative3"]
 }
 
@@ -86,7 +86,35 @@ warningLevel guide (only about copyright/trademark, ignore concerns 1/1b entirel
   should be "none" in this case, since there's nothing copyrighted about a name nobody
   has used.`;
 
-/** Classifies a name with Claude (temperature 0); throws on a failed call or unparseable reply. */
+/**
+ * Output schema enforced by the API (structured outputs). The API no longer accepts
+ * `temperature`, so schema-constrained decoding plus a reasoning-first field is what keeps
+ * this classifier's verdicts stable.
+ */
+const CLASSIFIER_OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    reason: { type: "string" },
+    blocked: { type: "boolean" },
+    isPublicDomain: { type: "boolean" },
+    isSafe: { type: "boolean" },
+    warningLevel: { type: "string", enum: ["none", "caution", "warning"] },
+    recognized: { type: "boolean" },
+    suggestions: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    "reason",
+    "blocked",
+    "isPublicDomain",
+    "isSafe",
+    "warningLevel",
+    "recognized",
+    "suggestions",
+  ],
+  additionalProperties: false,
+} as const;
+
+/** Classifies a name with Claude; throws on a failed call or unparseable reply. */
 export async function classifyCharacterName(
   characterName: string,
 ): Promise<CharacterValidationResult> {
@@ -102,7 +130,7 @@ Provide validation result as JSON.`,
       },
     ],
     max_tokens: 350,
-    temperature: 0,
+    output_config: { format: { type: "json_schema", schema: CLASSIFIER_OUTPUT_SCHEMA } },
   });
   const validation = JSON.parse(
     extractJson(response.content[0]?.type === "text" ? response.content[0].text : "{}"),
