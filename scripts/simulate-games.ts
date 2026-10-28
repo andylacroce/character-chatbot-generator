@@ -104,7 +104,6 @@ async function playerMessage(
   const result = await anthropic.messages.create({
     model,
     max_tokens: 100,
-    temperature: 0.8,
     system: `You are playing a "guess who" chat game. ${rules} ${style} Type ONE short chat message. You get 2 wrong guesses total. This is turn ${turn} of ${MAX_TURNS}; in the last 2 turns you should be guessing. Output only the message.`,
     messages: [
       {

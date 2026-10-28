@@ -45,7 +45,6 @@ describe("gameReply", () => {
         expect.objectContaining({
           model: "claude-test",
           max_tokens: 220,
-          temperature: 0.8,
         }),
       );
     });

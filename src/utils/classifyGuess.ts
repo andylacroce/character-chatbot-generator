@@ -128,7 +128,22 @@ export async function classifyGuess(
         },
       ],
       max_tokens: 150,
-      temperature: 0,
+      // The API has no temperature control, so constrain the verdict to the schema (reasoning first).
+      output_config: {
+        format: {
+          type: "json_schema",
+          schema: {
+            type: "object",
+            properties: {
+              reasoning: { type: "string" },
+              status: { type: "string", enum: ["clear", "ambiguous", "none", "giveUp"] },
+              correct: { type: "boolean" },
+            },
+            required: ["reasoning", "status", "correct"],
+            additionalProperties: false,
+          },
+        },
+      },
     });
     const content = extractJson(
       response.content[0]?.type === "text" ? response.content[0].text : "{}",

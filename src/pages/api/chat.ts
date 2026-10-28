@@ -319,7 +319,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           system: systemPrompt,
           messages,
           max_tokens: 500,
-          temperature: 0.7,
           stop_sequences: ["User:", "Bot:"],
         });
 
@@ -388,7 +387,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         system: systemPrompt,
         messages,
         max_tokens: 500,
-        temperature: 0.7,
         stop_sequences: ["User:", "Bot:"],
       }),
       timeout,

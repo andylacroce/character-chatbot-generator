@@ -196,7 +196,7 @@ failure, a base64 data URL. Rate-limited to 5/min/IP.
 Bot creation is gated by a server round-trip, not just a client check:
 
 1. `useBotCreation.ts` calls `POST /api/validate-character` with `{ characterName }`.
-2. `src/pages/api/validate-character.ts` (Claude, rate-limited 30/min, `temperature: 0`) classifies
+2. `src/pages/api/validate-character.ts` (Claude, rate-limited 30/min, schema-constrained output) classifies
    `{ level: "warning" | "caution" | "none", message?, suggestions?, blocked, recognized }`:
    "warning" = clear violation (Mickey Mouse), "caution" = possible concern (Superman), "none" = safe.
 3. On warning/caution, `CopyrightWarningModal.tsx` shows the message plus public-domain
@@ -874,9 +874,15 @@ Apply to any *new or edited* system prompt (not a mandate to rewrite existing on
 - **For a structured-JSON judgment call, put an explanation field before the decision field**
   (`{"reasoning": ..., "status": ..., "correct": ...}`): a cheap embedded chain-of-thought.
 - **Prefer saying what *to* do, and add a one-line "why" behind non-obvious constraints.**
-- **Known gap:** Anthropic now prefers tool-use/Structured Outputs over "return ONLY JSON" plus
-  regex extraction (`src/utils/parseClaudeJson.ts`'s `extractJson`). Not migrated (no production
-  bug yet); reach for it if a *new* structured call proves flaky rather than adding another
+- **No sampling parameters.** API version 2026-10-21 (SDK 1.x) removed `temperature`, `top_p`,
+  and `top_k`; sending any returns a 400, and nothing replaces them. The three judgment calls that
+  used `temperature: 0` (`classifyGuess`, `characterClassifier`, `leaderboardName`) instead pass
+  `output_config.format` with a JSON schema (enum verdicts, `reasoning`/`reason` ordered before the
+  decision), so the verdict is always well-formed and thought through first. Never add `temperature`
+  back; tighten the prompt or its few-shot examples if a verdict wobbles.
+- **Known gap:** the other `"text-simple"` JSON calls still use "return ONLY JSON" plus regex
+  extraction (`src/utils/parseClaudeJson.ts`'s `extractJson`). Not migrated (no production bug
+  yet); move a call to `output_config.format` if it proves flaky rather than adding another
   parsing workaround.
 - **Ordinary character dialogue never uses an em dash (—).** Every in-character system prompt
   (`chat.ts` replies and all of `src/utils/gameReply.ts`) appends `FORMATTING: Never use an em
