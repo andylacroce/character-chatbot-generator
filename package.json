@@ -112,7 +112,10 @@
     "js-yaml": "^4.3.0",
     "smol-toml": "^1.9.0",
     "katex": "^0.18.2",
-    "esbuild": "^0.21.0"
+    "esbuild": "^0.21.0",
+    "@vercel/cli-config": {
+      "zod": "^4.6.7"
+    }
   },
   "prettier": {
     "semi": true,
