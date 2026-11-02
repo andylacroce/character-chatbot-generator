@@ -151,7 +151,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await removeFromAllowlist(trimmedName);
     // Scrub immediately, not just for future requests — see module doc above.
     await scrubCachedAvatar(trimmedName);
-    void scrubUserBotsByName(trimmedName);
+    await scrubUserBotsByName(trimmedName);
     logEvent(
       "info",
       "admin_blocklist_added",

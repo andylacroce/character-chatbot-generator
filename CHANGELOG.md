@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.29.5 - 2026-11-02 - Await moderation writes
+
+- The blocklist, warning-log, and scrub writes in character validation (and the admin blocklist add) were fire-and-forget, so a frozen serverless function could drop them. They are now awaited; each already swallows its own DB errors.
+
 ## v0.29.4 - 2026-11-02 - Fix truncated JSON and dropped analytics
 
 - Voice casting, avatar prompts, and personality generation were hitting their `max_tokens` caps mid-JSON on the 5.5 models, so every new character fell back to the Default voice and a generic avatar prompt after wasted retries. Caps raised, and a cut-off fenced reply now reports the real truncation instead of a misleading fence error.

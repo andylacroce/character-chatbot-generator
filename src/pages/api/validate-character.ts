@@ -198,7 +198,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Also self-heals a stale blocklist entry for the same name, in case an earlier bad
   // roll put it there before this allowlist existed.
   if (await isAllowlisted(characterName)) {
-    void removeFromBlocklist(characterName);
+    await removeFromBlocklist(characterName);
     const result: CharacterValidationResult = {
       characterName,
       isPublicDomain: true,
@@ -222,7 +222,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const blocklisted = await getBlocklistEntry(characterName);
   if (blocklisted) {
     await scrubCachedAvatar(characterName);
-    void scrubUserBotsByName(characterName);
+    await scrubUserBotsByName(characterName);
     // "content" (abusive name, or a living person with serious real-world legal
     // risk — see characterBlocklist.ts) is a hard, never-overridable block, same
     // shape as an abusive name caught fresh below. Legacy rows and "copyright" both
@@ -286,13 +286,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // gets the ordinary overridable warning flow for *this* attempt — only a repeat
     // attempt against it will hit the blocklist fast path above.
     if (result.warningLevel === "warning") {
-      void addToBlocklist(characterName, result.reason || null, "claude", "copyright");
+      await addToBlocklist(characterName, result.reason || null, "claude", "copyright");
       // Independent, append-only record of this event — see characterWarningLog.ts's
       // doc comment for why the (deduplicated) blocklist above can't serve as this
       // history once a name is later un-blocked or allowlisted.
-      void logWarning(characterName, result.reason || null);
+      await logWarning(characterName, result.reason || null);
       const wasCached = await scrubCachedAvatar(characterName);
-      void scrubUserBotsByName(characterName);
+      await scrubUserBotsByName(characterName);
       if (wasCached) {
         result.scrubbed = true;
         result.reason = SCRUBBED_REASON;
@@ -314,9 +314,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // shared avatar cache and any user's own already-saved copy, in case this name
     // was created before this guardrail existed.
     if (result.blocked) {
-      void addToBlocklist(characterName, result.reason || null, "claude", "content");
-      void scrubCachedAvatar(characterName);
-      void scrubUserBotsByName(characterName);
+      await addToBlocklist(characterName, result.reason || null, "claude", "content");
+      await scrubCachedAvatar(characterName);
+      await scrubUserBotsByName(characterName);
     }
 
     logEvent(
