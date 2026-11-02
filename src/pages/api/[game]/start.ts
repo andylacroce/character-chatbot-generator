@@ -110,7 +110,7 @@ export default gameRoute({ endpoint: "start", max: 10 }, async (game, req, res) 
       `Started a new ${game.title} run`,
       sanitizeLogMeta({ streak: 0 }),
     );
-    void recordEvent(`${game.eventPrefix}_started`, { guest: !userId }, userId);
+    await recordEvent(`${game.eventPrefix}_started`, { guest: !userId }, userId);
 
     sendRoundResult(res, stream, roundResult(game, plan, round, token, 0));
   } catch (err) {

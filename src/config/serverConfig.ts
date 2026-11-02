@@ -113,7 +113,7 @@ Guidelines:
       thinking: thinkingFor("text-simple"),
       system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
-      max_tokens: 300,
+      max_tokens: 700,
     });
 
     const content = extractJson(

@@ -273,7 +273,7 @@ ${voiceCatalog}
         thinking: thinkingFor("text-simple"),
         system: systemPrompt,
         messages,
-        max_tokens: 250,
+        max_tokens: 600,
       });
 
       const content = extractJson(

@@ -260,7 +260,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         category: blocklisted.category,
       }),
     );
-    void recordEvent("character_validated", {
+    await recordEvent("character_validated", {
       warningLevel: result.warningLevel,
       blocked: result.blocked,
       recognized: result.recognized,
@@ -331,7 +331,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     );
     // Deliberately excludes characterName — this table is a small internal usage log, not
     // a place to accumulate user-supplied content (see src/db/schema.ts's analyticsEvents doc).
-    void recordEvent("character_validated", {
+    await recordEvent("character_validated", {
       warningLevel: result.warningLevel,
       blocked: result.blocked,
       recognized: result.recognized,

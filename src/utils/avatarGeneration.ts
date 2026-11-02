@@ -303,7 +303,7 @@ export async function getOrGenerateAvatar(
       "Reusing cached avatar",
       sanitizeLogMeta({ name: characterName }),
     );
-    void recordEvent("avatar_generated", {
+    await recordEvent("avatar_generated", {
       provider: "cache",
       recognized: true,
       bypassSharedCache,
@@ -359,7 +359,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
   - "other" only when none of the above fits`,
           },
         ],
-        max_tokens: 300,
+        max_tokens: 700,
       });
 
       const rawContent = extractJson(
@@ -452,7 +452,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
         "avatar_generation_failed",
         "No provider returned an image, using silhouette",
       );
-      void recordEvent("avatar_generated", {
+      await recordEvent("avatar_generated", {
         provider: "none",
         recognized: true,
         bypassSharedCache,
@@ -467,7 +467,7 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
     if (!bypassSharedCache) {
       await cacheAvatar(characterName, avatarUrl, genderOut, true, categoryOut);
     }
-    void recordEvent("avatar_generated", {
+    await recordEvent("avatar_generated", {
       provider: usedProvider,
       recognized: true,
       bypassSharedCache,
