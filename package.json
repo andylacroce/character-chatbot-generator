@@ -112,6 +112,7 @@
     "js-yaml": "^4.3.0",
     "smol-toml": "^1.9.0",
     "katex": "^0.18.2",
+    "re2js": "^2.8.7",
     "esbuild": "^0.21.0",
     "@vercel/cli-config": {
       "zod": "^4.6.7"
