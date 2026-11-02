@@ -148,4 +148,74 @@ describe("logger — server-side initialisation (node environment)", () => {
     (globalThis as unknown as Record<string, unknown>).setImmediate = origSetImmediate;
     jest.resetModules();
   });
+
+  describe("winston wiring", () => {
+    const origEnv = process.env.NODE_ENV;
+    const env = process.env as Record<string, string | undefined>;
+
+    afterEach(() => {
+      env.NODE_ENV = origEnv;
+      jest.dontMock("winston");
+      jest.dontMock("fs");
+      jest.resetModules();
+    });
+
+    function mockWinston() {
+      const File = jest.fn();
+      const printf = jest.fn((fn: unknown) => fn);
+      const createLogger = jest.fn((_opts: { transports: unknown[] }) => ({ log: jest.fn() }));
+      jest.doMock("winston", () => ({
+        createLogger,
+        transports: { Console: jest.fn(), File },
+        format: {
+          combine: jest.fn((...a: unknown[]) => a),
+          timestamp: jest.fn(),
+          json: jest.fn(),
+          printf,
+        },
+      }));
+      return { File, printf, createLogger };
+    }
+
+    it("formats console lines as [timestamp] [LEVEL]: message {meta}", () => {
+      jest.resetModules();
+      const { printf } = mockWinston();
+      require("../../src/utils/logger");
+      const fmt = printf.mock.calls[0][0] as (i: unknown) => string;
+
+      expect(fmt({ timestamp: "t", level: "warn", message: "hi", a: 1 })).toBe(
+        '[t] [WARN]: hi {"a":1}',
+      );
+      expect(fmt({ timestamp: "t", level: "info", message: "hi" })).toBe("[t] [INFO]: hi ");
+    });
+
+    it("adds a rotating file transport only in development", () => {
+      jest.resetModules();
+      env.NODE_ENV = "development";
+      jest.doMock("fs", () => ({ ...jest.requireActual("fs"), mkdirSync: jest.fn() }));
+      const { File, createLogger } = mockWinston();
+      require("../../src/utils/logger");
+
+      expect(File).toHaveBeenCalledWith(expect.objectContaining({ maxFiles: 3, tailable: true }));
+      expect(createLogger.mock.calls[0][0].transports).toHaveLength(2);
+    });
+
+    it("keeps console-only logging when the dev log directory cannot be created", () => {
+      jest.resetModules();
+      env.NODE_ENV = "development";
+      jest.doMock("fs", () => ({
+        ...jest.requireActual("fs"),
+        mkdirSync: jest.fn(() => {
+          throw new Error("EACCES");
+        }),
+      }));
+      const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+      const { File, createLogger } = mockWinston();
+      require("../../src/utils/logger");
+
+      expect(File).not.toHaveBeenCalled();
+      expect(createLogger.mock.calls[0][0].transports).toHaveLength(1);
+      spy.mockRestore();
+    });
+  });
 });

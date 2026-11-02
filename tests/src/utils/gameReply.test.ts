@@ -175,5 +175,16 @@ describe("gameReply", () => {
         expect.objectContaining({ outcome: "correct" }),
       );
     });
+
+    it.each([
+      ["finalWrong", "Not quite. I was actually thinking of Venus."],
+      ["wrong", "Not quite, want to try again?"],
+    ])("falls back to a %s template when generation fails", async (outcome, expected) => {
+      mockCreate.mockRejectedValueOnce(new Error("network blip"));
+
+      await expect(getGuessReactionReply("You are Athena.", outcome, "Venus")).resolves.toBe(
+        expected,
+      );
+    });
   });
 });
