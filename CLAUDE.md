@@ -61,12 +61,13 @@ be bisected against a known-good release. Tagging began 2026-09-22; never back-t
   2. Choose patch vs. minor, then `npm version patch --no-git-tag-version` (or `minor`); the flag
      folds the bump into the normal commit.
   3. Head the shipped `CHANGELOG.md` entry with the version, e.g. `## v0.6.0 — 2026-09-22 — Title`.
-  4. Commit the bump and changelog entry with the change.
-  5. `git tag -a vX.Y.Z -m "<one-line summary>"` (annotated), then `git push --follow-tags`.
-- **Claude Code cloud sessions can't push tags** (their credential can write `refs/heads/*` but not
-  `refs/tags/*`). `.github/workflows/tag-release.yml` creates the annotated `v<package.json
-  version>` tag on every push to `main` if missing, so a cloud session only does steps 1-4 and
-  merges the PR.
+  4. Commit the bump and changelog entry with the change, on a feature branch, and ship it as a PR.
+- **`main` is protected: every change, tagged or not, is a branch plus a PR,** merged once checks
+  are green. Never push to `main`, and never tag locally or use `--follow-tags`: a tag pushed
+  before the PR merges points at a commit that isn't on `main` (a squash-merge has a different SHA),
+  and the workflow then skips it. `.github/workflows/tag-release.yml` creates the annotated
+  `v<package.json version>` tag on every push to `main` if missing, so the merge itself tags the
+  release. If a stray tag ever exists, delete it and re-run that workflow.
 
 ## Web/mobile parity (standing goal)
 
