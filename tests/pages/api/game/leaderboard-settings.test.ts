@@ -174,4 +174,45 @@ describe.each(GAMES_UNDER_TEST)("$slug/leaderboard-settings API", (game) => {
     expect(mockInsert).not.toHaveBeenCalled();
     expect(sentJson(res)).toEqual(expect.objectContaining({ name: "Ada" }));
   });
+  it("reads a signed-in account's setting from the users table on GET", async () => {
+    mockGetSessionUserId.mockResolvedValue("user-1");
+    mockWhere.mockResolvedValueOnce([{ showOnLeaderboard: true, name: "Ada" }]);
+
+    const res = await call("GET");
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(sentJson(res)).toEqual(
+      expect.objectContaining({ showOnLeaderboard: true, name: "Ada", eligible: true }),
+    );
+  });
+
+  it.each([
+    ["rejected", 400],
+    ["unavailable", 503],
+  ])("answers %s name moderation with %i and writes nothing", async (status, code) => {
+    mockCheckLeaderboardName.mockResolvedValue({ status });
+
+    const res = await call("POST", { showOnLeaderboard: true, name: "Nope" });
+
+    expect(res.status).toHaveBeenCalledWith(code);
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when the signed-in account row no longer exists", async () => {
+    mockGetSessionUserId.mockResolvedValue("user-1");
+    mockReturning.mockResolvedValueOnce([]);
+
+    const res = await call("POST", { showOnLeaderboard: true, name: "Ada" });
+
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it("returns 500 when the database throws", async () => {
+    mockReturning.mockRejectedValueOnce(new Error("db down"));
+
+    const res = await call("POST", { showOnLeaderboard: true, name: "Guest Ace" });
+
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
 });

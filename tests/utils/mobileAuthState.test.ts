@@ -30,6 +30,25 @@ describe("mobileAuthState", () => {
     });
   });
 
+  it("rejects a validly signed state whose redirectUri is not a string", async () => {
+    const forged = Buffer.from(
+      JSON.stringify({
+        token: { redirectUri: 42 },
+        secret: "test-secret-for-state",
+        salt: "mobile-auth-state",
+      }),
+    ).toString("base64url");
+    await expect(verifyMobileAuthState(forged)).resolves.toBeNull();
+  });
+
+  it("treats a missing NEXTAUTH_SECRET as an empty secret on both sign and verify", async () => {
+    delete process.env.NEXTAUTH_SECRET;
+    const state = await signMobileAuthState("character-chatbot-mobile://auth");
+    await expect(verifyMobileAuthState(state)).resolves.toEqual({
+      redirectUri: "character-chatbot-mobile://auth",
+    });
+  });
+
   it("rejects garbage, a tampered state, and a state signed with another secret", async () => {
     await expect(verifyMobileAuthState("not-a-jwe")).resolves.toBeNull();
     const state = await signMobileAuthState("character-chatbot-mobile://auth");

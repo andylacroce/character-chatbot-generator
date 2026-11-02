@@ -372,5 +372,37 @@ describe("audio API", () => {
       expect(res.status).toHaveBeenCalledWith(404);
       expect(mockSynthesizeSpeechToFile).not.toHaveBeenCalled();
     });
+    it("answers 404 and logs when regenerating from cached text fails", async () => {
+      mockGetReplyCache.mockReturnValue("A cached reply.");
+      mockSynthesizeSpeechToFile.mockRejectedValue(new Error("tts down"));
+      const res = makeRes();
+      await handler(makeReq(), res);
+
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "error",
+        "audio_regen_failed_cached_text",
+        expect.any(String),
+        expect.objectContaining({ error: "tts down" }),
+      );
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it("waits for a regenerated file that lands shortly after synthesis returns", async () => {
+      let synthesized = false;
+      let checksAfterSynthesis = 0;
+      mockGetReplyCache.mockReturnValue("A cached reply.");
+      mockFs.existsSync.mockImplementation((p: string) => {
+        if (!synthesized || p !== AUDIO) return false;
+        return ++checksAfterSynthesis > 2;
+      });
+      mockFs.readFileSync.mockReturnValue(Buffer.from("audio-bytes"));
+      mockSynthesizeSpeechToFile.mockImplementation(async () => {
+        synthesized = true;
+      });
+      const res = makeRes();
+      await handler(makeReq(), res);
+
+      expect(res.send).toHaveBeenCalledWith(Buffer.from("audio-bytes"));
+    });
   });
 });
