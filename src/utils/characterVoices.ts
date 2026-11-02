@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import logger, { sanitizeLogMeta } from "./logger";
 import { extractJson } from "./parseClaudeJson";
+import { thinkingFor } from "./claudeThinking";
 
 /**
  * Description-aware character casting over Google's live Text-to-Speech voice inventory.
@@ -269,6 +270,7 @@ ${voiceCatalog}
     try {
       const response = await anthropic.messages.create({
         model: getClaudeModel("text-simple"),
+        thinking: thinkingFor("text-simple"),
         system: systemPrompt,
         messages,
         max_tokens: 250,

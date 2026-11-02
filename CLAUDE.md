@@ -114,10 +114,13 @@ client (see "Security posture").
 
 Three tiers, chosen by call site, never by a runtime cost heuristic:
 
-- `"text"`: chat replies only. `claude-sonnet-4-6` in prod, `claude-haiku-4-5-20251001` in dev.
+- `"text"`: chat replies only. `claude-sonnet-5-5` in prod, `claude-haiku-5-5` in dev.
 - `"text-simple"`: one-shot structured JSON tasks (personality generation, character validation,
   voice config, suggestion lists, and the games' short verdict reactions). Always
-  `claude-haiku-4-5-20251001`.
+  `claude-haiku-5-5`.
+- Both 5.5 models think by default, which would eat the small `max_tokens` caps, so every call site
+  passes `thinking: thinkingFor(tier)` (`src/utils/claudeThinking.ts`): `between_tools` for Sonnet 5.5
+  (it 400s on `disabled`), `disabled` for Haiku 5.5.
 - `"image"`: avatar prompts render via `gemini-3.1-flash-lite-image` on Google Cloud's Gemini
   Enterprise Agent Platform (formerly Vertex AI; not Claude).
 

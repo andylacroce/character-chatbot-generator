@@ -33,6 +33,7 @@ import {
   lookupUserPreferredName,
   finalizeChatPersistence,
 } from "../../utils/chatPersistence";
+import { thinkingFor } from "../../utils/claudeThinking";
 
 /** Rate limiter for chat endpoint: 10 requests per minute per IP. */
 const chatRateLimit = createRateLimiter({
@@ -312,6 +313,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       try {
         const streamResponse = anthropic.messages.stream({
           model: getClaudeModel("text"),
+          thinking: thinkingFor("text"),
           system: systemPrompt,
           messages,
           max_tokens: 500,
@@ -380,6 +382,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const result = await Promise.race([
       anthropic.messages.create({
         model: getClaudeModel("text"),
+        thinking: thinkingFor("text"),
         system: systemPrompt,
         messages,
         max_tokens: 500,

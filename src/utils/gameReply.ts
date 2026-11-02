@@ -14,6 +14,7 @@ import { isClaudeResponse, stripActionEmotes, gracefullyWrapResponse } from "./c
 import { buildClaudeMessages, type ClaudeMessage } from "./conversationSummarizer";
 import { logEvent, sanitizeLogMeta } from "./logger";
 import { displayCharacterName } from "character-chatbot-shared";
+import { thinkingFor } from "./claudeThinking";
 
 const OPENING_INSTRUCTION =
   "Introduce yourself to the player in 1-2 sentences, the way you normally would. Stay in character. Your greeting must also include a vague, atmospheric hint that someone else is on your mind, so the player knows there's someone to figure out, but don't give away anything concrete or identifying about them yet. Save specifics for when the player actually asks.";
@@ -76,6 +77,7 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
 
   const result = await anthropic.messages.create({
     model: getClaudeModel("text"),
+    thinking: thinkingFor("text"),
     system: systemPrompt + turnNote,
     messages,
     max_tokens: 220,
@@ -236,6 +238,7 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
     const result = await anthropic.messages.create({
       // A short reaction to a verdict the server already decided, so the cheap tier is enough.
       model: getClaudeModel("text-simple"),
+      thinking: thinkingFor("text-simple"),
       system: systemPrompt,
       messages,
       max_tokens: 160,

@@ -36,7 +36,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 
 ## Key Features
 
-- **Claude AI Integration**: Uses claude-sonnet-4-6 (production chat) / claude-haiku-4-5-20251001 (dev + simple tasks) with conversation summarization
+- **Claude AI Integration**: Uses claude-sonnet-5-5 (production chat) / claude-haiku-5-5 (dev + simple tasks) with conversation summarization
 - **Copyright Protection**: AI-powered character validation with copyright/trademark detection and public domain suggestions, backed by a permanent allow/block list and an admin-only `/admin/moderation` panel
 - **Established Characters Only**: Unknown or invented names stop at validation; conversations are limited to identifiable historical, mythological, literary, religious, folklore, and fictional figures
 - **Two Guessing Games**: `Guess Who` reveals progressively easier clues, while `Guess Who's Next` is a conversation with a named character who hints at somebody else; both build streaks and have separate public leaderboards — see [Guessing Games](#guessing-games)
@@ -181,7 +181,7 @@ for an interactive reference (Scalar). The underlying spec is generated into `pu
 
 When a character chatbot is created, the app generates a portrait avatar automatically:
 
-1. **Prompt generation** — Claude (`claude-haiku-4-5-20251001`) receives the character name and produces a detailed, safe-for-work image prompt describing appearance, era, and artistic style.
+1. **Prompt generation** — Claude (`claude-haiku-5-5`) receives the character name and produces a detailed, safe-for-work image prompt describing appearance, era, and artistic style.
 2. **Image rendering** — free providers only, no payment method required. Cloudflare Workers AI (`@cf/black-forest-labs/flux-1-schnell`) renders it first when `CLOUDFLARE_ACCOUNT_ID`/`CLOUDFLARE_API_TOKEN` are configured; if they're unset, or Cloudflare errors or is rejected by its own safety filter, it falls back to Pollinations.ai (free, anonymous, no API key — though its anonymous tier may render a small watermark).
 3. **Display** — The result is a base64 data URL (or a durable Vercel Blob URL, if `VERCEL_BLOB_READ_WRITE_TOKEN` is configured) rendered directly in the UI; no external image hosting is required beyond that.
 
