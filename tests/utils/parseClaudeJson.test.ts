@@ -31,6 +31,10 @@ describe("extractJson", () => {
     expect(extractJson(input)).toBe(inner.trim());
   });
 
+  it("drops the opening fence of a truncated, unclosed block", () => {
+    expect(extractJson('```json\n{"a":"cut')).toBe('{"a":"cut');
+  });
+
   it("returns empty string when input is empty", () => {
     expect(extractJson("")).toBe("");
   });
@@ -45,7 +49,7 @@ describe("extractJson", () => {
     const startedAt = performance.now();
     const result = extractJson(input);
     const elapsed = performance.now() - startedAt;
-    expect(result).toBe("```json");
+    expect(result).toBe("");
     expect(elapsed).toBeLessThan(200);
   });
 });

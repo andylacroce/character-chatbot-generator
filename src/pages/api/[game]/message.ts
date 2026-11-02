@@ -202,7 +202,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         "Correct guess, advancing streak",
         sanitizeLogMeta({ streak: newStreak }),
       );
-      void recordEvent(
+      await recordEvent(
         `${game.eventPrefix}_guess_correct`,
         { streak: newStreak, turn: clueRound },
         userId,
@@ -237,12 +237,12 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         `${game.title} run ended on a second wrong guess`,
         sanitizeLogMeta({ finalStreak: state.streak }),
       );
-      void recordEvent(`${game.eventPrefix}_guess_wrong`, { turn: clueRound }, userId);
+      await recordEvent(`${game.eventPrefix}_guess_wrong`, { turn: clueRound }, userId);
       const identity = scoringIdentity(req, state, userId);
       if (identity && state.runId) {
         await markRunEnded(game, identity, state.runId, state.streak);
       }
-      void recordEvent(
+      await recordEvent(
         `${game.eventPrefix}_run_ended`,
         { reason: "second_wrong", finalStreak: state.streak },
         userId,
@@ -267,7 +267,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
     const newToken = signGameState(
       freeMiss ? { ...state, freeMissUsed: true } : { ...state, wrongGuessCount: 1 },
     );
-    void recordEvent(`${game.eventPrefix}_guess_wrong`, { turn: clueRound }, userId);
+    await recordEvent(`${game.eventPrefix}_guess_wrong`, { turn: clueRound }, userId);
     res.status(200).json({
       reply,
       audioFileUrl,

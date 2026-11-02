@@ -82,7 +82,7 @@ export default gameRoute({ endpoint: "give-up", max: 10 }, async (game, req, res
     `Player gave up the ${game.title} run`,
     sanitizeLogMeta({ finalStreak: state.streak }),
   );
-  void recordEvent(
+  await recordEvent(
     `${game.eventPrefix}_run_ended`,
     { reason: "give_up", finalStreak: state.streak },
     state.issuedForUserId,

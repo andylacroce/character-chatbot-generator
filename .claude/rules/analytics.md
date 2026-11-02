@@ -24,7 +24,9 @@ product-usage analytics, kept small rather than becoming general observability.
 
 - **`analytics_events`** is an append-only log (`name`, `environment`, nullable `userId` where null
   means guest, `metadata` jsonb). It exists because guest usage never touches `bots`/`messages`.
-  `recordEvent()` (`src/utils/analytics.ts`) is fire-and-forget and no-ops without `DATABASE_URL`.
+  `recordEvent()` (`src/utils/analytics.ts`) never throws and no-ops without `DATABASE_URL`. **Always
+  `await` it:** an un-awaited insert can be frozen with the function after the response is sent and
+  fail on the next invocation (it undercounted wrong guesses).
 - **Events** (low-frequency, high-signal, only after success): `character_validated`,
   `avatar_generated` (provider: `cache` | `cloudflare` | `pollinations` | `none`), `bot_created`,
   and the game events above. No event records character names, guesses, or chat text, preserving

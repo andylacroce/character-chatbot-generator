@@ -109,7 +109,7 @@ export default gameRoute({ endpoint: "continue", max: 10 }, async (game, req, re
       "Generated the next round after a correct guess",
       sanitizeLogMeta({ streak: newStreak }),
     );
-    void recordEvent(`${game.eventPrefix}_round_continued`, { streak: newStreak }, userId);
+    await recordEvent(`${game.eventPrefix}_round_continued`, { streak: newStreak }, userId);
 
     sendRoundResult(res, stream, roundResult(game, plan, round, token, newStreak));
   } catch (err) {

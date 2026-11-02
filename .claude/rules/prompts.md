@@ -31,8 +31,9 @@ Apply to any *new or edited* system prompt (not a mandate to rewrite existing on
   decision), so the verdict is always well-formed and thought through first. Never add `temperature`
   back; tighten the prompt or its few-shot examples if a verdict wobbles.
 - **Known gap:** the other `"text-simple"` JSON calls still use "return ONLY JSON" plus regex
-  extraction (`src/utils/parseClaudeJson.ts`'s `extractJson`). Not migrated (no production bug
-  yet); move a call to `output_config.format` if it proves flaky rather than adding another
+  extraction (`src/utils/parseClaudeJson.ts`'s `extractJson`). Not migrated (the one production
+  bug, v0.29.4, was `max_tokens` truncating the JSON mid-string, fixed by raising caps; size caps
+  for the full JSON, not a typical reply); move a call to `output_config.format` if it proves flaky rather than adding another
   parsing workaround.
 - **Ordinary character dialogue never uses an em dash (—).** Every in-character system prompt
   (`chat.ts` replies and all of `src/utils/gameReply.ts`) appends `FORMATTING: Never use an em
