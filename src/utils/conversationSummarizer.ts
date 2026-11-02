@@ -7,6 +7,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import logger from "./logger";
 import { getClaudeModel } from "./claudeModelSelector";
+import { thinkingFor } from "./claudeThinking";
 
 export type ClaudeMessage = { role: "user" | "assistant"; content: string };
 
@@ -36,6 +37,7 @@ export async function summarizeConversation(
 
     const summaryResponse = await anthropic.messages.create({
       model: getClaudeModel("text-simple"),
+      thinking: thinkingFor("text-simple"),
       system:
         "Summarize this conversation concisely, capturing key topics, emotional tone, and important context. If given an existing summary plus newer messages, produce one updated summary covering both. Keep it under 150 words.",
       messages: [{ role: "user", content: userContent }],

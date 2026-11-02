@@ -8,6 +8,7 @@ import type { CharacterValidationResult } from "character-chatbot-shared";
 import anthropic from "./anthropicClient";
 import { getClaudeModel } from "./claudeModelSelector";
 import { extractJson } from "./parseClaudeJson";
+import { thinkingFor } from "./claudeThinking";
 
 const CLASSIFIER_SYSTEM_PROMPT = `You are a content-safety and copyright/trademark expert AI. Analyze character names for four, entirely separate concerns:
 
@@ -120,6 +121,7 @@ export async function classifyCharacterName(
 ): Promise<CharacterValidationResult> {
   const response = await anthropic.messages.create({
     model: getClaudeModel("text-simple"),
+    thinking: thinkingFor("text-simple"),
     system: CLASSIFIER_SYSTEM_PROMPT,
     messages: [
       {

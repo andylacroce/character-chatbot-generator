@@ -1,6 +1,7 @@
 // Server-side runtime configuration shared by API handlers.
 
 import { NEVER_REVEAL_NAME_RULE } from "./characterIdentityRules";
+import { thinkingFor } from "../utils/claudeThinking";
 
 // Shared personality template constants
 export const RESPONSE_CONSTRAINTS = `Keep responses under 100 words. Always finish your current thought with proper punctuation before stopping.
@@ -109,6 +110,7 @@ Guidelines:
 
     const response = await anthropic.messages.create({
       model: getClaudeModel("text-simple"), // one-time structured JSON task; haiku is sufficient
+      thinking: thinkingFor("text-simple"),
       system: systemPrompt,
       messages: [{ role: "user", content: userContent }],
       max_tokens: 300,

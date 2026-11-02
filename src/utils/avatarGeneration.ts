@@ -24,6 +24,7 @@ import { avatarCache, bots } from "../db/schema";
 import { recordEvent } from "./analytics";
 import { deleteOrphanedAvatars } from "./userBlobs";
 import { isCharacterCategory, type CharacterCategory } from "character-chatbot-shared";
+import { thinkingFor } from "./claudeThinking";
 
 /** Options controlling avatar cache/persistence behavior — see pages/api/generate-avatar.ts's @swagger block for the full rationale on each. */
 export interface AvatarGenerationOptions {
@@ -334,6 +335,7 @@ export async function getOrGenerateAvatar(
       const textModel = getClaudeModel("text-simple");
       const promptResponse = await anthropic.messages.create({
         model: textModel,
+        thinking: thinkingFor("text-simple"),
         system: `You are an expert at creating concise, unambiguous image-generation prompts for text-to-image models. Produce a deterministic prompt for a single-person portrait suitable for illustrated/stylized rendering. The prompt must explicitly forbid multiple photos, collages, side-by-side images, reflections, split/composite images, multiple exposures, or any duplicates. Also instruct against text overlays, watermarks, logos, captions, or any extraneous elements. You must NEVER request an accurate likeness of a real person (no actor, celebrity, or public figure's actual face or identity) and must NEVER request an exact reproduction of a copyrighted character's specific design (exact costume, logo, or studio-owned visual design). Instead, describe a generic archetype evoked by the name (e.g., broad build, era-appropriate style, general vibe/personality) using original, non-infringing details — enough to be thematically recognizable without copying a specific person's face or a specific copyrighted design. Always return only the requested JSON fields and do not add commentary.`,
         messages: [
           {

@@ -15,7 +15,7 @@ class AnthropicMock {
 jest.mock("@anthropic-ai/sdk", () => ({ default: AnthropicMock, __esModule: true }));
 
 jest.mock("../../src/utils/claudeModelSelector", () => ({
-  getClaudeModel: jest.fn(() => "test-model"),
+  getClaudeModel: () => "test-model", // plain fn: resetAllMocks would wipe a jest.fn's return
 }));
 
 const mockGetTTSClient = jest.fn();

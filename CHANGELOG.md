@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.29.3 - 2026-11-02 - Claude 5.5 models
+
+- Chat and game replies now run on Claude Sonnet 5.5 in production (Haiku 5.5 in dev), and every simple structured task (personality, validation, voice casting, summaries, verdict reactions) on Haiku 5.5. Both are cheaper than the models they replace: Sonnet drops from $3/$15 to $2/$10 per million tokens, Haiku from $1/$5 to $0.10/$0.50.
+- Both 5.5 models think by default, which would eat the small reply caps, so every call turns up-front thinking off through one helper (`thinkingFor`).
+
 ## v0.29.2 - 2026-10-27 - Anthropic SDK 1.x without temperature
 
 - Moved to `@anthropic-ai/sdk` 1.x (API version 2026-10-21), which removes `temperature`, `top_p`, and `top_k` and rejects any request that sends one. Every call site dropped `temperature`.

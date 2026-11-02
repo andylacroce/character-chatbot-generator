@@ -13,6 +13,7 @@ import anthropic from "./anthropicClient";
 import gameCharacterWork from "../data/gameCharacterWork";
 import { logEvent, sanitizeLogMeta } from "./logger";
 import { IDENTITY_MATCH_RULES, IDENTITY_MATCH_EXAMPLES } from "../config/characterIdentityRules";
+import { thinkingFor } from "./claudeThinking";
 
 export type GuessClassification = {
   status: "clear" | "ambiguous" | "none" | "giveUp";
@@ -120,6 +121,7 @@ export async function classifyGuess(
       : `Hidden character (trusted, for judging only): "${hiddenName}"`;
     const response = await anthropic.messages.create({
       model: getClaudeModel("text-simple"),
+      thinking: thinkingFor("text-simple"),
       system: CLASSIFY_GUESS_SYSTEM_PROMPT,
       messages: [
         {
