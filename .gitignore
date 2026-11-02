@@ -55,7 +55,8 @@ src/app/theme-tokens.generated.css
 docs-generated/
 
 # Local AI agent guidance (keep local overrides out of commits)
-.claude/
+.claude/*
+!.claude/rules/
 .qwen/
 .vercel
 
