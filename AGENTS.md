@@ -12,7 +12,10 @@ hybrid routing architecture:
 
 - `src/app/` contains App Router pages, UI components, hooks, and CSS modules.
 - `src/pages/api/` contains the authoritative Pages Router API handlers. Do not migrate
-  these to App Router route handlers as incidental cleanup.
+  these to App Router route handlers as incidental cleanup. They use Node-only SDKs, already
+  stream via `res.write`, and the mobile app depends on their URL/behavior parity, so a
+  migration adds churn for no new capability. Revisit only if Next.js deprecates Pages API
+  routes or a feature needs route handlers.
 - `src/` contains shared configuration, database, types, and utilities.
 - `tests/` mirrors the source tree and uses Jest plus Testing Library.
 - `proxy.ts` is the central API-origin and API-key security boundary.
