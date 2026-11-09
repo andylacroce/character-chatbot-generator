@@ -6,382 +6,49 @@
  * parchment-backed mosaic rather than a conventional application grid.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { authenticatedFetch } from "../../../utils/api";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   CHARACTER_CATEGORIES,
   getCharacterCategoryLabel,
-  isCharacterCategory,
   type CharacterCategory,
 } from "character-chatbot-shared";
 import AppHeader from "../common/AppHeader";
 import { BackLink } from "../common/BackLink";
 import { useAccountMenu } from "../account/useAccountMenu";
 import styles from "../styles/CharsPage.module.css";
-import { characterSlug, displayCharacterName } from "character-chatbot-shared";
-
-type AdminState = "idle" | "confirm" | "purging" | "regenerating" | "purgeError" | "regenError";
-
-interface CharEntry {
-  name: string;
-  avatarUrl: string;
-  category: CharacterCategory;
-}
-
-type GallerySort = "newest" | "oldest" | "name-asc" | "name-desc";
-type GalleryGroup = "none" | "category";
-
-const PAGE_SIZE = 60;
-const SORT_OPTIONS: Array<{ value: GallerySort; label: string }> = [
-  { value: "newest", label: "Recently added" },
-  { value: "oldest", label: "Oldest added" },
-  { value: "name-asc", label: "Name A–Z" },
-  { value: "name-desc", label: "Name Z–A" },
-];
-
-/** Small stable string hash (djb2) so a tile's look is deterministic per name. */
-function hashString(str: string): number {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash * 33) ^ str.charCodeAt(i);
-  }
-  return Math.abs(hash);
-}
-
-/** Stable mosaic size, chosen by name so pagination never changes a portrait's place. */
-function sizeClass(name: string): string {
-  const bucket = hashString(name) % 100;
-  if (bucket < 55) return styles.s1;
-  if (bucket < 85) return styles.s2;
-  return styles.s3;
-}
-
-/** A restrained, archival-print rotation from roughly -2.5..2.5deg. */
-function rotationDeg(name: string): number {
-  const bucket = hashString(`rot:${name}`) % 11;
-  return (bucket - 5) / 2;
-}
-
-/** Whether the browser supports the View Transitions API (Chromium/newer Safari). */
-function supportsViewTransitions(): boolean {
-  return typeof document !== "undefined" && "startViewTransition" in document;
-}
-
-/** One deckled archival print in the parchment mosaic. */
-const CharTile: React.FC<{
-  entry: CharEntry;
-  onOpen: (entry: CharEntry) => void;
-}> = ({ entry, onOpen }) => {
-  const [loaded, setLoaded] = useState(false);
-
-  return (
-    <button
-      type="button"
-      className={`${styles.tile} ${sizeClass(entry.name)}`}
-      style={{ "--rot": `${rotationDeg(entry.name)}deg` } as React.CSSProperties}
-      onClick={() => onOpen(entry)}
-      title={displayCharacterName(entry.name)}
-      aria-label={`Open portrait of ${displayCharacterName(entry.name)}`}
-    >
-      <div className={styles.photoFrame}>
-        {!loaded && <div className={styles.skeleton} aria-hidden="true" />}
-        {/* Plain <img>, not next/image: sources mix Vercel Blob URLs and base64 data
-            URIs (see src/db/schema.ts's avatar_cache comment), and this gallery can
-            have hundreds of tiles across pages — native lazy-loading is the right
-            tool, on top of the infinite-scroll pagination that limits how many
-            tiles even exist in the DOM at once. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={entry.avatarUrl}
-          alt={entry.name}
-          loading="lazy"
-          decoding="async"
-          className={styles.image}
-          onLoad={() => setLoaded(true)}
-        />
-      </div>
-      <div className={styles.caption}>{displayCharacterName(entry.name)}</div>
-    </button>
-  );
-};
-
-/** Renders a dense masonry collage. */
-const PortraitMosaic: React.FC<{
-  entries: CharEntry[];
-  groupLabel?: string;
-  onOpen: (entry: CharEntry) => void;
-}> = ({ entries, groupLabel, onOpen }) => (
-  <div
-    className={styles.mosaic}
-    role="region"
-    aria-label={`${groupLabel ? `${groupLabel} ` : ""}portrait collection`}
-  >
-    {entries.map((entry) => (
-      <CharTile key={entry.name} entry={entry} onOpen={onOpen} />
-    ))}
-  </div>
-);
+import { SORT_OPTIONS, type GalleryGroup, type GallerySort } from "./charsGalleryHelpers";
+import PortraitMosaic from "./PortraitMosaic";
+import GalleryLightbox from "./GalleryLightbox";
+import { useGalleryPages } from "./useGalleryPages";
+import { useGalleryLightbox } from "./useGalleryLightbox";
+import { useBackToTop } from "./useBackToTop";
 
 /** Public /characters gallery: paginated, infinite-scroll mosaic of recognized portraits. */
 const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialCharacterName }) => {
   const { menuItems, modals, isAdmin } = useAccountMenu();
-  const [characters, setCharacters] = useState<CharEntry[]>([]);
-  const [initialLoad, setInitialLoad] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState(false);
-  const [selected, setSelected] = useState<CharEntry | null>(null);
-  // Admin portrait controls. Purge needs a second click ("confirm"); regenerate is one click.
-  const [adminState, setAdminState] = useState<AdminState>("idle");
-  const [showBackToTop, setShowBackToTop] = useState(false);
   const [sortBy, setSortBy] = useState<GallerySort>("newest");
   const [groupBy, setGroupBy] = useState<GalleryGroup>("none");
   const [expandedGroups, setExpandedGroups] = useState<Set<CharacterCategory>>(() => new Set());
-  const offsetRef = useRef(0);
-  const loadingRef = useRef(false);
-  const hasMoreRef = useRef(true);
-  const queryVersionRef = useRef(0);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const topMarkerRef = useRef<HTMLDivElement>(null);
-
-  const loadMore = useCallback(
-    async (reset = false) => {
-      if (loadingRef.current || (!reset && !hasMoreRef.current)) return;
-      const queryVersion = queryVersionRef.current;
-      const offset = reset ? 0 : offsetRef.current;
-      loadingRef.current = true;
-      setLoadingMore(true);
-      try {
-        const res = await authenticatedFetch(
-          `/api/chars?limit=${PAGE_SIZE}&offset=${offset}&sort=${sortBy}&group=${groupBy}`,
-        );
-        const data = await res.json();
-        if (queryVersion !== queryVersionRef.current) return;
-        const page: CharEntry[] = Array.isArray(data?.characters)
-          ? data.characters.map((entry: CharEntry) => ({
-              ...entry,
-              category: isCharacterCategory(entry.category) ? entry.category : "other",
-            }))
-          : [];
-        setCharacters((prev) => (reset ? page : [...prev, ...page]));
-        offsetRef.current = offset + page.length;
-        hasMoreRef.current = Boolean(data?.hasMore);
-      } catch {
-        if (queryVersion !== queryVersionRef.current) return;
-        setError(true);
-        hasMoreRef.current = false;
-      } finally {
-        if (queryVersion !== queryVersionRef.current) return;
-        loadingRef.current = false;
-        setLoadingMore(false);
-        setInitialLoad(false);
-      }
-    },
-    [groupBy, sortBy],
-  );
-
-  // Start the initial request and each request produced by a control-state change.
-  // State clearing happens synchronously in the control event below, not in this effect.
-  useEffect(() => {
-    void loadMore(true);
-  }, [loadMore]);
-
-  // Always call the *latest* loadMore from the observer below without needing to
-  // recreate that observer every time loadMore's identity changes.
-  const loadMoreRef = useRef(loadMore);
-  useEffect(() => {
-    loadMoreRef.current = loadMore;
-  }, [loadMore]);
-
-  // This app's flex-root layout makes BODY the scroll owner in Chromium, while
-  // other engines may report window/documentElement/scrollingElement. Listen to
-  // all of them and use the largest offset so visibility stays dynamic everywhere.
-  useEffect(() => {
-    const update = () => {
-      const position = Math.max(
-        window.scrollY,
-        document.body.scrollTop,
-        document.documentElement.scrollTop,
-        document.scrollingElement?.scrollTop ?? 0,
-      );
-      setShowBackToTop(position > 360);
-    };
-    const targets: EventTarget[] = [window, document, document.body, document.documentElement];
-    update();
-    targets.forEach((target) => target.addEventListener("scroll", update, { passive: true }));
-    return () => targets.forEach((target) => target.removeEventListener("scroll", update));
-  }, []);
-
-  const scrollToTop = useCallback(() => {
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const behavior: ScrollBehavior = reduceMotion ? "auto" : "smooth";
-    if (topMarkerRef.current) {
-      topMarkerRef.current.scrollIntoView({ behavior, block: "start" });
-      return;
-    }
-    document.scrollingElement?.scrollTo({ top: 0, behavior });
-  }, []);
-
-  // Infinite scroll: fetch the next page when the sentinel enters view. A callback
-  // ref (not useRef + a useEffect keyed on the sentinel) because the sentinel <div>
-  // only exists once characters.length > 0 — a plain effect keyed on `loadMore`
-  // would run once at mount, while the ref is still null, and never re-run once the
-  // element actually appears (loadMore's identity doesn't change at that point). A
-  // callback ref fires exactly when the DOM node itself is created or removed,
-  // regardless of what else did or didn't change on that render.
-  const sentinelObserverRef = useRef<IntersectionObserver | null>(null);
-  const sentinelNodeRef = useRef<HTMLDivElement | null>(null);
-  const sentinelCallbackRef = useCallback((node: HTMLDivElement | null) => {
-    sentinelObserverRef.current?.disconnect();
-    sentinelObserverRef.current = null;
-    sentinelNodeRef.current = node;
-    if (!node) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) loadMoreRef.current();
-      },
-      { rootMargin: "400px" },
-    );
-    observer.observe(node);
-    sentinelObserverRef.current = observer;
-  }, []);
-
-  // A page that doesn't grow the sentinel past the viewport (e.g. every group
-  // collapsed, so a "grouped" page is just a few short headings; or simply a tall
-  // viewport) never delivers a fresh intersection callback after the first one —
-  // IntersectionObserver only fires on a threshold *crossing*, and a sentinel that
-  // stays continuously visible across a content update never crosses back out.
-  // Re-observing forces a fresh check of the current state, so pagination keeps
-  // going instead of silently stalling after a page or two.
-  useEffect(() => {
-    const observer = sentinelObserverRef.current;
-    const node = sentinelNodeRef.current;
-    if (!observer || !node) return;
-    observer.unobserve(node);
-    observer.observe(node);
-  }, [characters]);
-
-  // Admin only: DELETE purges this character's cached portrait, POST regenerates it in place.
-  const adminPortraitCall = async (entry: CharEntry, method: "DELETE" | "POST") => {
-    const res = await authenticatedFetch("/api/admin/characters", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: entry.name }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res;
-  };
-
-  const purgePortrait = async (entry: CharEntry) => {
-    if (adminState !== "confirm") {
-      setAdminState("confirm");
-      return;
-    }
-    setAdminState("purging");
-    try {
-      await adminPortraitCall(entry, "DELETE");
-      setCharacters((prev) => prev.filter((c) => c.name !== entry.name));
-      dialogRef.current?.close();
-    } catch (err) {
-      logEvent(
-        "error",
-        "chars_purge_failed",
-        "Admin portrait purge failed",
-        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-      );
-      setAdminState("purgeError");
-    }
-  };
-
-  const regeneratePortrait = async (entry: CharEntry) => {
-    setAdminState("regenerating");
-    try {
-      const { avatarUrl } = (await (await adminPortraitCall(entry, "POST")).json()) as {
-        avatarUrl?: string;
-      };
-      if (!avatarUrl) throw new Error("missing avatarUrl");
-      setCharacters((prev) => prev.map((c) => (c.name === entry.name ? { ...c, avatarUrl } : c)));
-      setSelected({ ...entry, avatarUrl });
-      setAdminState("idle");
-    } catch (err) {
-      logEvent(
-        "error",
-        "chars_regenerate_failed",
-        "Admin portrait regeneration failed",
-        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-      );
-      setAdminState("regenError");
-    }
-  };
-
-  // Opens the native <dialog> lightbox. Wrapped in the View Transitions API when
-  // the browser supports it, for a smooth cross-fade/morph into the enlarged
-  // portrait instead of a hard cut — feature-detected, so unsupported browsers
-  // (older Firefox/Safari) just get an instant open with no error.
-  const openLightbox = useCallback((entry: CharEntry) => {
-    const open = () => {
-      setSelected(entry);
-      dialogRef.current?.showModal();
-    };
-    if (supportsViewTransitions()) {
-      (
-        document as Document & { startViewTransition: (cb: () => void) => void }
-      ).startViewTransition(open);
-    } else {
-      open();
-    }
-  }, []);
-
-  const closeLightbox = useCallback(() => {
-    const close = () => dialogRef.current?.close();
-    if (supportsViewTransitions()) {
-      (
-        document as Document & { startViewTransition: (cb: () => void) => void }
-      ).startViewTransition(close);
-    } else {
-      close();
-    }
-  }, []);
-
-  // Carousel links carry only the character name so they stay small even when an
-  // avatar is a large base64 data URL. Resolve that one cached entry independently
-  // of the paginated wall, then open the same lightbox used by an ordinary tile.
-  useEffect(() => {
-    const requestedName = initialCharacterName?.trim();
-    if (!requestedName) return;
-
-    let cancelled = false;
-    void authenticatedFetch(`/api/chars?name=${encodeURIComponent(requestedName)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (cancelled || !data?.character) return;
-        const entry = data.character as CharEntry;
-        openLightbox({
-          ...entry,
-          category: isCharacterCategory(entry.category) ? entry.category : "other",
-        });
-      })
-      .catch(() => {
-        // The wall itself remains fully usable when this optional deep link fails.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [initialCharacterName, openLightbox]);
-
-  // A monotonically increasing version prevents a slower response from a prior
-  // selection replacing current results when the visitor changes controls quickly.
-  const resetGalleryQuery = useCallback(() => {
-    queryVersionRef.current += 1;
-    loadingRef.current = false;
-    hasMoreRef.current = true;
-    offsetRef.current = 0;
-    setCharacters([]);
-    setError(false);
-    setInitialLoad(true);
-  }, []);
+  const {
+    characters,
+    setCharacters,
+    initialLoad,
+    loadingMore,
+    error,
+    resetGalleryQuery,
+    sentinelCallbackRef,
+  } = useGalleryPages(sortBy, groupBy);
+  const {
+    dialogRef,
+    selected,
+    adminState,
+    openLightbox,
+    closeLightbox,
+    handleDialogClose,
+    purgePortrait,
+    regeneratePortrait,
+  } = useGalleryLightbox(setCharacters, initialCharacterName);
+  const { showBackToTop, topMarkerRef, scrollToTop } = useBackToTop();
 
   const toggleGroup = useCallback((category: CharacterCategory) => {
     setExpandedGroups((current) => {
@@ -513,90 +180,16 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
           </>
         )}
 
-        {/* Native <dialog> lightbox — showModal()/close() give focus-trapping and
-          Escape-to-close for free, no modal library needed. Backdrop click closes
-          it via the click-target check below; ::backdrop is styled in the CSS
-          module for the dim/blur behind it. */}
-        <dialog
-          ref={dialogRef}
-          className={styles.lightbox}
-          onClick={(e) => {
-            if (e.target === dialogRef.current) closeLightbox();
-          }}
-          onClose={() => {
-            setSelected(null);
-            setAdminState("idle");
-          }}
-        >
-          {selected && (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={selected.avatarUrl}
-                alt={selected.name}
-                className={styles.lightboxImage}
-                onClick={closeLightbox}
-              />
-              <p className={styles.lightboxName}>{displayCharacterName(selected.name)}</p>
-              {/* Same launch point the landing page itself uses for a name typed
-                into the creator (BotCreator's ?name= auto-submit effect) — it
-                resumes this signed-in user's own saved character by that exact
-                name if one exists, or creates a fresh one otherwise. */}
-              <Link
-                href={`/?name=${encodeURIComponent(selected.name)}`}
-                className={styles.lightboxChat}
-              >
-                Chat with {displayCharacterName(selected.name)} &rarr;
-              </Link>
-              {characterSlug(selected.name) && (
-                <Link
-                  href={`/characters/${characterSlug(selected.name)}`}
-                  className={styles.lightboxShare}
-                >
-                  Character page
-                </Link>
-              )}
-              {isAdmin && (
-                <div className={styles.lightboxAdmin}>
-                  <button
-                    type="button"
-                    className={styles.lightboxAdminButton}
-                    disabled={adminState === "purging" || adminState === "regenerating"}
-                    onClick={() => void regeneratePortrait(selected)}
-                  >
-                    {adminState === "regenerating"
-                      ? "Regenerating..."
-                      : adminState === "regenError"
-                        ? "Regenerate failed, retry"
-                        : "Regenerate portrait"}
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.lightboxAdminButton} ${styles.lightboxPurge}`}
-                    disabled={adminState === "purging" || adminState === "regenerating"}
-                    onClick={() => void purgePortrait(selected)}
-                  >
-                    {adminState === "confirm"
-                      ? "Click again to purge"
-                      : adminState === "purging"
-                        ? "Purging..."
-                        : adminState === "purgeError"
-                          ? "Purge failed, retry"
-                          : "Purge portrait"}
-                  </button>
-                </div>
-              )}
-              <button
-                type="button"
-                className={styles.lightboxClose}
-                aria-label="Close"
-                onClick={closeLightbox}
-              >
-                &times;
-              </button>
-            </>
-          )}
-        </dialog>
+        <GalleryLightbox
+          dialogRef={dialogRef}
+          selected={selected}
+          isAdmin={isAdmin}
+          adminState={adminState}
+          onClose={closeLightbox}
+          onDialogClose={handleDialogClose}
+          onRegenerate={(entry) => void regeneratePortrait(entry)}
+          onPurge={(entry) => void purgePortrait(entry)}
+        />
       </div>
       {characters.length > 0 && (
         <button

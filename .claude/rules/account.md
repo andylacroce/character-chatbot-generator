@@ -13,6 +13,7 @@ paths:
   - "src/app/components/account/HistoryPage.tsx"
   - "src/app/components/account/Auth*.tsx"
   - "src/app/components/account/SignInModal.tsx"
+  - "src/app/components/chat/useServerHistoryReconcile.ts"
 ---
 
 ### Account persistence
@@ -73,8 +74,8 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
     `finalizeChatPersistence` fire-and-forget inserts the user/bot pair and any checkpoint update;
     failures are logged and never discard a reply. The intro message goes through the same path.
   - **Read path:** `GET /api/messages?botName=` (GET-only) returns oldest-first, capped at 200.
-    `useChatController.ts` seeds from localStorage instantly, then (signed in) adopts the server
-    list only if longer (new device / cleared storage).
+    `useChatController.ts` seeds from localStorage instantly, then (signed in) `useServerHistoryReconcile.ts`
+    adopts the server list only if longer (new device / cleared storage).
   - **Schema drift guard:** forgetting `db:push` after editing `schema.ts` broke live dev/prod twice
     (`users.preferred_name`, `avatar_cache.display_name`). `npm run db:check`
     (`scripts/check-db-schema.cjs`) regex-scans `schema.ts` columns against

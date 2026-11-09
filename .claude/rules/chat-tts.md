@@ -7,6 +7,8 @@ paths:
   - "src/utils/chat/characterVoices.ts"
   - "src/utils/chat/voiceHelpers.ts"
   - "src/app/components/chat/useChatController.ts"
+  - "src/app/components/chat/useChatIntro.ts"
+  - "src/app/components/chat/chatControllerHelpers.ts"
 ---
 
 ### Chat + streaming (`src/pages/api/chat.ts`)
