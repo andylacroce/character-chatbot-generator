@@ -72,7 +72,7 @@ user's saved characters). On a validation error, `blocked` and `warningLevel` fa
 - **The prompt separates** "a name meaningful only because of one corporate work" (`warning`:
   Spider-Man, Pikachu) from "a mythological, historical, or pre-1928 figure a studio also adapted"
   (`none`: Thor, Sherlock Holmes, Winnie-the-Pooh, Hercules), with those worked examples inline.
-- **`/admin/moderation`** (`src/app/admin/moderation/`, `AdminModerationView.tsx`) is one page with
+- **`/admin/moderation`** (`src/app/admin/moderation/`: `AdminModerationView.tsx` composes `WarningLogSection.tsx` and `ModerationSection.tsx`) is one page with
   three sections: "Recently warned" (read-only, time-window filter, `GET /api/admin/warnings`, inline
   Allow/Block), "Allowed", and "Blocked" (CRUD via `POST`/`DELETE` on
   `src/pages/api/admin/{allowlist,blocklist}.ts`, plus "Move to X"). A name is never on both lists:

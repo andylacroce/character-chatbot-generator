@@ -7,6 +7,10 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 - Internal only: `src/utils/` and `src/app/components/` are now grouped into feature folders (chat, character, game, account, moderation, and so on) instead of two flat lists of 50+ files each. No behavior change.
 - New human-oriented docs in `docs/` (getting started, architecture, feature reference, configuration) and a much shorter README. Added `npm run check` as a fast inner-loop check.
 
+## v0.29.7 - 2026-11-09 - Smaller components
+
+- Internal only, no behavior change: the five largest UI files were split into focused modules, each with its own tests. `useChatController` (670 to 400 lines), `BotCreator` (707 to 315), `CharsGallery` (622 to 215), `AdminModerationView` (579 to 106), and `AdminStatsView` (567 to 185). Intro generation, server-history sync, URL launch, gallery paging, the lightbox, and the stats fetch are now their own hooks or components.
+
 ## v0.29.5 - 2026-11-02 - Await moderation writes
 
 - The blocklist, warning-log, and scrub writes in character validation (and the admin blocklist add) were fire-and-forget, so a frozen serverless function could drop them. They are now awaited; each already swallows its own DB errors.

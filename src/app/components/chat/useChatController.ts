@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useSession as useAuthSession } from "next-auth/react";
-import { downloadTranscript } from "../../../utils/chat/downloadTranscript";
 import { authenticatedFetch } from "../../../utils/api";
 import { useSession } from "../account/useSession";
 import { useApiError } from "../common/useApiError";
@@ -11,45 +9,23 @@ import { useCharacterVoiceConfig } from "./useCharacterVoiceConfig";
 import { useMobileKeyboardViewportAdjustment } from "./useMobileKeyboardViewportAdjustment";
 import { useChatVisiblePagination, INITIAL_VISIBLE_COUNT } from "./useChatVisiblePagination";
 import { useAutoPlayLatestMessage } from "./useAutoPlayLatestMessage";
+import { useChatIntro } from "./useChatIntro";
+import { useServerHistoryReconcile } from "./useServerHistoryReconcile";
+import { downloadChatTranscript } from "./chatTranscript";
+import { getStoredUserName, safeFocus, useLogMessage } from "./chatControllerHelpers";
 import storage from "../../../utils/storage";
 import type { Message } from "../../../types/message";
 import type { Bot } from "../character/BotCreator";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import {
-  INTRO_PROMPT,
   STORAGE_KEYS,
   buildChatRequest,
   chatHistoryKey,
   chatReplyMessage,
   getReplayAudioUrl,
-  longerHistory,
   parseChatMessages,
   retryWithBackoff,
 } from "character-chatbot-shared";
-
-/**
- * The visitor's own preferred name (see useUserName.ts), read directly from localStorage
- * here rather than threaded through as a prop — a signed-in user's server-stored value
- * takes precedence server-side once set, so the client never needs to know which source
- * will actually apply.
- */
-function getStoredUserName(): string | undefined {
-  return storage.getItem(STORAGE_KEYS.userName) || undefined;
-}
-
-/** Defers focusing an input to avoid synchronous DOM updates inside async callbacks. */
-const safeFocus = (ref: React.RefObject<HTMLInputElement | null>) => {
-  try {
-    const el = ref?.current;
-    if (!el || typeof el.focus !== "function") return;
-    if (typeof document !== "undefined" && !document.contains(el)) return;
-    setTimeout(() => {
-      try {
-        el.focus();
-      } catch {}
-    }, 0);
-  } catch {}
-};
 
 /**
  * Chat controller hook that orchestrates chat state, API calls, audio, and logging for the chat
@@ -75,7 +51,6 @@ export function useChatController(
 
   const [input, setInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
-  const [introLoading, setIntroLoading] = useState<boolean>(false);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(() => {
     try {
       const savedAudioPreference = storage.getItem(STORAGE_KEYS.audioEnabled);
@@ -86,7 +61,6 @@ export function useChatController(
   const [apiAvailable, setApiAvailable] = useState<boolean>(true);
   const [sessionId, sessionDatetime] = useSession();
   const { error, setError, handleApiError } = useApiError();
-  const [introError, setIntroError] = useState<string | null>(null);
   const audioEnabledRef = useRef(audioEnabled);
   const [retrying, setRetrying] = useState(false);
   const chatBoxRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
@@ -100,18 +74,12 @@ export function useChatController(
     historyKey,
   );
 
-  // See the reconciliation effect's own comment further down for what this gates.
-  // Declared here (not next to that effect) for the same reason as visibleCount above.
-  const { status: authStatus } = useAuthSession();
-  const [historyReconciled, setHistoryReconciled] = useState(
-    authStatus !== "loading" && authStatus !== "authenticated",
-  );
-
   // Reset state when bot changes. This page is SSR'd, and this effect reads
   // localStorage (browser-only) to seed the reset, so it has to run post-mount rather
   // than during render — and it's a genuine "reset several independent pieces of state
   // together when the character identity changes" operation, not something any single
-  // piece of state could be derived from during render instead.
+  // piece of state could be derived from during render instead. (The intro's and the
+  // server-history gate's own state reset inside useChatIntro / useServerHistoryReconcile.)
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     // Reset messages to load the new bot's chat history
@@ -125,74 +93,18 @@ export function useChatController(
       setMessages([]);
     }
 
-    // Reset intro sent flag so new character gets introduction
-    introSentRef.current = false;
-
-    // Clear any previous errors
-    setIntroError(null);
+    // Clear any previous errors, retrying state, input, and loading state
     setError("");
-
-    // Reset retrying state
     setRetrying(false);
-
-    // Reset input
     setInput("");
-
-    // Reset loading state
     setLoading(false);
-    setIntroLoading(false);
 
     // Reset visible count
     setVisibleCount(INITIAL_VISIBLE_COUNT);
-
-    // A signed-in user's server history hasn't been checked yet for this
-    // (possibly new) bot — see the reconciliation effect below, and the
-    // intro effect that waits on it.
-    setHistoryReconciled(false);
   }, [bot.name, setError, setVisibleCount]); // Only depend on bot.name to avoid unnecessary resets
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Reconcile with server-persisted history (phase 3c). Local storage stays the fast,
-  // instant-load cache for the common case; the server is the durable source of truth for
-  // a signed-in user's saved character. Only adopts the server's list when it's strictly
-  // longer than what's already loaded — the new-device / cleared-storage case — so this
-  // never regresses a longer local list and never blocks the initial render. Guests (no
-  // session) and a character that was never saved server-side both just get [] back from
-  // the endpoint, a no-op.
-  //
-  // historyReconciled gates the intro-generation effect below: without it, a signed-in
-  // user resuming a saved character on a device with no local cache would see
-  // messages.length === 0 for the instant between mount and this fetch resolving, firing
-  // a bogus "Introduce yourself" turn that then gets persisted server-side on top of the
-  // character's real history — the exact bug this gate exists to prevent.
-  // (authStatus/historyReconciled are declared up above, near visibleCount — see that comment.)
-  /* eslint-disable react-hooks/set-state-in-effect -- authStatus is client-only auth
-       session state; this effect can only run post-mount. */
-  useEffect(() => {
-    if (authStatus === "loading") return; // don't know yet whether there's server history to wait for
-    if (authStatus !== "authenticated") {
-      setHistoryReconciled(true);
-      return;
-    }
-    let mounted = true;
-    authenticatedFetch(`/api/messages?botName=${encodeURIComponent(bot.name)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!mounted || !Array.isArray(data?.messages)) return;
-        const serverMessages = parseChatMessages(data.messages);
-        setMessages((current) => longerHistory(current, serverMessages));
-      })
-      .catch(() => {
-        // Best-effort — local storage already has whatever this device has seen.
-      })
-      .finally(() => {
-        if (mounted) setHistoryReconciled(true);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [bot.name, authStatus]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  const historyReconciled = useServerHistoryReconcile(bot.name, setMessages);
 
   const { playAudio, stopAudio, isAudioPlaying, audioRef } = useAudioPlayer(audioEnabledRef);
 
@@ -266,166 +178,18 @@ export function useChatController(
     }
   }, [audioEnabled, audioRef]);
 
-  // Fix TypeScript errors by explicitly typing parameters
-  const profileApiCall = async <T>(label: string, fn: () => Promise<T>): Promise<T> => {
-    const start = performance.now();
-    try {
-      return await fn();
-    } finally {
-      const end = performance.now();
-      if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
-        logEvent("info", "chat_api_timing", `${label} completed`, {
-          duration: Math.round(end - start),
-          operation: label,
-        });
-      }
-    }
-  };
+  const logMessage = useLogMessage(sessionId, sessionDatetime);
 
-  const logMessage = useCallback(
-    async (message: Message) => {
-      if (!sessionId || !sessionDatetime) return;
-      try {
-        await profileApiCall("Log Message", () =>
-          authenticatedFetch("/api/log-message", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              sender: message.sender,
-              text: message.text,
-              sessionId: sessionId,
-              sessionDatetime: sessionDatetime,
-            }),
-          }).then((res) => {
-            if (!res.ok) throw new Error("Log failed");
-          }),
-        );
-      } catch (error) {
-        if (typeof window !== "undefined") {
-          logEvent(
-            "warn",
-            "client_log_message_failed",
-            "Failed to log message to server",
-            sanitizeLogMeta({
-              error: error instanceof Error ? error.message : String(error),
-              sender: message.sender,
-              sessionId,
-            }),
-          );
-        }
-      }
-    },
-    [sessionId, sessionDatetime],
-  );
-
-  const introSentRef = useRef(false);
-  const introRequestInProgressRef = useRef(false);
-  useEffect(() => {
-    // Prevent multiple concurrent requests (React Strict Mode protection)
-    if (introSentRef.current || introRequestInProgressRef.current) return;
-    // Wait until we know whether this (possibly signed-in, server-saved) character
-    // already has real history — see the reconciliation effect above.
-    if (!historyReconciled) return;
-    if (messages.length === 0 && apiAvailable) {
-      // introSentRef is a deliberate "ran once" guard against React Strict Mode's
-      // double-invoke — reading then writing it within the same effect is exactly
-      // the point (a real duplicate-intro-message bug was fixed this way). Setting
-      // introLoading synchronously here (not in a callback) is what actually shows
-      // the loading state before the async fetch below starts.
-      /* eslint-disable react-hooks/immutability, react-hooks/set-state-in-effect */
-      introSentRef.current = true;
-      introRequestInProgressRef.current = true;
-      setIntroLoading(true);
-      /* eslint-enable react-hooks/immutability, react-hooks/set-state-in-effect */
-      let cancelled = false;
-      const getIntro = async () => {
-        try {
-          const voiceConfig = await ensureVoiceConfig();
-          if (cancelled) return;
-          if (!voiceConfig) {
-            const msg = "Voice configuration missing for this character. Please recreate the bot.";
-            if (!cancelled) {
-              setIntroError(msg);
-              setError(msg);
-              setIntroLoading(false);
-            }
-            if (typeof window !== "undefined") {
-              logEvent(
-                "error",
-                "chat_intro_voice_config_missing",
-                msg,
-                sanitizeLogMeta({
-                  botName: bot.name,
-                  hasVoiceConfig: !!bot.voiceConfig,
-                }),
-              );
-            }
-            return;
-          }
-          const response = await profileApiCall("Fetch Intro", () =>
-            authenticatedFetch("/api/chat", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              // isIntro tells the server this internal prompt isn't a real "User" turn to persist.
-              body: JSON.stringify(
-                buildChatRequest({
-                  bot,
-                  voiceConfig,
-                  message: INTRO_PROMPT,
-                  userName: getStoredUserName(),
-                  isIntro: true,
-                }),
-              ),
-            }).then((res) => {
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
-              return res.json();
-            }),
-          );
-          if (cancelled) return;
-          const introMsg: Message = chatReplyMessage(bot.name, response);
-          setMessages([introMsg]);
-          logMessage(introMsg);
-          setIntroError(null);
-          setIntroLoading(false);
-        } catch (e) {
-          if (cancelled) return;
-          const msg = "Failed to generate intro or voice config. Please recreate the bot.";
-          setIntroError(msg);
-          setError(msg);
-          setIntroLoading(false);
-          if (typeof window !== "undefined") {
-            logEvent(
-              "error",
-              "chat_intro_generation_failed",
-              msg,
-              sanitizeLogMeta({
-                botName: bot.name,
-                error: e instanceof Error ? e.message : String(e),
-              }),
-            );
-          }
-        } finally {
-          if (!cancelled) {
-            introRequestInProgressRef.current = false;
-          }
-        }
-      };
-      getIntro();
-      return () => {
-        cancelled = true;
-        introSentRef.current = false;
-        introRequestInProgressRef.current = false;
-      };
-    }
-  }, [
-    messages.length,
-    apiAvailable,
+  const { introLoading, introError } = useChatIntro({
     bot,
+    messageCount: messages.length,
+    apiAvailable,
+    historyReconciled,
+    ensureVoiceConfig,
     logMessage,
     setError,
-    ensureVoiceConfig,
-    historyReconciled,
-  ]);
+    setMessages,
+  });
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || !apiAvailable || loading) return;
@@ -580,41 +344,7 @@ export function useChatController(
     } catch {}
   }, [messages, historyKey]);
 
-  const handleDownloadTranscript = async () => {
-    try {
-      await downloadTranscript(
-        messages as Message[],
-        { name: bot.name, avatarUrl: bot.avatarUrl },
-        userName,
-      );
-      if (typeof window !== "undefined") {
-        logEvent(
-          "info",
-          "chat_transcript_downloaded",
-          "Transcript downloaded successfully",
-          sanitizeLogMeta({
-            botName: bot.name,
-            messageCount: messages.length,
-          }),
-        );
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      if (typeof window !== "undefined") {
-        logEvent(
-          "error",
-          "chat_transcript_download_failed",
-          "Failed to download transcript",
-          sanitizeLogMeta({
-            botName: bot.name,
-            error: errorMessage,
-            messageCount: messages.length,
-          }),
-        );
-      }
-      alert(`Failed to open transcript: ${errorMessage}`);
-    }
-  };
+  const handleDownloadTranscript = () => downloadChatTranscript(messages, bot, userName);
 
   const handleHeaderLinkClick = useCallback(() => {
     if (inputRef.current) {

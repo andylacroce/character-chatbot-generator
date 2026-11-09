@@ -3,7 +3,13 @@ paths:
   - "src/pages/api/chars.ts"
   - "src/app/characters/**"
   - "src/app/components/character/CharsGallery.tsx"
+  - "src/app/components/character/PortraitMosaic.tsx"
+  - "src/app/components/character/GalleryLightbox.tsx"
+  - "src/app/components/character/useGallery*.ts"
+  - "src/app/components/character/useBackToTop.ts"
+  - "src/app/components/character/charsGalleryHelpers.ts"
   - "src/app/components/character/BotCreator.tsx"
+  - "src/app/components/character/useUrlLaunch.ts"
   - "src/utils/moderation/charactersWall.ts"
   - "src/app/sitemap.ts"
   - "src/app/robots.ts"
@@ -26,7 +32,7 @@ discover a row by typing its name, so nothing new is disclosed). Every
   and held in a per-instance 60s in-process cache (`getAllCharacters()`), so infinite scroll costs
   at most one table scan a minute per warm instance (same tradeoff class as the rate limiter's
   MemoryStore). `?name=` resolves a single entry; `sample=N` returns N of the newest `limit`.
-- **`CharsGallery.tsx`:** a slim Sort-by select and Group-by-category switch; grouping reloads from
+- **`CharsGallery.tsx`** (state split into `useGalleryPages`, `useGalleryLightbox`, `useBackToTop`; tiles in `PortraitMosaic.tsx`, dialog in `GalleryLightbox.tsx`): a slim Sort-by select and Group-by-category switch; grouping reloads from
   offset zero with all categories collapsed, and stale in-flight responses are ignored. One
   tattered-parchment surface with a CSS multi-column masonry of two to six columns (never one, even
   under 380px); each tile's aspect ratio and rotation come from a djb2 hash of the name
@@ -51,7 +57,7 @@ discover a row by typing its name, so nothing new is disclosed). Every
   flag set by `Providers.tsx` on the first `usePathname()` change. The page uses the shared
   `AppHeader`, `BackHomeLink`, and `useAccountMenu()`.
 - **"Chat with this character" links to `/?name=<encoded>`,** the same launch point
-  `BotCreator.tsx` reads via `useSearchParams()`. `isLaunchingFromUrl` hides the whole creator UI
+  `useUrlLaunch.ts` (used by `BotCreator.tsx`) reads via `useSearchParams()`. `isLaunchingFromUrl` hides the whole creator UI
   for a bare spinner. Resolution: signed in with a saved `bots` row of that exact name
   (case-insensitive) → resume it via `persistedBotToBot()`; otherwise `handleCreate()`.
   **StrictMode footgun, don't reintroduce:** `hasAutoSubmittedRef` is set synchronously before the

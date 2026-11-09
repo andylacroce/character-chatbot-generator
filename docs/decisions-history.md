@@ -69,3 +69,4 @@ These are not removed features; they are current decisions that newcomers often 
   `common/` (components) and `claude/`, `chat/`, `avatar/`, `moderation/`, `game/`, `account/`, `server/`
   (utils). Cross-cutting helpers (`api`, `logger`, `storage`, `environment`, ...) stay at the top level.
   CSS modules stay in one flat `components/styles/` folder. `tests/` was not reorganized.
+- **Large UI files split by responsibility (2026-11-09).** A component keeps its markup and wiring; stateful concerns became hooks beside it (`useChatIntro`, `useServerHistoryReconcile`, `useUrlLaunch`, `useGalleryPages`, `useGalleryLightbox`, `useAdminStats`) and static markup became small components. Each new module has a test file named after it in the same `tests/` folder as its neighbors; the original integration-style component tests were left untouched as the behavior pin.
