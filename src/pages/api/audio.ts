@@ -15,6 +15,7 @@ import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit"
 import { buildSsml } from "../../utils/chat/voiceHelpers";
 import { sanitizeCharacterName } from "../../utils/server/security";
 import { withRequestLog } from "../../utils/server/withRequestLog";
+import { escapesRoot, getOriginalTextForAudio } from "../../utils/chat/audioFiles";
 
 // Note: deterministic serialization is implemented in pages/api/chat.ts where it's used for audio URL encoding.
 
@@ -24,45 +25,6 @@ const audioRateLimit = createRateLimiter({
   max: 30,
   message: "Too many audio requests from this IP, please try again later.",
 });
-
-/**
- * Resolves symlinks in a directory path so it can be compared against a realpath()'d
- * file path. On macOS os.tmpdir() is /var/folders/... while realpath() returns
- * /private/var/folders/..., so comparing against the raw root would reject every
- * legitimate file. Falls back to the original path if the directory cannot be resolved.
- */
-function realRoot(dir: string): string {
-  try {
-    return fs.realpathSync(dir);
-  } catch {
-    return dir;
-  }
-}
-
-/**
- * True when a realpath()'d file lies outside the given root directory.
- * An empty path means "no such file", which is not an escape.
- */
-function escapesRoot(resolved: string, root: string): boolean {
-  if (!resolved) return false;
-  const real = realRoot(root);
-  const within = (base: string) => resolved === base || resolved.startsWith(base + path.sep);
-  return !within(real) && !within(root);
-}
-
-/** Reads back the cached source text (`.txt` sidecar) for a previously-synthesized audio file. */
-function getOriginalTextForAudio(sanitizedFile: string): string | null {
-  const txtFile = sanitizedFile.replace(/\.mp3$/, ".txt");
-  const txtPathTmp = path.join(os.tmpdir(), txtFile);
-  const txtPathPublic = path.join(/*turbopackIgnore: true*/ process.cwd(), "public", txtFile);
-  if (fs.existsSync(txtPathTmp)) {
-    return fs.readFileSync(txtPathTmp, "utf8");
-  }
-  if (fs.existsSync(txtPathPublic)) {
-    return fs.readFileSync(txtPathPublic, "utf8");
-  }
-  return null;
-}
 
 /**
  * GET /api/audio handler — see the @swagger block below for the documented contract.

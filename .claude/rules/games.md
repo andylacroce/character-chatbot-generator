@@ -17,7 +17,8 @@ paths:
 "Guess Who" and "Guess Who's Next" are **one engine with two `GameDefinition`s**; a game change is
 one edit reaching web, mobile, and both games. Only what genuinely differs lives in a definition.
 
-- **`packages/shared/src/game.ts`** holds `GUESS_WHO`/`GUESS_WHO_NEXT` (`GAMES`, `GAME_LIST`,
+- **`packages/shared/src/game*.ts`** (`game.ts` is a barrel over `gameDefinitions.ts`, `gameState.ts`, and
+  `gameTransport.ts`) holds `GUESS_WHO`/`GUESS_WHO_NEXT` (`GAMES`, `GAME_LIST`,
   Guess Who first) and the pure logic: response parsing, `applyGameMessageResponse`,
   `revealGameMessages`, and `createGameTransport(game, io)` (URLs, per-game wire token name,
   validation over a platform's raw `get`/`post`/`round` primitives). `useGameSession.ts` is the one

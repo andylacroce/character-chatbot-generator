@@ -2,9 +2,16 @@
 paths:
   - "src/pages/api/chat.ts"
   - "src/pages/api/audio.ts"
+  - "src/pages/api/transcript.ts"
+  - "src/utils/chat/audioFiles.ts"
+  - "src/utils/chat/chatRequest.ts"
+  - "src/utils/chat/chatReply.ts"
+  - "src/utils/chat/transcript*.ts"
   - "src/utils/chat/tts*.ts"
   - "src/utils/chat/chatContext.ts"
   - "src/utils/chat/characterVoices.ts"
+  - "src/utils/chat/voiceCatalog.ts"
+  - "src/utils/chat/voiceTypes.ts"
   - "src/utils/chat/voiceHelpers.ts"
   - "src/app/components/chat/useChatController.ts"
   - "src/app/components/chat/useChatIntro.ts"
@@ -27,14 +34,19 @@ SSE frames are plain `data: JSON\n\n`. The final payload is
   to avoid re-synthesizing identical audio. `ttsReply.ts`'s `synthesizeReplyAudio` is the one pipeline
   (hash-named mp3 plus `.txt` sidecar, `/api/audio` URL) for chat on every path and both games; never
   inline a second copy. `tests/integration/audioRoundTrip.test.ts` pins it against the real audio route.
-  `chatContext.ts` holds the history/summary resolution and system-prompt assembly for `chat.ts`. A TTS failure on any path (cache hit,
+  The handler is orchestration only: `chatRequest.ts` (`findChatInputProblem`, the size and required-field
+  checks), `chatContext.ts` (`resolveChatIdentity`, the server-authoritative personality and name for a
+  signed-in user's saved character, plus history/summary resolution and system-prompt assembly), and
+  `chatReply.ts` (`streamClaudeReply` and `createClaudeReply`, the two Claude calls with their 20s timeout).
+  A TTS failure on any path (cache hit,
   non-streaming, streaming) never fails the chat request: it degrades to a text-only reply
   (`audioFileUrl` omitted), since losing audio beats discarding a generated reply.
 - **Voice shapes:** persisted configs use Google's `Voice` response shape (`languageCodes`), but
   synthesis builds the separate v1 `VoiceSelectionParams` explicitly (`languageCode` plus exact
   `name`), and sends no `ssmlGender` with a named voice, so stale gender metadata can't make Google
   reject a valid selection. The legacy mismatch self-heal remains only for an unnamed fallback.
-- **Voice casting** (`src/utils/chat/characterVoices.ts`) asks the `text-simple` model to infer a
+- **Voice casting** (`src/utils/chat/characterVoices.ts`; the live Google inventory is `voiceCatalog.ts`, the
+  shared types and `SSML_GENDER` are `voiceTypes.ts`, both re-exported from `characterVoices.ts`) asks the `text-simple` model to infer a
   provider-neutral vocal profile from the personality, then requires the final `voiceName` to come
   from the deployment's live `ListVoices` inventory (cached once per warm process; Google's
   metadata for the chosen name is authoritative; casting never calls `SynthesizeSpeech` just to

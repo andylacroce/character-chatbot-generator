@@ -69,4 +69,9 @@ These are not removed features; they are current decisions that newcomers often 
   `common/` (components) and `claude/`, `chat/`, `avatar/`, `moderation/`, `game/`, `account/`, `server/`
   (utils). Cross-cutting helpers (`api`, `logger`, `storage`, `environment`, ...) stay at the top level.
   CSS modules stay in one flat `components/styles/` folder. `tests/` was not reorganized.
+- **Large server files split the same way (2026-11-09).** The remaining 350-480 line files (`chat.ts`,
+  `transcript.ts`, `validate-character.ts`, `admin/stats.ts`, `avatarGeneration.ts`, `characterVoices.ts`, the
+  shared `game.ts`) were separated into modules along the seams they already had. A handler keeps only HTTP
+  concerns; shared `game.ts` stays as a barrel so web, mobile, and `index.ts` imports didn't change. Where a
+  route's tests depend on the order of database calls (`admin/stats`), that order was preserved.
 - **Large UI files split by responsibility (2026-11-09).** A component keeps its markup and wiring; stateful concerns became hooks beside it (`useChatIntro`, `useServerHistoryReconcile`, `useUrlLaunch`, `useGalleryPages`, `useGalleryLightbox`, `useAdminStats`) and static markup became small components. Each new module has a test file named after it in the same `tests/` folder as its neighbors; the original integration-style component tests were left untouched as the behavior pin.

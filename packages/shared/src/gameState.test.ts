@@ -1,80 +1,25 @@
 import {
   applyGameMessageResponse,
-  createGameTransport,
   fillTemplate,
-  GAME_FALLBACK_AVATAR,
-  GAME_LIST,
-  GAME_MYSTERY_NAME,
-  gameApiUrl,
-  gameBySlug,
   gameRoundGreeting,
   giveUpEvent,
-  GUESS_WHO,
-  GUESS_WHO_NEXT,
-  parseGameMessageResponse,
   parseGameRoundResult,
   revealedSpeaker,
   revealGameMessages,
   toGameConversationHistory,
-  type GameDefinition,
-} from "./game";
+} from "./gameState";
+import {
+  GAME_FALLBACK_AVATAR,
+  GAME_MYSTERY_NAME,
+  GUESS_WHO,
+  GUESS_WHO_NEXT,
+} from "./gameDefinitions";
 
 const speaker = {
   name: "Sherlock Holmes",
   avatarUrl: "https://example.com/s.png",
   gender: "male",
 };
-
-describe("game definitions", () => {
-  it("lists Guess Who first, everywhere both games appear", () => {
-    expect(GAME_LIST.map((game) => game.id)).toEqual(["guessWho", "guessWhoNext"]);
-  });
-
-  it("keeps each game's historical wire token name, so released mobile builds keep working", () => {
-    expect(GUESS_WHO.tokenField).toBe("guessWhoToken");
-    expect(GUESS_WHO_NEXT.tokenField).toBe("gameToken");
-  });
-
-  it("resolves a game from its URL slug and builds its endpoint URLs", () => {
-    expect(gameBySlug("guess-who-next")).toBe(GUESS_WHO_NEXT);
-    expect(gameBySlug("nope")).toBeUndefined();
-    expect(gameApiUrl(GUESS_WHO, "give-up")).toBe("/api/guess-who/give-up");
-  });
-});
-
-describe.each([GUESS_WHO, GUESS_WHO_NEXT])("shared helpers ($id)", (game) => {
-  it("throws the server's own error, or on a malformed round payload", () => {
-    expect(() => parseGameRoundResult(game, { error: "boom" }, "/x")).toThrow("boom");
-    expect(() => parseGameRoundResult(game, null, "/x")).toThrow("Invalid response from /x");
-  });
-
-  it("normalizes the wire token name on a message response", () => {
-    const parsed = parseGameMessageResponse(game, { reply: "Hi", [game.tokenField]: "t9" });
-    expect(parsed).toEqual({ reply: "Hi", token: "t9" });
-  });
-
-  it("flags a give-up request with no reply", () => {
-    expect(applyGameMessageResponse(game, { giveUpRequested: true }, speaker)).toEqual({
-      giveUpRequested: true,
-      reply: null,
-      lastEvent: null,
-    });
-  });
-
-  it("rejects a response with no reply", () => {
-    expect(() => applyGameMessageResponse(game, {}, speaker)).toThrow("Invalid response");
-  });
-
-  it("tolerates a first wrong guess and adopts the bumped token", () => {
-    const outcome = applyGameMessageResponse(
-      game,
-      { reply: "Not quite.", wrongGuessesRemaining: 1, token: "t3" },
-      speaker,
-    );
-    expect(outcome.lastEvent).toEqual({ type: "wrong", wrongGuessesRemaining: 1 });
-    expect(outcome.token).toBe("t3");
-  });
-});
 
 describe("helpers", () => {
   it("formats history lines by speaker", () => {
@@ -325,47 +270,5 @@ describe("revealedSpeaker / revealGameMessages", () => {
         gender: "female",
       },
     ]);
-  });
-});
-
-describe.each<[GameDefinition, string]>([
-  [GUESS_WHO, "guessWhoToken"],
-  [GUESS_WHO_NEXT, "gameToken"],
-])("createGameTransport (%#)", (game, tokenField) => {
-  const roundPayload = {
-    [tokenField]: "t",
-    reply: "Hi",
-    currentCharacterName: "Zeus",
-    streak: 0,
-  };
-
-  it("sends each request to the game's own URL with its own wire token name", async () => {
-    const post = jest.fn().mockResolvedValue({ reply: "Ok", [tokenField]: "t2" });
-    const round = jest.fn().mockResolvedValue(roundPayload);
-    const get = jest.fn().mockResolvedValue({ highScore: 4 });
-    const transport = createGameTransport(game, { get, post, round });
-
-    await expect(transport.start()).resolves.toMatchObject({ token: "t" });
-    expect(round).toHaveBeenCalledWith("start", gameApiUrl(game, "start"), {});
-
-    await transport.continueRound("tok");
-    expect(round).toHaveBeenLastCalledWith("continue", gameApiUrl(game, "continue"), {
-      [tokenField]: "tok",
-    });
-
-    await expect(
-      transport.sendMessage({ token: "tok", message: "hi", conversationHistory: ["User: a"] }),
-    ).resolves.toEqual({ reply: "Ok", token: "t2" });
-    expect(post).toHaveBeenLastCalledWith(gameApiUrl(game, "message"), {
-      [tokenField]: "tok",
-      message: "hi",
-      conversationHistory: ["User: a"],
-    });
-
-    await transport.giveUp("tok");
-    expect(post).toHaveBeenLastCalledWith(gameApiUrl(game, "give-up"), { [tokenField]: "tok" });
-
-    await expect(transport.getHighScore()).resolves.toEqual({ highScore: 4 });
-    expect(get).toHaveBeenCalledWith(gameApiUrl(game, "high-score"));
   });
 });

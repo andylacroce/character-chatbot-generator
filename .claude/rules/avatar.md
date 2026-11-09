@@ -17,6 +17,9 @@ SFW image prompt from the established name, then the first provider that succeed
 2. **Pollinations.ai** (`pollinationsImageGen.ts`), anonymous, no key, no daily cap, may render a
    small watermark. Used whenever Cloudflare is unset, errors, or trips its safety filter.
 
+Module layout (`src/utils/avatar/`): `avatarGeneration.ts` orchestrates (`getOrGenerateAvatar`,
+`regenerateCachedAvatar`), `avatarPrompt.ts` is the Claude prompt step, and `avatarCache.ts` owns the shared
+`avatar_cache` table, Blob uploads, and the moderation scrubs (re-exported from `avatarGeneration.ts`).
 Each provider returns `null` on any failure instead of throwing, so the handler's `if (!avatarUrl)`
 fallthrough chains them. **Both `fetch()` calls carry `AbortSignal.timeout(25000)`:** plain
 `fetch` has no timeout, and a stalled Pollinations request once hung the game's `start`/`continue`

@@ -2,6 +2,7 @@
 paths:
   - "src/utils/analytics.ts"
   - "src/pages/api/admin/stats.ts"
+  - "src/utils/admin/**"
   - "src/app/admin/**"
   - "src/utils/account/isAdmin.ts"
   - "src/app/components/common/GoogleAnalyticsConsent.tsx"
@@ -31,7 +32,9 @@ product-usage analytics, kept small rather than becoming general observability.
   `avatar_generated` (provider: `cache` | `cloudflare` | `pollinations` | `none`), `bot_created`,
   and the game events above. No event records character names, guesses, or chat text, preserving
   `skipPersistence`'s no-trace guarantee.
-- **`GET /api/admin/stats`** aggregates the current environment: game starts (today/7d/all time),
+- **`GET /api/admin/stats`** (a thin handler; the queries live in `src/utils/admin/`: `gameStats.ts` for
+  one game's aggregation, shared by both games, `characterStats.ts`, and `adminStats.ts`'s `loadAdminStats`
+  that combines them) aggregates the current environment: game starts (today/7d/all time),
   guest share, scored guess accuracy, continued rounds, ending reasons, streak distribution, and 90
   days of daily activity. `/admin` has keyboard-operable tabs (Guessing game, Character
   conversations); both daily charts use `AdminActivityChart`, whose 7/30/90-day range changes only

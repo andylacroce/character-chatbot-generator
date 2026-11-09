@@ -10,10 +10,44 @@ import {
   buildClaudeMessages,
   type ClaudeMessage,
 } from "./conversationSummarizer";
-import { fetchUnsummarizedMessages, type lookupBot } from "./chatPersistence";
-import { stripPromptTags } from "../server/security";
+import { fetchUnsummarizedMessages, lookupBot, lookupUserPreferredName } from "./chatPersistence";
+import { getSessionUserId } from "../account/getSessionUserId";
+import { sanitizeUserName, stripPromptTags } from "../server/security";
 
 type BotRow = NonNullable<Awaited<ReturnType<typeof lookupBot>>>;
+
+/** Who is chatting and with which character, once the server has had its say. */
+export interface ChatIdentity {
+  botRow: BotRow | null;
+  personality: string;
+  userName: string;
+}
+
+/**
+ * For a signed-in user's saved character, the server becomes the source of truth for
+ * personality/history instead of trusting the client-supplied values on every request —
+ * same rationale as bot ownership in pages/api/bots.ts. Guests, no DATABASE_URL, or a
+ * character never saved server-side (e.g. a copyright-warning override, never persisted at
+ * all) fall through to the fully client-authoritative values.
+ *
+ * The same server-authoritative-once-set pattern covers the user's preferred name: a
+ * signed-in user's stored name (pages/api/user-profile.ts) wins once set, so it can't be
+ * spoofed differently on a later request; otherwise the client's value is used.
+ */
+export async function resolveChatIdentity(
+  req: Parameters<typeof getSessionUserId>[0],
+  botName: string,
+  requestPersonality: string,
+  bodyUserName: unknown,
+): Promise<ChatIdentity> {
+  const userId = await getSessionUserId(req);
+  const botRow = userId ? await lookupBot(userId, botName) : null;
+  const personality = botRow ? botRow.personality : requestPersonality;
+  const storedUserName = userId ? await lookupUserPreferredName(userId) : null;
+  const userName =
+    storedUserName || (typeof bodyUserName === "string" ? sanitizeUserName(bodyUserName) : "");
+  return { botRow, personality, userName };
+}
 
 /** History kept verbatim; anything older is folded into a summary. */
 const RECENT_MESSAGES = 20;
