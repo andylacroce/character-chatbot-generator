@@ -1,13 +1,10 @@
 ---
 paths:
   - "src/utils/game/**"
-  - "src/utils/gameReply.ts"
-  - "src/utils/classifyGuess.ts"
   - "src/pages/api/*/start.ts"
   - "src/pages/api/*/continue.ts"
   - "src/pages/api/*/message.ts"
-  - "src/app/components/Game*"
-  - "src/app/components/useGame*"
+  - "src/app/components/game/**"
   - "src/data/game*"
   - "packages/shared/src/game*"
   - "packages/shared/src/useGameSession.ts"
@@ -50,7 +47,6 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
   (`useGameController.ts` on web, `apps/mobile/src/useGameController.ts`) supply only transport,
   storage, logger, audio, and (web) SSE progress. `GamePage.tsx`/`GamePage.module.css` and
   `GameScreen.tsx` (exporting `GuessWhoScreen`/`GuessWhoNextScreen`) are one component each.
-- **`src/utils/classifyGuess.ts`** is the classifier both games share (few-shot examples live once).
 - **DB tables stay separate per game** (`guess_who_*`, `guess_who_next_*`): selected by config, and
   merging would add a production migration for almost no code saved. `schema.ts` keeps them
   explicit because `scripts/check-db-schema.cjs` regex-scans it.

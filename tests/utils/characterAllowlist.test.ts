@@ -17,38 +17,43 @@ describe("characterAllowlist", () => {
 
   describe("isCuratedAllowlisted", () => {
     it("matches a curated public-domain name case-insensitively", async () => {
-      const { isCuratedAllowlisted } = await import("../../src/utils/characterAllowlist");
+      const { isCuratedAllowlisted } =
+        await import("../../src/utils/moderation/characterAllowlist");
       expect(isCuratedAllowlisted("Sherlock Holmes")).toBe(true);
       expect(isCuratedAllowlisted("sherlock holmes")).toBe(true);
       expect(isCuratedAllowlisted("SHERLOCK HOLMES")).toBe(true);
     });
 
     it("matches the exact names a live sweep found misclassified", async () => {
-      const { isCuratedAllowlisted } = await import("../../src/utils/characterAllowlist");
+      const { isCuratedAllowlisted } =
+        await import("../../src/utils/moderation/characterAllowlist");
       expect(isCuratedAllowlisted("Thor")).toBe(true);
       expect(isCuratedAllowlisted("Winnie-the-Pooh")).toBe(true);
     });
 
     it("tolerates surrounding whitespace", async () => {
-      const { isCuratedAllowlisted } = await import("../../src/utils/characterAllowlist");
+      const { isCuratedAllowlisted } =
+        await import("../../src/utils/moderation/characterAllowlist");
       expect(isCuratedAllowlisted("  Thor  ")).toBe(true);
     });
 
     it("does not match a name with no independent existence outside a corporate work", async () => {
-      const { isCuratedAllowlisted } = await import("../../src/utils/characterAllowlist");
+      const { isCuratedAllowlisted } =
+        await import("../../src/utils/moderation/characterAllowlist");
       expect(isCuratedAllowlisted("Spider-Man")).toBe(false);
       expect(isCuratedAllowlisted("Pikachu")).toBe(false);
     });
 
     it("does not match an unrecognized/invented name", async () => {
-      const { isCuratedAllowlisted } = await import("../../src/utils/characterAllowlist");
+      const { isCuratedAllowlisted } =
+        await import("../../src/utils/moderation/characterAllowlist");
       expect(isCuratedAllowlisted("Zzyxx Blorptron")).toBe(false);
     });
   });
 
   describe("isAllowlisted (combined static + DB check)", () => {
     it("returns true immediately for a curated name, without touching the DB", async () => {
-      const { isAllowlisted } = await import("../../src/utils/characterAllowlist");
+      const { isAllowlisted } = await import("../../src/utils/moderation/characterAllowlist");
       expect(await isAllowlisted("Thor")).toBe(true);
     });
 
@@ -59,7 +64,7 @@ describe("characterAllowlist", () => {
         jest.doMock("../../src/db/client", () => ({
           getDb: () => ({ select: () => ({ from: () => ({ where: mockWhere }) }) }),
         }));
-        const { isAllowlisted } = await import("../../src/utils/characterAllowlist");
+        const { isAllowlisted } = await import("../../src/utils/moderation/characterAllowlist");
         expect(await isAllowlisted("Alice Munro")).toBe(true);
       });
     });
@@ -71,7 +76,7 @@ describe("characterAllowlist", () => {
         jest.doMock("../../src/db/client", () => ({
           getDb: () => ({ select: () => ({ from: () => ({ where: mockWhere }) }) }),
         }));
-        const { isAllowlisted } = await import("../../src/utils/characterAllowlist");
+        const { isAllowlisted } = await import("../../src/utils/moderation/characterAllowlist");
         expect(await isAllowlisted("Spider-Man")).toBe(false);
       });
     });
@@ -79,7 +84,7 @@ describe("characterAllowlist", () => {
 
   describe("getAllowlistEntry", () => {
     it("returns null without DATABASE_URL", async () => {
-      const { getAllowlistEntry } = await import("../../src/utils/characterAllowlist");
+      const { getAllowlistEntry } = await import("../../src/utils/moderation/characterAllowlist");
       expect(await getAllowlistEntry("Elsa")).toBeNull();
     });
 
@@ -93,7 +98,7 @@ describe("characterAllowlist", () => {
             }),
           }),
         }));
-        const { getAllowlistEntry } = await import("../../src/utils/characterAllowlist");
+        const { getAllowlistEntry } = await import("../../src/utils/moderation/characterAllowlist");
         expect(await getAllowlistEntry("Elsa")).toBeNull();
       });
     });
@@ -101,7 +106,7 @@ describe("characterAllowlist", () => {
 
   describe("addToAllowlist", () => {
     it("no-ops without DATABASE_URL", async () => {
-      const { addToAllowlist } = await import("../../src/utils/characterAllowlist");
+      const { addToAllowlist } = await import("../../src/utils/moderation/characterAllowlist");
       await expect(addToAllowlist("Elsa", "reason")).resolves.toBeUndefined();
     });
 
@@ -113,7 +118,7 @@ describe("characterAllowlist", () => {
         jest.doMock("../../src/db/client", () => ({
           getDb: () => ({ insert: () => ({ values: mockValues }) }),
         }));
-        const { addToAllowlist } = await import("../../src/utils/characterAllowlist");
+        const { addToAllowlist } = await import("../../src/utils/moderation/characterAllowlist");
         await addToAllowlist("Elsa", "Real person, mis-flagged");
         expect(mockValues).toHaveBeenCalledWith({
           characterName: "elsa",
@@ -134,7 +139,7 @@ describe("characterAllowlist", () => {
             }),
           }),
         }));
-        const { addToAllowlist } = await import("../../src/utils/characterAllowlist");
+        const { addToAllowlist } = await import("../../src/utils/moderation/characterAllowlist");
         await expect(addToAllowlist("Elsa", null)).resolves.toBeUndefined();
       });
     });
@@ -142,7 +147,7 @@ describe("characterAllowlist", () => {
 
   describe("removeFromAllowlist", () => {
     it("returns false without DATABASE_URL", async () => {
-      const { removeFromAllowlist } = await import("../../src/utils/characterAllowlist");
+      const { removeFromAllowlist } = await import("../../src/utils/moderation/characterAllowlist");
       expect(await removeFromAllowlist("Elsa")).toBe(false);
     });
 
@@ -153,7 +158,8 @@ describe("characterAllowlist", () => {
         jest.doMock("../../src/db/client", () => ({
           getDb: () => ({ delete: () => ({ where: () => ({ returning: mockReturning }) }) }),
         }));
-        const { removeFromAllowlist } = await import("../../src/utils/characterAllowlist");
+        const { removeFromAllowlist } =
+          await import("../../src/utils/moderation/characterAllowlist");
         expect(await removeFromAllowlist("Elsa")).toBe(true);
       });
     });
@@ -165,7 +171,8 @@ describe("characterAllowlist", () => {
         jest.doMock("../../src/db/client", () => ({
           getDb: () => ({ delete: () => ({ where: () => ({ returning: mockReturning }) }) }),
         }));
-        const { removeFromAllowlist } = await import("../../src/utils/characterAllowlist");
+        const { removeFromAllowlist } =
+          await import("../../src/utils/moderation/characterAllowlist");
         expect(await removeFromAllowlist("Nobody")).toBe(false);
       });
     });
@@ -180,7 +187,8 @@ describe("characterAllowlist", () => {
             }),
           }),
         }));
-        const { removeFromAllowlist } = await import("../../src/utils/characterAllowlist");
+        const { removeFromAllowlist } =
+          await import("../../src/utils/moderation/characterAllowlist");
         expect(await removeFromAllowlist("Elsa")).toBe(false);
       });
     });
@@ -188,7 +196,7 @@ describe("characterAllowlist", () => {
 
   describe("listAllowlist", () => {
     it("returns [] without DATABASE_URL", async () => {
-      const { listAllowlist } = await import("../../src/utils/characterAllowlist");
+      const { listAllowlist } = await import("../../src/utils/moderation/characterAllowlist");
       expect(await listAllowlist()).toEqual([]);
     });
 
@@ -200,7 +208,7 @@ describe("characterAllowlist", () => {
         jest.doMock("../../src/db/client", () => ({
           getDb: () => ({ select: () => ({ from: () => ({ orderBy: mockOrderBy }) }) }),
         }));
-        const { listAllowlist } = await import("../../src/utils/characterAllowlist");
+        const { listAllowlist } = await import("../../src/utils/moderation/characterAllowlist");
         expect(await listAllowlist()).toEqual(rows);
       });
     });
@@ -215,7 +223,7 @@ describe("characterAllowlist", () => {
             }),
           }),
         }));
-        const { listAllowlist } = await import("../../src/utils/characterAllowlist");
+        const { listAllowlist } = await import("../../src/utils/moderation/characterAllowlist");
         expect(await listAllowlist()).toEqual([]);
       });
     });

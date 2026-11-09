@@ -5,7 +5,7 @@ import {
   detectVoiceType,
   CHARACTER_VOICE_MAP,
   __resetVoiceCatalogForTest,
-} from "../../src/utils/characterVoices";
+} from "../../src/utils/chat/characterVoices";
 
 const createMock = jest.fn();
 class AnthropicMock {
@@ -14,12 +14,12 @@ class AnthropicMock {
 }
 jest.mock("@anthropic-ai/sdk", () => ({ default: AnthropicMock, __esModule: true }));
 
-jest.mock("../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: () => "test-model", // plain fn: resetAllMocks would wipe a jest.fn's return
 }));
 
 const mockGetTTSClient = jest.fn();
-jest.mock("../../src/utils/tts", () => ({ getTTSClient: () => mockGetTTSClient() }));
+jest.mock("../../src/utils/chat/tts", () => ({ getTTSClient: () => mockGetTTSClient() }));
 
 describe("characterVoices - helpers and Claude/TTS interactions", () => {
   beforeEach(() => {
@@ -109,7 +109,7 @@ describe("characterVoices - helpers and Claude/TTS interactions", () => {
     createMock.mockImplementation(() => {
       throw new Error("claude fail");
     });
-    const mod = jest.requireActual("../../src/utils/characterVoices");
+    const mod = jest.requireActual("../../src/utils/chat/characterVoices");
     const res = await mod.getVoiceConfigForCharacter("Xyz");
     expect(res).toEqual(CHARACTER_VOICE_MAP["Default"]);
   });

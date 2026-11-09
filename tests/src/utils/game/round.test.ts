@@ -1,5 +1,5 @@
 const mockPickRandomCharacterName = jest.fn();
-jest.mock("../../../../src/utils/pickRandomCharacterName", () => ({
+jest.mock("../../../../src/utils/moderation/pickRandomCharacterName", () => ({
   pickRandomCharacterName: (...args: unknown[]) => mockPickRandomCharacterName(...args),
 }));
 
@@ -11,23 +11,23 @@ jest.mock("../../../../src/config/serverConfig", () => ({
 }));
 
 const mockGetOrGenerateAvatar = jest.fn();
-jest.mock("../../../../src/utils/avatarGeneration", () => ({
+jest.mock("../../../../src/utils/avatar/avatarGeneration", () => ({
   getOrGenerateAvatar: (...args: unknown[]) => mockGetOrGenerateAvatar(...args),
 }));
 
 const mockGetOpeningReply = jest.fn();
-jest.mock("../../../../src/utils/gameReply", () => ({
+jest.mock("../../../../src/utils/game/gameReply", () => ({
   getOpeningReply: (...args: unknown[]) => mockGetOpeningReply(...args),
   SELF_CLUE_OPENING_INSTRUCTION: "__SELF_CLUE_OPENING_INSTRUCTION__",
 }));
 
 const mockGetVoiceConfigForCharacter = jest.fn();
-jest.mock("../../../../src/utils/characterVoices", () => ({
+jest.mock("../../../../src/utils/chat/characterVoices", () => ({
   getVoiceConfigForCharacter: (...args: unknown[]) => mockGetVoiceConfigForCharacter(...args),
 }));
 
 const mockSynthesizeReplyAudio = jest.fn();
-jest.mock("../../../../src/utils/ttsReply", () => ({
+jest.mock("../../../../src/utils/chat/ttsReply", () => ({
   synthesizeReplyAudio: (...args: unknown[]) => mockSynthesizeReplyAudio(...args),
 }));
 

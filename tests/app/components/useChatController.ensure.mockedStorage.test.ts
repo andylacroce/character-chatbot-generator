@@ -19,12 +19,12 @@ jest.mock("../../../src/utils/storage", () => ({
 // Also mock authenticatedFetch to allow mocking per-test
 jest.mock("../../../src/utils/api");
 // Mock the api_getVoiceConfigForCharacter used by the controller
-jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter");
+jest.mock("../../../src/app/components/chat/api_getVoiceConfigForCharacter");
 
-import { api_getVoiceConfigForCharacter } from "../../../src/app/components/api_getVoiceConfigForCharacter";
+import { api_getVoiceConfigForCharacter } from "../../../src/app/components/chat/api_getVoiceConfigForCharacter";
 import { authenticatedFetch } from "../../../src/utils/api";
 import * as storage from "../../../src/utils/storage";
-import { useChatController } from "../../../src/app/components/useChatController";
+import { useChatController } from "../../../src/app/components/chat/useChatController";
 
 const mockGetVoice = api_getVoiceConfigForCharacter as jest.MockedFunction<
   typeof api_getVoiceConfigForCharacter

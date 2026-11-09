@@ -14,8 +14,8 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getToken } from "next-auth/jwt";
-import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
-import { withRequestLog } from "../../../utils/withRequestLog";
+import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 /** Rate limiter: 10 requests per minute per IP, matching the other mobile-auth-* routes. */
 const mobileSessionRateLimit = createRateLimiter({

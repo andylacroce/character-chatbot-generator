@@ -10,7 +10,7 @@ import { notFound } from "next/navigation";
 // Deep imports, not the package root: the root re-exports React hooks, which a Server Component bundle rejects.
 import { getCharacterCategoryLabel } from "character-chatbot-shared/src/characterCategories";
 import { characterSlug, displayCharacterName } from "character-chatbot-shared/src/validation";
-import { getCharacterBySlug } from "../../../utils/charactersWall";
+import { getCharacterBySlug } from "../../../utils/moderation/charactersWall";
 import { SITE_URL } from "../../../utils/site";
 import styles from "../../components/styles/CharacterPage.module.css";
 

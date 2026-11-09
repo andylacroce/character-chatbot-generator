@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { generateBotDataWithProgressCancelable } from "../../../src/app/components/useBotCreation";
-import { api_getVoiceConfigForCharacter } from "../../../src/app/components/api_getVoiceConfigForCharacter";
-import { persistVoiceConfig } from "../../../src/utils/voiceConfigPersistence";
+import { generateBotDataWithProgressCancelable } from "../../../src/app/components/character/useBotCreation";
+import { api_getVoiceConfigForCharacter } from "../../../src/app/components/chat/api_getVoiceConfigForCharacter";
+import { persistVoiceConfig } from "../../../src/utils/chat/voiceConfigPersistence";
 import { authenticatedFetch } from "../../../src/utils/api";
 
-jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter");
-jest.mock("../../../src/utils/voiceConfigPersistence");
+jest.mock("../../../src/app/components/chat/api_getVoiceConfigForCharacter");
+jest.mock("../../../src/utils/chat/voiceConfigPersistence");
 jest.mock("../../../src/utils/api");
 
 const mockFetch = authenticatedFetch as jest.MockedFunction<typeof authenticatedFetch>;

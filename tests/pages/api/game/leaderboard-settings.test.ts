@@ -1,11 +1,11 @@
 import { GAMES_UNDER_TEST, makeReq, makeRes, sentJson } from "../../../helpers/gameRoute";
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 const mockGetGuestId = jest.fn();
-jest.mock("../../../../src/utils/gameGuestIdentity", () => ({
+jest.mock("../../../../src/utils/game/gameGuestIdentity", () => ({
   getGuestId: (...args: unknown[]) => mockGetGuestId(...args),
 }));
 const mockIsTopTenPlayer = jest.fn();
@@ -13,11 +13,11 @@ jest.mock("../../../../src/utils/game/scores", () => ({
   isTopTenPlayer: (...args: unknown[]) => mockIsTopTenPlayer(...args),
 }));
 const mockCheckLeaderboardName = jest.fn();
-jest.mock("../../../../src/utils/leaderboardName", () => ({
+jest.mock("../../../../src/utils/game/leaderboardName", () => ({
   checkLeaderboardName: (...args: unknown[]) => mockCheckLeaderboardName(...args),
 }));
 const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/rateLimit", () => ({
+jest.mock("../../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => options,
   applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));

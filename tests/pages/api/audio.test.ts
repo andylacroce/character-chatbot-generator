@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const mockSynthesizeSpeechToFile = jest.fn();
-jest.mock("../../../src/utils/tts", () => ({
+jest.mock("../../../src/utils/chat/tts", () => ({
   synthesizeSpeechToFile: (...args: unknown[]) => mockSynthesizeSpeechToFile(...args),
 }));
 
@@ -38,7 +38,7 @@ jest.mock("../../../src/utils/logger", () => ({
 }));
 
 const mockGetVoiceConfigForCharacter = jest.fn();
-jest.mock("../../../src/utils/characterVoices", () => ({
+jest.mock("../../../src/utils/chat/characterVoices", () => ({
   getVoiceConfigForCharacter: (...args: unknown[]) => mockGetVoiceConfigForCharacter(...args),
 }));
 

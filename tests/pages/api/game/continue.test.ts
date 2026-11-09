@@ -18,13 +18,13 @@ jest.mock("../../../../src/utils/logger", () => ({
 }));
 
 const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/rateLimit", () => ({
+jest.mock("../../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => options,
   applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 
@@ -34,7 +34,7 @@ jest.mock("../../../../src/utils/analytics", () => ({
 }));
 
 const mockPickRandomCharacterName = jest.fn();
-jest.mock("../../../../src/utils/pickRandomCharacterName", () => ({
+jest.mock("../../../../src/utils/moderation/pickRandomCharacterName", () => ({
   pickRandomCharacterName: (...args: unknown[]) => mockPickRandomCharacterName(...args),
 }));
 
@@ -46,20 +46,20 @@ jest.mock("../../../../src/config/serverConfig", () => ({
 }));
 
 const mockGetOrGenerateAvatar = jest.fn();
-jest.mock("../../../../src/utils/avatarGeneration", () => ({
+jest.mock("../../../../src/utils/avatar/avatarGeneration", () => ({
   getOrGenerateAvatar: (...args: unknown[]) => mockGetOrGenerateAvatar(...args),
 }));
 
-jest.mock("../../../../src/utils/gameReply", () => ({
+jest.mock("../../../../src/utils/game/gameReply", () => ({
   getOpeningReply: jest.fn().mockResolvedValue("Hello, dear player."),
   SELF_CLUE_OPENING_INSTRUCTION: "",
 }));
 
-jest.mock("../../../../src/utils/characterVoices", () => ({
+jest.mock("../../../../src/utils/chat/characterVoices", () => ({
   getVoiceConfigForCharacter: jest.fn().mockResolvedValue({ name: "voice" }),
 }));
 
-jest.mock("../../../../src/utils/ttsReply", () => ({
+jest.mock("../../../../src/utils/chat/ttsReply", () => ({
   synthesizeReplyAudio: jest.fn().mockResolvedValue("/api/audio?file=opening.mp3"),
 }));
 

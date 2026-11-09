@@ -22,7 +22,7 @@ jest.mock("@anthropic-ai/sdk", () => ({
   __esModule: true,
 }));
 
-jest.mock("../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: (type: "text" | "text-simple" | "image") => {
     if (type === "image") throw new Error("Unknown type");
     return "claude-haiku-4-5-20251001";
@@ -40,7 +40,7 @@ jest.mock("../../src/utils/analytics", () => ({
 
 const mockScrubCachedAvatar = jest.fn().mockResolvedValue(false);
 const mockScrubUserBotsByName = jest.fn().mockResolvedValue(0);
-jest.mock("../../src/utils/avatarGeneration", () => ({
+jest.mock("../../src/utils/avatar/avatarGeneration", () => ({
   scrubCachedAvatar: (...args: unknown[]) => mockScrubCachedAvatar(...args),
   scrubUserBotsByName: (...args: unknown[]) => mockScrubUserBotsByName(...args),
 }));
@@ -48,14 +48,14 @@ jest.mock("../../src/utils/avatarGeneration", () => ({
 const mockGetBlocklistEntry = jest.fn().mockResolvedValue(null);
 const mockAddToBlocklist = jest.fn().mockResolvedValue(undefined);
 const mockRemoveFromBlocklist = jest.fn().mockResolvedValue(false);
-jest.mock("../../src/utils/characterBlocklist", () => ({
+jest.mock("../../src/utils/moderation/characterBlocklist", () => ({
   getBlocklistEntry: (...args: unknown[]) => mockGetBlocklistEntry(...args),
   addToBlocklist: (...args: unknown[]) => mockAddToBlocklist(...args),
   removeFromBlocklist: (...args: unknown[]) => mockRemoveFromBlocklist(...args),
 }));
 
 const mockLogWarning = jest.fn().mockResolvedValue(undefined);
-jest.mock("../../src/utils/characterWarningLog", () => ({
+jest.mock("../../src/utils/moderation/characterWarningLog", () => ({
   logWarning: (...args: unknown[]) => mockLogWarning(...args),
 }));
 
@@ -118,7 +118,7 @@ describe("validate-character API", () => {
     const handler = (await import("../../src/pages/api/validate-character")).default;
     const { req, res } = createMocks({
       method: "POST",
-      // Not on the curated allowlist (src/utils/characterAllowlist.ts) — this test
+      // Not on the curated allowlist (src/utils/moderation/characterAllowlist.ts) — this test
       // exercises the ordinary Claude classification path, not the allowlist
       // short-circuit (see the dedicated allowlist tests below).
       body: { name: "Ada Lovelace" },

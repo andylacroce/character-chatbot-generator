@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 
 const mockGetCharacterBySlug = jest.fn();
-jest.mock("../../../src/utils/charactersWall", () => ({
+jest.mock("../../../src/utils/moderation/charactersWall", () => ({
   getCharacterBySlug: (...args: unknown[]) => mockGetCharacterBySlug(...args),
 }));
 const mockNotFound = jest.fn(() => {

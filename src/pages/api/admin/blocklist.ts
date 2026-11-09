@@ -21,22 +21,22 @@
  *
  * A name is never on both the blocklist and the admin-managed allowlist at once —
  * POST here also removes the name from the allowlist (see
- * src/utils/characterAllowlist.ts's removeFromAllowlist), which is what lets the
+ * src/utils/moderation/characterAllowlist.ts's removeFromAllowlist), which is what lets the
  * moderation page's "Move to Blocked" action on an allowlisted row just POST here.
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { readAdminName, requireAdmin } from "../../../utils/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
+import { readAdminName, requireAdmin } from "../../../utils/account/adminGuard";
+import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import {
   listBlocklist,
   addToBlocklist,
   removeFromBlocklist,
-} from "../../../utils/characterBlocklist";
-import { removeFromAllowlist } from "../../../utils/characterAllowlist";
-import { scrubCachedAvatar, scrubUserBotsByName } from "../../../utils/avatarGeneration";
-import { withRequestLog } from "../../../utils/withRequestLog";
+} from "../../../utils/moderation/characterBlocklist";
+import { removeFromAllowlist } from "../../../utils/moderation/characterAllowlist";
+import { scrubCachedAvatar, scrubUserBotsByName } from "../../../utils/avatar/avatarGeneration";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
 const adminBlocklistRateLimit = createRateLimiter({

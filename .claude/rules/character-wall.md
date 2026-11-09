@@ -2,9 +2,9 @@
 paths:
   - "src/pages/api/chars.ts"
   - "src/app/characters/**"
-  - "src/app/components/CharsGallery.tsx"
-  - "src/app/components/BotCreator.tsx"
-  - "src/utils/charactersWall.ts"
+  - "src/app/components/character/CharsGallery.tsx"
+  - "src/app/components/character/BotCreator.tsx"
+  - "src/utils/moderation/charactersWall.ts"
   - "src/app/sitemap.ts"
   - "src/app/robots.ts"
 ---

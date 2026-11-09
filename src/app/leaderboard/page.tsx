@@ -1,6 +1,6 @@
 /** Public guessing-game leaderboard page. */
 
-import LeaderboardPage from "../components/LeaderboardPage";
+import LeaderboardPage from "../components/game/LeaderboardPage";
 
 export const metadata = {
   title: "Leaderboard — Portrayal",

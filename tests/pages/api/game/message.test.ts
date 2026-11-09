@@ -17,7 +17,7 @@ jest.mock("../../../../src/utils/logger", () => ({
 }));
 
 const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/rateLimit", () => ({
+jest.mock("../../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => options,
   applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
@@ -25,7 +25,7 @@ jest.mock("../../../../src/utils/rateLimit", () => ({
 jest.mock("../../../../src/utils/environment", () => ({ getCurrentEnvironment: () => "test" }));
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 
@@ -47,25 +47,25 @@ jest.mock("../../../../src/utils/game/scores", () => ({
 }));
 
 const mockGetGuestId = jest.fn();
-jest.mock("../../../../src/utils/gameGuestIdentity", () => ({
+jest.mock("../../../../src/utils/game/gameGuestIdentity", () => ({
   getGuestId: (...args: unknown[]) => mockGetGuestId(...args),
 }));
 
 const mockGetGameReply = jest.fn();
 const mockGetGuessReactionReply = jest.fn();
-jest.mock("../../../../src/utils/gameReply", () => ({
+jest.mock("../../../../src/utils/game/gameReply", () => ({
   getGameReply: (...args: unknown[]) => mockGetGameReply(...args),
   getGuessReactionReply: (...args: unknown[]) => mockGetGuessReactionReply(...args),
   AMBIGUOUS_GUESS_NOTE: "maybe guessing",
 }));
 
 const mockClassifyGuess = jest.fn();
-jest.mock("../../../../src/utils/classifyGuess", () => ({
+jest.mock("../../../../src/utils/game/classifyGuess", () => ({
   classifyGuess: (...args: unknown[]) => mockClassifyGuess(...args),
 }));
 
 const mockSynthesizeReplyAudio = jest.fn();
-jest.mock("../../../../src/utils/ttsReply", () => ({
+jest.mock("../../../../src/utils/chat/ttsReply", () => ({
   synthesizeReplyAudio: (...args: unknown[]) => mockSynthesizeReplyAudio(...args),
 }));
 

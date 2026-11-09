@@ -10,7 +10,7 @@ import React, { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
-import { Bot } from "./components/BotCreator";
+import { Bot } from "./components/character/BotCreator";
 import { getValidBotFromStorage, clearStoredBot } from "../utils/getValidBotFromStorage";
 import storage from "../utils/storage";
 import { authenticatedFetch } from "../utils/api";
@@ -61,14 +61,14 @@ export function runStartupMigrations() {
  *
  * @const {React.ComponentType}
  */
-const ChatPage = dynamic(() => import("./components/ChatPage"), {
+const ChatPage = dynamic(() => import("./components/chat/ChatPage"), {
   ssr: true,
 });
 
 /**
  * Dynamically import BotCreator for code splitting
  */
-const BotCreator = dynamic(() => import("./components/BotCreator"), { ssr: false });
+const BotCreator = dynamic(() => import("./components/character/BotCreator"), { ssr: false });
 
 /**
  * Home component that serves as the main entry point of the application.

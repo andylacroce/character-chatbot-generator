@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, within } from "@testing-library/react";
-import AdminActivityChart from "@/src/app/components/AdminActivityChart";
-import GameActivityChart from "@/src/app/components/GameActivityChart";
+import AdminActivityChart from "@/src/app/components/admin/AdminActivityChart";
+import GameActivityChart from "@/src/app/components/admin/GameActivityChart";
 
 describe("AdminActivityChart", () => {
   beforeEach(() => {

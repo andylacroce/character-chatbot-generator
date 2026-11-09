@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import BotCreator from "../../../src/app/components/BotCreator";
+import BotCreator from "../../../src/app/components/character/BotCreator";
 
 const mockSearchParams = new URLSearchParams();
 const mockRouter = { push: jest.fn() };
@@ -21,7 +21,7 @@ jest.mock("next-auth/react", () => ({
 
 let mockIsSupported = true;
 let mockIsRecording = false;
-jest.mock("../../../src/app/components/useSpeechRecognition", () => ({
+jest.mock("../../../src/app/components/chat/useSpeechRecognition", () => ({
   useSpeechRecognition: () => ({
     isSupported: mockIsSupported,
     isRecording: mockIsRecording,

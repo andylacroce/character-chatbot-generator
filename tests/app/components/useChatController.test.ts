@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
-import type { Bot } from "../../../src/app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/character/BotCreator";
 import { mockResponse } from "../../helpers/mockResponse";
 
 // The server-history reconciliation effect needs a next-auth session status; default to
@@ -26,7 +26,7 @@ jest.mock("../../../src/utils/api", () => ({
 // Mock voice config persistence helpers
 const mockLoadVoiceConfig = jest.fn();
 const mockPersistVoiceConfig = jest.fn();
-jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
+jest.mock("../../../src/utils/chat/voiceConfigPersistence", () => ({
   loadVoiceConfig: (...args: unknown[]) => mockLoadVoiceConfig(...(args as unknown[])),
   persistVoiceConfig: (...args: unknown[]) => mockPersistVoiceConfig(...(args as unknown[])),
 }));
@@ -36,7 +36,7 @@ const mockPlayAudio = jest.fn();
 const mockStopAudio = jest.fn();
 const mockIsAudioPlaying = jest.fn();
 const mockAudioRef = { current: { muted: false } } as unknown as React.RefObject<HTMLAudioElement>;
-jest.mock("../../../src/app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/chat/useAudioPlayer", () => ({
   useAudioPlayer: (..._args: unknown[]) => ({
     playAudio: mockPlayAudio,
     stopAudio: mockStopAudio,
@@ -47,17 +47,17 @@ jest.mock("../../../src/app/components/useAudioPlayer", () => ({
 
 // Mock API voice config fetcher used by the controller
 const mockApiGetVoiceConfigForCharacter = jest.fn();
-jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter", () => ({
+jest.mock("../../../src/app/components/chat/api_getVoiceConfigForCharacter", () => ({
   api_getVoiceConfigForCharacter: (...args: unknown[]) =>
     mockApiGetVoiceConfigForCharacter(...(args as unknown[])),
 }));
 
 const mockDownloadTranscript = jest.fn();
-jest.mock("../../../src/utils/downloadTranscript", () => ({
+jest.mock("../../../src/utils/chat/downloadTranscript", () => ({
   downloadTranscript: (...args: unknown[]) => mockDownloadTranscript(...(args as unknown[])),
 }));
 
-import { useChatController } from "../../../src/app/components/useChatController";
+import { useChatController } from "../../../src/app/components/chat/useChatController";
 // Merge: mock storage to exercise additional branches
 jest.mock("../../../src/utils/storage", () => ({
   getItem: jest.fn(),
@@ -840,7 +840,7 @@ describe("useChatController additional branches (merged)", () => {
 
   it("logMessage returns early when session is missing (no /api/log-message call)", async () => {
     // Simulate SSR/no browser session so `useSession` returns empty values
-    const useSessionModule = require("../../../src/app/components/useSession");
+    const useSessionModule = require("../../../src/app/components/account/useSession");
     useSessionModule.setIsBrowserForTests(() => false);
 
     // Ensure chat API responds so sendMessage proceeds
@@ -1127,7 +1127,7 @@ describe("useChatController additional branches (merged)", () => {
     const fetchedConfig = {
       ...baseBot.voiceConfig,
       name: "fetched-voice",
-    } as unknown as import("../../../src/utils/characterVoices").CharacterVoiceConfig;
+    } as unknown as import("../../../src/utils/chat/characterVoices").CharacterVoiceConfig;
     mockApiGetVoiceConfigForCharacter.mockResolvedValueOnce(fetchedConfig);
 
     // Use a bot without voiceConfig so ensureVoiceConfig runs and triggers fetch

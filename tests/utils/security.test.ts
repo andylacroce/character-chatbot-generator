@@ -6,7 +6,7 @@ import {
   sanitizeForReact,
   sanitizeCharacterName,
   stripPromptTags,
-} from "../../src/utils/security";
+} from "../../src/utils/server/security";
 
 describe("Security Utils", () => {
   describe("decodeHtmlEntities", () => {

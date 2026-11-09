@@ -18,8 +18,8 @@ import {
   startRoundStream,
 } from "../../../utils/game/round";
 import { signGameState } from "../../../utils/game/token";
-import { getSessionUserId } from "../../../utils/getSessionUserId";
-import { ensureGuestId } from "../../../utils/gameGuestIdentity";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
+import { ensureGuestId } from "../../../utils/game/gameGuestIdentity";
 import { getCurrentEnvironment } from "../../../utils/environment";
 import { recordEvent } from "../../../utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";

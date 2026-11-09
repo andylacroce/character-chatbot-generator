@@ -6,8 +6,8 @@
  */
 
 import type { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
-import { applyRateLimit, createRateLimiter } from "../rateLimit";
-import { withRequestLog } from "../withRequestLog";
+import { applyRateLimit, createRateLimiter } from "../server/rateLimit";
+import { withRequestLog } from "../server/withRequestLog";
 import { getServerGame, type ServerGame } from "./definitions";
 
 type RateLimiter = ReturnType<typeof createRateLimiter>;

@@ -1,7 +1,7 @@
 import React from "react";
 import { render, fireEvent } from "@testing-library/react";
-import { DarkModeContext } from "@/src/app/components/DarkModeContext";
-import DarkModeToggle from "@/src/app/components/DarkModeToggle";
+import { DarkModeContext } from "@/src/app/components/common/DarkModeContext";
+import DarkModeToggle from "@/src/app/components/common/DarkModeToggle";
 
 describe("DarkModeToggle", () => {
   it("toggles from dark to light mode and back, shows correct icon and label", () => {

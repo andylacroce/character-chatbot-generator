@@ -9,11 +9,11 @@ import { BlobNotFoundError, head, put } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { escapeHtml } from "../../utils/security";
-import { chatLogPrefix } from "../../utils/userBlobs";
-import { getSessionUserId } from "../../utils/getSessionUserId";
-import { withRequestLog } from "../../utils/withRequestLog";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+import { escapeHtml } from "../../utils/server/security";
+import { chatLogPrefix } from "../../utils/account/userBlobs";
+import { getSessionUserId } from "../../utils/account/getSessionUserId";
+import { withRequestLog } from "../../utils/server/withRequestLog";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
 
 /** Rate limiter: 60 requests per minute per IP (two log lines per chat turn, which is itself capped). */
 const logRateLimit = createRateLimiter({

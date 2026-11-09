@@ -1,7 +1,7 @@
 /**
  * Input sanitization shared by the web app and mobile client, so both enforce
  * identical rules client-side. The server (character-chatbot-generator's
- * src/utils/security.ts) is the authoritative enforcement point in both cases —
+ * src/utils/server/security.ts) is the authoritative enforcement point in both cases —
  * these are UX-layer copies, kept in sync by living in one place.
  */
 

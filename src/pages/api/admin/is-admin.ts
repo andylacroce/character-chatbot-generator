@@ -6,10 +6,10 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAdmin } from "../../../utils/isAdmin";
-import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
+import { isAdmin } from "../../../utils/account/isAdmin";
+import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { withRequestLog } from "../../../utils/withRequestLog";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 /** Rate limiter: 30 requests per minute per IP — cheap enough to allow a generous budget. */
 const isAdminRateLimit = createRateLimiter({

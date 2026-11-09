@@ -2,10 +2,10 @@
 paths:
   - "src/pages/api/validate-character.ts"
   - "src/pages/api/admin/**"
-  - "src/utils/character*.ts"
+  - "src/utils/moderation/character*.ts"
   - "src/app/admin/moderation/**"
-  - "src/app/components/useBotCreation.ts"
-  - "src/app/components/CopyrightWarningModal.tsx"
+  - "src/app/components/character/useBotCreation.ts"
+  - "src/app/components/character/CopyrightWarningModal.tsx"
   - "packages/shared/src/useCharacterCreation.ts"
 ---
 

@@ -1,4 +1,4 @@
-import { downloadTranscript } from "../../src/utils/downloadTranscript";
+import { downloadTranscript } from "../../src/utils/chat/downloadTranscript";
 
 // Mock browser APIs for testing download functionality
 const createObjectURL = jest.fn(() => "blob:url");

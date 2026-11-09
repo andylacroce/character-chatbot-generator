@@ -12,18 +12,18 @@ jest.mock("../../../src/utils/logger", () => ({
 }));
 
 const mockGetVoiceConfig = jest.fn();
-jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter", () => ({
+jest.mock("../../../src/app/components/chat/api_getVoiceConfigForCharacter", () => ({
   api_getVoiceConfigForCharacter: (...args: unknown[]) =>
     mockGetVoiceConfig(...(args as unknown[])),
 }));
 
 // Mock persistence module so tests can spy and simulate failures
-jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
+jest.mock("../../../src/utils/chat/voiceConfigPersistence", () => ({
   persistVoiceConfig: jest.fn(),
 }));
 
-import { useBotCreation } from "../../../src/app/components/useBotCreation";
-import type { UserNameContext } from "../../../src/app/components/useUserName";
+import { useBotCreation } from "../../../src/app/components/character/useBotCreation";
+import type { UserNameContext } from "../../../src/app/components/account/useUserName";
 
 // Shared test type used across multiple cases
 type VoiceCfg = { name: string; languageCodes: string[] };
@@ -516,7 +516,7 @@ describe("useBotCreation tests", () => {
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     // Make persistVoiceConfig throw to exercise the empty catch branch
-    const persistence = jest.requireMock("../../../src/utils/voiceConfigPersistence");
+    const persistence = jest.requireMock("../../../src/utils/chat/voiceConfigPersistence");
     persistence.persistVoiceConfig.mockImplementationOnce(() => {
       throw new Error("persist failed");
     });
@@ -553,7 +553,7 @@ describe("useBotCreation tests", () => {
     const voiceCfg: VoiceCfg = { name: "en-US-Voice", languageCodes: ["en-US"] };
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
-    const persistence = jest.requireMock("../../../src/utils/voiceConfigPersistence");
+    const persistence = jest.requireMock("../../../src/utils/chat/voiceConfigPersistence");
     persistence.persistVoiceConfig.mockClear();
 
     const onBotCreated = jest.fn();
@@ -1616,7 +1616,7 @@ describe("useBotCreation tests", () => {
     // Make persistVoiceConfig throw to exercise the catch block
     // The module is already mocked at file scope; use the existing mock to simulate throwing
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
-    const persistModule = require("../../../src/utils/voiceConfigPersistence");
+    const persistModule = require("../../../src/utils/chat/voiceConfigPersistence");
     // Spy on the real implementation and force it to throw once to exercise the catch block
     jest.spyOn(persistModule, "persistVoiceConfig").mockImplementationOnce(() => {
       throw new Error("persist fail");
@@ -1631,7 +1631,7 @@ describe("useBotCreation tests", () => {
     });
 
     expect(onBotCreated).toHaveBeenCalled();
-    const persistModule2 = require("../../../src/utils/voiceConfigPersistence");
+    const persistModule2 = require("../../../src/utils/chat/voiceConfigPersistence");
     expect(persistModule2.persistVoiceConfig as jest.Mock).toHaveBeenCalled();
     (persistModule2.persistVoiceConfig as jest.Mock).mockClear();
   });
@@ -1793,7 +1793,7 @@ describe("useBotCreation tests", () => {
     const voiceCfg: VoiceCfg = { name: "en-US-Voice-OK", languageCodes: ["en-US"] };
     mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
-    const persistModule = require("../../../src/utils/voiceConfigPersistence");
+    const persistModule = require("../../../src/utils/chat/voiceConfigPersistence");
     // Ensure the mock exists and clear any previous calls
     (persistModule.persistVoiceConfig as jest.Mock).mockClear();
 

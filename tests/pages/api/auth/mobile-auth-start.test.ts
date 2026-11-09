@@ -1,14 +1,14 @@
-jest.mock("../../../../src/utils/rateLimit", () => ({
+jest.mock("../../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => options,
   applyRateLimit: jest.fn().mockResolvedValue(true),
 }));
-jest.mock("../../../../src/utils/withRequestLog", () => ({
+jest.mock("../../../../src/utils/server/withRequestLog", () => ({
   withRequestLog: (handler: unknown) => handler,
 }));
-jest.mock("../../../../src/utils/mobileAuthState", () => ({
+jest.mock("../../../../src/utils/account/mobileAuthState", () => ({
   signMobileAuthState: jest.fn().mockResolvedValue("signed-state"),
 }));
-jest.mock("../../../../src/utils/requestBaseUrl", () => ({
+jest.mock("../../../../src/utils/server/requestBaseUrl", () => ({
   getRequestBaseUrl: () => "https://app.example",
 }));
 jest.mock("../../../../src/utils/logger", () => ({

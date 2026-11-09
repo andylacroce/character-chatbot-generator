@@ -8,22 +8,22 @@
  * incorrectly flagged, or a false positive not worth waiting on a prompt fix for).
  *
  * A name is never on both the allowlist and the blocklist at once — POST here also
- * removes the name from the blocklist (see src/utils/characterBlocklist.ts's
+ * removes the name from the blocklist (see src/utils/moderation/characterBlocklist.ts's
  * removeFromBlocklist), which is what lets the moderation page's "Move to Allowed"
  * action on a blocked row just POST here.
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { readAdminName, requireAdmin } from "../../../utils/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
+import { readAdminName, requireAdmin } from "../../../utils/account/adminGuard";
+import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import {
   listAllowlist,
   addToAllowlist,
   removeFromAllowlist,
-} from "../../../utils/characterAllowlist";
-import { removeFromBlocklist } from "../../../utils/characterBlocklist";
-import { withRequestLog } from "../../../utils/withRequestLog";
+} from "../../../utils/moderation/characterAllowlist";
+import { removeFromBlocklist } from "../../../utils/moderation/characterBlocklist";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
 const adminAllowlistRateLimit = createRateLimiter({

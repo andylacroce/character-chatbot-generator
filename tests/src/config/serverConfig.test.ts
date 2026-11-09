@@ -1,9 +1,9 @@
 const mockCreate = jest.fn();
-jest.mock("../../../src/utils/anthropicClient", () => ({
+jest.mock("../../../src/utils/claude/anthropicClient", () => ({
   __esModule: true,
   default: { messages: { create: (...args: unknown[]) => mockCreate(...args) } },
 }));
-jest.mock("../../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: jest.fn(() => "claude-haiku-4-5-20251001"),
 }));
 
@@ -15,7 +15,7 @@ import {
   generateGuessWhoSelfCluePersonaPrompt,
   __resetGamePersonaCacheForTest,
 } from "../../../src/config/serverConfig";
-import { getClaudeModel } from "../../../src/utils/claudeModelSelector";
+import { getClaudeModel } from "../../../src/utils/claude/claudeModelSelector";
 
 const fullConfig = {
   speakingStyle: "formal and articulate",

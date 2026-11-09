@@ -18,7 +18,7 @@ jest.mock("@anthropic-ai/sdk", () => ({
   __esModule: true,
 }));
 
-jest.mock("../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: (_type: "text" | "text-simple") => "claude-haiku-4-5-20251001",
 }));
 

@@ -1,7 +1,7 @@
 /** NextAuth's configured sign-in page (see authOptions.ts's `pages.signIn`). */
 
 import { Suspense } from "react";
-import AuthSignInPage from "../../components/AuthSignInPage";
+import AuthSignInPage from "../../components/account/AuthSignInPage";
 
 export const metadata = {
   title: "Sign in — Portrayal",

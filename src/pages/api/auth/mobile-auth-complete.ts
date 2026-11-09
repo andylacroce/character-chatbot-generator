@@ -15,10 +15,10 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getToken, encode } from "next-auth/jwt";
-import { verifyMobileAuthState } from "../../../utils/mobileAuthState";
-import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
+import { verifyMobileAuthState } from "../../../utils/account/mobileAuthState";
+import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { withRequestLog } from "../../../utils/withRequestLog";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 const mobileAuthCompleteRateLimit = createRateLimiter({
   name: "mobile-auth-complete",

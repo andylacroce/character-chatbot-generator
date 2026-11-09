@@ -1,6 +1,6 @@
 /**
  * Internal, admin-only aggregate stats over analytics_events (and bots/messages counts),
- * backing the /admin page. Not linked from any nav — see src/utils/isAdmin.ts for the
+ * backing the /admin page. Not linked from any nav — see src/utils/account/isAdmin.ts for the
  * access-control story (fails closed with no ADMIN_EMAILS configured, and refuses admin
  * status entirely on a Vercel Preview deployment, whose sign-in stub issues a session for
  * any typed-in email with no verification at all).
@@ -21,10 +21,10 @@ import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import { getDb } from "../../../db/client";
 import { analyticsEvents, bots, messages } from "../../../db/schema";
 import { getCurrentEnvironment } from "../../../utils/environment";
-import { requireAdmin } from "../../../utils/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
+import { requireAdmin } from "../../../utils/account/adminGuard";
+import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { withRequestLog } from "../../../utils/withRequestLog";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as other authenticated routes. */
 const adminStatsRateLimit = createRateLimiter({
@@ -275,7 +275,7 @@ async function aggregateGameStats(
  *     description: >
  *       401 if not signed in, 403 if signed in but not an admin (see ADMIN_EMAILS).
  *       Never reachable from a Vercel Preview deployment's sign-in stub, regardless of
- *       email — see src/utils/isAdmin.ts.
+ *       email — see src/utils/account/isAdmin.ts.
  *     tags: [Admin]
  *     responses:
  *       200:

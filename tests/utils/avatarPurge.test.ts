@@ -10,17 +10,17 @@ jest.mock("../../src/db/client", () => ({
   }),
 }));
 const mockDeleteOrphanedAvatars = jest.fn();
-jest.mock("../../src/utils/userBlobs", () => ({
+jest.mock("../../src/utils/account/userBlobs", () => ({
   deleteOrphanedAvatars: (...args: unknown[]) => mockDeleteOrphanedAvatars(...args),
 }));
 // No Claude client: the prompt step throws and falls back to the generic prompt.
-jest.mock("../../src/utils/anthropicClient", () => ({ __esModule: true, default: {} }));
+jest.mock("../../src/utils/claude/anthropicClient", () => ({ __esModule: true, default: {} }));
 const mockCloudflare = jest.fn();
-jest.mock("../../src/utils/cloudflareImageGen", () => ({
+jest.mock("../../src/utils/avatar/cloudflareImageGen", () => ({
   generateImageWithCloudflare: (...args: unknown[]) => mockCloudflare(...args),
 }));
 const mockPollinations = jest.fn();
-jest.mock("../../src/utils/pollinationsImageGen", () => ({
+jest.mock("../../src/utils/avatar/pollinationsImageGen", () => ({
   generateImageWithPollinations: (...args: unknown[]) => mockPollinations(...args),
 }));
 
@@ -28,7 +28,7 @@ import {
   purgeCachedAvatar,
   regenerateCachedAvatar,
   scrubCachedAvatar,
-} from "../../src/utils/avatarGeneration";
+} from "../../src/utils/avatar/avatarGeneration";
 
 const original = process.env.DATABASE_URL;
 beforeEach(() => {

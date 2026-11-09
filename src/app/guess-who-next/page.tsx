@@ -5,7 +5,7 @@
  * @module Guess Who's Next route
  */
 
-import GamePage from "../components/GamePage";
+import GamePage from "../components/game/GamePage";
 
 export const metadata = {
   title: "Guess Who's Next — Portrayal",

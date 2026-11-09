@@ -5,7 +5,7 @@ jest.mock("next-auth/jwt", () => ({
 }));
 
 import type { NextApiRequest } from "next";
-import { getSessionUserId } from "../../src/utils/getSessionUserId";
+import { getSessionUserId } from "../../src/utils/account/getSessionUserId";
 
 describe("getSessionUserId", () => {
   beforeEach(() => {

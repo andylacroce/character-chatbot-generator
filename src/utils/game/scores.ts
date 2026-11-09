@@ -12,9 +12,9 @@ import type { LeaderboardEntry } from "character-chatbot-shared";
 import { getDb } from "../../db/client";
 import { users } from "../../db/schema";
 import { getCurrentEnvironment } from "../environment";
-import { getGuestId } from "../gameGuestIdentity";
+import { getGuestId } from "./gameGuestIdentity";
 import { logEvent, sanitizeLogMeta } from "../logger";
-import { mergeAndRankLeaderboard } from "../leaderboardCore";
+import { mergeAndRankLeaderboard } from "./leaderboardCore";
 import type { ServerGame } from "./definitions";
 import type { GameState } from "./token";
 

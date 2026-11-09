@@ -16,7 +16,7 @@ jest.mock("../../../../src/utils/logger", () => ({
 }));
 
 const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/rateLimit", () => ({
+jest.mock("../../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => options,
   applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
@@ -27,7 +27,7 @@ jest.mock("../../../../src/utils/analytics", () => ({
 }));
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 

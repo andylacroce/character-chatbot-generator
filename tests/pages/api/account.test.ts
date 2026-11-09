@@ -1,17 +1,17 @@
 import { createMocks } from "node-mocks-http";
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 
-jest.mock("../../../src/utils/rateLimit", () => ({
+jest.mock("../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: () => ({ limiterName: "test" }),
   applyRateLimit: () => Promise.resolve(true),
 }));
 
 const mockDeleteUserBlobs = jest.fn();
-jest.mock("../../../src/utils/userBlobs", () => ({
+jest.mock("../../../src/utils/account/userBlobs", () => ({
   deleteUserBlobs: (...args: unknown[]) => mockDeleteUserBlobs(...args),
 }));
 

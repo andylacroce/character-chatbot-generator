@@ -15,6 +15,7 @@ npm run format                # prettier --write . (excludes *.md — markdownli
 npm run format:check           # prettier --check .
 npm run type-check               # tsc --noEmit
 npm run docs:code                 # typedoc -> docs-generated/ (gitignored); see "Code documentation standard"
+npm run check                      # fast inner loop: lint + type-check + jest --onlyChanged (not a substitute for ci)
 npm run test                       # jest
 npm run test:watch
 npm run e2e                          # Playwright smoke synthetics against `next start` (needs a prior build); zero Claude calls, see "Testing conventions"
@@ -76,13 +77,16 @@ Keep the web app and the mobile app (`apps/mobile`) sharing as much as possible 
 (`character-chatbot-shared`, which web imports directly via `next.config.mjs`'s
 `transpilePackages`); each platform supplies only a thin adapter: its own request transport,
 storage, and logging. The guessing game is the model: `useGameSession`/`game.ts` in shared,
-wrapped by `src/app/components/useGameController.ts` (SSE progress, localStorage) and
+wrapped by `src/app/components/game/useGameController.ts` (SSE progress, localStorage) and
 `apps/mobile/src/useGameController.ts` (plain JSON, AsyncStorage). For every change, ship the
 other platform's side in the same commit, and move logic that exists on both sides into shared
 rather than editing two copies. Mobile diverges only where it has to (React Native's fetch can't
 read an SSE stream; Android keyboard handling) or where native features genuinely improve mobile
 UX (haptics). A feature that exists on one platform only is a parity gap to call out, not a
 default. Mobile-specific notes are in "Mobile app" below.
+
+Human-oriented onboarding lives in `docs/` (`getting-started.md`, `architecture.md`, `features.md`,
+`configuration.md`); keep them current alongside the rules when a flow or folder moves.
 
 ## Topic rules (`.claude/rules/`)
 
@@ -98,7 +102,7 @@ gate), `account` (auth, DB, bots, messages, deletion), `character-wall`, `voice-
 
 ### Request flow
 
-`src/app/components/useChatController.ts` → `authenticatedFetch()` (`src/utils/api.ts`) →
+`src/app/components/chat/useChatController.ts` → `authenticatedFetch()` (`src/utils/api.ts`) →
 `src/pages/api/chat.ts`. Every client→server call goes through `authenticatedFetch`, not raw
 `fetch`, so it passes through `proxy.ts` auth and tests can mock it consistently.
 
@@ -111,7 +115,7 @@ everything else needs the API key. `tests/proxy.test.ts` pins both directions. T
 check is real CSRF protection against a browser but not authentication against a non-browser
 client (see "Security posture").
 
-### Model selection (`src/utils/claudeModelSelector.ts`)
+### Model selection (`src/utils/claude/claudeModelSelector.ts`)
 
 Three tiers, chosen by call site, never by a runtime cost heuristic:
 
@@ -120,16 +124,16 @@ Three tiers, chosen by call site, never by a runtime cost heuristic:
   voice config, suggestion lists, and the games' short verdict reactions). Always
   `claude-haiku-5-5`.
 - Both 5.5 models think by default, which would eat the small `max_tokens` caps, so every call site
-  passes `thinking: thinkingFor(tier)` (`src/utils/claudeThinking.ts`): `between_tools` for Sonnet 5.5
+  passes `thinking: thinkingFor(tier)` (`src/utils/claude/claudeThinking.ts`): `between_tools` for Sonnet 5.5
   (it 400s on `disabled`), `disabled` for Haiku 5.5.
 - `"image"`: avatar prompts render via `gemini-3.1-flash-lite-image` on Google Cloud's Gemini
   Enterprise Agent Platform (formerly Vertex AI; not Claude).
 
-All Claude calls go through the singleton client in `src/utils/anthropicClient.ts`.
+All Claude calls go through the singleton client in `src/utils/claude/anthropicClient.ts`.
 
 ### Rate limiting
 
-`createRateLimiter({ name, max, message, windowMs? })` in `src/utils/rateLimit.ts` wraps every limited route. `name` is required and namespaces the counter (`rl:<name>:<ip>`) — a shared store is shared across routes, so without it `/api/chat` and `/api/audio` would draw down the same budget. With no Redis env vars configured the limiter uses `express-rate-limit`'s in-process MemoryStore, which is correct for local dev and per-instance on Vercel; with them set, `src/utils/rateLimitStore.ts` backs it with an Upstash-compatible Redis REST store and the limits become global. Store outages fail open (`passOnStoreError`) — the limiter throttles, `proxy.ts` authenticates.
+`createRateLimiter({ name, max, message, windowMs? })` in `src/utils/server/rateLimit.ts` wraps every limited route. `name` is required and namespaces the counter (`rl:<name>:<ip>`) — a shared store is shared across routes, so without it `/api/chat` and `/api/audio` would draw down the same budget. With no Redis env vars configured the limiter uses `express-rate-limit`'s in-process MemoryStore, which is correct for local dev and per-instance on Vercel; with them set, `src/utils/server/rateLimitStore.ts` backs it with an Upstash-compatible Redis REST store and the limits become global. Store outages fail open (`passOnStoreError`) — the limiter throttles, `proxy.ts` authenticates.
 
 ### Module system (do not regress)
 
@@ -145,7 +149,7 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
 - **`proxy.ts`'s Origin/Referer check is CSRF protection, not authentication.** It stops a malicious
   site's browser JS from riding a visitor's session, but a non-browser client can set any `Origin`.
   Don't treat an allowed-origin match as proof of a trusted caller when reasoning about request
-  volume or cost; the per-route rate limiter (`src/utils/rateLimit.ts`) is the real ceiling. Fully
+  volume or cost; the per-route rate limiter (`src/utils/server/rateLimit.ts`) is the real ceiling. Fully
   closing this would mean requiring login on guest-usable routes (breaking core UX) or real
   session/token infrastructure, an accepted tradeoff.
 - **API key comparison is constant-time** (`secureCompare`, hash-then-`timingSafeEqual`), since Proxy
@@ -155,7 +159,7 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
   `ipAddress()`).
 - **`/api/health` is rate-limited (10/min/IP) and returns no raw third-party SDK error text** (still
   logged server-side); it makes two real billed or quota-limited calls per request.
-- **`buildSsml()`** (`src/utils/voiceHelpers.ts`) XML-escapes `text` before interpolating into SSML
+- **`buildSsml()`** (`src/utils/chat/voiceHelpers.ts`) XML-escapes `text` before interpolating into SSML
   (also fixes malformed SSML from ordinary `&`/`<`). `/api/audio`'s `text` param is capped at 2000
   characters. Letting the client supply the text is intentional: audio isn't persisted server-side,
   so regenerating after eviction needs the original text.

@@ -18,7 +18,7 @@ import {
   startRoundStream,
 } from "../../../utils/game/round";
 import { signGameState, verifyGameState } from "../../../utils/game/token";
-import { getSessionUserId } from "../../../utils/getSessionUserId";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
 import { recordEvent } from "../../../utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 

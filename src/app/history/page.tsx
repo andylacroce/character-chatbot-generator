@@ -1,6 +1,6 @@
 /** A signed-in user's saved characters, each resumable into its chat. */
 
-import HistoryPage from "../components/HistoryPage";
+import HistoryPage from "../components/account/HistoryPage";
 
 export const metadata = {
   title: "Past Chats — Portrayal",

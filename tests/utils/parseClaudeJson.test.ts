@@ -1,4 +1,4 @@
-import { extractJson } from "../../src/utils/parseClaudeJson";
+import { extractJson } from "../../src/utils/claude/parseClaudeJson";
 
 describe("extractJson", () => {
   it("returns plain text unchanged when no code fence is present", () => {

@@ -1,6 +1,6 @@
 {
   "name": "portrayal",
-  "version": "0.29.5",
+  "version": "0.29.6",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -27,6 +27,7 @@
     "lint:md": "markdownlint --config config/markdownlint.json \"**/*.md\" --ignore \"**/node_modules/**\" --ignore \"apps/mobile/**\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "check": "npm run lint && npm run type-check && jest --onlyChanged --passWithNoTests",
     "test": "jest",
     "test:watch": "jest --watch",
     "e2e": "playwright test",

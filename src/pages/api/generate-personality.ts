@@ -5,15 +5,15 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { sanitizeCharacterName } from "../../utils/security";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+import { sanitizeCharacterName } from "../../utils/server/security";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
 import { generatePersonalityPrompt } from "../../config/serverConfig";
-import { getSessionUserId } from "../../utils/getSessionUserId";
+import { getSessionUserId } from "../../utils/account/getSessionUserId";
 import { recordEvent } from "../../utils/analytics";
 import { desc } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { avatarCache } from "../../db/schema";
-import { withRequestLog } from "../../utils/withRequestLog";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 
 // Capped so this stays a cheap, bounded addition to a call already being made — not a
 // full table dump on every character launch. Ordering by recency is an arbitrary but

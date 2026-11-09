@@ -9,10 +9,10 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { requireAdmin } from "../../../utils/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
-import { listWarnings } from "../../../utils/characterWarningLog";
-import { withRequestLog } from "../../../utils/withRequestLog";
+import { requireAdmin } from "../../../utils/account/adminGuard";
+import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
+import { listWarnings } from "../../../utils/moderation/characterWarningLog";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
 const adminWarningsRateLimit = createRateLimiter({

@@ -13,7 +13,7 @@ jest.mock("../../../src/config/serverConfig", () => ({
 }));
 
 const mockGetSessionUserId = jest.fn().mockResolvedValue(null);
-jest.mock("../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 

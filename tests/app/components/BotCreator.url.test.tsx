@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
-import BotCreator from "../../../src/app/components/BotCreator";
+import BotCreator from "../../../src/app/components/character/BotCreator";
 
 // Mock next/navigation
 const mockSearchParams = new URLSearchParams();

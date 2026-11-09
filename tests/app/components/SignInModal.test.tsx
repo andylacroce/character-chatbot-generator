@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import SignInModal from "@/src/app/components/SignInModal";
+import SignInModal from "@/src/app/components/account/SignInModal";
 
 const mockSignIn = jest.fn();
 

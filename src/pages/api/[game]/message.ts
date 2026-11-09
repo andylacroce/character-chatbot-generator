@@ -34,10 +34,10 @@ import {
   getGameReply,
   getGuessReactionReply,
   AMBIGUOUS_GUESS_NOTE,
-} from "../../../utils/gameReply";
-import { classifyGuess } from "../../../utils/classifyGuess";
-import { synthesizeReplyAudio } from "../../../utils/ttsReply";
-import { getSessionUserId } from "../../../utils/getSessionUserId";
+} from "../../../utils/game/gameReply";
+import { classifyGuess } from "../../../utils/game/classifyGuess";
+import { synthesizeReplyAudio } from "../../../utils/chat/ttsReply";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 
 /** Input ceilings; a real round's history is a few dozen short lines. */

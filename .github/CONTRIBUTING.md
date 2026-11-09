@@ -23,6 +23,9 @@ A change passes through up to four checks, each cheaper and earlier than the nex
 | GitHub Actions | `.github/workflows/` | The same checks, split into parallel jobs, on every PR and push to `main` |
 | Merge rules | Repository ruleset "main: require CI" | Blocks a PR from merging until the required checks pass |
 
+While coding, `npm run check` (lint, type-check, tests for your uncommitted changes) is a quick
+inner-loop check. It does not replace the gate below.
+
 ## Local gate: `npm run ci`
 
 Run this before considering any change done. It auto-formats first (so formatting can

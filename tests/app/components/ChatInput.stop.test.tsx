@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import ChatInput from "../../../src/app/components/ChatInput";
+import ChatInput from "../../../src/app/components/chat/ChatInput";
 
 describe("ChatInput stop button", () => {
   it("renders stop button and calls handler on click", async () => {

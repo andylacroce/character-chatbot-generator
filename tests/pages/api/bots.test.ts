@@ -8,7 +8,7 @@ jest.mock("drizzle-orm", () => ({
 }));
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 
@@ -29,8 +29,8 @@ const mockDb = { select: mockSelect, insert: mockInsert, delete: mockDelete };
 jest.mock("../../../src/db/client", () => ({ getDb: () => mockDb }));
 
 const mockDeleteUserBlobs = jest.fn();
-jest.mock("../../../src/utils/userBlobs", () => ({
-  ...jest.requireActual("../../../src/utils/userBlobs"),
+jest.mock("../../../src/utils/account/userBlobs", () => ({
+  ...jest.requireActual("../../../src/utils/account/userBlobs"),
   deleteUserBlobs: (...args: unknown[]) => mockDeleteUserBlobs(...args),
 }));
 

@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { pickRandomCharacterName } from "../../../src/utils/pickRandomCharacterName";
+import { pickRandomCharacterName } from "../../../src/utils/moderation/pickRandomCharacterName";
 import characterNames from "../../../src/data/characterNames";
 
 describe("pickRandomCharacterName", () => {

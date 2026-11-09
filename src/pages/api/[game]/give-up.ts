@@ -8,7 +8,7 @@
 import { gameRoute, rejectMethod } from "../../../utils/game/route";
 import { verifyGameState } from "../../../utils/game/token";
 import { markRunEnded, scoringIdentity } from "../../../utils/game/scores";
-import { getSessionUserId } from "../../../utils/getSessionUserId";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { recordEvent } from "../../../utils/analytics";
 

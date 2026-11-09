@@ -2,8 +2,8 @@
 paths:
   - "src/utils/storage.ts"
   - "packages/shared/src/storageKeys.ts"
-  - "src/app/components/useUserName.ts"
-  - "src/app/components/NameCaptureModal.tsx"
+  - "src/app/components/account/useUserName.ts"
+  - "src/app/components/account/NameCaptureModal.tsx"
   - "src/pages/api/user-profile.ts"
 ---
 

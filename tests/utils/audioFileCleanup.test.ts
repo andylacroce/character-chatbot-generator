@@ -17,7 +17,7 @@ jest.mock("../../src/utils/logger", () => ({
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { cleanupOldAudioFiles } from "../../src/utils/audioFileCleanup";
+import { cleanupOldAudioFiles } from "../../src/utils/chat/audioFileCleanup";
 
 const mockFs = fs as unknown as Record<string, jest.Mock>;
 const HASH = "a".repeat(64);

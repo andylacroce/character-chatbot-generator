@@ -6,7 +6,7 @@ jest.mock("next-auth/next", () => ({
 jest.mock("../../src/auth/authOptions", () => ({ authOptions: { __fakeAuthOptions: true } }));
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { isAdmin, isAdminSession } from "../../src/utils/isAdmin";
+import { isAdmin, isAdminSession } from "../../src/utils/account/isAdmin";
 
 describe("isAdmin", () => {
   const OLD_ENV = process.env;

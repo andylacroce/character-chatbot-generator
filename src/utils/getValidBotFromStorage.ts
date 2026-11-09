@@ -1,4 +1,4 @@
-import type { Bot } from "../app/components/BotCreator";
+import type { Bot } from "../app/components/character/BotCreator";
 import storage from "./storage";
 import { chatStorageKeys, STORAGE_KEYS } from "character-chatbot-shared";
 

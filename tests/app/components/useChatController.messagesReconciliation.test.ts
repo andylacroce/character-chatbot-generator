@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
-import type { Bot } from "../../../src/app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/character/BotCreator";
 
 // Phase 3c: on mount, a signed-in user's chat window reconciles with server-persisted
 // history (GET /api/messages) — see useChatController.ts. Local storage stays the
@@ -20,12 +20,12 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
+jest.mock("../../../src/utils/chat/voiceConfigPersistence", () => ({
   loadVoiceConfig: jest.fn(() => null),
   persistVoiceConfig: jest.fn(),
 }));
 
-jest.mock("../../../src/app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/chat/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: jest.fn(),
     stopAudio: jest.fn(),
@@ -34,11 +34,11 @@ jest.mock("../../../src/app/components/useAudioPlayer", () => ({
   }),
 }));
 
-jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter", () => ({
+jest.mock("../../../src/app/components/chat/api_getVoiceConfigForCharacter", () => ({
   api_getVoiceConfigForCharacter: jest.fn().mockResolvedValue(null),
 }));
 
-jest.mock("../../../src/utils/downloadTranscript", () => ({
+jest.mock("../../../src/utils/chat/downloadTranscript", () => ({
   downloadTranscript: jest.fn(),
 }));
 
@@ -55,7 +55,7 @@ jest.mock("../../../src/utils/storage", () => ({
   getVersionedJSON: jest.fn(),
 }));
 
-import { useChatController } from "../../../src/app/components/useChatController";
+import { useChatController } from "../../../src/app/components/chat/useChatController";
 import { mockResponse } from "../../helpers/mockResponse";
 
 const mockBot: Bot = {

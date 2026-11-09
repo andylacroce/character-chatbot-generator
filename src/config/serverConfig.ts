@@ -1,7 +1,7 @@
 // Server-side runtime configuration shared by API handlers.
 
 import { NEVER_REVEAL_NAME_RULE } from "./characterIdentityRules";
-import { thinkingFor } from "../utils/claudeThinking";
+import { thinkingFor } from "../utils/claude/claudeThinking";
 
 // Shared personality template constants
 export const RESPONSE_CONSTRAINTS = `Keep responses under 100 words. Always finish your current thought with proper punctuation before stopping.
@@ -41,9 +41,9 @@ export async function generatePersonalityPrompt(
   existingNames?: string[],
 ): Promise<{ prompt: string; correctedName: string; recognized: boolean; fallback?: true }> {
   try {
-    const { getClaudeModel } = await import("../utils/claudeModelSelector");
-    const { extractJson } = await import("../utils/parseClaudeJson");
-    const { default: anthropic } = await import("../utils/anthropicClient");
+    const { getClaudeModel } = await import("../utils/claude/claudeModelSelector");
+    const { extractJson } = await import("../utils/claude/parseClaudeJson");
+    const { default: anthropic } = await import("../utils/claude/anthropicClient");
 
     // Deliberately does not interpolate `characterName` into this system-role prompt —
     // it's untrusted user input, and the user role (see `userContent` below) is where

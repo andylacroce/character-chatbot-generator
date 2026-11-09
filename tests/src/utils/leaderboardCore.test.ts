@@ -1,4 +1,4 @@
-import { mergeAndRankLeaderboard } from "../../../src/utils/leaderboardCore";
+import { mergeAndRankLeaderboard } from "../../../src/utils/game/leaderboardCore";
 
 const d = (day: number) => new Date(Date.UTC(2026, 0, day));
 

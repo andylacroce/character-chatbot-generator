@@ -5,20 +5,20 @@
  * Pollinations.ai if Cloudflare isn't configured or fails. Accepts POST requests
  * with a character name and returns either a durable Vercel Blob URL (when a Blob
  * token is configured) or a base64 data URL (fallback). The generation/caching
- * pipeline itself lives in src/utils/avatarGeneration.ts, shared with the guessing
+ * pipeline itself lives in src/utils/avatar/avatarGeneration.ts, shared with the guessing
  * games (src/utils/game/round.ts), which calls it in-process instead of
  * over HTTP.
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { sanitizeCharacterName } from "../../utils/security";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
-import { getOrGenerateAvatar } from "../../utils/avatarGeneration";
-import { isAllowlisted } from "../../utils/characterAllowlist";
-import { getBlocklistEntry } from "../../utils/characterBlocklist";
-import { classifyCharacterName } from "../../utils/characterClassifier";
+import { sanitizeCharacterName } from "../../utils/server/security";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
+import { getOrGenerateAvatar } from "../../utils/avatar/avatarGeneration";
+import { isAllowlisted } from "../../utils/moderation/characterAllowlist";
+import { getBlocklistEntry } from "../../utils/moderation/characterBlocklist";
+import { classifyCharacterName } from "../../utils/moderation/characterClassifier";
 import { logEvent } from "../../utils/logger";
-import { withRequestLog } from "../../utils/withRequestLog";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 
 /** Rate limiter: 5 requests per minute per IP (avatar generation is expensive). */
 const avatarRateLimit = createRateLimiter({

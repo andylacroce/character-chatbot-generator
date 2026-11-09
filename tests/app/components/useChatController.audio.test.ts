@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
-import type { Bot } from "../../../src/app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/character/BotCreator";
 
 // Unauthenticated, so the server-history reconciliation effect is a no-op here.
 jest.mock("next-auth/react", () => ({
@@ -15,7 +15,7 @@ jest.mock("../../../src/utils/storage", () => ({
 
 // The error each test wants playback to fail with (set before rendering).
 let mockPlaybackErrorName = "";
-jest.mock("../../../src/app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/chat/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: jest.fn(async () => {
       const err = new Error("playback failed");
@@ -28,7 +28,7 @@ jest.mock("../../../src/app/components/useAudioPlayer", () => ({
   }),
 }));
 
-import { useChatController } from "../../../src/app/components/useChatController";
+import { useChatController } from "../../../src/app/components/chat/useChatController";
 
 const bot: Bot = {
   name: "AudioBot",

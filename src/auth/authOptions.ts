@@ -62,7 +62,7 @@ import EmailProvider from "next-auth/providers/email";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { getDb } from "../db/client";
 import { users, accounts, verificationTokens } from "../db/schema";
-import { sendVerificationRequest } from "../utils/magicLinkEmail";
+import { sendVerificationRequest } from "../utils/account/magicLinkEmail";
 import { logEvent, sanitizeLogMeta } from "../utils/logger";
 
 const adapter = process.env.DATABASE_URL
@@ -109,7 +109,7 @@ if (adapter && process.env.EMAIL_SERVER && process.env.EMAIL_FROM) {
       from: process.env.EMAIL_FROM,
       // Branded to match the app's palette/fonts instead of next-auth's generic default
       // (which reads "Sign in to <raw host>" on an unstyled gray/blue template) — see
-      // src/utils/magicLinkEmail.ts.
+      // src/utils/account/magicLinkEmail.ts.
       sendVerificationRequest,
     }),
   );

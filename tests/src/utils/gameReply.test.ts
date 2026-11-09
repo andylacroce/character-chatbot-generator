@@ -6,7 +6,7 @@ jest.mock("@anthropic-ai/sdk", () => ({
   __esModule: true,
 }));
 
-jest.mock("../../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: (_: string) => "claude-test",
 }));
 
@@ -27,7 +27,7 @@ const {
   getGameReply,
   getOpeningReply,
   getGuessReactionReply,
-} = require("../../../src/utils/gameReply");
+} = require("../../../src/utils/game/gameReply");
 
 describe("gameReply", () => {
   beforeEach(() => {

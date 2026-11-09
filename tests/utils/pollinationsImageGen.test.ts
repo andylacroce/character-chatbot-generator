@@ -4,7 +4,7 @@ jest.mock("../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import { generateImageWithPollinations } from "../../src/utils/pollinationsImageGen";
+import { generateImageWithPollinations } from "../../src/utils/avatar/pollinationsImageGen";
 
 describe("generateImageWithPollinations", () => {
   beforeEach(() => {

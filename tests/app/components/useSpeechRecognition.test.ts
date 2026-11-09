@@ -2,7 +2,7 @@ import { renderHook, act } from "@testing-library/react";
 import {
   useSpeechRecognition,
   normalizeDictatedText,
-} from "@/src/app/components/useSpeechRecognition";
+} from "@/src/app/components/chat/useSpeechRecognition";
 
 type Handlers = {
   onresult: ((event: unknown) => void) | null;

@@ -8,7 +8,7 @@
  *
  * The `useSession` check below is a defensive fallback for state changing *after*
  * mount (e.g. the admin signs out in another tab) — GET /api/admin/stats (see
- * src/utils/isAdmin.ts) remains the actual data-access boundary either way, so nothing
+ * src/utils/account/isAdmin.ts) remains the actual data-access boundary either way, so nothing
  * sensitive is ever fetched or rendered without both checks agreeing.
  *
  * Uses the same shared AppHeader/useAccountMenu every other page uses (identity,
@@ -31,10 +31,12 @@ import { useSession } from "next-auth/react";
 import { FaSyncAlt, FaHome } from "react-icons/fa";
 import { authenticatedFetch } from "../../utils/api";
 import { formatRelativeTime } from "character-chatbot-shared";
-import AdminActivityChart, { type DailyActivityRow } from "../components/AdminActivityChart";
-import GameActivityChart, { type GameDailyActivityRow } from "../components/GameActivityChart";
-import AppHeader from "../components/AppHeader";
-import { useAccountMenu } from "../components/useAccountMenu";
+import AdminActivityChart, { type DailyActivityRow } from "../components/admin/AdminActivityChart";
+import GameActivityChart, {
+  type GameDailyActivityRow,
+} from "../components/admin/GameActivityChart";
+import AppHeader from "../components/common/AppHeader";
+import { useAccountMenu } from "../components/account/useAccountMenu";
 import styles from "../components/styles/AdminStats.module.css";
 
 // The admin-stats rate limiter allows 20 req/min/IP (see pages/api/admin/stats.ts) — even

@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import BotCreator from "../../../src/app/components/BotCreator";
+import BotCreator from "../../../src/app/components/character/BotCreator";
 
 const mockSearchParams = new URLSearchParams();
 const mockRouter = { push: jest.fn() };

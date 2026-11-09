@@ -7,7 +7,7 @@ jest.mock("../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import { withRequestLog } from "../../src/utils/withRequestLog";
+import { withRequestLog } from "../../src/utils/server/withRequestLog";
 
 function makeReq(overrides: Partial<NextApiRequest> = {}): NextApiRequest {
   return { method: "GET", url: "/api/example", ...overrides } as unknown as NextApiRequest;

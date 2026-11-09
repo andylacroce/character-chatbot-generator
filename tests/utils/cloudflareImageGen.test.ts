@@ -4,7 +4,7 @@ jest.mock("../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import { generateImageWithCloudflare } from "../../src/utils/cloudflareImageGen";
+import { generateImageWithCloudflare } from "../../src/utils/avatar/cloudflareImageGen";
 
 describe("generateImageWithCloudflare", () => {
   const OLD_ENV = process.env;

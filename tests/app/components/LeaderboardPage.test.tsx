@@ -1,12 +1,12 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import LeaderboardPage from "../../../src/app/components/LeaderboardPage";
+import LeaderboardPage from "../../../src/app/components/game/LeaderboardPage";
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush, back: mockBack }) }));
 
-jest.mock("../../../src/app/components/useAccountMenu", () => ({
+jest.mock("../../../src/app/components/account/useAccountMenu", () => ({
   useAccountMenu: () => ({ menuItems: null, modals: null }),
 }));
 

@@ -2,7 +2,7 @@
 paths:
   - "src/utils/game/scores.ts"
   - "src/utils/game/definitions.ts"
-  - "src/utils/gameGuestIdentity.ts"
+  - "src/utils/game/gameGuestIdentity.ts"
   - "src/pages/api/*/high-score.ts"
   - "src/pages/api/*/leaderboard*.ts"
   - "packages/shared/src/gameCopy.ts"

@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.29.6 - 2026-11-09 - Easier to navigate
+
+- Internal only: `src/utils/` and `src/app/components/` are now grouped into feature folders (chat, character, game, account, moderation, and so on) instead of two flat lists of 50+ files each. No behavior change.
+- New human-oriented docs in `docs/` (getting started, architecture, feature reference, configuration) and a much shorter README. Added `npm run check` as a fast inner-loop check.
+
 ## v0.29.5 - 2026-11-02 - Await moderation writes
 
 - The blocklist, warning-log, and scrub writes in character validation (and the admin blocklist add) were fire-and-forget, so a frozen serverless function could drop them. They are now awaited; each already swallows its own DB errors.

@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import ConfirmDialog from "../../../src/app/components/ConfirmDialog";
+import ConfirmDialog from "../../../src/app/components/common/ConfirmDialog";
 
 const copy = {
   title: "Delete it?",

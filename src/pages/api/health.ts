@@ -11,9 +11,9 @@ import textToSpeech from "@google-cloud/text-to-speech";
 import { GoogleAuth } from "google-auth-library";
 import fs from "fs";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../utils/logger";
-import anthropic from "../../utils/anthropicClient";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
-import { withRequestLog } from "../../utils/withRequestLog";
+import anthropic from "../../utils/claude/anthropicClient";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 
 /**
  * Rate limiter: 10 requests per minute per IP. This endpoint makes real calls to both

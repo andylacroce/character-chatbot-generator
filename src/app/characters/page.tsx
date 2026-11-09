@@ -3,7 +3,7 @@
  * @module CharsPage
  */
 
-import CharsGallery from "../components/CharsGallery";
+import CharsGallery from "../components/character/CharsGallery";
 
 export const metadata = {
   title: "Character Wall — Portrayal",
