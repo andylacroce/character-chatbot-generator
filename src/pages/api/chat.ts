@@ -12,28 +12,22 @@ import { synthesizeReplyAudio } from "../../utils/chat/ttsReply";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../utils/logger";
 import { setReplyCache, getReplyCache } from "../../utils/cache";
 import crypto from "crypto";
-import { getClaudeModel } from "../../utils/claude/claudeModelSelector";
 import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
 import { buildClaudeMessages, type ClaudeMessage } from "../../utils/chat/conversationSummarizer";
 import { generatePersonalityPrompt } from "../../config/serverConfig";
-import anthropic from "../../utils/claude/anthropicClient";
-import { getSessionUserId } from "../../utils/account/getSessionUserId";
 import { setSseHeaders, writeSseFrame } from "../../utils/sse";
-import { sanitizeCharacterName, sanitizeUserName } from "../../utils/server/security";
+import { sanitizeCharacterName } from "../../utils/server/security";
+import { stripActionEmotes, gracefullyWrapResponse } from "../../utils/chat/chatReplyFormatting";
 import {
-  isClaudeResponse,
-  stripActionEmotes,
-  gracefullyWrapResponse,
-} from "../../utils/chat/chatReplyFormatting";
-import { buildChatContext, buildSystemPrompt } from "../../utils/chat/chatContext";
+  buildChatContext,
+  buildSystemPrompt,
+  resolveChatIdentity,
+} from "../../utils/chat/chatContext";
+import { findChatInputProblem } from "../../utils/chat/chatRequest";
+import { createClaudeReply, streamClaudeReply } from "../../utils/chat/chatReply";
 import { withRequestLog } from "../../utils/server/withRequestLog";
 import { cleanupOldAudioFiles } from "../../utils/chat/audioFileCleanup";
-import {
-  lookupBot,
-  lookupUserPreferredName,
-  finalizeChatPersistence,
-} from "../../utils/chat/chatPersistence";
-import { thinkingFor } from "../../utils/claude/claudeThinking";
+import { finalizeChatPersistence } from "../../utils/chat/chatPersistence";
 
 /** Rate limiter for chat endpoint: 10 requests per minute per IP. */
 const chatRateLimit = createRateLimiter({
@@ -41,11 +35,6 @@ const chatRateLimit = createRateLimiter({
   max: 10,
   message: "Too many chat requests from this IP, please try again later.",
 });
-
-/** Input ceilings: generous for real use, but bound what one request can make Claude read. */
-const MAX_MESSAGE_LENGTH = 4000;
-const MAX_PERSONALITY_LENGTH = 20000;
-const MAX_HISTORY_ENTRIES = 200;
 
 let requestCount = 0;
 const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
@@ -175,61 +164,24 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // see finalizeChatPersistence, which skips persisting it as a "User" turn.
     const isIntro = req.body.isIntro === true;
 
-    if (
-      typeof userMessage === "string" &&
-      (userMessage.length > MAX_MESSAGE_LENGTH ||
-        (typeof req.body.personality === "string" &&
-          req.body.personality.length > MAX_PERSONALITY_LENGTH) ||
-        (Array.isArray(conversationHistory) && conversationHistory.length > MAX_HISTORY_ENTRIES))
-    ) {
-      logEvent(
-        "info",
-        "chat_bad_request_too_large",
-        "Chat input too large",
-        sanitizeLogMeta({ requestId }),
-      );
-      res.status(400).json({ error: "Message, personality, or history is too long", requestId });
-      return;
-    }
-    if (!userMessage) {
-      logEvent(
-        "info",
-        "chat_bad_request_message",
-        "Message is required",
-        sanitizeLogMeta({ requestId }),
-      );
-      res.status(400).json({ error: "Message is required", requestId });
-      return;
-    }
-    if (!voiceConfig || typeof voiceConfig !== "object") {
-      logEvent(
-        "info",
-        "chat_bad_request_voice_config",
-        "Voice config is required",
-        sanitizeLogMeta({ requestId }),
-      );
-      res.status(400).json({ error: "Voice config is required", requestId });
+    const problem = findChatInputProblem({
+      userMessage,
+      personality: req.body.personality,
+      conversationHistory,
+      voiceConfig,
+    });
+    if (problem) {
+      logEvent("info", problem.event, problem.message, sanitizeLogMeta({ requestId }));
+      res.status(400).json({ error: problem.error, requestId });
       return;
     }
 
-    // For a signed-in user's saved character, the server becomes the source of truth for
-    // personality/history instead of trusting the client-supplied values on every request —
-    // same rationale as bot ownership in pages/api/bots.ts. Guests, no DATABASE_URL, or a
-    // character never saved server-side (e.g. a copyright-warning override — see
-    // CopyrightWarningModal, never persisted at all) fall through to today's fully
-    // client-authoritative behavior, unchanged below.
-    const userId = await getSessionUserId(req);
-    const botRow = userId ? await lookupBot(userId, botName) : null;
-    const personality = botRow ? botRow.personality : requestPersonality;
-
-    // Same server-authoritative-once-set pattern as personality above: a signed-in
-    // user's own stored preferred name (pages/api/user-profile.ts) wins once they've set
-    // one, so it can't be spoofed differently on a later request; otherwise fall back to
-    // whatever the client sent (a guest, or a signed-in user who hasn't set one yet).
-    const storedUserName = userId ? await lookupUserPreferredName(userId) : null;
-    const userName =
-      storedUserName ||
-      (typeof req.body.userName === "string" ? sanitizeUserName(req.body.userName) : "");
+    const { botRow, personality, userName } = await resolveChatIdentity(
+      req,
+      botName,
+      requestPersonality,
+      req.body.userName,
+    );
 
     const { conversationSummary, limitedHistory, newSummaryCheckpoint } = await buildChatContext(
       botRow,
@@ -303,34 +255,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return;
     }
 
-    // Timeout to avoid hanging
-    const timeout = new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), 20000));
-
     // Handle streaming mode
     if (stream) {
       setSseHeaders(res);
 
       try {
-        const streamResponse = anthropic.messages.stream({
-          model: getClaudeModel("text"),
-          thinking: thinkingFor("text"),
-          system: systemPrompt,
-          messages,
-          max_tokens: 500,
-          stop_sequences: ["User:", "Bot:"],
-        });
-
-        let botReply = "";
-
-        for await (const chunk of streamResponse) {
-          if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-            const content = chunk.delta.text;
-            if (content) {
-              botReply += content;
-              writeSseFrame(res, { chunk: content, done: false });
-            }
-          }
-        }
+        let botReply = await streamClaudeReply(res, systemPrompt, messages);
 
         if (!botReply || botReply.trim() === "") {
           logEvent(
@@ -379,53 +309,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // Non-streaming mode
-    const result = await Promise.race([
-      anthropic.messages.create({
-        model: getClaudeModel("text"),
-        thinking: thinkingFor("text"),
-        system: systemPrompt,
-        messages,
-        max_tokens: 500,
-        stop_sequences: ["User:", "Bot:"],
-      }),
-      timeout,
-    ]);
-
-    if (result && typeof result === "object" && "timeout" in result) {
-      logEvent(
-        "warn",
-        "chat_timeout",
-        "Request timed out waiting for Claude",
-        sanitizeLogMeta({ requestId }),
-      );
+    const reply = await createClaudeReply(systemPrompt, messages, requestId);
+    if (reply === null) {
       res.status(408).json({ reply: "Request timed out.", requestId });
       return;
     }
-    if (!isClaudeResponse(result)) {
-      logEvent(
-        "error",
-        "chat_invalid_claude_response",
-        "Invalid response shape from Claude",
-        sanitizeLogMeta({ requestId }),
-      );
-      throw new Error("Invalid response from Claude");
-    }
-    let botReply =
-      result.content[0]?.type === "text"
-        ? (result.content[0] as { type: "text"; text: string }).text.trim()
-        : "";
-
-    if (!botReply || botReply.trim() === "") {
-      logEvent(
-        "error",
-        "chat_empty_bot_response",
-        "Generated bot response was empty",
-        sanitizeLogMeta({ requestId }),
-      );
-      throw new Error("Generated bot response is empty.");
-    }
-
-    botReply = stripActionEmotes(gracefullyWrapResponse(botReply));
+    const botReply = stripActionEmotes(gracefullyWrapResponse(reply));
 
     const audioFileUrl = await synthesizeReplyAudio(
       botReply,

@@ -30,6 +30,10 @@ paths:
 
 - Tests live under `tests/`, mirroring source (`tests/api`, `tests/app`, `tests/pages`, `tests/src`,
   `tests/utils`, `tests/integration`, `tests/unit`).
+- **A module split out of a larger file gets its own test file named after it** (`useChatIntro.test.ts`,
+  `gameStats.test.ts`), in the folder its neighbors use. The original integration-style tests of the
+  parent (`chat.test.ts`, `useChatController.*`) stay as the behavior pin; don't fold them into the new files.
+  `tests/helpers/fakeStatsDb.ts` fakes the Drizzle query chain for the stats aggregations.
 - Mock `authenticatedFetch`, not raw `fetch`, for client/server interaction tests, and mock external
   APIs (Anthropic, GCP TTS/Vertex) rather than calling them live.
 - TTS tests must call `tts.__resetSingletonsForTest()` to avoid leaking singleton state.

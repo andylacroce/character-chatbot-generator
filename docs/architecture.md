@@ -50,6 +50,7 @@ hooks. Each platform adds only its own transport, storage, and logging.
 | `src/utils/avatar/` | Avatar image rendering through Cloudflare and Pollinations |
 | `src/utils/moderation/` | Allow/block lists, character classifier, warning log, wall data |
 | `src/utils/game/` | Game definitions, rounds, scoring, tokens, guess classification, leaderboards |
+| `src/utils/admin/` | The `/api/admin/stats` aggregations: per-game, character-creation, and the combined loader |
 | `src/utils/account/` | Session lookup, admin checks, magic-link mail, per-user blobs |
 | `src/utils/server/` | Rate limiting, request security, request logging, token crypto |
 | `src/utils/*.ts` | Cross-cutting helpers: `api`, `logger`, `storage`, `environment`, `analytics`, `sse` |
@@ -57,6 +58,14 @@ hooks. Each platform adds only its own transport, storage, and logging.
 | `src/db/` | Drizzle schema and client |
 | `packages/shared/` | Code used by both web and mobile |
 | `apps/mobile/` | The Expo client |
+
+## How an API route is organized
+
+A handler in `src/pages/api/` does only HTTP work: rate limit, method check, read the request, call into
+`src/utils/`, and write the response. Logic that could be read or tested on its own lives in the util it
+calls, such as `chatRequest.ts` (validation), `chatReply.ts` (the Claude calls), `validateCharacter.ts` (the
+moderation pipeline), or `transcriptHtml.ts` (rendering). Handlers keep their `@swagger` block and their
+route-level log events, and each split-out module has a matching test file under `tests/utils/`.
 
 ## Unusual choices, and why
 

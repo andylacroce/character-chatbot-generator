@@ -2,38 +2,23 @@ import crypto from "crypto";
 import logger, { sanitizeLogMeta } from "../logger";
 import { extractJson } from "../claude/parseClaudeJson";
 import { thinkingFor } from "../claude/claudeThinking";
+import { SSML_GENDER, type CharacterVoiceConfig, type VoiceConfig } from "./voiceTypes";
+import {
+  findAvailableVoice,
+  formatVoiceCatalog,
+  getAvailableGoogleVoices,
+  mapSsmlToGender,
+} from "./voiceCatalog";
+
+export { SSML_GENDER };
+export type { CharacterVoiceConfig, VoiceConfig };
+export { __resetVoiceCatalogForTest } from "./voiceCatalog";
 
 /**
  * Description-aware character casting over Google's live Text-to-Speech voice inventory.
  *
  * @module characterVoices
  */
-
-/**
- * Interface for Google TTS voice configuration.
- */
-export interface CharacterVoiceConfig {
-  languageCodes: string[];
-  name: string;
-  ssmlGender: number;
-  pitch?: number;
-  rate?: number;
-  type?: string;
-}
-
-/**
- * Google TTS gender enum. Values must match
- * @google-cloud/text-to-speech's actual SsmlVoiceGender proto enum
- * (SSML_VOICE_GENDER_UNSPECIFIED=0, MALE=1, FEMALE=2, NEUTRAL=3) — this object
- * previously had NEUTRAL and UNSPECIFIED transposed (0 and 3 swapped), so any
- * "neutral"-gender character silently sent UNSPECIFIED to Google instead.
- */
-export const SSML_GENDER = {
-  UNSPECIFIED: 0,
-  MALE: 1,
-  FEMALE: 2,
-  NEUTRAL: 3,
-};
 
 /**
  * Default voice for fallback only.
@@ -63,130 +48,10 @@ function normalizeCharacterName(name: string): string {
  */
 const dynamicVoiceCache: Record<string, CharacterVoiceConfig> = {};
 
-/**
- * Voice configuration from Claude (maps directly to Google TTS parameters).
- */
-export interface VoiceConfig {
-  gender: "male" | "female" | "neutral";
-  languageCode: string; // Language code (e.g., 'en-GB', 'en-US', 'de-DE')
-  voiceName: string; // Google TTS voice name (e.g., 'en-GB-Wavenet-D')
-  pitch: number; // Pitch adjustment in semitones (-20 to +20)
-  rate: number; // Speech rate multiplier (0.25 to 4.0, where 1.0 is normal)
-}
-
-interface AvailableGoogleVoice {
-  languageCodes: string[];
-  name: string;
-  ssmlGender: number;
-}
-
-const SUPPORTED_AUTOMATIC_VOICE_NAME =
-  /-(?:Wavenet|Neural2|Studio|Standard|Journey|News|Polyglot)-/;
-
-let voiceCatalogPromise: Promise<AvailableGoogleVoice[]> | null = null;
-
-/** Maps Google's ListVoices enum string keys to this module's numeric SSML_GENDER. */
-const GOOGLE_GENDER_NAME_TO_ENUM: Record<string, number> = {
-  SSML_VOICE_GENDER_UNSPECIFIED: SSML_GENDER.UNSPECIFIED,
-  MALE: SSML_GENDER.MALE,
-  FEMALE: SSML_GENDER.FEMALE,
-  NEUTRAL: SSML_GENDER.NEUTRAL,
-};
-
-/**
- * Google's client library reports a protobuf enum's own string key (e.g. "FEMALE"), not
- * its underlying integer, for `voice.ssmlGender` in a real `ListVoices` response — a
- * numeric mock previously hid this, so every live voice was silently read as
- * SSML_VOICE_GENDER_UNSPECIFIED, the whole catalog was filtered out, and every character
- * fell back to CHARACTER_VOICE_MAP["Default"]. Handles a numeric value too, since that's
- * still a valid shape for this same field elsewhere (e.g. a synthesis request).
- */
-function parseGoogleSsmlGender(value: unknown): number {
-  if (typeof value === "number") return value;
-  if (typeof value === "string" && value in GOOGLE_GENDER_NAME_TO_ENUM) {
-    return GOOGLE_GENDER_NAME_TO_ENUM[value];
-  }
-  return SSML_GENDER.UNSPECIFIED;
-}
-
-/** Converts Google's numeric gender metadata into the model-facing profile value. */
-function mapSsmlToGender(ssmlGender: number): VoiceConfig["gender"] {
-  if (ssmlGender === SSML_GENDER.FEMALE) return "female";
-  if (ssmlGender === SSML_GENDER.NEUTRAL) return "neutral";
-  return "male";
-}
-
-/** Loads the exact classic Google voices available to this deployment. */
-async function loadVoiceCatalog(): Promise<AvailableGoogleVoice[]> {
-  const { getTTSClient } = await import("./tts");
-  const [response] = await getTTSClient().listVoices({});
-  const voices = (response.voices || [])
-    .map((voice) => ({
-      languageCodes: (voice.languageCodes || []).filter(
-        (code): code is string => typeof code === "string" && Boolean(code),
-      ),
-      name: typeof voice.name === "string" ? voice.name : "",
-      ssmlGender: parseGoogleSsmlGender(voice.ssmlGender),
-    }))
-    .filter(
-      (voice) =>
-        Boolean(voice.name) &&
-        voice.languageCodes.length > 0 &&
-        voice.ssmlGender !== SSML_GENDER.UNSPECIFIED &&
-        SUPPORTED_AUTOMATIC_VOICE_NAME.test(voice.name),
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
-  if (voices.length === 0) throw new Error("Google TTS returned no supported voices");
-  return voices;
-}
-
-/**
- * Returns the cached catalog, fetching it once per warm process. A rejected promise is
- * cleared so a transient `listVoices` failure does not poison every later character
- * creation.
- */
-async function getAvailableGoogleVoices(): Promise<AvailableGoogleVoice[]> {
-  if (!voiceCatalogPromise) {
-    voiceCatalogPromise = loadVoiceCatalog().catch((err) => {
-      voiceCatalogPromise = null;
-      throw err;
-    });
-  }
-  return voiceCatalogPromise;
-}
-
-/** TEST-ONLY: clears the cached voice catalog so each test observes its own mock. */
-export function __resetVoiceCatalogForTest(): void {
-  voiceCatalogPromise = null;
-}
-
-/** Formats Google's trusted inventory as a compact casting catalog for Claude. */
-function formatVoiceCatalog(voices: AvailableGoogleVoice[]): string {
-  return voices
-    .map(
-      (voice) =>
-        `${voice.name} | ${voice.languageCodes.join(",")} | ${mapSsmlToGender(voice.ssmlGender)}`,
-    )
-    .join("\n");
-}
-
 /** Hashes descriptive casting context without retaining it in an in-memory cache key. */
 function getVoiceContextFingerprint(voiceContext?: string | null): string {
   if (!voiceContext?.trim()) return "no-context";
   return crypto.createHash("sha256").update(voiceContext.trim()).digest("hex").slice(0, 16);
-}
-
-/**
- * Finds a selected voice in Google's live inventory. The returned metadata, rather than
- * Claude's recollection, is authoritative for language and gender. This replaces the old
- * validation synthesis of the word "test", which made a billable TTS request and turned
- * every guessed/mismatched name into a visible SynthesizeSpeech error.
- */
-function findAvailableVoice(
-  voices: AvailableGoogleVoice[],
-  voiceName: string,
-): AvailableGoogleVoice | undefined {
-  return voices.find((voice) => voice.name === voiceName);
 }
 
 /**

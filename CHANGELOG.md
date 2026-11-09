@@ -7,6 +7,11 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 - Internal only: `src/utils/` and `src/app/components/` are now grouped into feature folders (chat, character, game, account, moderation, and so on) instead of two flat lists of 50+ files each. No behavior change.
 - New human-oriented docs in `docs/` (getting started, architecture, feature reference, configuration) and a much shorter README. Added `npm run check` as a fast inner-loop check.
 
+## v0.29.8 - 2026-11-09 - Smaller server files
+
+- Internal only, no behavior change: the largest server files were split along their existing seams, each with its own tests. `api/chat` (request checks, who-is-chatting, the two Claude calls), `api/admin/stats` (per-game and character aggregations), `api/transcript` (validation and HTML rendering), `api/validate-character` (the moderation pipeline), `api/audio` (file-safety helpers), `avatarGeneration` (cache, prompt, orchestration), `characterVoices` (voice catalog and types), and the shared `game` module (definitions, state, transport; `game.ts` stays as a barrel).
+- Docs and the `.claude/rules` path globs now describe the new layout.
+
 ## v0.29.7 - 2026-11-09 - Smaller components
 
 - Internal only, no behavior change: the five largest UI files were split into focused modules, each with its own tests. `useChatController` (670 to 400 lines), `BotCreator` (707 to 315), `CharsGallery` (622 to 215), `AdminModerationView` (579 to 106), and `AdminStatsView` (567 to 185). Intro generation, server-history sync, URL launch, gallery paging, the lightbox, and the stats fetch are now their own hooks or components.

@@ -76,7 +76,7 @@ Keep the web app and the mobile app (`apps/mobile`) sharing as much as possible 
 **every commit**. Logic, copy, types, and client state machines live once in `packages/shared`
 (`character-chatbot-shared`, which web imports directly via `next.config.mjs`'s
 `transpilePackages`); each platform supplies only a thin adapter: its own request transport,
-storage, and logging. The guessing game is the model: `useGameSession`/`game.ts` in shared,
+storage, and logging. The guessing game is the model: `useGameSession` and `game*.ts` (`gameDefinitions`, `gameState`, `gameTransport`) in shared,
 wrapped by `src/app/components/game/useGameController.ts` (SSE progress, localStorage) and
 `apps/mobile/src/useGameController.ts` (plain JSON, AsyncStorage). For every change, ship the
 other platform's side in the same commit, and move logic that exists on both sides into shared

@@ -1,6 +1,7 @@
 ---
 paths:
   - "src/pages/api/validate-character.ts"
+  - "src/utils/moderation/validateCharacter.ts"
   - "src/pages/api/admin/**"
   - "src/utils/moderation/character*.ts"
   - "src/app/admin/moderation/**"
@@ -14,7 +15,9 @@ paths:
 Bot creation is gated by a server round-trip, not just a client check:
 
 1. `useBotCreation.ts` calls `POST /api/validate-character` with `{ characterName }`.
-2. `src/pages/api/validate-character.ts` (Claude, rate-limited 30/min, schema-constrained output) classifies
+2. `src/pages/api/validate-character.ts` (rate-limited 30/min; the decision pipeline is
+   `validateCharacterName` in `src/utils/moderation/validateCharacter.ts`, whose Claude call is
+   schema-constrained) classifies
    `{ level: "warning" | "caution" | "none", message?, suggestions?, blocked, recognized }`:
    "warning" = clear violation (Mickey Mouse), "caution" = possible concern (Superman), "none" = safe.
 3. On warning/caution, `CopyrightWarningModal.tsx` shows the message plus public-domain
@@ -55,7 +58,7 @@ user's saved characters). On a validation error, `blocked` and `warningLevel` fa
 
 - **`scrubbed: true`** (blocklist hit, or a fresh "warning" for an already-cached name) is treated
   like `blocked`: a hard stop with "This character is no longer available".
-- **Blocking scrubs everywhere:** `avatarGeneration.ts`'s `scrubCachedAvatar` and
+- **Blocking scrubs everywhere:** `avatarCache.ts`'s (re-exported by `avatarGeneration.ts`) `scrubCachedAvatar` and
   `scrubUserBotsByName` delete the shared cache row and every user's saved `bots` row for the name
   (case-insensitive, all users and environments; `messages` cascade). The manual admin add does the
   same immediately and defaults to `category: "content"` unless it passes `"copyright"`.
