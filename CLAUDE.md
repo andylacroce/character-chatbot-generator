@@ -135,13 +135,6 @@ All Claude calls go through the singleton client in `src/utils/claude/anthropicC
 
 `createRateLimiter({ name, max, message, windowMs? })` in `src/utils/server/rateLimit.ts` wraps every limited route. `name` is required and namespaces the counter (`rl:<name>:<ip>`) — a shared store is shared across routes, so without it `/api/chat` and `/api/audio` would draw down the same budget. With no Redis env vars configured the limiter uses `express-rate-limit`'s in-process MemoryStore, which is correct for local dev and per-instance on Vercel; with them set, `src/utils/server/rateLimitStore.ts` backs it with an Upstash-compatible Redis REST store and the limits become global. Store outages fail open (`passOnStoreError`) — the limiter throttles, `proxy.ts` authenticates.
 
-### Implicit dependencies (do not remove)
-
-`critters` is never imported: `experimental.optimizeCss` in `next.config.mjs` loads it at build
-time, so dead-code tools like knip flag it unused. Removing it fails the Vercel build
-(`Cannot find module 'critters'` while prerendering `/404`) and passes locally while it's still in
-`node_modules`. Check `next.config.mjs` before deleting any "unused" dependency.
-
 ### Module system (do not regress)
 
 `package.json` intentionally has no `"type": "module"`: removing it once caused a Vercel

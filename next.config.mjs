@@ -36,11 +36,6 @@ const contentSecurityPolicy = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    // Requires the `critters` package at build time, but nothing imports it, so dead-code
-    // tools (knip) report it unused. Removing it breaks the Vercel build (/404 prerender).
-    optimizeCss: true,
-  },
   serverExternalPackages: ["winston"],
   // packages/shared ships raw TS source (no build step) — Next transpiles it
   // directly via SWC, same as Metro's zero-config workspace transpilation on
