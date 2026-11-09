@@ -53,7 +53,7 @@ export async function resolveChatIdentity(
 const RECENT_MESSAGES = 20;
 
 /** A new rolling-summary checkpoint to commit once the reply is ready (see finalizeChatPersistence). */
-export interface SummaryCheckpoint {
+interface SummaryCheckpoint {
   summary: string;
   throughMessageId: number;
 }

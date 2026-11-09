@@ -14,7 +14,7 @@ import { authenticatedFetch } from "../../../utils/api";
  * server never reports it by name — it's simply whatever's left once the other four are
  * done, right up until the last frame arrives).
  */
-export const ROUND_STAGE_ORDER: { stage: string; label: string }[] = [
+const ROUND_STAGE_ORDER: { stage: string; label: string }[] = [
   { stage: "personality", label: "Creating personality…" },
   { stage: "avatar", label: "Generating portrait…" },
   { stage: "reply", label: "Writing opening line…" },
@@ -35,7 +35,7 @@ export function initialRoundStages(): LoadingStage[] {
  * Reads a `text/event-stream` response of `data: {...}\n\n` frames, calling `onFrame` for
  * each as it arrives. A malformed frame is skipped rather than aborting the whole stream.
  */
-export async function readSseFrames(
+async function readSseFrames(
   response: Response,
   onFrame: (frame: Record<string, unknown>) => void,
 ): Promise<void> {

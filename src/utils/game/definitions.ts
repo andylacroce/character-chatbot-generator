@@ -20,7 +20,7 @@ import {
  * The three tables one game keeps scores in. The two games' tables are structurally
  * identical (see schema.ts), so one game's set stands in for the type of both.
  */
-export interface ScoreTables {
+interface ScoreTables {
   highScores: typeof guessWhoHighScores;
   results: typeof guessWhoResults;
   guestProfiles: typeof guessWhoGuestProfiles;
