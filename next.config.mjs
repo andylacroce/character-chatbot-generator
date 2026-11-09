@@ -37,6 +37,8 @@ const contentSecurityPolicy = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
+    // Requires the `critters` package at build time, but nothing imports it, so dead-code
+    // tools (knip) report it unused. Removing it breaks the Vercel build (/404 prerender).
     optimizeCss: true,
   },
   serverExternalPackages: ["winston"],
