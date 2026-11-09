@@ -1,11 +1,11 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { GAME_MYSTERY_NAME, GUESS_WHO, GUESS_WHO_NEXT } from "character-chatbot-shared";
-import GamePage from "../../../src/app/components/GamePage";
+import GamePage from "../../../src/app/components/game/GamePage";
 
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
-jest.mock("../../../src/app/components/LeaderboardClaim", () => ({
+jest.mock("../../../src/app/components/game/LeaderboardClaim", () => ({
   __esModule: true,
   default: () => null,
 }));
@@ -31,7 +31,7 @@ const mockSetInput = jest.fn();
 
 let controllerState: Record<string, unknown>;
 
-jest.mock("../../../src/app/components/useGameController", () => ({
+jest.mock("../../../src/app/components/game/useGameController", () => ({
   useGameController: () => controllerState,
 }));
 

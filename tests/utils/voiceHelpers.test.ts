@@ -1,5 +1,5 @@
-import { buildSsml } from "../../src/utils/voiceHelpers";
-import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
+import { buildSsml } from "../../src/utils/chat/voiceHelpers";
+import type { CharacterVoiceConfig } from "../../src/utils/chat/characterVoices";
 
 function makeVoice(overrides: Partial<CharacterVoiceConfig> = {}): CharacterVoiceConfig {
   return {

@@ -1,30 +1,30 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-jest.mock("../../../src/utils/rateLimit", () => ({
+jest.mock("../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => options,
   applyRateLimit: jest.fn().mockResolvedValue(true),
 }));
-jest.mock("../../../src/utils/withRequestLog", () => ({
+jest.mock("../../../src/utils/server/withRequestLog", () => ({
   withRequestLog: (handler: unknown) => handler,
 }));
 
 const mockGetOrGenerateAvatar = jest.fn();
-jest.mock("../../../src/utils/avatarGeneration", () => ({
+jest.mock("../../../src/utils/avatar/avatarGeneration", () => ({
   getOrGenerateAvatar: (...args: unknown[]) => mockGetOrGenerateAvatar(...args),
 }));
 
 const mockIsAllowlisted = jest.fn();
-jest.mock("../../../src/utils/characterAllowlist", () => ({
+jest.mock("../../../src/utils/moderation/characterAllowlist", () => ({
   isAllowlisted: (...args: unknown[]) => mockIsAllowlisted(...args),
 }));
 
 const mockGetBlocklistEntry = jest.fn();
-jest.mock("../../../src/utils/characterBlocklist", () => ({
+jest.mock("../../../src/utils/moderation/characterBlocklist", () => ({
   getBlocklistEntry: (...args: unknown[]) => mockGetBlocklistEntry(...args),
 }));
 
 const mockClassify = jest.fn();
-jest.mock("../../../src/utils/characterClassifier", () => ({
+jest.mock("../../../src/utils/moderation/characterClassifier", () => ({
   classifyCharacterName: (...args: unknown[]) => mockClassify(...args),
 }));
 jest.mock("../../../src/utils/logger", () => ({ logEvent: jest.fn() }));

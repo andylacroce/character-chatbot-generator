@@ -11,7 +11,7 @@ jest.mock("@anthropic-ai/sdk", () => ({
 
 // The new-name moderation re-check (verdicts are set per test; default is a clean, recognized name).
 const mockClassify = jest.fn();
-jest.mock("../../../src/utils/characterClassifier", () => ({
+jest.mock("../../../src/utils/moderation/characterClassifier", () => ({
   classifyCharacterName: (...args: unknown[]) => mockClassify(...args),
 }));
 const CLEAN = { blocked: false, recognized: true, warningLevel: "none" };
@@ -27,12 +27,12 @@ jest.mock("../../../src/utils/logger", () => ({
 }));
 
 // Mock model selector
-jest.mock("../../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: (_: string) => "claude-haiku-4-5-20251001",
 }));
 
 // Make sanitizeCharacterName permissive for tests (return trimmed input)
-jest.mock("../../../src/utils/security", () => ({
+jest.mock("../../../src/utils/server/security", () => ({
   sanitizeCharacterName: (s: string) => (typeof s === "string" ? s.trim() : ""),
 }));
 
@@ -68,10 +68,10 @@ function mockLoggerAndDeps() {
     logEvent: (...args: unknown[]) => mockLogEvent(...(args as unknown[])),
     sanitizeLogMeta: (m: unknown) => mockSanitize(m),
   }));
-  jest.doMock("../../../src/utils/claudeModelSelector", () => ({
+  jest.doMock("../../../src/utils/claude/claudeModelSelector", () => ({
     getClaudeModel: (_: string) => "claude-test",
   }));
-  jest.doMock("../../../src/utils/security", () => ({
+  jest.doMock("../../../src/utils/server/security", () => ({
     sanitizeCharacterName: (s: string) => (typeof s === "string" ? s.trim() : ""),
   }));
   // Analytics writes go through the same getDb().insert(...) shape as the avatar cache
@@ -121,7 +121,7 @@ describe("generate-avatar API", () => {
     await jest.isolateModulesAsync(async () => {
       jest.resetModules();
       mockLoggerAndDeps();
-      jest.doMock("../../../src/utils/security", () => ({
+      jest.doMock("../../../src/utils/server/security", () => ({
         sanitizeCharacterName: (_: string) => "",
       }));
       const handler = require("../../../src/pages/api/generate-avatar").default;
@@ -338,10 +338,10 @@ describe("generate-avatar API", () => {
         },
         __esModule: true,
       }));
-      jest.doMock("../../../src/utils/claudeModelSelector", () => ({
+      jest.doMock("../../../src/utils/claude/claudeModelSelector", () => ({
         getClaudeModel: (_: string) => "claude-test",
       }));
-      jest.doMock("../../../src/utils/security", () => ({
+      jest.doMock("../../../src/utils/server/security", () => ({
         sanitizeCharacterName: (s: string) => (typeof s === "string" ? s.trim() : ""),
       }));
 

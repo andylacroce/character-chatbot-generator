@@ -2,9 +2,9 @@ import {
   loadVoiceConfig,
   persistVoiceConfig,
   clearVoiceConfig,
-} from "../../src/utils/voiceConfigPersistence";
+} from "../../src/utils/chat/voiceConfigPersistence";
 import storage from "../../src/utils/storage";
-import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
+import type { CharacterVoiceConfig } from "../../src/utils/chat/characterVoices";
 
 jest.mock("../../src/utils/storage");
 

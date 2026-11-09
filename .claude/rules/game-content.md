@@ -3,7 +3,7 @@ paths:
   - "src/data/game*"
   - "src/data/characterNames.ts"
   - "src/pages/api/*/give-up.ts"
-  - "src/app/components/GameInstructionsModal.tsx"
+  - "src/app/components/game/GameInstructionsModal.tsx"
   - "packages/shared/src/validation.ts"
   - "src/utils/game/route.ts"
 ---

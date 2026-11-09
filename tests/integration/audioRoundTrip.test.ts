@@ -13,11 +13,13 @@ const AUDIO_BYTES = Buffer.from("fake-mp3-bytes");
 const mockSynthesize = jest.fn(async ({ filePath }: { filePath: string }) => {
   fs.writeFileSync(filePath, AUDIO_BYTES);
 });
-jest.mock("../../src/utils/tts", () => ({
+jest.mock("../../src/utils/chat/tts", () => ({
   synthesizeSpeechToFile: (...args: [{ filePath: string }]) => mockSynthesize(...args),
 }));
 jest.mock("../../src/utils/cache", () => ({ setReplyCache: jest.fn(), getReplyCache: jest.fn() }));
-jest.mock("../../src/utils/characterVoices", () => ({ getVoiceConfigForCharacter: jest.fn() }));
+jest.mock("../../src/utils/chat/characterVoices", () => ({
+  getVoiceConfigForCharacter: jest.fn(),
+}));
 jest.mock("../../src/utils/logger", () => ({
   __esModule: true,
   default: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
@@ -25,8 +27,8 @@ jest.mock("../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import { synthesizeReplyAudio } from "../../src/utils/ttsReply";
-import type { CharacterVoiceConfig } from "../../src/utils/characterVoices";
+import { synthesizeReplyAudio } from "../../src/utils/chat/ttsReply";
+import type { CharacterVoiceConfig } from "../../src/utils/chat/characterVoices";
 
 const handler = require("../../src/pages/api/audio").default as (
   req: NextApiRequest,

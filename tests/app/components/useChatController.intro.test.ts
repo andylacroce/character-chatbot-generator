@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { renderHook, waitFor } from "@testing-library/react";
-import { useChatController } from "../../../src/app/components/useChatController";
-import { api_getVoiceConfigForCharacter } from "../../../src/app/components/api_getVoiceConfigForCharacter";
+import { useChatController } from "../../../src/app/components/chat/useChatController";
+import { api_getVoiceConfigForCharacter } from "../../../src/app/components/chat/api_getVoiceConfigForCharacter";
 import { authenticatedFetch } from "../../../src/utils/api";
 
-jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter");
+jest.mock("../../../src/app/components/chat/api_getVoiceConfigForCharacter");
 jest.mock("../../../src/utils/api");
 // The server-history reconciliation effect needs a next-auth session status; default to
 // unauthenticated so it's a no-op and this file's existing assertions are unaffected.

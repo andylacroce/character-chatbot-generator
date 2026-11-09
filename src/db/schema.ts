@@ -41,7 +41,7 @@ import {
   check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import type { CharacterVoiceConfig } from "../utils/characterVoices";
+import type { CharacterVoiceConfig } from "../utils/chat/characterVoices";
 
 export const users = pgTable("users", {
   id: text("id")
@@ -240,7 +240,7 @@ export const characterBlocklist = pgTable("character_blocklist", {
  * The admin-managed counterpart to `characterBlocklist` above — a name here is
  * treated as copyright-safe (`warningLevel: "none"`) without ever calling Claude,
  * same fast-path shape as the blocklist but the opposite polarity. Distinct from (and
- * checked before) `src/utils/characterAllowlist.ts`'s static, hand-curated list
+ * checked before) `src/utils/moderation/characterAllowlist.ts`'s static, hand-curated list
  * (reused from `src/data/characterNames.ts`) — this table exists specifically for a
  * name an admin wants to permanently allow that isn't on that static list (e.g. the
  * live report that motivated this table: "Alice Munro," a real person not in the

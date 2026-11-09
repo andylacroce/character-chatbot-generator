@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
-import { CopyrightWarningModal } from "../../../src/app/components/CopyrightWarningModal";
+import { CopyrightWarningModal } from "../../../src/app/components/character/CopyrightWarningModal";
 import type { CharacterValidationResult } from "../../../src/pages/api/validate-character";
 
 describe("CopyrightWarningModal", () => {

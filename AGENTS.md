@@ -27,8 +27,8 @@ tests. Preserve user changes and unrelated worktree modifications.
 
 Use pointers instead of duplicating long explanations here:
 
-- [`README.md`](README.md): product overview, setup, environment variables, feature
-  behavior, storage, and troubleshooting.
+- [`README.md`](README.md): product overview, quickstart, commands, and troubleshooting. Deeper
+  human-oriented docs are in [`docs/`](docs): getting-started, architecture, features, configuration.
 - [`CLAUDE.md`](CLAUDE.md): detailed architecture and the historical reasons behind
   non-obvious behavior. Despite the filename, this is the canonical deep technical
   handbook for all agents. Read the relevant section before changing a core flow.
@@ -79,8 +79,8 @@ it runs because its format step writes files.
 
 - Client-to-server requests go through `authenticatedFetch()` in `src/utils/api.ts`,
   not raw `fetch`, so proxy authentication and test mocking remain consistent.
-- All Anthropic calls use the singleton in `src/utils/anthropicClient.ts`; model choice
-  goes through `src/utils/claudeModelSelector.ts`.
+- All Anthropic calls use the singleton in `src/utils/claude/anthropicClient.ts`; model choice
+  goes through `src/utils/claude/claudeModelSelector.ts`.
 - Chat streaming uses SSE frames shaped as `data: JSON\n\n`. Coordinate changes to the
   final payload with `useChatController.ts` and stream-parsing tests.
 - Guest use must continue to work without optional account/database configuration.
@@ -100,7 +100,7 @@ it runs because its format step writes files.
 - Treat `proxy.ts` as CSRF/origin protection, not user authentication. Preserve exact
   host matching, constant-time secret comparison, per-route rate limits, and route-level
   authorization where required.
-- Validate and sanitize untrusted input with the utilities in `src/utils/security.ts`.
+- Validate and sanitize untrusted input with the utilities in `src/utils/server/security.ts`.
   Do not expose raw third-party error details to clients.
 - Every new or changed API route needs an accurate `@swagger` JSDoc block. Regenerate
   with `npm run docs:api`; never hand-edit `public/openapi.json`.

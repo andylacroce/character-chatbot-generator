@@ -3,7 +3,7 @@
 /**
  * Internal, admin-only view managing both character lists that short-circuit
  * pages/api/validate-character.ts before it ever calls Claude: the admin-managed
- * allowlist (src/utils/characterAllowlist.ts) and the blocklist (src/utils/
+ * allowlist (src/utils/moderation/characterAllowlist.ts) and the blocklist (src/utils/
  * characterBlocklist.ts). Kept on one page, not two, since they're the same
  * moderation concern from opposite directions — an admin correcting a false
  * positive (allow) or confirming/pre-empting a real violation (block) is one
@@ -23,8 +23,8 @@ import { useSession } from "next-auth/react";
 import { FaHome, FaExchangeAlt, FaTimes, FaCheck, FaBan } from "react-icons/fa";
 import { authenticatedFetch } from "../../../utils/api";
 import { formatRelativeTime } from "character-chatbot-shared";
-import AppHeader from "../../components/AppHeader";
-import { useAccountMenu } from "../../components/useAccountMenu";
+import AppHeader from "../../components/common/AppHeader";
+import { useAccountMenu } from "../../components/account/useAccountMenu";
 import styles from "../../components/styles/AdminModeration.module.css";
 
 interface ListEntry {

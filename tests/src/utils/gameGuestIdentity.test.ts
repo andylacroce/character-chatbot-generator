@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { ensureGuestId, getGuestId } from "../../../src/utils/gameGuestIdentity";
+import { ensureGuestId, getGuestId } from "../../../src/utils/game/gameGuestIdentity";
 
 describe("game guest identity", () => {
   it("issues an HTTP-only cookie and reuses its hashed identity", () => {

@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { STORAGE_KEYS } from "character-chatbot-shared";
 import GoogleAnalyticsConsent, {
   AnalyticsPreferences,
-} from "../../../src/app/components/GoogleAnalyticsConsent";
+} from "../../../src/app/components/common/GoogleAnalyticsConsent";
 
 jest.mock("@next/third-parties/google", () => ({
   GoogleAnalytics: ({ gaId }: { gaId: string }) => (

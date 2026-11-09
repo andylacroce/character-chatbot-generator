@@ -21,8 +21,8 @@
  */
 
 import type { GameId } from "character-chatbot-shared";
-import type { CharacterVoiceConfig } from "../characterVoices";
-import { encryptPayload, decryptPayload } from "../tokenCrypto";
+import type { CharacterVoiceConfig } from "../chat/characterVoices";
+import { encryptPayload, decryptPayload } from "../server/tokenCrypto";
 
 /** Fallback chain for deriving the AES key, see tokenCrypto.ts's module doc. */
 const SECRET_ENV_VARS = ["GAME_TOKEN_SECRET", "NEXTAUTH_SECRET", "API_SECRET"];

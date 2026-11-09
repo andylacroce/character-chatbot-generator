@@ -30,7 +30,7 @@ const mockPlayAudio = jest.fn();
 const mockStopAudio = jest.fn();
 const mockIsAudioPlaying = jest.fn();
 const mockAudioRef = { current: { muted: false } } as unknown as React.RefObject<HTMLAudioElement>;
-jest.mock("../../../src/app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/chat/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: mockPlayAudio,
     stopAudio: mockStopAudio,
@@ -56,7 +56,7 @@ let mockIsSupported = true;
 let mockIsRecording = false;
 let mockTranscript = "";
 let mockSpeechError: string | null = null;
-jest.mock("../../../src/app/components/useSpeechRecognition", () => ({
+jest.mock("../../../src/app/components/chat/useSpeechRecognition", () => ({
   useSpeechRecognition: () => ({
     isSupported: mockIsSupported,
     isRecording: mockIsRecording,
@@ -68,7 +68,7 @@ jest.mock("../../../src/app/components/useSpeechRecognition", () => ({
   }),
 }));
 
-import { useGameController } from "../../../src/app/components/useGameController";
+import { useGameController } from "../../../src/app/components/game/useGameController";
 import * as storage from "../../../src/utils/storage";
 
 const mockStorage = storage as unknown as jest.Mocked<{

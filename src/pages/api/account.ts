@@ -27,12 +27,12 @@ import {
   users,
   verificationTokens,
 } from "../../db/schema";
-import { getSessionUserId } from "../../utils/getSessionUserId";
-import { deleteUserBlobs } from "../../utils/userBlobs";
-import { clearGuestId, getGuestId } from "../../utils/gameGuestIdentity";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+import { getSessionUserId } from "../../utils/account/getSessionUserId";
+import { deleteUserBlobs } from "../../utils/account/userBlobs";
+import { clearGuestId, getGuestId } from "../../utils/game/gameGuestIdentity";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { withRequestLog } from "../../utils/withRequestLog";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 
 /** Rate limiter: 5 requests per minute per IP. */
 const accountRateLimit = createRateLimiter({

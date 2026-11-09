@@ -31,11 +31,11 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
-import { signMobileAuthState } from "../../../utils/mobileAuthState";
-import { getRequestBaseUrl } from "../../../utils/requestBaseUrl";
+import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
+import { signMobileAuthState } from "../../../utils/account/mobileAuthState";
+import { getRequestBaseUrl } from "../../../utils/server/requestBaseUrl";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { withRequestLog } from "../../../utils/withRequestLog";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 const mobileAuthStartRateLimit = createRateLimiter({
   name: "mobile-auth-start",

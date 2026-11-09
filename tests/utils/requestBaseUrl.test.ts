@@ -1,5 +1,5 @@
 import type { NextApiRequest } from "next";
-import { getRequestBaseUrl } from "../../src/utils/requestBaseUrl";
+import { getRequestBaseUrl } from "../../src/utils/server/requestBaseUrl";
 
 const req = (headers: Record<string, unknown>) => ({ headers }) as unknown as NextApiRequest;
 

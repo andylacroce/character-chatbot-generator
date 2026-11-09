@@ -8,7 +8,7 @@
  */
 
 import { notFound } from "next/navigation";
-import { isAdminSession } from "../../utils/isAdmin";
+import { isAdminSession } from "../../utils/account/isAdmin";
 import AdminStatsView from "./AdminStatsView";
 
 /** Renders the admin stats view for a confirmed admin, otherwise 404s. */

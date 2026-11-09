@@ -33,7 +33,9 @@ if [ "${#staged_files[@]}" -gt 0 ]; then
     fi
   done
   if [ "${#clean_files[@]}" -gt 0 ]; then
-    npx prettier --write --ignore-unknown -- "${clean_files[@]}"
-    git add -- "${clean_files[@]}"
+    # xargs batches the list so a large staged set (e.g. a folder move) stays under
+    # Windows' command-line length limit.
+    printf '%s\0' "${clean_files[@]}" | xargs -0 -n 40 npx prettier --write --ignore-unknown --
+    printf '%s\0' "${clean_files[@]}" | xargs -0 -n 40 git add --
   fi
 fi

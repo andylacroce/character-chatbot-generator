@@ -9,11 +9,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { users } from "../../db/schema";
-import { getSessionUserId } from "../../utils/getSessionUserId";
-import { sanitizeUserName } from "../../utils/security";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+import { getSessionUserId } from "../../utils/account/getSessionUserId";
+import { sanitizeUserName } from "../../utils/server/security";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { withRequestLog } from "../../utils/withRequestLog";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP. */
 const userProfileRateLimit = createRateLimiter({

@@ -1,7 +1,7 @@
 import { createMocks } from "node-mocks-http";
 
 const mockIsAdmin = jest.fn();
-jest.mock("../../../../src/utils/isAdmin", () => ({
+jest.mock("../../../../src/utils/account/isAdmin", () => ({
   isAdmin: (...args: unknown[]) => mockIsAdmin(...args),
 }));
 

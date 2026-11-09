@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import CharacterInfoModal from "@/src/app/components/CharacterInfoModal";
+import CharacterInfoModal from "@/src/app/components/chat/CharacterInfoModal";
 
 describe("CharacterInfoModal", () => {
   it("renders nothing when show is false", () => {

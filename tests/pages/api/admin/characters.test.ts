@@ -1,24 +1,24 @@
 import { createMocks } from "node-mocks-http";
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 
 const mockIsAdmin = jest.fn();
-jest.mock("../../../../src/utils/isAdmin", () => ({
+jest.mock("../../../../src/utils/account/isAdmin", () => ({
   isAdmin: (...args: unknown[]) => mockIsAdmin(...args),
 }));
 
 const mockPurgeCachedAvatar = jest.fn();
 const mockRegenerateCachedAvatar = jest.fn();
-jest.mock("../../../../src/utils/avatarGeneration", () => ({
+jest.mock("../../../../src/utils/avatar/avatarGeneration", () => ({
   purgeCachedAvatar: (...args: unknown[]) => mockPurgeCachedAvatar(...args),
   regenerateCachedAvatar: (...args: unknown[]) => mockRegenerateCachedAvatar(...args),
 }));
 
 const mockClearCharactersCache = jest.fn();
-jest.mock("../../../../src/utils/charactersWall", () => ({
+jest.mock("../../../../src/utils/moderation/charactersWall", () => ({
   clearCharactersCache: () => mockClearCharactersCache(),
 }));
 

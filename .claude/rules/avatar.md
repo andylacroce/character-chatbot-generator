@@ -2,8 +2,7 @@
 paths:
   - "src/pages/api/generate-avatar.ts"
   - "src/pages/api/generate-personality.ts"
-  - "src/utils/avatar*.ts"
-  - "src/utils/*ImageGen.ts"
+  - "src/utils/avatar/**"
   - "src/config/serverConfig.ts"
 ---
 

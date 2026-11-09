@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import GameInstructionsModal from "@/src/app/components/GameInstructionsModal";
+import GameInstructionsModal from "@/src/app/components/game/GameInstructionsModal";
 import { GUESS_WHO_NEXT } from "character-chatbot-shared";
 
 const GUESS_WHO_NEXT_INSTRUCTIONS = GUESS_WHO_NEXT.copy.instructions;

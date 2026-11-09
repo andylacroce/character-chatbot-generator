@@ -7,10 +7,10 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getAllCharacters, type CharacterEntry } from "../../utils/charactersWall";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+import { getAllCharacters, type CharacterEntry } from "../../utils/moderation/charactersWall";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { withRequestLog } from "../../utils/withRequestLog";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 import { getCharacterCategoryOrder } from "character-chatbot-shared";
 
 /** Rate limiter: 60 requests per minute per IP — higher than most since infinite scroll on the gallery fires one request per batch. */

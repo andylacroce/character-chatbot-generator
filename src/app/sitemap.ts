@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 // Deep imports, not the package root: the root re-exports React hooks, which a Server Component bundle rejects.
 import { characterSlug } from "character-chatbot-shared/src/validation";
-import { getAllCharacters } from "../utils/charactersWall";
+import { getAllCharacters } from "../utils/moderation/charactersWall";
 import { SITE_URL } from "../utils/site";
 
 // Read the Wall per request: a build-time snapshot would miss every character created afterward.

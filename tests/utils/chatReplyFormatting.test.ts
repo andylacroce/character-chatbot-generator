@@ -2,7 +2,7 @@ import {
   gracefullyWrapResponse,
   isClaudeResponse,
   stripActionEmotes,
-} from "../../src/utils/chatReplyFormatting";
+} from "../../src/utils/chat/chatReplyFormatting";
 
 describe("isClaudeResponse", () => {
   it("accepts an object with a content array and rejects everything else", () => {

@@ -6,15 +6,15 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { synthesizeSpeechToFile } from "../../utils/tts";
+import { synthesizeSpeechToFile } from "../../utils/chat/tts";
 import { getReplyCache } from "../../utils/cache";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import type { CharacterVoiceConfig } from "../../utils/characterVoices";
-import { getVoiceConfigForCharacter } from "../../utils/characterVoices";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
-import { buildSsml } from "../../utils/voiceHelpers";
-import { sanitizeCharacterName } from "../../utils/security";
-import { withRequestLog } from "../../utils/withRequestLog";
+import type { CharacterVoiceConfig } from "../../utils/chat/characterVoices";
+import { getVoiceConfigForCharacter } from "../../utils/chat/characterVoices";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
+import { buildSsml } from "../../utils/chat/voiceHelpers";
+import { sanitizeCharacterName } from "../../utils/server/security";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 
 // Note: deterministic serialization is implemented in pages/api/chat.ts where it's used for audio URL encoding.
 

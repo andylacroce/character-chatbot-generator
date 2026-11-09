@@ -1,11 +1,11 @@
 ---
 paths:
-  - "src/app/components/AppHeader*"
-  - "src/app/components/useAccountMenu.tsx"
-  - "src/app/components/LandingCharacterCarousel.tsx"
-  - "src/app/components/HamburgerMenu*"
-  - "src/app/components/BackHomeLink.tsx"
-  - "src/app/components/Providers.tsx"
+  - "src/app/components/common/AppHeader*"
+  - "src/app/components/account/useAccountMenu.tsx"
+  - "src/app/components/character/LandingCharacterCarousel.tsx"
+  - "src/app/components/common/HamburgerMenu*"
+  - "src/app/components/common/BackHomeLink.tsx"
+  - "src/app/components/common/Providers.tsx"
 ---
 
 ### Unified header

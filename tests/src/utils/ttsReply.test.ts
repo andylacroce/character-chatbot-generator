@@ -11,7 +11,7 @@ jest.mock("fs", () => ({
 }));
 
 const mockSynthesizeSpeechToFile = jest.fn();
-jest.mock("../../../src/utils/tts", () => ({
+jest.mock("../../../src/utils/chat/tts", () => ({
   synthesizeSpeechToFile: (...args: unknown[]) => mockSynthesizeSpeechToFile(...args),
 }));
 
@@ -26,8 +26,8 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (meta: unknown) => meta,
 }));
 
-import { synthesizeReplyAudio } from "../../../src/utils/ttsReply";
-import type { CharacterVoiceConfig } from "../../../src/utils/characterVoices";
+import { synthesizeReplyAudio } from "../../../src/utils/chat/ttsReply";
+import type { CharacterVoiceConfig } from "../../../src/utils/chat/characterVoices";
 
 const VOICE: CharacterVoiceConfig = {
   languageCodes: ["en-US"],

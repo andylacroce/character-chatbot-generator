@@ -2,7 +2,7 @@
 paths:
   - "src/pages/api/**"
   - "src/utils/logger.ts"
-  - "src/utils/rateLimit.ts"
+  - "src/utils/server/rateLimit.ts"
 ---
 
 ### Logging standards
@@ -29,7 +29,7 @@ All server routes use structured logging, ESLint-enforced.
   lower-detail `info` always fires, because the endpoint is hit on every chat mount and transient
   provider blips shouldn't drive alerting. Don't collapse it without re-reading why.
 - **Centralize cross-cutting logging:** 429 logging lives once in `applyRateLimit`
-  (`src/utils/rateLimit.ts`), tagged with the limiter's `name`.
+  (`src/utils/server/rateLimit.ts`), tagged with the limiter's `name`.
 - **Enforcement:** `no-console` (scoped to `src/**`, excluding `logger.ts` and tests) plus a
   `no-restricted-syntax` rule banning `logger.info(`/`.warn(`/`.error(` in `src/pages/api/**/*.ts`.
   Client code (`src/app/components`) already uses `logEvent` exclusively; keep it that way.

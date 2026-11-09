@@ -1,9 +1,9 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
-import ChatPage from "../../../../src/app/components/ChatPage";
-import { Bot } from "../../../../src/app/components/BotCreator";
+import ChatPage from "../../../../src/app/components/chat/ChatPage";
+import { Bot } from "../../../../src/app/components/character/BotCreator";
 import "@testing-library/jest-dom";
-import { downloadTranscript } from "../../../../src/utils/downloadTranscript";
+import { downloadTranscript } from "../../../../src/utils/chat/downloadTranscript";
 import userEvent from "@testing-library/user-event";
 import { mockResponse } from "../../../helpers/mockResponse";
 
@@ -20,17 +20,17 @@ jest.mock("../../../../src/utils/api", () => ({
   authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
 }));
 
-jest.mock("../../../../src/utils/downloadTranscript");
-jest.mock("../../../../src/app/components/useAudioPlayer", () => ({
+jest.mock("../../../../src/utils/chat/downloadTranscript");
+jest.mock("../../../../src/app/components/chat/useAudioPlayer", () => ({
   __esModule: true,
-  ...jest.requireActual("../../../../src/app/components/useAudioPlayer"),
+  ...jest.requireActual("../../../../src/app/components/chat/useAudioPlayer"),
   useAudioPlayer: jest.fn(() => ({
     playAudio: jest.fn(),
     stopAudio: jest.fn(),
     audioRef: { current: null },
   })),
 }));
-import { useAudioPlayer as mockUseAudioPlayer } from "../../../../src/app/components/useAudioPlayer";
+import { useAudioPlayer as mockUseAudioPlayer } from "../../../../src/app/components/chat/useAudioPlayer";
 
 const mockBot: Bot = {
   name: "Gandalf",

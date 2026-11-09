@@ -14,7 +14,7 @@ jest.mock("@vercel/blob", () => {
 });
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 

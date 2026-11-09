@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
-import { Bot } from "../../src/app/components/BotCreator";
+import { Bot } from "../../src/app/components/character/BotCreator";
 
 // Mock storage - must be defined before jest.mock call
 jest.mock("../../src/utils/storage", () => ({

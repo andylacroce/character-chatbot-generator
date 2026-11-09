@@ -1,7 +1,7 @@
 ---
 paths:
-  - "src/utils/classifyGuess.ts"
-  - "src/utils/gameReply.ts"
+  - "src/utils/game/classifyGuess.ts"
+  - "src/utils/game/gameReply.ts"
   - "src/config/serverConfig.ts"
   - "src/utils/game/round.ts"
   - "src/pages/api/*/message.ts"

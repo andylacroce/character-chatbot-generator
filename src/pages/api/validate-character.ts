@@ -5,18 +5,18 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
 import { recordEvent } from "../../utils/analytics";
-import { scrubCachedAvatar, scrubUserBotsByName } from "../../utils/avatarGeneration";
+import { scrubCachedAvatar, scrubUserBotsByName } from "../../utils/avatar/avatarGeneration";
 import {
   getBlocklistEntry,
   addToBlocklist,
   removeFromBlocklist,
-} from "../../utils/characterBlocklist";
-import { isAllowlisted } from "../../utils/characterAllowlist";
-import { logWarning } from "../../utils/characterWarningLog";
-import { classifyCharacterName } from "../../utils/characterClassifier";
-import { withRequestLog } from "../../utils/withRequestLog";
+} from "../../utils/moderation/characterBlocklist";
+import { isAllowlisted } from "../../utils/moderation/characterAllowlist";
+import { logWarning } from "../../utils/moderation/characterWarningLog";
+import { classifyCharacterName } from "../../utils/moderation/characterClassifier";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 
 const SCRUBBED_REASON = "This character is no longer available. Please try a different name.";
 // Matches useBotCreation.ts's own hardcoded message for a `blocked: true` result —
@@ -55,7 +55,7 @@ export interface CharacterValidationResult {
   // (fail open) so a transient validation failure does not disable all conversations.
   recognized?: boolean;
   // Set two ways: (1) this name is already on the persistent blocklist
-  // (src/utils/characterBlocklist.ts — a prior "warning" or a manual admin block),
+  // (src/utils/moderation/characterBlocklist.ts — a prior "warning" or a manual admin block),
   // so this request never even reached Claude; or (2) this name was already cached
   // (a previously-generated, previously-public character on the Character Wall/
   // carousel) and this request's live re-check just flagged it as a "warning"-level
@@ -78,8 +78,8 @@ export interface CharacterValidationResult {
  *   post:
  *     summary: Validate a character name for copyright/trademark concerns and hard-block content
  *     description: >
- *       A name on the curated public-domain allowlist (src/utils/characterAllowlist.ts)
- *       or the persistent blocklist (src/utils/characterBlocklist.ts) short-circuits
+ *       A name on the curated public-domain allowlist (src/utils/moderation/characterAllowlist.ts)
+ *       or the persistent blocklist (src/utils/moderation/characterBlocklist.ts) short-circuits
  *       straight to a result without ever calling Claude. Otherwise uses Claude for three
  *       independent checks: whether the name is public-domain-safe, cautionary, or a
  *       clear copyright/trademark violation (warningLevel — always overridable), and
@@ -191,7 +191,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const characterName = name.trim();
 
   // Fastest path: a name on the curated public-domain list or the admin-managed
-  // allowlist table (src/utils/characterAllowlist.ts) is permanently safe regardless
+  // allowlist table (src/utils/moderation/characterAllowlist.ts) is permanently safe regardless
   // of what any single Claude roll says — found necessary after a live sweep showed
   // Claude flagging "warning" on names from that exact curated list (Sherlock Holmes,
   // Thor, Winnie-the-Pooh) purely because a studio also made a popular adaptation.

@@ -5,9 +5,9 @@
 
 import { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
-import { sanitizeForDisplay, escapeHtml } from "../../utils/security";
-import { withRequestLog } from "../../utils/withRequestLog";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
+import { sanitizeForDisplay, escapeHtml } from "../../utils/server/security";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 import { displayCharacterName } from "character-chatbot-shared";
 
 export const config = {

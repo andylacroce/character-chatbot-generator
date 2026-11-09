@@ -8,8 +8,8 @@
 
 import { gameRoute, rejectMethod } from "../../../utils/game/route";
 import { getGuestHighScore, getHighScore } from "../../../utils/game/scores";
-import { getGuestId } from "../../../utils/gameGuestIdentity";
-import { getSessionUserId } from "../../../utils/getSessionUserId";
+import { getGuestId } from "../../../utils/game/gameGuestIdentity";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 
 /**

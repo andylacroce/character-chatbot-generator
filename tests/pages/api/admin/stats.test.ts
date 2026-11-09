@@ -1,12 +1,12 @@
 import { createMocks } from "node-mocks-http";
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 
 const mockIsAdmin = jest.fn();
-jest.mock("../../../../src/utils/isAdmin", () => ({
+jest.mock("../../../../src/utils/account/isAdmin", () => ({
   isAdmin: (...args: unknown[]) => mockIsAdmin(...args),
 }));
 

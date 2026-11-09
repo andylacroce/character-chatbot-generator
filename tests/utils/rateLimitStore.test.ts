@@ -15,7 +15,7 @@ import {
   createRateLimitStore,
   getRedisRestConfig,
   rateLimitLogger,
-} from "../../src/utils/rateLimitStore";
+} from "../../src/utils/server/rateLimitStore";
 
 const CONFIG = { url: "https://redis.example", token: "token" };
 

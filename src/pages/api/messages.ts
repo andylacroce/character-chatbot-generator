@@ -12,12 +12,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../../db/client";
 import { bots, messages } from "../../db/schema";
-import { getSessionUserId } from "../../utils/getSessionUserId";
-import { sanitizeCharacterName } from "../../utils/security";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+import { getSessionUserId } from "../../utils/account/getSessionUserId";
+import { sanitizeCharacterName } from "../../utils/server/security";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
 import { getCurrentEnvironment } from "../../utils/environment";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { withRequestLog } from "../../utils/withRequestLog";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 
 /** Rate limiter: 30 requests per minute per IP. */
 const messagesRateLimit = createRateLimiter({

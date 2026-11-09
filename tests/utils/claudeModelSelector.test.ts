@@ -1,5 +1,5 @@
-import { getClaudeModel } from "../../src/utils/claudeModelSelector";
-import { thinkingFor } from "../../src/utils/claudeThinking";
+import { getClaudeModel } from "../../src/utils/claude/claudeModelSelector";
+import { thinkingFor } from "../../src/utils/claude/claudeThinking";
 
 describe("getClaudeModel", () => {
   const OLD_ENV = process.env;

@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
-import type { Bot } from "../../../src/app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/character/BotCreator";
 import { mockResponse } from "../../helpers/mockResponse";
 
 // Mock logger to capture warnings/info
@@ -17,20 +17,20 @@ jest.mock("../../../src/utils/api", () => ({
 
 // Mock voice config fetcher used by the hook
 const mockApiGetVoiceConfigForCharacter = jest.fn();
-jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter", () => ({
+jest.mock("../../../src/app/components/chat/api_getVoiceConfigForCharacter", () => ({
   api_getVoiceConfigForCharacter: (...args: unknown[]) =>
     mockApiGetVoiceConfigForCharacter(...(args as unknown[])),
 }));
 
 // Mock persistence helpers
 const mockPersistVoiceConfig = jest.fn();
-jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
+jest.mock("../../../src/utils/chat/voiceConfigPersistence", () => ({
   persistVoiceConfig: (...args: unknown[]) => mockPersistVoiceConfig(...(args as unknown[])),
   loadVoiceConfig: jest.fn(),
 }));
 
-import { useBotCreation } from "../../../src/app/components/useBotCreation";
-import type { UserNameContext } from "../../../src/app/components/useUserName";
+import { useBotCreation } from "../../../src/app/components/character/useBotCreation";
+import type { UserNameContext } from "../../../src/app/components/account/useUserName";
 
 // isResolved: false ("we don't know yet") means the name gate never triggers — these
 // tests exercise generation itself, not the gate.

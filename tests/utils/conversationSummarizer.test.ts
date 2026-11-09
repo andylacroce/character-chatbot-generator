@@ -1,5 +1,8 @@
-import { summarizeConversation, buildClaudeMessages } from "../../src/utils/conversationSummarizer";
-import type { ClaudeMessage } from "../../src/utils/conversationSummarizer";
+import {
+  summarizeConversation,
+  buildClaudeMessages,
+} from "../../src/utils/chat/conversationSummarizer";
+import type { ClaudeMessage } from "../../src/utils/chat/conversationSummarizer";
 
 jest.mock("../../src/utils/logger", () => ({
   __esModule: true,

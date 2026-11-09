@@ -18,7 +18,7 @@ describe("characterWarningLog utils", () => {
   describe("logWarning", () => {
     it("no-ops without DATABASE_URL", async () => {
       process.env.DATABASE_URL = "";
-      const { logWarning } = await import("../../src/utils/characterWarningLog");
+      const { logWarning } = await import("../../src/utils/moderation/characterWarningLog");
       await expect(logWarning("Elsa", "reason")).resolves.toBeUndefined();
     });
 
@@ -27,7 +27,7 @@ describe("characterWarningLog utils", () => {
         const mockValues = jest.fn().mockResolvedValue(undefined);
         const mockInsert = jest.fn(() => ({ values: mockValues }));
         jest.doMock("../../src/db/client", () => ({ getDb: () => ({ insert: mockInsert }) }));
-        const { logWarning } = await import("../../src/utils/characterWarningLog");
+        const { logWarning } = await import("../../src/utils/moderation/characterWarningLog");
         await logWarning("Elsa", "Disney trademark");
         expect(mockValues).toHaveBeenCalledWith({
           characterName: "Elsa",
@@ -44,7 +44,7 @@ describe("characterWarningLog utils", () => {
             insert: () => ({ values: jest.fn().mockRejectedValue(new Error("x")) }),
           }),
         }));
-        const { logWarning } = await import("../../src/utils/characterWarningLog");
+        const { logWarning } = await import("../../src/utils/moderation/characterWarningLog");
         await expect(logWarning("Elsa", null)).resolves.toBeUndefined();
       });
     });
@@ -53,7 +53,7 @@ describe("characterWarningLog utils", () => {
   describe("listWarnings", () => {
     it("returns [] without DATABASE_URL", async () => {
       process.env.DATABASE_URL = "";
-      const { listWarnings } = await import("../../src/utils/characterWarningLog");
+      const { listWarnings } = await import("../../src/utils/moderation/characterWarningLog");
       expect(await listWarnings()).toEqual([]);
     });
 
@@ -64,7 +64,7 @@ describe("characterWarningLog utils", () => {
         jest.doMock("../../src/db/client", () => ({
           getDb: () => ({ select: () => ({ from: () => ({ orderBy: mockOrderBy }) }) }),
         }));
-        const { listWarnings } = await import("../../src/utils/characterWarningLog");
+        const { listWarnings } = await import("../../src/utils/moderation/characterWarningLog");
         expect(await listWarnings()).toEqual(rows);
       });
     });
@@ -78,7 +78,7 @@ describe("characterWarningLog utils", () => {
             }),
           }),
         }));
-        const { listWarnings } = await import("../../src/utils/characterWarningLog");
+        const { listWarnings } = await import("../../src/utils/moderation/characterWarningLog");
         expect(await listWarnings()).toEqual([]);
       });
     });

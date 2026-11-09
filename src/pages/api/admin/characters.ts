@@ -7,12 +7,12 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { readAdminName, requireAdmin } from "../../../utils/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/rateLimit";
+import { readAdminName, requireAdmin } from "../../../utils/account/adminGuard";
+import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { purgeCachedAvatar, regenerateCachedAvatar } from "../../../utils/avatarGeneration";
-import { clearCharactersCache } from "../../../utils/charactersWall";
-import { withRequestLog } from "../../../utils/withRequestLog";
+import { purgeCachedAvatar, regenerateCachedAvatar } from "../../../utils/avatar/avatarGeneration";
+import { clearCharactersCache } from "../../../utils/moderation/charactersWall";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
 const adminCharactersRateLimit = createRateLimiter({

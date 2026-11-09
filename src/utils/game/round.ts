@@ -5,18 +5,18 @@
  * steering toward a different hidden one; in "Guess Who" the speaker is the hidden character.
  */
 
-import { pickRandomCharacterName } from "../pickRandomCharacterName";
+import { pickRandomCharacterName } from "../moderation/pickRandomCharacterName";
 import gameCharacterNames from "../../data/gameCharacterNames";
 import gameCharacterWork from "../../data/gameCharacterWork";
 import {
   generateGameCluePersonaPrompt,
   generateGuessWhoSelfCluePersonaPrompt,
 } from "../../config/serverConfig";
-import { getOrGenerateAvatar } from "../avatarGeneration";
-import { getOpeningReply, SELF_CLUE_OPENING_INSTRUCTION } from "../gameReply";
-import { getVoiceConfigForCharacter } from "../characterVoices";
-import type { CharacterVoiceConfig } from "../characterVoices";
-import { synthesizeReplyAudio } from "../ttsReply";
+import { getOrGenerateAvatar } from "../avatar/avatarGeneration";
+import { getOpeningReply, SELF_CLUE_OPENING_INSTRUCTION } from "./gameReply";
+import { getVoiceConfigForCharacter } from "../chat/characterVoices";
+import type { CharacterVoiceConfig } from "../chat/characterVoices";
+import { synthesizeReplyAudio } from "../chat/ttsReply";
 import { setSseHeaders, writeSseFrame } from "../sse";
 import type { NextApiResponse } from "next";
 import type { ServerGame } from "./definitions";

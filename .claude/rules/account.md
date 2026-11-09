@@ -7,12 +7,12 @@ paths:
   - "src/pages/api/account.ts"
   - "src/pages/api/auth/**"
   - "src/pages/api/log-message.ts"
-  - "src/utils/userBlobs.ts"
-  - "src/utils/getSessionUserId.ts"
+  - "src/utils/account/userBlobs.ts"
+  - "src/utils/account/getSessionUserId.ts"
   - "src/utils/environment.ts"
-  - "src/app/components/HistoryPage.tsx"
-  - "src/app/components/Auth*.tsx"
-  - "src/app/components/SignInModal.tsx"
+  - "src/app/components/account/HistoryPage.tsx"
+  - "src/app/components/account/Auth*.tsx"
+  - "src/app/components/account/SignInModal.tsx"
 ---
 
 ### Account persistence
@@ -23,7 +23,7 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
 - **Auth:** Auth.js (`next-auth@4`, stable; v5's `auth()` is App-Router-only) with Google, JWT
   sessions (no `sessions` table). `src/auth/authOptions.ts` holds config;
   `src/pages/api/auth/[...nextauth].ts` mounts it in Pages Router. Use
-  `src/utils/getSessionUserId.ts` in any handler needing the signed-in user, never a client-supplied
+  `src/utils/account/getSessionUserId.ts` in any handler needing the signed-in user, never a client-supplied
   id. `proxy.ts` bypasses its origin/key check for `/api/auth/*` (Auth.js has its own CSRF/state
   cookies, and Google's callback carries Google's Referer). `next.config.mjs`'s CSP `form-action`
   must allow `https://accounts.google.com` (Chrome enforces `form-action` against the redirect

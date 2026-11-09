@@ -1,5 +1,5 @@
-import { createRateLimiter, getClientIp } from "../../src/utils/rateLimit";
-import { createRateLimitStore, RedisRestStore } from "../../src/utils/rateLimitStore";
+import { createRateLimiter, getClientIp } from "../../src/utils/server/rateLimit";
+import { createRateLimitStore, RedisRestStore } from "../../src/utils/server/rateLimitStore";
 import type { NextApiRequest } from "next";
 
 function makeReq(overrides: Partial<NextApiRequest> = {}): NextApiRequest {

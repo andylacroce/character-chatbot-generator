@@ -3,7 +3,7 @@
  * @module DataDeletionPage
  */
 
-import { LegalBackLink } from "../components/BackLink";
+import { LegalBackLink } from "../components/common/BackLink";
 import styles from "../components/styles/LegalPage.module.css";
 
 export const metadata = {

@@ -3,8 +3,8 @@ paths:
   - "src/utils/analytics.ts"
   - "src/pages/api/admin/stats.ts"
   - "src/app/admin/**"
-  - "src/utils/isAdmin.ts"
-  - "src/app/components/GoogleAnalyticsConsent.tsx"
+  - "src/utils/account/isAdmin.ts"
+  - "src/app/components/common/GoogleAnalyticsConsent.tsx"
 ---
 
 ### Internal analytics (`/admin`)
@@ -39,7 +39,7 @@ product-usage analytics, kept small rather than becoming general observability.
   start when instrumentation deployed (no backfill: tokens hold no history, and abandoned runs emit
   no event). Writes are best effort, so counts can include retries and aren't a unique-run ledger.
 - **Access:** `/admin` (`src/app/admin/page.tsx`) and `/admin/moderation` are unlinked-but-reachable
-  and use the shared `AppHeader`/`useAccountMenu`. `src/utils/isAdmin.ts` admits a signed-in session
+  and use the shared `AppHeader`/`useAccountMenu`. `src/utils/account/isAdmin.ts` admits a signed-in session
   whose email is in `ADMIN_EMAILS` (comma-separated) and **fails closed** (no list, no admins), the
   opposite default of other optional features because it grants read access to aggregate activity.
   Pages 404 a non-admin (`notFound()` via `isAdminSession()`) rather than rendering a shell.

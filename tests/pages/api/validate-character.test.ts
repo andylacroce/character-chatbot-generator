@@ -18,7 +18,7 @@ jest.mock("@anthropic-ai/sdk", () => ({
 }));
 
 // Mock model selector
-jest.mock("../../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: (_: string) => "claude-test",
 }));
 
@@ -131,7 +131,7 @@ describe("validate-character API", () => {
       logEvent: (...args: unknown[]) => localMockLog(...(args as unknown[])),
       sanitizeLogMeta: (m: unknown) => m,
     }));
-    jest.mock("../../../src/utils/claudeModelSelector", () => ({
+    jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
       getClaudeModel: (_: string) => "claude-test",
     }));
 

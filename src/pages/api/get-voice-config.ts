@@ -5,10 +5,10 @@
 // =============================
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getVoiceConfigForCharacter } from "../../utils/characterVoices";
-import { sanitizeCharacterName, sanitizeVoiceContext } from "../../utils/security";
-import { withRequestLog } from "../../utils/withRequestLog";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
+import { getVoiceConfigForCharacter } from "../../utils/chat/characterVoices";
+import { sanitizeCharacterName, sanitizeVoiceContext } from "../../utils/server/security";
+import { withRequestLog } from "../../utils/server/withRequestLog";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
 
 /** Rate limiter: 20 requests per minute per IP (each uncached name is a Claude call). */
 const voiceConfigRateLimit = createRateLimiter({

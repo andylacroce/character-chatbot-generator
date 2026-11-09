@@ -215,7 +215,7 @@ module.exports = [
       // future finding from the other rules isn't lost in noise from this one.
       "security/detect-object-injection": "off",
       // Flagged 47 pre-existing, already-reviewed call sites in the TTS/audio-cache
-      // subsystem (src/pages/api/audio.ts, chat.ts, src/utils/tts.ts, ttsReply.ts) — every
+      // subsystem (src/pages/api/audio.ts, chat.ts, src/utils/chat/tts.ts, ttsReply.ts) — every
       // one builds its path from a hashed cache key run through sanitizeFilename()
       // (or, in audio.ts, an explicit escapesRoot()/realpathSync() traversal guard),
       // inside a fixed root (os.tmpdir()/public), never from raw request input. The

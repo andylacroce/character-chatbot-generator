@@ -5,9 +5,9 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { pickRandomCharacterName } from "../../utils/pickRandomCharacterName";
+import { pickRandomCharacterName } from "../../utils/moderation/pickRandomCharacterName";
 import characterNames from "../../data/characterNames";
-import { withRequestLog } from "../../utils/withRequestLog";
+import { withRequestLog } from "../../utils/server/withRequestLog";
 
 // Track names shown this server session to avoid repetition
 const recentNames: string[] = [];

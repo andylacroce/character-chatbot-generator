@@ -1,5 +1,5 @@
 const mockGetAllCharacters = jest.fn();
-jest.mock("../../src/utils/charactersWall", () => ({
+jest.mock("../../src/utils/moderation/charactersWall", () => ({
   getAllCharacters: () => mockGetAllCharacters(),
 }));
 

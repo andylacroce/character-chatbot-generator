@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, act, waitFor } from "@testing-library/react";
-import { useAccountMenu } from "../../../src/app/components/useAccountMenu";
+import { useAccountMenu } from "../../../src/app/components/account/useAccountMenu";
 import { mockResponse } from "../../helpers/mockResponse";
 
 let mockStatus = "authenticated";
@@ -19,22 +19,22 @@ jest.mock("../../../src/utils/api", () => ({
   authenticatedFetch: (...a: unknown[]) => mockFetch(...a),
 }));
 
-jest.mock("../../../src/app/components/useUserName", () => ({
+jest.mock("../../../src/app/components/account/useUserName", () => ({
   useUserName: () => ({ name: "", setName: jest.fn() }),
 }));
-jest.mock("../../../src/app/components/AuthControl", () => ({
+jest.mock("../../../src/app/components/account/AuthControl", () => ({
   __esModule: true,
   default: () => null,
 }));
-jest.mock("../../../src/app/components/NameCaptureModal", () => ({
+jest.mock("../../../src/app/components/account/NameCaptureModal", () => ({
   NameCaptureModal: () => null,
 }));
-jest.mock("../../../src/app/components/SignInModal", () => ({
+jest.mock("../../../src/app/components/account/SignInModal", () => ({
   __esModule: true,
   default: () => null,
 }));
 // Expose onConfirm so the delete flow can be driven without the real dialog's chrome.
-jest.mock("../../../src/app/components/ConfirmDialog", () => ({
+jest.mock("../../../src/app/components/common/ConfirmDialog", () => ({
   __esModule: true,
   default: ({ onConfirm }: { onConfirm: () => Promise<void> }) => (
     <button onClick={() => onConfirm().catch(() => {})}>confirm-delete</button>

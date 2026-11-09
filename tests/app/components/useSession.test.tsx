@@ -1,6 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react";
-import { useSession } from "../../../src/app/components/useSession";
+import { useSession } from "../../../src/app/components/account/useSession";
 
 describe("useSession", () => {
   beforeEach(() => {
@@ -81,7 +81,7 @@ describe("useSession", () => {
 
   it("returns empty values when not in browser (SSR)", async () => {
     // Use test helper to override browser detection deterministically
-    const useSessionModule = require("../../../src/app/components/useSession");
+    const useSessionModule = require("../../../src/app/components/account/useSession");
     useSessionModule.resetIsBrowserForTests();
 
     try {

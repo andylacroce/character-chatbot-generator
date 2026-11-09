@@ -50,7 +50,7 @@ jest.mock("../../src/utils/logger", () => ({
 
 import os from "os";
 import path from "path";
-import * as tts from "../../src/utils/tts";
+import * as tts from "../../src/utils/chat/tts";
 
 const TMP = os.tmpdir();
 const OUT = path.join(TMP, "reply.mp3");

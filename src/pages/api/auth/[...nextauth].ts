@@ -5,6 +5,6 @@
 
 import NextAuth from "next-auth";
 import { authOptions } from "../../../auth/authOptions";
-import { withRequestLog } from "../../../utils/withRequestLog";
+import { withRequestLog } from "../../../utils/server/withRequestLog";
 
 export default withRequestLog(NextAuth(authOptions));

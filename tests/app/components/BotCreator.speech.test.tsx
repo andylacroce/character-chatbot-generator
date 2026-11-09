@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import BotCreator from "../../../src/app/components/BotCreator";
+import BotCreator from "../../../src/app/components/character/BotCreator";
 
 const mockSearchParams = new URLSearchParams();
 const mockRouter = { push: jest.fn() };
@@ -30,7 +30,7 @@ let mockIsSupported = true;
 let mockIsRecording = false;
 let mockTranscript = "";
 let mockSpeechError: string | null = null;
-jest.mock("../../../src/app/components/useSpeechRecognition", () => ({
+jest.mock("../../../src/app/components/chat/useSpeechRecognition", () => ({
   useSpeechRecognition: () => ({
     isSupported: mockIsSupported,
     isRecording: mockIsRecording,

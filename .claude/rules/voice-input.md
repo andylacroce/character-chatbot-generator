@@ -1,7 +1,7 @@
 ---
 paths:
-  - "src/app/components/useSpeechRecognition.ts"
-  - "src/app/components/ChatInput.tsx"
+  - "src/app/components/chat/useSpeechRecognition.ts"
+  - "src/app/components/chat/ChatInput.tsx"
 ---
 
 ### Voice input (speech-to-text)

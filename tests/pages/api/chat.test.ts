@@ -11,7 +11,7 @@ import handlerDefault from "../../../src/pages/api/chat";
 // guest (no session) so every existing test below is unaffected; the
 // 'signed-in saved character (phase 3c)' describe block below overrides this per test.
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 
@@ -72,7 +72,7 @@ function makeMessageRow(
 }
 
 const mockSynthesizeSpeechToFile = jest.fn();
-jest.mock("../../../src/utils/tts", () => ({
+jest.mock("../../../src/utils/chat/tts", () => ({
   synthesizeSpeechToFile: (...args: unknown[]) => mockSynthesizeSpeechToFile(...args),
 }));
 
@@ -117,7 +117,7 @@ jest.mock("../../../src/utils/cache", () => ({
 
 const mockCreate = jest.fn();
 const mockStream = jest.fn();
-jest.mock("../../../src/utils/anthropicClient", () => ({
+jest.mock("../../../src/utils/claude/anthropicClient", () => ({
   __esModule: true,
   default: {
     messages: {
@@ -127,13 +127,13 @@ jest.mock("../../../src/utils/anthropicClient", () => ({
   },
 }));
 
-jest.mock("../../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: () => "claude-test",
 }));
 
 const mockSummarizeConversation = jest.fn();
-jest.mock("../../../src/utils/conversationSummarizer", () => ({
-  ...jest.requireActual("../../../src/utils/conversationSummarizer"),
+jest.mock("../../../src/utils/chat/conversationSummarizer", () => ({
+  ...jest.requireActual("../../../src/utils/chat/conversationSummarizer"),
   summarizeConversation: (...args: unknown[]) => mockSummarizeConversation(...args),
 }));
 

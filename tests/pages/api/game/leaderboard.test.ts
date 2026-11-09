@@ -6,7 +6,7 @@ jest.mock("../../../../src/utils/game/scores", () => ({
 }));
 
 const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/rateLimit", () => ({
+jest.mock("../../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => options,
   applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));

@@ -1,15 +1,17 @@
 const mockCreate = jest.fn();
-jest.mock("../../../src/utils/anthropicClient", () => ({
+jest.mock("../../../src/utils/claude/anthropicClient", () => ({
   __esModule: true,
   default: { messages: { create: (...args: unknown[]) => mockCreate(...args) } },
 }));
-jest.mock("../../../src/utils/claudeModelSelector", () => ({ getClaudeModel: () => "test-model" }));
+jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
+  getClaudeModel: () => "test-model",
+}));
 jest.mock("../../../src/utils/logger", () => ({
   logEvent: jest.fn(),
   sanitizeLogMeta: (value: unknown) => value,
 }));
 
-import { checkLeaderboardName } from "../../../src/utils/leaderboardName";
+import { checkLeaderboardName } from "../../../src/utils/game/leaderboardName";
 
 describe("leaderboard display-name moderation", () => {
   beforeEach(() => jest.clearAllMocks());

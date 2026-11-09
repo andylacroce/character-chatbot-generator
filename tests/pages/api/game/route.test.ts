@@ -3,7 +3,7 @@ import { makeReq, makeRes } from "../../../helpers/gameRoute";
 
 const mockCreateRateLimiter = jest.fn((options: unknown) => options);
 const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/rateLimit", () => ({
+jest.mock("../../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => mockCreateRateLimiter(options),
   applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));

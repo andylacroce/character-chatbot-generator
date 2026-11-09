@@ -1,26 +1,26 @@
 import { createMocks } from "node-mocks-http";
 
 const mockGetSessionUserId = jest.fn();
-jest.mock("../../../../src/utils/getSessionUserId", () => ({
+jest.mock("../../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
 }));
 
 const mockIsAdmin = jest.fn();
-jest.mock("../../../../src/utils/isAdmin", () => ({
+jest.mock("../../../../src/utils/account/isAdmin", () => ({
   isAdmin: (...args: unknown[]) => mockIsAdmin(...args),
 }));
 
 const mockListAllowlist = jest.fn();
 const mockAddToAllowlist = jest.fn();
 const mockRemoveFromAllowlist = jest.fn();
-jest.mock("../../../../src/utils/characterAllowlist", () => ({
+jest.mock("../../../../src/utils/moderation/characterAllowlist", () => ({
   listAllowlist: (...args: unknown[]) => mockListAllowlist(...args),
   addToAllowlist: (...args: unknown[]) => mockAddToAllowlist(...args),
   removeFromAllowlist: (...args: unknown[]) => mockRemoveFromAllowlist(...args),
 }));
 
 const mockRemoveFromBlocklist = jest.fn();
-jest.mock("../../../../src/utils/characterBlocklist", () => ({
+jest.mock("../../../../src/utils/moderation/characterBlocklist", () => ({
   removeFromBlocklist: (...args: unknown[]) => mockRemoveFromBlocklist(...args),
 }));
 

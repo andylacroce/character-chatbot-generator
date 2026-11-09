@@ -5,7 +5,7 @@ jest.mock("express-rate-limit", () => {
 });
 
 const mockModelsList = jest.fn();
-jest.mock("../../../src/utils/anthropicClient", () => ({
+jest.mock("../../../src/utils/claude/anthropicClient", () => ({
   __esModule: true,
   default: { models: { list: (...args: unknown[]) => mockModelsList(...args) } },
 }));

@@ -3,8 +3,8 @@
  * @module PrivacyPage
  */
 
-import { LegalBackLink } from "../components/BackLink";
-import { AnalyticsPreferences } from "../components/GoogleAnalyticsConsent";
+import { LegalBackLink } from "../components/common/BackLink";
+import { AnalyticsPreferences } from "../components/common/GoogleAnalyticsConsent";
 import styles from "../components/styles/LegalPage.module.css";
 
 export const metadata = {

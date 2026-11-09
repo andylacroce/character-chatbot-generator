@@ -40,7 +40,7 @@ import {
   lookupBot,
   lookupUserPreferredName,
   type BotRow,
-} from "../../src/utils/chatPersistence";
+} from "../../src/utils/chat/chatPersistence";
 
 const bot = { id: "bot-1", name: "DArtagnan" } as BotRow;
 

@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { render, act } from "@testing-library/react";
-import { DarkModeContext, DarkModeProvider } from "@/src/app/components/DarkModeContext";
+import { DarkModeContext, DarkModeProvider } from "@/src/app/components/common/DarkModeContext";
 
 describe("DarkModeContext", () => {
   beforeEach(() => {

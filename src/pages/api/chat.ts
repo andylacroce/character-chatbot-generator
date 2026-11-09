@@ -8,32 +8,32 @@
  */
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { synthesizeReplyAudio } from "../../utils/ttsReply";
+import { synthesizeReplyAudio } from "../../utils/chat/ttsReply";
 import { generateRequestId, logEvent, sanitizeLogMeta } from "../../utils/logger";
 import { setReplyCache, getReplyCache } from "../../utils/cache";
 import crypto from "crypto";
-import { getClaudeModel } from "../../utils/claudeModelSelector";
-import { createRateLimiter, applyRateLimit } from "../../utils/rateLimit";
-import { buildClaudeMessages, type ClaudeMessage } from "../../utils/conversationSummarizer";
+import { getClaudeModel } from "../../utils/claude/claudeModelSelector";
+import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
+import { buildClaudeMessages, type ClaudeMessage } from "../../utils/chat/conversationSummarizer";
 import { generatePersonalityPrompt } from "../../config/serverConfig";
-import anthropic from "../../utils/anthropicClient";
-import { getSessionUserId } from "../../utils/getSessionUserId";
+import anthropic from "../../utils/claude/anthropicClient";
+import { getSessionUserId } from "../../utils/account/getSessionUserId";
 import { setSseHeaders, writeSseFrame } from "../../utils/sse";
-import { sanitizeCharacterName, sanitizeUserName } from "../../utils/security";
+import { sanitizeCharacterName, sanitizeUserName } from "../../utils/server/security";
 import {
   isClaudeResponse,
   stripActionEmotes,
   gracefullyWrapResponse,
-} from "../../utils/chatReplyFormatting";
-import { buildChatContext, buildSystemPrompt } from "../../utils/chatContext";
-import { withRequestLog } from "../../utils/withRequestLog";
-import { cleanupOldAudioFiles } from "../../utils/audioFileCleanup";
+} from "../../utils/chat/chatReplyFormatting";
+import { buildChatContext, buildSystemPrompt } from "../../utils/chat/chatContext";
+import { withRequestLog } from "../../utils/server/withRequestLog";
+import { cleanupOldAudioFiles } from "../../utils/chat/audioFileCleanup";
 import {
   lookupBot,
   lookupUserPreferredName,
   finalizeChatPersistence,
-} from "../../utils/chatPersistence";
-import { thinkingFor } from "../../utils/claudeThinking";
+} from "../../utils/chat/chatPersistence";
+import { thinkingFor } from "../../utils/claude/claudeThinking";
 
 /** Rate limiter for chat endpoint: 10 requests per minute per IP. */
 const chatRateLimit = createRateLimiter({

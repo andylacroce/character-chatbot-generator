@@ -20,7 +20,7 @@ import {
   deleteUserBlobs,
   isBlobAvatarUrl,
   isBlobHostUrl,
-} from "../../src/utils/userBlobs";
+} from "../../src/utils/account/userBlobs";
 
 const OWN = "https://abc.public.blob.vercel-storage.com/avatars/own.png";
 const SHARED = "https://abc.public.blob.vercel-storage.com/avatars/shared.png";

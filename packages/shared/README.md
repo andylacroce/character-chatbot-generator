@@ -19,7 +19,7 @@ which triggers an automatic `tsc` build (via the `prepare` script) on install:
   backend's `src/pages/api/*` routes. These mirror each route's `@swagger` JSDoc
   block in the web repo; update both together when a contract changes.
 - **Input sanitization** (`src/validation.ts`) — client-side copies of the
-  same rules the server enforces authoritatively (`src/utils/security.ts` in
+  same rules the server enforces authoritatively (`src/utils/server/security.ts` in
   the web repo). These exist for UX (instant feedback), not security — the
   server never trusts the client's sanitized value.
 - **Storage key constants** (`src/storageKeys.ts`) — key name strings shared

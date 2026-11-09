@@ -37,7 +37,7 @@ name and avatar URL from every API response until a reveal — a real design con
 old game never had, since it simply never generated an avatar until reveal time. See
 CLAUDE.md's "Guess Who (self-describing chat game)" section for the current design; the
 shared guess-classifier logic (`classifyGuess`, with all its hard-won identity-matching
-rules) was extracted out of "Guess Who's Next" into `src/utils/classifyGuess.ts` as part
+rules) was extracted out of "Guess Who's Next" into `src/utils/game/classifyGuess.ts` as part
 of this rework so both games share one implementation instead of risking drift.
 
 ## Guessing-game leaderboard: per-run "locked name" mechanism, shipped then removed
@@ -50,3 +50,22 @@ mounted bare, from `GamePage.tsx`'s menu and `/leaderboard` itself — and
 `getLeaderboard()` only ever displays one name per account/guest, never a per-run name,
 so there was nothing for a per-run lock to protect. Opt-in naming is keyed only by
 account/guest identity now; a player can update their public name at any time.
+
+## Standing choices that look odd (and the reason for each)
+
+These are not removed features; they are current decisions that newcomers often ask about.
+
+- **Pages Router API, App Router UI.** API handlers use Node-only SDKs, already stream with
+  `res.write`, and mobile depends on their URLs and behavior. Migrating adds churn with no new
+  capability. Revisit only if Next.js deprecates Pages API routes or a feature needs route handlers.
+- **No `"type": "module"` in `package.json`.** Adding it caused a Vercel `ERR_REQUIRE_ESM` crash because
+  the CJS serverless launcher could not `require()` compiled API output. `next.config.mjs` is ESM through
+  its extension instead.
+- **`src/proxy.ts` is CSRF protection, not authentication.** A non-browser client can set any `Origin`.
+  Closing that fully would require login on guest-usable routes, which breaks the core guest experience,
+  so the per-route rate limiter is the accepted cost ceiling.
+- **Feature folders under `src/utils/` and `src/app/components/` (2026-11-09).** Both were flat (50+ files
+  each) and hard to navigate. Files moved into `chat/`, `character/`, `game/`, `account/`, `admin/`,
+  `common/` (components) and `claude/`, `chat/`, `avatar/`, `moderation/`, `game/`, `account/`, `server/`
+  (utils). Cross-cutting helpers (`api`, `logger`, `storage`, `environment`, ...) stay at the top level.
+  CSS modules stay in one flat `components/styles/` folder. `tests/` was not reorganized.

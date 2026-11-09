@@ -5,15 +5,15 @@ jest.mock("next-auth/jwt", () => ({
   encode: (...args: unknown[]) => mockEncode(...args),
 }));
 const mockVerify = jest.fn();
-jest.mock("../../../../src/utils/mobileAuthState", () => ({
+jest.mock("../../../../src/utils/account/mobileAuthState", () => ({
   verifyMobileAuthState: (...args: unknown[]) => mockVerify(...args),
 }));
 const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/rateLimit", () => ({
+jest.mock("../../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => options,
   applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
-jest.mock("../../../../src/utils/withRequestLog", () => ({
+jest.mock("../../../../src/utils/server/withRequestLog", () => ({
   withRequestLog: (handler: unknown) => handler,
 }));
 jest.mock("../../../../src/utils/logger", () => ({

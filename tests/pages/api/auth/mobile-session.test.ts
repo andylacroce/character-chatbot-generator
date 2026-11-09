@@ -1,11 +1,11 @@
 const mockGetToken = jest.fn();
 jest.mock("next-auth/jwt", () => ({ getToken: (...args: unknown[]) => mockGetToken(...args) }));
 const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/rateLimit", () => ({
+jest.mock("../../../../src/utils/server/rateLimit", () => ({
   createRateLimiter: (options: unknown) => options,
   applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
-jest.mock("../../../../src/utils/withRequestLog", () => ({
+jest.mock("../../../../src/utils/server/withRequestLog", () => ({
   withRequestLog: (handler: unknown) => handler,
 }));
 

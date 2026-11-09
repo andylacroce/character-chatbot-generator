@@ -7,7 +7,7 @@
 // session. It is NOT authentication against a non-browser client: a raw HTTP client
 // (curl, a script) can set `Origin: https://<allowed-host>` to whatever it likes and pass
 // this check with no credential at all. The real ceiling on that kind of caller is the
-// per-route rate limiter (src/utils/rateLimit.ts), not this header check — don't treat an
+// per-route rate limiter (src/utils/server/rateLimit.ts), not this header check — don't treat an
 // allowed-origin match as proof of a legitimate caller when reasoning about abuse/cost.
 import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";

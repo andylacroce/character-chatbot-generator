@@ -39,7 +39,7 @@ describe("characterBlocklist utils", () => {
   describe("getBlocklistEntry", () => {
     it("returns null without DATABASE_URL", async () => {
       process.env.DATABASE_URL = "";
-      const { getBlocklistEntry } = await import("../../src/utils/characterBlocklist");
+      const { getBlocklistEntry } = await import("../../src/utils/moderation/characterBlocklist");
       expect(await getBlocklistEntry("Elsa")).toBeNull();
     });
 
@@ -53,7 +53,7 @@ describe("characterBlocklist utils", () => {
           createdAt: new Date(),
         };
         mockDbWith([row]);
-        const { getBlocklistEntry } = await import("../../src/utils/characterBlocklist");
+        const { getBlocklistEntry } = await import("../../src/utils/moderation/characterBlocklist");
         const result = await getBlocklistEntry("Elsa");
         expect(result).toEqual(row);
       });
@@ -62,7 +62,7 @@ describe("characterBlocklist utils", () => {
     it("returns null on a miss", async () => {
       await jest.isolateModulesAsync(async () => {
         mockDbWith([]);
-        const { getBlocklistEntry } = await import("../../src/utils/characterBlocklist");
+        const { getBlocklistEntry } = await import("../../src/utils/moderation/characterBlocklist");
         expect(await getBlocklistEntry("Nobody")).toBeNull();
       });
     });
@@ -73,7 +73,7 @@ describe("characterBlocklist utils", () => {
         jest.doMock("../../src/db/client", () => ({
           getDb: () => ({ select: () => ({ from: () => ({ where: mockWhere }) }) }),
         }));
-        const { getBlocklistEntry } = await import("../../src/utils/characterBlocklist");
+        const { getBlocklistEntry } = await import("../../src/utils/moderation/characterBlocklist");
         expect(await getBlocklistEntry("Elsa")).toBeNull();
       });
     });
@@ -82,7 +82,7 @@ describe("characterBlocklist utils", () => {
   describe("addToBlocklist", () => {
     it("no-ops without DATABASE_URL", async () => {
       process.env.DATABASE_URL = "";
-      const { addToBlocklist } = await import("../../src/utils/characterBlocklist");
+      const { addToBlocklist } = await import("../../src/utils/moderation/characterBlocklist");
       await expect(
         addToBlocklist("Elsa", "reason", "claude", "copyright"),
       ).resolves.toBeUndefined();
@@ -91,7 +91,7 @@ describe("characterBlocklist utils", () => {
     it("upserts with the lowercased key and original casing as displayName", async () => {
       await jest.isolateModulesAsync(async () => {
         const { mockValues } = mockDbWith([]);
-        const { addToBlocklist } = await import("../../src/utils/characterBlocklist");
+        const { addToBlocklist } = await import("../../src/utils/moderation/characterBlocklist");
         await addToBlocklist("Elsa", "Disney trademark", "claude", "copyright");
         expect(mockValues).toHaveBeenCalledWith({
           characterName: "elsa",
@@ -112,7 +112,7 @@ describe("characterBlocklist utils", () => {
             }),
           }),
         }));
-        const { addToBlocklist } = await import("../../src/utils/characterBlocklist");
+        const { addToBlocklist } = await import("../../src/utils/moderation/characterBlocklist");
         await expect(addToBlocklist("Elsa", null, "admin", "content")).resolves.toBeUndefined();
       });
     });
@@ -121,14 +121,15 @@ describe("characterBlocklist utils", () => {
   describe("removeFromBlocklist", () => {
     it("returns false without DATABASE_URL", async () => {
       process.env.DATABASE_URL = "";
-      const { removeFromBlocklist } = await import("../../src/utils/characterBlocklist");
+      const { removeFromBlocklist } = await import("../../src/utils/moderation/characterBlocklist");
       expect(await removeFromBlocklist("Elsa")).toBe(false);
     });
 
     it("returns true when a row was deleted", async () => {
       await jest.isolateModulesAsync(async () => {
         mockDbWith([], [{ characterName: "elsa" }]);
-        const { removeFromBlocklist } = await import("../../src/utils/characterBlocklist");
+        const { removeFromBlocklist } =
+          await import("../../src/utils/moderation/characterBlocklist");
         expect(await removeFromBlocklist("Elsa")).toBe(true);
       });
     });
@@ -136,7 +137,8 @@ describe("characterBlocklist utils", () => {
     it("returns false when nothing existed to delete", async () => {
       await jest.isolateModulesAsync(async () => {
         mockDbWith([], []);
-        const { removeFromBlocklist } = await import("../../src/utils/characterBlocklist");
+        const { removeFromBlocklist } =
+          await import("../../src/utils/moderation/characterBlocklist");
         expect(await removeFromBlocklist("Nobody")).toBe(false);
       });
     });
@@ -150,7 +152,8 @@ describe("characterBlocklist utils", () => {
             }),
           }),
         }));
-        const { removeFromBlocklist } = await import("../../src/utils/characterBlocklist");
+        const { removeFromBlocklist } =
+          await import("../../src/utils/moderation/characterBlocklist");
         expect(await removeFromBlocklist("Elsa")).toBe(false);
       });
     });
@@ -159,7 +162,7 @@ describe("characterBlocklist utils", () => {
   describe("listBlocklist", () => {
     it("returns [] without DATABASE_URL", async () => {
       process.env.DATABASE_URL = "";
-      const { listBlocklist } = await import("../../src/utils/characterBlocklist");
+      const { listBlocklist } = await import("../../src/utils/moderation/characterBlocklist");
       expect(await listBlocklist()).toEqual([]);
     });
 
@@ -170,7 +173,7 @@ describe("characterBlocklist utils", () => {
         jest.doMock("../../src/db/client", () => ({
           getDb: () => ({ select: () => ({ from: () => ({ orderBy: mockOrderBy }) }) }),
         }));
-        const { listBlocklist } = await import("../../src/utils/characterBlocklist");
+        const { listBlocklist } = await import("../../src/utils/moderation/characterBlocklist");
         expect(await listBlocklist()).toEqual(rows);
       });
     });
@@ -184,7 +187,7 @@ describe("characterBlocklist utils", () => {
             }),
           }),
         }));
-        const { listBlocklist } = await import("../../src/utils/characterBlocklist");
+        const { listBlocklist } = await import("../../src/utils/moderation/characterBlocklist");
         expect(await listBlocklist()).toEqual([]);
       });
     });

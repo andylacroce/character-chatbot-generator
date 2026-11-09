@@ -17,10 +17,10 @@
  */
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
-import anthropic from "../src/utils/anthropicClient";
+import anthropic from "../src/utils/claude/anthropicClient";
 import gameCharacterNames from "../src/data/gameCharacterNames";
 import gameCharacterWork from "../src/data/gameCharacterWork";
-import { pickRandomCharacterName } from "../src/utils/pickRandomCharacterName";
+import { pickRandomCharacterName } from "../src/utils/moderation/pickRandomCharacterName";
 import {
   generateGameCluePersonaPrompt,
   generateGuessWhoSelfCluePersonaPrompt,
@@ -31,9 +31,9 @@ import {
   getGameReply,
   getGuessReactionReply,
   getOpeningReply,
-} from "../src/utils/gameReply";
-import { getClaudeModel } from "../src/utils/claudeModelSelector";
-import { classifyGuess } from "../src/utils/classifyGuess";
+} from "../src/utils/game/gameReply";
+import { getClaudeModel } from "../src/utils/claude/claudeModelSelector";
+import { classifyGuess } from "../src/utils/game/classifyGuess";
 import { displayCharacterName } from "../packages/shared/src/validation";
 
 type GameId = "guess-who" | "guess-who-next";

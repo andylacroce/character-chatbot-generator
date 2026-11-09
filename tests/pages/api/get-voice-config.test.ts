@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const mockGetVoiceConfig = jest.fn();
-jest.mock("../../../src/utils/characterVoices", () => ({
+jest.mock("../../../src/utils/chat/characterVoices", () => ({
   getVoiceConfigForCharacter: (...args: unknown[]) => mockGetVoiceConfig(...args),
 }));
 

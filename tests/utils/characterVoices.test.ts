@@ -8,8 +8,8 @@ import {
   CHARACTER_VOICE_MAP,
   SSML_GENDER,
   __resetVoiceCatalogForTest,
-} from "../../src/utils/characterVoices";
-import type { VoiceConfig } from "../../src/utils/characterVoices";
+} from "../../src/utils/chat/characterVoices";
+import type { VoiceConfig } from "../../src/utils/chat/characterVoices";
 
 // Mock logger for testing
 jest.mock("../../src/utils/logger", () => ({
@@ -25,7 +25,7 @@ jest.mock("../../src/utils/logger", () => ({
 // Mock Google's live voice inventory used for selection.
 const mockSynthesizeSpeech = jest.fn();
 const mockListVoices = jest.fn();
-jest.mock("../../src/utils/tts", () => ({
+jest.mock("../../src/utils/chat/tts", () => ({
   getTTSClient: jest.fn(() => ({
     synthesizeSpeech: mockSynthesizeSpeech,
     listVoices: mockListVoices,
@@ -46,7 +46,7 @@ jest.mock("@anthropic-ai/sdk", () => {
   };
 });
 
-jest.mock("../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: jest.fn(() => "claude-haiku-4-5-20251001"),
 }));
 
@@ -54,7 +54,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     __resetVoiceCatalogForTest();
-    const tts = require("../../src/utils/tts");
+    const tts = require("../../src/utils/chat/tts");
     (tts.getTTSClient as jest.Mock).mockImplementation(() => ({
       synthesizeSpeech: mockSynthesizeSpeech,
       listVoices: mockListVoices,
@@ -726,7 +726,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
 
     it("falls back to Default when TTS client import throws", async () => {
       // Make getTTSClient throw on every attempt to simulate persistent runtime failure
-      const tts = require("../../src/utils/tts");
+      const tts = require("../../src/utils/chat/tts");
       (tts.getTTSClient as jest.Mock).mockImplementation(() => {
         throw new Error("GCP init failed");
       });
@@ -757,14 +757,14 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
 
   describe("internal helpers", () => {
     it("fetchVoiceConfigFromClaude throws when maxRetries is zero", async () => {
-      const { fetchVoiceConfigFromClaude } = require("../../src/utils/characterVoices");
+      const { fetchVoiceConfigFromClaude } = require("../../src/utils/chat/characterVoices");
       await expect(fetchVoiceConfigFromClaude("No attempts", 0)).rejects.toThrow(
         "Failed to get valid voice config from Claude",
       );
     });
 
     it("maps neutral gender to SSML_GENDER.NEUTRAL", () => {
-      const mod = require("../../src/utils/characterVoices");
+      const mod = require("../../src/utils/chat/characterVoices");
       expect(mod.mapGenderToSsml("neutral")).toBe(SSML_GENDER.NEUTRAL);
     });
 
@@ -810,7 +810,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
 
     // New edge-case tests to exercise uncovered branches
     it("throws when Claude content is empty string (fallback to {})", async () => {
-      const { fetchVoiceConfigFromClaude } = require("../../src/utils/characterVoices");
+      const { fetchVoiceConfigFromClaude } = require("../../src/utils/chat/characterVoices");
 
       // Simulate Claude returning an empty content string (trim -> '')
       mockClaudeCreate.mockResolvedValueOnce({
@@ -821,7 +821,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
     });
 
     it("normalizeClaudeConfig applies defaults for missing fields", async () => {
-      const mod = require("../../src/utils/characterVoices");
+      const mod = require("../../src/utils/chat/characterVoices");
       const normalized = mod.normalizeClaudeConfig({} as Partial<VoiceConfig>);
       expect(normalized.gender).toBe("male");
       expect(normalized.languageCode).toBe("en-US");
@@ -830,7 +830,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
     });
 
     it("normalizeClaudeConfig respects neutral gender and clamps values", () => {
-      const mod = require("../../src/utils/characterVoices");
+      const mod = require("../../src/utils/chat/characterVoices");
       const normalized = mod.normalizeClaudeConfig({
         gender: "neutral",
         pitch: 50,
@@ -843,7 +843,7 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
 
     it("applies default gender/pitch/rate when fields are missing (unit)", () => {
       // Unit test using normalization helper to avoid external validation dependency
-      const mod = require("../../src/utils/characterVoices");
+      const mod = require("../../src/utils/chat/characterVoices");
       const normalized = mod.normalizeClaudeConfig({
         languageCode: "en-US",
         voiceName: "en-US-Wavenet-D",
@@ -894,19 +894,19 @@ describe("characterVoices - Simplified Claude → Google TTS Pipeline", () => {
     });
 
     it("maps neutral gender to NEUTRAL (unit)", () => {
-      const mod = require("../../src/utils/characterVoices");
+      const mod = require("../../src/utils/chat/characterVoices");
       expect(mod.mapGenderToSsml("neutral")).toBe(mod.SSML_GENDER.NEUTRAL);
     });
 
     describe("mapping helpers (mock fetch)", () => {
       it("getVoiceConfigForCharacter maps neutral gender when fetch returns neutral", async () => {
-        const mod = require("../../src/utils/characterVoices");
+        const mod = require("../../src/utils/chat/characterVoices");
         // call helper directly
         expect(mod.mapGenderToSsml("neutral")).toBe(SSML_GENDER.NEUTRAL);
       });
 
       it("getVoiceConfigForCharacter maps Journey voice type to Standard", async () => {
-        const mod = require("../../src/utils/characterVoices");
+        const mod = require("../../src/utils/chat/characterVoices");
         expect(mod.detectVoiceType("en-US-Journey-A")).toBe("Standard");
       });
     });

@@ -1,14 +1,14 @@
 const mockCreate = jest.fn();
-jest.mock("../../../src/utils/anthropicClient", () => ({
+jest.mock("../../../src/utils/claude/anthropicClient", () => ({
   __esModule: true,
   default: { messages: { create: (...args: unknown[]) => mockCreate(...(args as [unknown])) } },
 }));
 
-jest.mock("../../../src/utils/claudeModelSelector", () => ({
+jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
   getClaudeModel: (_: string) => "claude-test",
 }));
 
-jest.mock("../../../src/utils/parseClaudeJson", () => ({
+jest.mock("../../../src/utils/claude/parseClaudeJson", () => ({
   extractJson: (text: string) => text.trim(),
 }));
 
@@ -19,7 +19,7 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import { classifyGuess } from "../../../src/utils/classifyGuess";
+import { classifyGuess } from "../../../src/utils/game/classifyGuess";
 
 function mockClaudeResponse(payload: Record<string, unknown>) {
   mockCreate.mockResolvedValueOnce({

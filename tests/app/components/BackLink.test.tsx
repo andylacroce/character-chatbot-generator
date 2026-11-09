@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { BackLink, LegalBackLink } from "../../../src/app/components/BackLink";
+import { BackLink, LegalBackLink } from "../../../src/app/components/common/BackLink";
 import {
   __resetClientNavigationStateForTest,
   markClientNavigation,

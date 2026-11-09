@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
-import type { Bot } from "../../../src/app/components/BotCreator";
+import type { Bot } from "../../../src/app/components/character/BotCreator";
 import { mockResponse } from "../../helpers/mockResponse";
 
 jest.mock("next-auth/react", () => ({
@@ -16,12 +16,12 @@ jest.mock("../../../src/utils/api", () => ({
   authenticatedFetch: (...args: unknown[]) => mockAuthenticatedFetch(...(args as unknown[])),
 }));
 
-jest.mock("../../../src/utils/voiceConfigPersistence", () => ({
+jest.mock("../../../src/utils/chat/voiceConfigPersistence", () => ({
   loadVoiceConfig: jest.fn(),
   persistVoiceConfig: jest.fn(),
 }));
 
-jest.mock("../../../src/app/components/useAudioPlayer", () => ({
+jest.mock("../../../src/app/components/chat/useAudioPlayer", () => ({
   useAudioPlayer: () => ({
     playAudio: jest.fn(),
     stopAudio: jest.fn(),
@@ -30,11 +30,11 @@ jest.mock("../../../src/app/components/useAudioPlayer", () => ({
   }),
 }));
 
-jest.mock("../../../src/app/components/api_getVoiceConfigForCharacter", () => ({
+jest.mock("../../../src/app/components/chat/api_getVoiceConfigForCharacter", () => ({
   api_getVoiceConfigForCharacter: jest.fn(),
 }));
 
-jest.mock("../../../src/utils/downloadTranscript", () => ({
+jest.mock("../../../src/utils/chat/downloadTranscript", () => ({
   downloadTranscript: jest.fn(),
 }));
 
@@ -57,7 +57,7 @@ let mockIsSupported = true;
 let mockIsRecording = false;
 let mockTranscript = "";
 let mockSpeechError: string | null = null;
-jest.mock("../../../src/app/components/useSpeechRecognition", () => ({
+jest.mock("../../../src/app/components/chat/useSpeechRecognition", () => ({
   useSpeechRecognition: () => ({
     isSupported: mockIsSupported,
     isRecording: mockIsRecording,
@@ -69,7 +69,7 @@ jest.mock("../../../src/app/components/useSpeechRecognition", () => ({
   }),
 }));
 
-import { useChatController } from "../../../src/app/components/useChatController";
+import { useChatController } from "../../../src/app/components/chat/useChatController";
 
 const mockBot: Bot = {
   name: "Gandalf",

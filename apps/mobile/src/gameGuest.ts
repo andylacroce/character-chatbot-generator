@@ -2,7 +2,7 @@
  * This device's anonymous guessing-game identity, the mobile equivalent of the web's HttpOnly
  * `portrayal-game-guest` cookie: a random 32-byte secret, minted once and kept in secure
  * storage, sent as the `x-game-guest` header on game requests (see the backend's
- * src/utils/gameGuestIdentity.ts). It's what lets a guest's best streak count toward the
+ * src/utils/game/gameGuestIdentity.ts). It's what lets a guest's best streak count toward the
  * leaderboard and be claimed later, without a native cookie jar being involved at all.
  */
 import * as SecureStore from "expo-secure-store";

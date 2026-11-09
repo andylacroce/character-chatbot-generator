@@ -10,7 +10,10 @@ jest.mock("next-auth/jwt", () => ({
   },
 }));
 
-import { signMobileAuthState, verifyMobileAuthState } from "../../src/utils/mobileAuthState";
+import {
+  signMobileAuthState,
+  verifyMobileAuthState,
+} from "../../src/utils/account/mobileAuthState";
 
 describe("mobileAuthState", () => {
   const OLD_ENV = process.env;

@@ -12,9 +12,9 @@ import { getDb } from "../../../db/client";
 import { users } from "../../../db/schema";
 import { gameRoute, rejectMethod } from "../../../utils/game/route";
 import { isTopTenPlayer } from "../../../utils/game/scores";
-import { checkLeaderboardName } from "../../../utils/leaderboardName";
-import { getGuestId } from "../../../utils/gameGuestIdentity";
-import { getSessionUserId } from "../../../utils/getSessionUserId";
+import { checkLeaderboardName } from "../../../utils/game/leaderboardName";
+import { getGuestId } from "../../../utils/game/gameGuestIdentity";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 
 /**

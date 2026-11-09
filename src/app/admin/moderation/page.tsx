@@ -6,7 +6,7 @@
  */
 
 import { notFound } from "next/navigation";
-import { isAdminSession } from "../../../utils/isAdmin";
+import { isAdminSession } from "../../../utils/account/isAdmin";
 import AdminModerationView from "./AdminModerationView";
 
 /** Renders the admin moderation view for a confirmed admin, otherwise 404s. */

@@ -7,7 +7,7 @@ import {
   clearCharactersCache,
   getAllCharacters,
   getCharacterBySlug,
-} from "../../src/utils/charactersWall";
+} from "../../src/utils/moderation/charactersWall";
 
 const row = (characterName: string, displayName: string | null = null, createdAt = 1) => ({
   characterName,

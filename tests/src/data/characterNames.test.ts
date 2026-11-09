@@ -30,7 +30,7 @@ describe("characterNames", () => {
 
   it("never contains a bare generic-noun/archetype entry with no disambiguating context", () => {
     // Regression test for a live prod incident: this list is trusted BLINDLY by both
-    // /api/random-character and the guessing game (src/utils/pickRandomCharacterName.ts) —
+    // /api/random-character and the guessing game (src/utils/moderation/pickRandomCharacterName.ts) —
     // neither path ever calls /api/validate-character's Claude-based recognition check.
     // A bare "Hero" entry here meant the game/Random button could pick it, generate a
     // personality from just that word with zero context, and publish the result to the

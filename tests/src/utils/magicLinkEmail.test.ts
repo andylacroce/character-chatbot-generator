@@ -5,7 +5,7 @@ jest.mock("nodemailer", () => ({
   createTransport: (...args: unknown[]) => mockCreateTransport(...args),
 }));
 
-import { sendVerificationRequest } from "../../../src/utils/magicLinkEmail";
+import { sendVerificationRequest } from "../../../src/utils/account/magicLinkEmail";
 
 describe("magicLinkEmail.sendVerificationRequest", () => {
   beforeEach(() => {

@@ -8,9 +8,9 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
-import { DarkModeProvider, DEFAULT_DARK_MODE } from "./components/DarkModeContext";
-import GoogleAnalyticsConsent from "./components/GoogleAnalyticsConsent";
-import Providers from "./components/Providers";
+import { DarkModeProvider, DEFAULT_DARK_MODE } from "./components/common/DarkModeContext";
+import GoogleAnalyticsConsent from "./components/common/GoogleAnalyticsConsent";
+import Providers from "./components/common/Providers";
 import { SITE_URL } from "../utils/site";
 
 const PRODUCTION_GOOGLE_ANALYTICS_ID = "G-W01K2YSWH4";
