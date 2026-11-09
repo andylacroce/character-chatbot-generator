@@ -22,8 +22,6 @@ import { useMobileKeyboardViewportAdjustment } from "../chat/useMobileKeyboardVi
 import type { LoadingStage } from "../character/CharacterLoadingOverlay";
 import { fetchRoundWithProgress, initialRoundStages } from "./useGameRoundProgress";
 
-export type { GameEvent } from "character-chatbot-shared";
-
 /** Persists a game's in-progress run to localStorage: the token under one key, the rest as JSON under another. */
 function webGameStorage({ storageKeys }: GameDefinition): GameStorage {
   return {

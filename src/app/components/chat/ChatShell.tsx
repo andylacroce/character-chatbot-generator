@@ -27,7 +27,7 @@ import { displayCharacterName } from "character-chatbot-shared";
 // per-message bot avatar in ChatMessage — one instance/state, not one per message.
 const ModalImageViewer = dynamic(() => import("../common/ModalImageViewer"), { ssr: false });
 
-export interface ChatShellProps {
+interface ChatShellProps {
   /** Display identity for the header and transcript avatars — not necessarily a full saved character (the game passes a minimal stand-in). */
   bot: Bot;
   messages: Message[];

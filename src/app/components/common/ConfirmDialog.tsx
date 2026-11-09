@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { logEvent } from "../../../utils/logger";
 import styles from "../styles/ConfirmDialog.module.css";
 
-export interface ConfirmCopy {
+interface ConfirmCopy {
   title: string;
   body: string;
   confirmLabel: string;

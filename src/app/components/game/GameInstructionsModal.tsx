@@ -18,7 +18,7 @@ import styles from "../styles/BotCreator.module.css";
 import DisclaimerStyleModal from "../common/DisclaimerStyleModal";
 
 /** The short, scannable instructions shape both games' copy constants share. */
-export interface GameInstructionsCopy {
+interface GameInstructionsCopy {
   title: string;
   premise: string;
   bullets: readonly string[];
