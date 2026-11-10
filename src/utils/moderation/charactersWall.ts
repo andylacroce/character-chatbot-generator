@@ -90,16 +90,23 @@ export async function getAllCharacters(): Promise<CharacterEntry[]> {
     return cache.entries;
   }
   const rows = await getDb().select().from(avatarCache).orderBy(desc(avatarCache.createdAt));
-  const entries = rows.map((row) => ({
-    // Prefer the properly-cased name captured at generation time (see
-    // src/db/schema.ts's avatarCache.displayName doc comment) — the regex-based
-    // reconstruction below is a fallback only for rows written before that column
-    // existed.
-    name: row.displayName || toDisplayName(row.characterName),
-    avatarUrl: row.avatarUrl,
-    category: isCharacterCategory(row.category) ? row.category : "other",
-    createdAtMs: row.createdAt.getTime(),
-  }));
+  const entries = rows.flatMap((row) =>
+    // Rows without a valid category stay off the Wall rather than land in a catch-all group.
+    !isCharacterCategory(row.category)
+      ? []
+      : [
+          {
+            // Prefer the properly-cased name captured at generation time (see
+            // src/db/schema.ts's avatarCache.displayName doc comment) — the regex-based
+            // reconstruction below is a fallback only for rows written before that column
+            // existed.
+            name: row.displayName || toDisplayName(row.characterName),
+            avatarUrl: row.avatarUrl,
+            category: row.category,
+            createdAtMs: row.createdAt.getTime(),
+          },
+        ],
+  );
   cache = { entries, fetchedAt: Date.now() };
   return entries;
 }

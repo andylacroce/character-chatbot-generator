@@ -129,7 +129,7 @@ export async function aggregateCharacterStats(
     ]).then(([botsTotal, messagesTotal]) => ({ bots: botsTotal, messages: messagesTotal })),
     db
       .select({
-        category: sql<string>`coalesce(${avatarCache.category}, 'other')`,
+        category: sql<string>`coalesce(${avatarCache.category}, 'uncategorized')`,
         total: count(),
       })
       .from(avatarCache)

@@ -13,22 +13,21 @@ describe("characterCategories", () => {
       "literature",
       "folklore",
       "religion",
-      "other",
     ]);
     expect(isCharacterCategory("literature")).toBe(true);
     expect(isCharacterCategory("historical")).toBe(false);
     expect(isCharacterCategory(null)).toBe(false);
   });
 
-  it("provides labels and degrades unknown values to Other", () => {
+  it("provides labels and labels unknown values Uncategorized", () => {
     expect(getCharacterCategoryLabel("history")).toBe("Historical Figures");
-    expect(getCharacterCategoryLabel("missing")).toBe("Other");
+    expect(getCharacterCategoryLabel("missing")).toBe("Uncategorized");
   });
 
   it("keeps unknown values at the end of the curated display order", () => {
     expect(getCharacterCategoryOrder("history")).toBeLessThan(
       getCharacterCategoryOrder("literature"),
     );
-    expect(getCharacterCategoryOrder("missing")).toBe(getCharacterCategoryOrder("other"));
+    expect(getCharacterCategoryOrder("missing")).toBe(CHARACTER_CATEGORIES.length);
   });
 });

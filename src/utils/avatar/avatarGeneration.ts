@@ -183,7 +183,9 @@ export async function getOrGenerateAvatar(
       avatarUrl = await persistAvatarToBlob(avatarUrl);
     }
 
-    if (!bypassSharedCache) {
+    // A portrait with no valid category never enters the shared cache (it would sit on no
+    // Wall group); the next request for the name classifies it again.
+    if (!bypassSharedCache && (categoryOut || opts.refresh)) {
       await cacheAvatar(characterName, avatarUrl, genderOut, true, categoryOut);
     }
     await recordEvent("avatar_generated", {

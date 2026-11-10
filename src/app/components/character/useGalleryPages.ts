@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { authenticatedFetch } from "../../../utils/api";
-import { isCharacterCategory } from "character-chatbot-shared";
 import {
   PAGE_SIZE,
   type CharEntry,
@@ -36,12 +35,7 @@ export function useGalleryPages(sortBy: GallerySort, groupBy: GalleryGroup) {
         );
         const data = await res.json();
         if (queryVersion !== queryVersionRef.current) return;
-        const page: CharEntry[] = Array.isArray(data?.characters)
-          ? data.characters.map((entry: CharEntry) => ({
-              ...entry,
-              category: isCharacterCategory(entry.category) ? entry.category : "other",
-            }))
-          : [];
+        const page: CharEntry[] = Array.isArray(data?.characters) ? data.characters : [];
         setCharacters((prev) => (reset ? page : [...prev, ...page]));
         offsetRef.current = offset + page.length;
         hasMoreRef.current = Boolean(data?.hasMore);

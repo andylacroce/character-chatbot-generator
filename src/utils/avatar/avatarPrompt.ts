@@ -44,12 +44,12 @@ Return JSON with these fields (strict JSON only; do not add extra commentary):
 - negativePrompts: explicit exclusions to ensure a single, original portrait (150 chars max). Must include: "no collage, no side-by-side photos, no multiple people, single face only, no reflections, no double exposures, no duplicates, no text, no watermark, no logo, no extra limbs, no extra hands, no extra faces, not a real person, no celebrity likeness, no exact copyrighted design".
 - gender: character's gender (for voice matching)
 - category: choose exactly one stable gallery category identifier:
-- "history" for real historical people, including rulers, scientists, artists, writers, and political figures
+- "history" for real historical people, including rulers, scientists, artists, writers, political figures, and philosophers
 - "mythology" for named figures from a culture's mythology or ancient epic tradition
 - "literature" for characters originating in a named written work
 - "folklore" for fairy-tale, legendary, or oral-tradition figures without one defining authored work
-- "religion" for religious figures, saints, theologians, and philosophers best known for a school of thought
-- "other" only when none of the above fits`,
+- "religion" for religious figures, saints, prophets, and theologians
+Always pick the best fit of these five; never leave it blank. Fictional characters from a book, play, or poem are "literature" even when famous elsewhere (Sherlock Holmes, Hamlet). Fairy-tale figures with no single defining author are "folklore" (Cinderella). Real people, philosophers included, are "history" unless best known as a religious figure.`,
         },
       ],
       max_tokens: 700,

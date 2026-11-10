@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.30.1 - 2026-11-09 - No catch-all on the Wall
+
+- The Character Wall no longer has an "Other" group. Characters are sorted into Historical Figures, Mythology, Literature, Folklore & Legend, or Religion, with clearer rules (Sherlock and Hamlet are literature, philosophers are history, "Religion" is for religious figures only). The "Religion & Philosophy" heading is now "Religion".
+- Twelve misfiled portraits were recategorized.
+
 ## v0.30.0 - 2026-11-09 - Admin stats you can trust
 
 - `/admin` has a time window (All time, Today, 7d, 30d, 90d, or a custom UTC range) that scopes every figure and chart except the Character Wall catalog, and each section states which window it covers. A custom range in the past now plots its own days.
