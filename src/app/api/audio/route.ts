@@ -6,25 +6,24 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { synthesizeSpeechToFile } from "../../utils/chat/tts";
-import { getReplyCache } from "../../utils/cache";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import type { CharacterVoiceConfig } from "../../utils/chat/characterVoices";
-import { getVoiceConfigForCharacter } from "../../utils/chat/characterVoices";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { buildSsml } from "../../utils/chat/voiceHelpers";
-import { sanitizeCharacterName } from "../../utils/server/security";
-import { withRequestLog } from "../../utils/server/withRequestLog";
-import { escapesRoot, getOriginalTextForAudio } from "../../utils/chat/audioFiles";
+import type { NextRequest } from "next/server";
+import { synthesizeSpeechToFile } from "../../../utils/chat/tts";
+import { getReplyCache } from "../../../utils/cache";
+import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import type { CharacterVoiceConfig } from "../../../utils/chat/characterVoices";
+import { getVoiceConfigForCharacter } from "../../../utils/chat/characterVoices";
+import { buildSsml } from "../../../utils/chat/voiceHelpers";
+import { sanitizeCharacterName } from "../../../utils/server/security";
+import { withRoute } from "../../../utils/server/withRoute";
+import { escapesRoot, getOriginalTextForAudio } from "../../../utils/chat/audioFiles";
 
-// Note: deterministic serialization is implemented in pages/api/chat.ts where it's used for audio URL encoding.
+// Note: deterministic serialization is implemented in app/api/chat/route.ts where it's used for audio URL encoding.
 
-/** Rate limiter: 30 requests per minute per IP (higher than chat since audio files may be replayed). */
-const audioRateLimit = createRateLimiter({
+const LIMIT = {
   name: "audio",
   max: 30,
   message: "Too many audio requests from this IP, please try again later.",
-});
+};
 
 /**
  * GET /api/audio handler — see the @swagger block below for the documented contract.
@@ -87,16 +86,9 @@ const audioRateLimit = createRateLimiter({
  *       500:
  *         description: Error reading file
  */
-async function handler(
-  req: import("next").NextApiRequest,
-  res: import("next").NextApiResponse,
-): Promise<void> {
-  // Apply rate limiting
-  if (!(await applyRateLimit(audioRateLimit, req, res))) {
-    return;
-  }
-
-  const { file, text: expectedText, voiceConfig: voiceConfigParam } = req.query;
+export const GET = withRoute(LIMIT, async (req: NextRequest) => {
+  const query = Object.fromEntries(req.nextUrl.searchParams);
+  const { file, text: expectedText, voiceConfig: voiceConfigParam } = query;
   if (!file || typeof file !== "string") {
     logEvent(
       "info",
@@ -104,22 +96,21 @@ async function handler(
       "Audio API bad request: file parameter is required",
       sanitizeLogMeta({
         file,
-        query: req.query,
+        query: query,
       }),
     );
-    return res.status(400).json({ error: "File parameter is required" });
+    return Response.json({ error: "File parameter is required" }, { status: 400 });
   }
   // Only names this app generates: a bare `.mp3` file name. Anything else (no extension,
   // dotfiles) would make the `.txt` sidecar collide with the audio file itself, letting a
   // caller overwrite arbitrary temp files with text.
   if (!/^[^/\\]{1,200}\.mp3$/.test(file) || file.startsWith(".")) {
     logEvent("info", "audio_bad_request", "Audio API bad request: invalid file name");
-    return res.status(400).json({ error: "Invalid file name" });
+    return Response.json({ error: "Invalid file name" }, { status: 400 });
   }
   const botName =
-    sanitizeCharacterName(typeof req.query.botName === "string" ? req.query.botName : "") ||
-    "Character";
-  const gender = typeof req.query.gender === "string" ? req.query.gender : null;
+    sanitizeCharacterName(typeof query.botName === "string" ? query.botName : "") || "Character";
+  const gender = typeof query.gender === "string" ? query.gender : null;
   // Resolved only when audio actually has to be synthesized: without a usable voiceConfig
   // param this is a Claude call, which a request for a file that already exists never needs.
   let voiceConfig: CharacterVoiceConfig | undefined;
@@ -143,7 +134,7 @@ async function handler(
       "Audio API bad request: text parameter exceeds max length",
       sanitizeLogMeta({ length: expectedText.length }),
     );
-    return res.status(400).json({ error: "Text parameter too long" });
+    return Response.json({ error: "Text parameter too long" }, { status: 400 });
   }
   // Only allow filename, not path
   const sanitizedFile = path.basename(file);
@@ -279,7 +270,7 @@ async function handler(
         file: sanitizedFile,
       }),
     );
-    return res.status(403).json({ error: "Access forbidden" });
+    return Response.json({ error: "Access forbidden" }, { status: 403 });
   }
   const filePath = normalizedAudioFilePath || normalizedLocalFilePath;
   if (!filePath || !fs.existsSync(filePath)) {
@@ -292,7 +283,10 @@ async function handler(
         error: regenError instanceof Error ? regenError.message : regenError,
       }),
     );
-    return res.status(404).json({ error: "File not found after all regeneration attempts" });
+    return Response.json(
+      { error: "File not found after all regeneration attempts" },
+      { status: 404 },
+    );
   }
   let audioContent;
   try {
@@ -307,7 +301,7 @@ async function handler(
         error: err instanceof Error ? err.message : String(err),
       }),
     );
-    return res.status(500).json({ error: "Error reading file" });
+    return Response.json({ error: "Error reading file" }, { status: 500 });
   }
   logEvent(
     "info",
@@ -317,8 +311,5 @@ async function handler(
       file: sanitizedFile,
     }),
   );
-  res.setHeader("Content-Type", "audio/mpeg");
-  res.send(audioContent);
-}
-
-export default withRequestLog(handler);
+  return new Response(new Uint8Array(audioContent), { headers: { "Content-Type": "audio/mpeg" } });
+});

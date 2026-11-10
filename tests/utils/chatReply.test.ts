@@ -23,9 +23,6 @@ jest.mock("../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 const mockWriteFrame = jest.fn();
-jest.mock("../../src/utils/sse", () => ({
-  writeSseFrame: (...a: unknown[]) => mockWriteFrame(...a),
-}));
 
 const messages = [{ role: "user" as const, content: "hi" }];
 const text = (t: string) => ({ content: [{ type: "text", text: t }] });
@@ -45,21 +42,22 @@ describe("streamClaudeReply", () => {
 
   it("writes each text chunk as a frame and returns the full reply", async () => {
     mockStream.mockReturnValue(chunks(["Hello, ", { other: true }, "traveller."]));
-    const res = {} as never;
-    await expect(streamClaudeReply(res, "sys", messages)).resolves.toBe("Hello, traveller.");
+    await expect(streamClaudeReply(mockWriteFrame, "sys", messages)).resolves.toBe(
+      "Hello, traveller.",
+    );
     expect(mockWriteFrame).toHaveBeenCalledTimes(2);
-    expect(mockWriteFrame).toHaveBeenNthCalledWith(1, res, { chunk: "Hello, ", done: false });
+    expect(mockWriteFrame).toHaveBeenNthCalledWith(1, { chunk: "Hello, ", done: false });
   });
 
   it("returns an empty string when Claude says nothing", async () => {
     mockStream.mockReturnValue(chunks([""]));
-    await expect(streamClaudeReply({} as never, "sys", messages)).resolves.toBe("");
+    await expect(streamClaudeReply(mockWriteFrame, "sys", messages)).resolves.toBe("");
     expect(mockWriteFrame).not.toHaveBeenCalled();
   });
 
   it("uses the shared reply settings", async () => {
     mockStream.mockReturnValue(chunks([]));
-    await streamClaudeReply({} as never, "SYSTEM", messages);
+    await streamClaudeReply(mockWriteFrame, "SYSTEM", messages);
     expect(mockStream).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "text-model",

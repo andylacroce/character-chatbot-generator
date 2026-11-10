@@ -36,17 +36,3 @@ export function sseResponse(run: (send: SseSend) => Promise<void>): Response {
     },
   });
 }
-
-import type { NextApiResponse } from "next";
-
-/** Sets the response headers for a `text/event-stream` response: uncached, unbuffered, kept alive. */
-export function setSseHeaders(res: NextApiResponse): void {
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
-}
-
-/** Writes one `data: <json>\n\n` SSE frame. */
-export function writeSseFrame(res: NextApiResponse, data: unknown): void {
-  res.write(`data: ${JSON.stringify(data)}\n\n`);
-}

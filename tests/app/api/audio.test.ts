@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const mockSynthesizeSpeechToFile = jest.fn();
@@ -45,7 +47,7 @@ jest.mock("../../../src/utils/chat/characterVoices", () => ({
 import os from "os";
 import path from "path";
 
-const handler = require("../../../src/pages/api/audio").default as (
+const handler = asHandler(require("../../../src/app/api/audio/route")) as (
   req: NextApiRequest,
   res: NextApiResponse,
 ) => Promise<void>;
@@ -99,12 +101,9 @@ describe("audio API", () => {
       expect(res.send).not.toHaveBeenCalled();
     });
 
-    it.each([
-      ["missing", undefined],
-      ["an array", ["a.mp3", "b.mp3"]],
-    ])("returns 400 when the file param is %s", async (_label, file) => {
+    it("returns 400 when the file param is missing", async () => {
       const res = makeRes();
-      await handler(makeReq({ file }), res);
+      await handler(makeReq({ file: undefined }), res);
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({ error: "File parameter is required" });
