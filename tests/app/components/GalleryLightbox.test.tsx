@@ -15,6 +15,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof GalleryLightbox>> 
     onDialogClose: jest.fn(),
     onRegenerate: jest.fn(),
     onPurge: jest.fn(),
+    onCategoryChange: jest.fn(),
     ...overrides,
   };
   render(<GalleryLightbox {...props} />);
@@ -47,6 +48,14 @@ describe("GalleryLightbox", () => {
   it("hides the admin controls from non-admins", () => {
     setup();
     expect(screen.queryByText("Regenerate portrait")).not.toBeInTheDocument();
+  });
+
+  it("lets an admin move the character to another category", () => {
+    const { onCategoryChange } = setup({ isAdmin: true });
+    const select = byRole("combobox", "Category");
+    expect(select).toHaveValue("history");
+    fireEvent.change(select, { target: { value: "literature" } });
+    expect(onCategoryChange).toHaveBeenCalledWith(entry, "literature");
   });
 
   it("calls the admin handlers with the selected entry", () => {

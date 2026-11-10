@@ -12,7 +12,9 @@ jest.mock("../../../../src/utils/account/isAdmin", () => ({
 
 const mockPurgeCachedAvatar = jest.fn();
 const mockRegenerateCachedAvatar = jest.fn();
+const mockSetCachedCategory = jest.fn();
 jest.mock("../../../../src/utils/avatar/avatarGeneration", () => ({
+  setCachedCategory: (...args: unknown[]) => mockSetCachedCategory(...args),
   purgeCachedAvatar: (...args: unknown[]) => mockPurgeCachedAvatar(...args),
   regenerateCachedAvatar: (...args: unknown[]) => mockRegenerateCachedAvatar(...args),
 }));
@@ -26,7 +28,7 @@ jest.mock("express-rate-limit", () => {
   return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
 });
 
-async function call(method: "GET" | "DELETE" | "POST", body?: unknown) {
+async function call(method: "GET" | "DELETE" | "POST" | "PATCH", body?: unknown) {
   const handler = (await import("../../../../src/pages/api/admin/characters")).default;
   const { req, res } = createMocks({ method, body: body as Record<string, unknown> });
   await handler(req, res);
@@ -40,6 +42,7 @@ describe("admin/characters API", () => {
     mockIsAdmin.mockResolvedValue(true);
     mockPurgeCachedAvatar.mockResolvedValue(true);
     mockRegenerateCachedAvatar.mockResolvedValue("https://img/new.png");
+    mockSetCachedCategory.mockResolvedValue(true);
   });
 
   it("returns 401 for a guest", async () => {
@@ -54,7 +57,7 @@ describe("admin/characters API", () => {
     expect(mockPurgeCachedAvatar).not.toHaveBeenCalled();
   });
 
-  it("rejects methods other than DELETE and POST", async () => {
+  it("rejects methods other than DELETE, PATCH, and POST", async () => {
     expect((await call("GET")).statusCode).toBe(405);
   });
 
@@ -77,6 +80,20 @@ describe("admin/characters API", () => {
     expect(res.statusCode).toBe(200);
     expect(res._getJSONData()).toEqual({ ok: true, avatarUrl: "https://img/new.png" });
     expect(mockClearCharactersCache).toHaveBeenCalled();
+  });
+
+  it("recategorizes on PATCH and clears the Wall cache", async () => {
+    const res = await call("PATCH", { name: " Hamlet ", category: "literature" });
+    expect(mockSetCachedCategory).toHaveBeenCalledWith("Hamlet", "literature");
+    expect(res.statusCode).toBe(200);
+    expect(mockClearCharactersCache).toHaveBeenCalled();
+  });
+
+  it("rejects an unknown category and reports a missing row", async () => {
+    expect((await call("PATCH", { name: "Hamlet", category: "other" })).statusCode).toBe(400);
+    expect(mockSetCachedCategory).not.toHaveBeenCalled();
+    mockSetCachedCategory.mockResolvedValue(false);
+    expect((await call("PATCH", { name: "Nobody", category: "history" })).statusCode).toBe(404);
   });
 
   it("returns 502 when no portrait could be generated", async () => {

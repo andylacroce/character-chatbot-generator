@@ -19,7 +19,12 @@ import type { CharacterCategory } from "character-chatbot-shared";
 import { buildAvatarPrompt } from "./avatarPrompt";
 import { cacheAvatar, getCachedAvatar, persistAvatarToBlob } from "./avatarCache";
 
-export { scrubCachedAvatar, purgeCachedAvatar, scrubUserBotsByName } from "./avatarCache";
+export {
+  scrubCachedAvatar,
+  purgeCachedAvatar,
+  scrubUserBotsByName,
+  setCachedCategory,
+} from "./avatarCache";
 
 /** Options controlling avatar cache/persistence behavior — see pages/api/generate-avatar.ts's @swagger block for the full rationale on each. */
 export interface AvatarGenerationOptions {
