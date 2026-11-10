@@ -40,7 +40,9 @@ portrait, a wrong reply), not about another user. Keep that wording in UI, route
   tables it parses from `schema.ts`; a missing table surfaces as that 503, so run `db:push` when
   this table first ships to an environment.
 - **Admin queue:** `/admin/moderation` shows `ReportsSection.tsx` above "Recently warned"
-  (`GET /api/admin/reports`, open reports in this environment, newest first). Actions reuse
+  (`GET /api/admin/reports`, open reports in this environment, newest first). Each name links, in a
+  new tab, to `/characters?name=`, which opens that portrait's lightbox with the admin controls; a
+  reported reply is quoted inline (there is no per-message page). Actions reuse
   existing routes: **Block name** (`POST /api/admin/blocklist`, which scrubs the name everywhere),
   **Purge portrait** (`DELETE /api/admin/characters`), and **Dismiss**; each then resolves the
   report (`POST /api/admin/reports { id }`). Blocking or purging a name does not auto-resolve other

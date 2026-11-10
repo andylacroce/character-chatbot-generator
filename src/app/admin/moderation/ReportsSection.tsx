@@ -126,7 +126,15 @@ export function ReportsSection({ onChanged }: { onChanged: () => void }) {
           {entries.map((entry) => (
             <li key={entry.id} className={styles.reportItem}>
               <div className={styles.reportHead}>
-                <strong>{entry.characterName}</strong>
+                {/* The Wall opens this character's lightbox (portrait plus the admin controls) from ?name=. */}
+                <a
+                  href={`/characters?name=${encodeURIComponent(entry.characterName)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.reportLink}
+                >
+                  {entry.characterName}
+                </a>
                 <span className={styles.sourceBadge}>
                   {entry.targetType === "message" ? "reply" : "character"}
                 </span>
