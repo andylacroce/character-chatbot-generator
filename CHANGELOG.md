@@ -2,6 +2,12 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.30.0 - 2026-11-09 - Admin stats you can trust
+
+- `/admin` has a time window (All time, Today, 7d, 30d, 90d, or a custom UTC range) that scopes every figure and chart except the Character Wall catalog, and each section states which window it covers. A custom range in the past now plots its own days.
+- The guessing-game tab has one set of figures per game (Guess Who, Guess Who's Next) with accurate descriptions, exchanges to solve, and how runs end. Saved messages count only the characters saved in the window, so the per-character average is like for like.
+- The character tab adds avatar cache use and the Wall catalog by category. Charts are about 30% shorter.
+
 ## v0.29.6 - 2026-11-09 - Easier to navigate
 
 - Internal only: `src/utils/` and `src/app/components/` are now grouped into feature folders (chat, character, game, account, moderation, and so on) instead of two flat lists of 50+ files each. No behavior change.

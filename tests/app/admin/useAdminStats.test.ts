@@ -72,4 +72,27 @@ describe("useAdminStats", () => {
     });
     expect(mockFetch).toHaveBeenCalledTimes(callsAfterOff);
   });
+
+  it("fetches with time window query parameter when preset is changed", async () => {
+    const { result } = renderHook(() => useAdminStats(true));
+    await waitFor(() => expect(result.current.stats).not.toBeNull());
+    expect(mockFetch).toHaveBeenCalledWith("/api/admin/stats");
+
+    act(() => {
+      result.current.setTimeWindow({ preset: "7d" });
+    });
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledWith("/api/admin/stats?window=7d"));
+  });
+
+  it("fetches with custom date parameters when custom time window is set", async () => {
+    const { result } = renderHook(() => useAdminStats(true));
+    await waitFor(() => expect(result.current.stats).not.toBeNull());
+
+    act(() => {
+      result.current.setTimeWindow({ preset: "custom", from: "2026-11-01", to: "2026-11-05" });
+    });
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith("/api/admin/stats?from=2026-11-01&to=2026-11-05"),
+    );
+  });
 });

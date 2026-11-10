@@ -11,5 +11,11 @@ describe("CharacterStatsPanel", () => {
     expect(panel).toHaveAttribute("aria-labelledby", "character-stats-tab");
     expect(panel).toHaveTextContent("Reused from cache");
     expect(panel).toHaveTextContent("Caution (possible trademark)");
+    expect(screen.getByText("Character Wall catalog (all time)")).toBeInTheDocument();
+    expect(screen.getByText("Historical Figures")).toBeInTheDocument();
+    expect(screen.getByText("Mythology")).toBeInTheDocument();
+    expect(
+      screen.getByText(/came from the cache instead of a new image generation/),
+    ).toBeInTheDocument();
   });
 });

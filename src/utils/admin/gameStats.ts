@@ -1,6 +1,13 @@
-import { and, gte, inArray, sql } from "drizzle-orm";
+import { and, gte, inArray, lte, sql } from "drizzle-orm";
 import { analyticsEvents } from "../../db/schema";
-import { NINETY_DAYS_MS, pct, recentDayBounds, type EnvFilter, type StatsDb } from "./statsHelpers";
+import {
+  NINETY_DAYS_MS,
+  pct,
+  recentDayBounds,
+  type EnvFilter,
+  type StatsDb,
+  type TimeRangeFilter,
+} from "./statsHelpers";
 
 /**
  * Event names a game's four lifecycle categories are recorded under. "Guess Who's
@@ -88,7 +95,12 @@ export const EMPTY_GAME_STATS = {
  * bug fix) applies to both at once instead of drifting between two copy-pasted blocks —
  * extracted from a single "Guess Who's Next"-only block that predates the second game.
  */
-export async function aggregateGameStats(db: StatsDb, envFilter: EnvFilter, names: GameEventNames) {
+export async function aggregateGameStats(
+  db: StatsDb,
+  envFilter: EnvFilter,
+  names: GameEventNames,
+  timeRange?: TimeRangeFilter,
+) {
   const allNames = [
     ...names.started,
     ...names.correct,
@@ -97,6 +109,14 @@ export async function aggregateGameStats(db: StatsDb, envFilter: EnvFilter, name
     ...names.ended,
   ];
   const inList = (list: string[]) => inArray(analyticsEvents.name, list);
+
+  const dailyFrom = timeRange?.from ?? new Date(Date.now() - NINETY_DAYS_MS);
+  const dailyTimeConditions = [gte(analyticsEvents.createdAt, dailyFrom)];
+  if (timeRange?.to) dailyTimeConditions.push(lte(analyticsEvents.createdAt, timeRange.to));
+
+  const eventTimeConditions = [];
+  if (timeRange?.from) eventTimeConditions.push(gte(analyticsEvents.createdAt, timeRange.from));
+  if (timeRange?.to) eventTimeConditions.push(lte(analyticsEvents.createdAt, timeRange.to));
 
   const [gameDaily, gameAggregateRows] = await Promise.all([
     db
@@ -107,13 +127,7 @@ export async function aggregateGameStats(db: StatsDb, envFilter: EnvFilter, name
         ended: sql<number>`count(*) filter (where ${inList(names.ended)})::int`,
       })
       .from(analyticsEvents)
-      .where(
-        and(
-          envFilter,
-          inArray(analyticsEvents.name, allNames),
-          gte(analyticsEvents.createdAt, new Date(Date.now() - NINETY_DAYS_MS)),
-        ),
-      )
+      .where(and(envFilter, inArray(analyticsEvents.name, allNames), ...dailyTimeConditions))
       .groupBy(sql`1`)
       .orderBy(sql`1`) as Promise<GameDailyRow[]>,
     db
@@ -137,9 +151,9 @@ export async function aggregateGameStats(db: StatsDb, envFilter: EnvFilter, name
         fiveOrMore: sql<number>`count(*) filter (where ${inList(names.ended)} and (metadata->>'finalStreak')::int >= 5)::int`,
       })
       .from(analyticsEvents)
-      .where(and(envFilter, inArray(analyticsEvents.name, allNames))) as Promise<
-      GameAggregateRow[]
-    >,
+      .where(
+        and(envFilter, inArray(analyticsEvents.name, allNames), ...eventTimeConditions),
+      ) as Promise<GameAggregateRow[]>,
   ]);
 
   const { today: todayStr, sevenDaysAgo: sevenDaysAgoStr } = recentDayBounds();

@@ -53,11 +53,9 @@ describe("AdminStatsView", () => {
     render(<AdminStatsView />);
 
     await waitFor(() => expect(screen.getByText("production")).toBeInTheDocument());
-    expect(screen.getByRole("heading", { name: "Guessing game" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Guessing games" })).toBeInTheDocument();
     expect(screen.getByText("Guess accuracy")).toBeInTheDocument();
-    expect(screen.getByText("Average turns to solve")).toBeInTheDocument();
-    expect(screen.getByText("2.5")).toBeInTheDocument();
-    expect(screen.getByText("62.5%", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Exchanges to solve")).toBeInTheDocument();
     expect(screen.getByText("2–4 wins")).toBeInTheDocument();
     expect(screen.queryByText("Saved characters")).not.toBeInTheDocument();
     expect(screen.queryByText("Hover or focus a point for exact counts")).not.toBeInTheDocument();
@@ -65,7 +63,7 @@ describe("AdminStatsView", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Character conversations" }));
     expect(screen.getByText("Saved characters")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Chart and table date range" })).toBeInTheDocument();
-    expect(screen.getByText("5 avg per bot")).toBeInTheDocument();
+    expect(screen.getByText("5 per saved character")).toBeInTheDocument();
     // Funnel stages ("Names validated"/"Characters created" also appear in the
     // activity chart's legend and table view, so scope to the funnel section).
     expect(screen.getAllByText("Names validated").length).toBeGreaterThan(0);
@@ -91,7 +89,7 @@ describe("AdminStatsView", () => {
     expect(
       screen.getByRole("img", { name: "Game activity over the last 7 days" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "How runs progress" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "How runs end" })).toBeInTheDocument();
   });
 
   it("switches stats sections with the keyboard", async () => {
@@ -175,5 +173,38 @@ describe("AdminStatsView", () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it("allows selecting preset time windows and submitting custom date range", async () => {
+    mockUseSession.mockReturnValue({ status: "authenticated" });
+    mockAuthenticatedFetch.mockResolvedValue({ ok: true, json: async () => FULL_STATS });
+    render(<AdminStatsView />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: /Time window/ })).toBeInTheDocument(),
+    );
+    const windowSelect = screen.getByRole("combobox", { name: /Time window/ });
+
+    await act(async () => {
+      fireEvent.change(windowSelect, { target: { value: "7d" } });
+    });
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith("/api/admin/stats?window=7d");
+
+    await act(async () => {
+      fireEvent.change(windowSelect, { target: { value: "custom" } });
+    });
+    expect(screen.getByLabelText("Start date")).toBeInTheDocument();
+    expect(screen.getByLabelText("End date")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Start date"), { target: { value: "2026-11-01" } });
+    fireEvent.change(screen.getByLabelText("End date"), { target: { value: "2026-11-08" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    });
+
+    expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
+      "/api/admin/stats?from=2026-11-01&to=2026-11-08",
+    );
   });
 });

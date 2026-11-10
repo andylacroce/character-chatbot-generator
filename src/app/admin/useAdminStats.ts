@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { authenticatedFetch } from "../../utils/api";
 import type { AdminStats } from "./adminStatsTypes";
 
+export interface AdminStatsTimeWindow {
+  preset: string;
+  from?: string;
+  to?: string;
+}
+
 // The admin-stats rate limiter allows 20 req/min/IP (see pages/api/admin/stats.ts) — even
 // the fastest option here (every 15s) stays well under that.
 export const REFRESH_INTERVAL_OPTIONS = [
@@ -15,13 +21,14 @@ const DEFAULT_REFRESH_INTERVAL_MS = 60_000;
 
 /**
  * Loads `GET /api/admin/stats` once the session is authenticated and then on the chosen
- * auto-refresh interval. `fetchStats` refreshes on demand.
+ * auto-refresh interval. `fetchStats` refreshes on demand. Supports scoping to a time window.
  */
 export function useAdminStats(authenticated: boolean) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshIntervalMs, setRefreshIntervalMs] = useState(DEFAULT_REFRESH_INTERVAL_MS);
+  const [timeWindow, setTimeWindow] = useState<AdminStatsTimeWindow>({ preset: "all" });
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -31,25 +38,42 @@ export function useAdminStats(authenticated: boolean) {
     };
   }, []);
 
-  const fetchStats = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      const res = await authenticatedFetch("/api/admin/stats");
-      if (!isMountedRef.current) return;
-      if (!res.ok) {
-        setError(res.status === 403 ? "Not authorized." : "Failed to load stats.");
-        return;
-      }
-      setStats(await res.json());
-      setError(null);
-    } catch {
-      if (isMountedRef.current) setError("Failed to load stats.");
-    } finally {
-      if (isMountedRef.current) setIsRefreshing(false);
-    }
-  }, []);
+  const fetchStats = useCallback(
+    async (overrideWindow?: AdminStatsTimeWindow) => {
+      setIsRefreshing(true);
+      try {
+        const activeWindow = overrideWindow ?? timeWindow;
+        let url = "/api/admin/stats";
+        if (activeWindow.preset !== "all") {
+          const params = new URLSearchParams();
+          if (activeWindow.preset === "custom") {
+            if (activeWindow.from) params.set("from", activeWindow.from);
+            if (activeWindow.to) params.set("to", activeWindow.to);
+          } else {
+            params.set("window", activeWindow.preset);
+          }
+          const qs = params.toString();
+          if (qs) url = `${url}?${qs}`;
+        }
 
-  // Fetches immediately on auth/interval-setting change, then (when enabled) on a
+        const res = await authenticatedFetch(url);
+        if (!isMountedRef.current) return;
+        if (!res.ok) {
+          setError(res.status === 403 ? "Not authorized." : "Failed to load stats.");
+          return;
+        }
+        setStats(await res.json());
+        setError(null);
+      } catch {
+        if (isMountedRef.current) setError("Failed to load stats.");
+      } finally {
+        if (isMountedRef.current) setIsRefreshing(false);
+      }
+    },
+    [timeWindow],
+  );
+
+  // Fetches immediately on auth/interval-setting/window change, then (when enabled) on a
   // recurring timer — same "fetch on mount, from an effect" shape as index.tsx's
   // localStorage restore, which carries the same suppression for the same reason:
   // fetchStats's own setState calls are what the effect exists to trigger.
@@ -63,5 +87,14 @@ export function useAdminStats(authenticated: boolean) {
   }, [authenticated, fetchStats, refreshIntervalMs]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  return { stats, error, isRefreshing, refreshIntervalMs, setRefreshIntervalMs, fetchStats };
+  return {
+    stats,
+    error,
+    isRefreshing,
+    refreshIntervalMs,
+    setRefreshIntervalMs,
+    fetchStats,
+    timeWindow,
+    setTimeWindow,
+  };
 }

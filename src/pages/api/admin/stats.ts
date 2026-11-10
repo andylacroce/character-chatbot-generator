@@ -23,6 +23,7 @@ import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLim
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { withRequestLog } from "../../../utils/server/withRequestLog";
 import { EMPTY_STATS, loadAdminStats } from "../../../utils/admin/adminStats";
+import { parseTimeRange } from "../../../utils/admin/statsHelpers";
 
 /** Rate limiter: 20 requests per minute per IP, same budget as other authenticated routes. */
 const adminStatsRateLimit = createRateLimiter({
@@ -46,6 +47,26 @@ const adminStatsRateLimit = createRateLimiter({
  *       Never reachable from a Vercel Preview deployment's sign-in stub, regardless of
  *       email — see src/utils/account/isAdmin.ts.
  *     tags: [Admin]
+ *     parameters:
+ *       - in: query
+ *         name: window
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [all, today, 7d, 30d, 90d]
+ *         description: Preset time window to filter stats by
+ *       - in: query
+ *         name: from
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: ISO date string or YYYY-MM-DD for custom start range
+ *       - in: query
+ *         name: to
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: ISO date string or YYYY-MM-DD for custom end range
  *     responses:
  *       200:
  *         description: Aggregate stats
@@ -74,11 +95,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     message: "Non-admin user denied access to admin stats",
   });
   if (!userId) return;
+
+  const { range, preset } = parseTimeRange(req.query);
+
   if (!process.env.DATABASE_URL) {
     res.status(200).json({
       ...EMPTY_STATS,
       environment: getCurrentEnvironment(),
       generatedAt: new Date().toISOString(),
+      timeWindow: {
+        from: range?.from ? range.from.toISOString() : null,
+        to: range?.to ? range.to.toISOString() : null,
+        preset,
+      },
     });
     return;
   }
@@ -87,7 +116,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const environment = getCurrentEnvironment();
 
   try {
-    res.status(200).json(await loadAdminStats(db, environment));
+    res.status(200).json(await loadAdminStats(db, environment, range, preset));
   } catch (err) {
     logEvent(
       "error",
