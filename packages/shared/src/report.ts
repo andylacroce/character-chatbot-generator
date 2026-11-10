@@ -1,9 +1,8 @@
 /**
  * "Report a problem": the reasons, limits, copy, and form state machine shared by the web and
- * mobile report dialogs. Each platform supplies only its `submit` transport and its own UI.
+ * mobile report dialogs (the form hook is in useReportForm.ts, so server code can import this
+ * file without pulling in React).
  */
-
-import { useCallback, useState } from "react";
 
 export const REPORT_REASONS = [
   { value: "offensive", label: "Offensive or inappropriate" },
@@ -44,35 +43,4 @@ export const REPORT_COPY = {
 /** Whether `value` is one of the report reasons. */
 export function isReportReason(value: unknown): value is ReportReason {
   return REPORT_REASONS.some((r) => r.value === value);
-}
-
-export type ReportStatus = "idle" | "sending" | "sent" | "error";
-
-/** Form state for a report dialog; `submit` throws on failure. */
-export function useReportForm(submit: (body: ReportRequest) => Promise<unknown>) {
-  const [reason, setReason] = useState<ReportReason | null>(null);
-  const [details, setDetails] = useState("");
-  const [status, setStatus] = useState<ReportStatus>("idle");
-
-  const reset = useCallback(() => {
-    setReason(null);
-    setDetails("");
-    setStatus("idle");
-  }, []);
-
-  const send = useCallback(
-    async (target: Pick<ReportRequest, "targetType" | "characterName" | "messageText">) => {
-      if (!reason || status === "sending") return;
-      setStatus("sending");
-      try {
-        await submit({ ...target, reason, details: details.trim() || undefined });
-        setStatus("sent");
-      } catch {
-        setStatus("error");
-      }
-    },
-    [reason, details, status, submit],
-  );
-
-  return { reason, setReason, details, setDetails, status, send, reset };
 }

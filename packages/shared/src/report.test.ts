@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 import { renderHook, act } from "@testing-library/react";
-import { isReportReason, useReportForm } from "./report";
+import { isReportReason } from "./report";
+import { useReportForm } from "./useReportForm";
 
 describe("isReportReason", () => {
   it("accepts known reasons only", () => {

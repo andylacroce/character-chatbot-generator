@@ -116,7 +116,7 @@ module.exports = [
   // greppable `event` name instead of a hand-formatted message string. src/utils/logger.ts
   // itself and its tests are exempt (they implement/exercise the `logger` object).
   {
-    files: ["src/pages/api/**/*.ts"],
+    files: ["src/pages/api/**/*.ts", "src/app/api/**/*.ts"],
     ignores: ["**/*.test.ts"],
     rules: {
       "no-restricted-syntax": [
@@ -143,6 +143,7 @@ module.exports = [
     files: [
       "src/app/components/**/*.{ts,tsx}",
       "src/pages/api/**/*.ts",
+      "src/app/api/**/*.ts",
       "src/!(app|pages)/**/*.ts",
     ],
     ignores: ["**/*.test.{ts,tsx}", "**/*.d.ts"],

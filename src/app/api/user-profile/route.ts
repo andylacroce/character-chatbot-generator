@@ -5,25 +5,29 @@
  * never break the localStorage-only guest flow.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
-import { getDb } from "../../db/client";
-import { users } from "../../db/schema";
-import { getSessionUserId } from "../../utils/account/getSessionUserId";
-import { sanitizeUserName } from "../../utils/server/security";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { withRequestLog } from "../../utils/server/withRequestLog";
+import { getDb } from "../../../db/client";
+import { users } from "../../../db/schema";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
+import { sanitizeUserName } from "../../../utils/server/security";
+import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { withRoute } from "../../../utils/server/withRoute";
 
-/** Rate limiter: 20 requests per minute per IP. */
-const userProfileRateLimit = createRateLimiter({
+/** Resolves the caller's id, or null (guest, or no DATABASE_URL) which every method treats as a no-op. */
+async function persistedUserId(req: NextRequest): Promise<string | null> {
+  const userId = await getSessionUserId(req);
+  return userId && process.env.DATABASE_URL ? userId : null;
+}
+
+const LIMIT = {
   name: "user-profile",
   max: 20,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
- * Next.js API route handler for reading and updating a signed-in user's preferred name.
+ * Route handler (20 requests per minute per IP) for reading and updating a signed-in user's preferred name.
  *
  * @swagger
  * /user-profile:
@@ -45,8 +49,6 @@ const userProfileRateLimit = createRateLimiter({
  *                 name:
  *                   type: string
  *                   nullable: true
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:
@@ -79,62 +81,43 @@ const userProfileRateLimit = createRateLimiter({
  *                   type: boolean
  *       400:
  *         description: Invalid name
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:
  *         description: Failed to save preferred name
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(userProfileRateLimit, req, res))) return;
-
-  if (req.method !== "GET" && req.method !== "POST") {
-    res.setHeader("Allow", ["GET", "POST"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  const userId = await getSessionUserId(req);
-  if (!userId || !process.env.DATABASE_URL) {
-    res.status(200).json(req.method === "GET" ? { name: null } : { persisted: false });
-    return;
-  }
-
-  const db = getDb();
-
-  if (req.method === "GET") {
-    try {
-      const rows = await db
-        .select({ preferredName: users.preferredName })
-        .from(users)
-        .where(eq(users.id, userId));
-      res.status(200).json({ name: rows[0]?.preferredName ?? null });
-    } catch (err) {
-      logEvent(
-        "error",
-        "user_profile_get_failed",
-        "Failed to load preferred name",
-        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-      );
-      res.status(500).json({ error: "Failed to load preferred name" });
-    }
-    return;
-  }
-
-  const { name } = req.body;
-  if (typeof name !== "string") {
-    res.status(400).json({ error: "Invalid name" });
-    return;
-  }
-  const sanitizedName = sanitizeUserName(name);
-
+export const GET = withRoute(LIMIT, async (req: NextRequest) => {
+  const userId = await persistedUserId(req);
+  if (!userId) return Response.json({ name: null });
   try {
-    await db
-      .update(users)
-      .set({ preferredName: sanitizedName || null })
+    const rows = await getDb()
+      .select({ preferredName: users.preferredName })
+      .from(users)
       .where(eq(users.id, userId));
-    res.status(200).json({ persisted: true });
+    return Response.json({ name: rows[0]?.preferredName ?? null });
+  } catch (err) {
+    logEvent(
+      "error",
+      "user_profile_get_failed",
+      "Failed to load preferred name",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+    return Response.json({ error: "Failed to load preferred name" }, { status: 500 });
+  }
+});
+
+/** POST: set (or, with an empty string, clear) the signed-in user's preferred name. */
+export const POST = withRoute(LIMIT, async (req: NextRequest) => {
+  const userId = await persistedUserId(req);
+  if (!userId) return Response.json({ persisted: false });
+  const { name } = (await req.json().catch(() => null)) ?? {};
+  if (typeof name !== "string") return Response.json({ error: "Invalid name" }, { status: 400 });
+  try {
+    await getDb()
+      .update(users)
+      .set({ preferredName: sanitizeUserName(name) || null })
+      .where(eq(users.id, userId));
+    return Response.json({ persisted: true });
   } catch (err) {
     logEvent(
       "error",
@@ -142,8 +125,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       "Failed to save preferred name",
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
-    res.status(500).json({ error: "Failed to save preferred name" });
+    return Response.json({ error: "Failed to save preferred name" }, { status: 500 });
   }
-}
-
-export default withRequestLog(handler);
+});

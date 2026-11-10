@@ -31,7 +31,7 @@ export interface ChatIdentity {
  * all) fall through to the fully client-authoritative values.
  *
  * The same server-authoritative-once-set pattern covers the user's preferred name: a
- * signed-in user's stored name (pages/api/user-profile.ts) wins once set, so it can't be
+ * signed-in user's stored name (app/api/user-profile/route.ts) wins once set, so it can't be
  * spoofed differently on a later request; otherwise the client's value is used.
  */
 export async function resolveChatIdentity(

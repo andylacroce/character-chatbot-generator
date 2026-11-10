@@ -1,7 +1,7 @@
 /**
  * A player's personal best streak in a guessing game. Guests (no session) read their
  * cookie-bound best; deployments with no DATABASE_URL get `{ highScore: null }`, not an
- * error, the same degrade-gracefully shape as pages/api/user-profile.ts. Read-only: the value
+ * error, the same degrade-gracefully shape as app/api/user-profile/route.ts. Read-only: the value
  * is only ever written server-side, from the message route's correct-guess branch, never from
  * a client-supplied field.
  */

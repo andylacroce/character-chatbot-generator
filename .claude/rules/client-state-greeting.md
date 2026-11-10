@@ -4,7 +4,7 @@ paths:
   - "packages/shared/src/storageKeys.ts"
   - "src/app/components/account/useUserName.ts"
   - "src/app/components/account/NameCaptureModal.tsx"
-  - "src/pages/api/user-profile.ts"
+  - "src/app/api/user-profile/route.ts"
 ---
 
 ### Client-side storage
@@ -34,7 +34,7 @@ used only for the "Sign out (X)" label); this one is explicit and user-typed.
 - **Editable anytime** via the account menu ("Add your name"/"Change your name", `mode="edit"`).
 - **Guest:** localStorage only (`chatbot-user-name`, `chatbot-user-name-gate-skipped`);
   `useChatController.ts` sends it as `userName` on every `/api/chat`.
-- **Signed in:** `src/pages/api/user-profile.ts` (`GET`/`POST`) persists to `users.preferredName`;
+- **Signed in:** `src/app/api/user-profile/route.ts` (`GET`/`POST`) persists to `users.preferredName`;
   `useUserName.ts` seeds the DB once from a pre-existing guest value on first sign-in.
 - **Server precedence (`chat.ts`):** for a signed-in user the DB value wins once set (server
   authoritative, like `personality` for a saved bot), so a request can't spoof another name;

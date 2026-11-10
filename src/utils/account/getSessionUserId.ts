@@ -1,5 +1,5 @@
 /**
- * Resolves the signed-in user's id for a Pages Router API request, or null if the
+ * Resolves the signed-in user's id for an API request (Pages `NextApiRequest` or App Router `NextRequest`), or null if the
  * caller is anonymous. Every route that persists per-user data should derive its
  * user id from this — never from a client-supplied field — the same trust boundary
  * proxy.ts already enforces for request origin.
@@ -14,10 +14,11 @@
  */
 
 import type { NextApiRequest } from "next";
+import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 /** Resolves the signed-in user's id for this request, or null for a guest (see module doc above). */
-export async function getSessionUserId(req: NextApiRequest): Promise<string | null> {
+export async function getSessionUserId(req: NextApiRequest | NextRequest): Promise<string | null> {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   return typeof token?.sub === "string" ? token.sub : null;
 }
