@@ -2,6 +2,12 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.32.2 - 2026-11-10 - Navigation cleanup
+
+- Admin pages get a Back button and a Stats / Moderation switcher instead of hiding both in the menu.
+- "Back to Home" during a guessing-game run now asks before ending it (web; mobile keeps the run when you leave).
+- The chat's back-to-creator step no longer leaves a duplicate history entry, privacy and data-deletion links navigate in-app, the game start screen's Back returns to where you came from, and more dialogs close on Escape.
+
 ## v0.32.1 - 2026-11-10 - Game pacing and blank-turn fix
 
 - Guess Who's Next gives clues a little slower and no longer hands over the hidden figure when the player asks "who should I talk to next?".

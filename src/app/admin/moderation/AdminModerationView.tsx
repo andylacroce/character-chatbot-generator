@@ -22,6 +22,8 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { FaHome } from "react-icons/fa";
 import AppHeader from "../../components/common/AppHeader";
+import { BackLink } from "../../components/common/BackLink";
+import AdminNav from "../AdminNav";
 import { useAccountMenu } from "../../components/account/useAccountMenu";
 import styles from "../../components/styles/AdminModeration.module.css";
 import { ModerationSection } from "./ModerationSection";
@@ -54,10 +56,12 @@ export default function AdminModerationView() {
     <>
       <AppHeader
         menuItems={fullMenuItems}
+        left={<BackLink />}
         center={<h1 className={styles.title}>Character moderation</h1>}
       />
       {modals}
       <div className={styles.page}>
+        <AdminNav />
         <div className={styles.header}>
           <p className={styles.subtitle}>
             Names here short-circuit copyright/trademark validation before it ever calls Claude — an

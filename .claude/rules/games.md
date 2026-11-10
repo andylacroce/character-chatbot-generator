@@ -115,4 +115,4 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
   `packages/shared/src/replayAudio.ts`'s `findSpeakerVoiceConfig`, which recovers the speaker's
   cast `voiceConfig` from another message's audio URL before falling back to a bare regeneration
   (a fresh context-free cast once gave a male speaker a female voice). Web and mobile both use it.
-- **"Back to Home" ends the run** (`quitGame()`); there is no separate Quit.
+- **"Back to Home" ends the run** (`quitGame()`) after a web-only "Leave this run?" confirm (`leaveConfirm` copy); mobile never quits on leaving, state persists. There is no separate Quit.

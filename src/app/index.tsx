@@ -157,7 +157,7 @@ const Home = () => {
     clearStoredBot();
     setBot(null);
     setReturningToCreator(true);
-    router.push("/");
+    router.replace("/");
   }, [router]);
   if (loadingBot) return null; // Prevent UI flash
   if (!bot) {

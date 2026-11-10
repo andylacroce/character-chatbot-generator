@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useEscapeToClose } from "./useEscapeToClose";
 import { logEvent } from "../../../utils/logger";
 import styles from "../styles/ConfirmDialog.module.css";
 
@@ -25,13 +26,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({ show, copy, onConfirm, on
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  if (!show) return null;
-
   const handleCancel = () => {
     if (busy) return;
     setError("");
     onClose();
   };
+  useEscapeToClose(show, handleCancel);
+
+  if (!show) return null;
 
   const handleConfirm = async () => {
     setBusy(true);

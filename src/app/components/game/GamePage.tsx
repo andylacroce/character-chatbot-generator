@@ -19,7 +19,8 @@ import { useRouter } from "next/navigation";
 import { FaFlag, FaHome, FaQuestionCircle, FaTrophy } from "react-icons/fa";
 import { displayCharacterName, fillTemplate, GAMES, type GameId } from "character-chatbot-shared";
 import ChatShell from "../chat/ChatShell";
-import BackHomeLink from "../common/BackHomeLink";
+import { BackLink } from "../common/BackLink";
+import { useEscapeToClose } from "../common/useEscapeToClose";
 import GameInstructionsModal from "./GameInstructionsModal";
 import LeaderboardClaim from "./LeaderboardClaim";
 import CharacterLoadingOverlay from "../character/CharacterLoadingOverlay";
@@ -28,6 +29,37 @@ import { useGameController } from "./useGameController";
 import { useAccountMenu } from "../account/useAccountMenu";
 import type { Bot } from "../character/BotCreator";
 import styles from "../styles/GamePage.module.css";
+
+type ConfirmCopy = { title: string; body: string; confirmLabel: string; cancelLabel: string };
+
+/** The game's yes/no confirmation (give up, leave); Escape or a backdrop click cancels. */
+function ConfirmModal({
+  copy,
+  onConfirm,
+  onCancel,
+}: {
+  copy: ConfirmCopy;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  useEscapeToClose(true, onCancel);
+  return (
+    <div className={styles.modalBackdrop} onClick={onCancel}>
+      <div className={styles.modalBox} onClick={(event) => event.stopPropagation()}>
+        <h2 className={styles.modalTitle}>{copy.title}</h2>
+        <p className={styles.modalText}>{copy.body}</p>
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.modalCancelButton} onClick={onCancel}>
+            {copy.cancelLabel}
+          </button>
+          <button type="button" className={styles.modalConfirmButton} onClick={onConfirm}>
+            {copy.confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** A guessing game's main screen, see module doc above. */
 function GamePage({ gameId }: { gameId: GameId }) {
@@ -107,10 +139,16 @@ function GamePage({ gameId }: { gameId: GameId }) {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // "Back to Home" ends the run rather than leaving a stale in-progress token behind;
-  // there's no separate "Quit" control elsewhere on this page.
-  const handleBackToHome = React.useCallback(() => {
+  // there's no separate "Quit" control elsewhere on this page. A run still in play asks first.
+  const [showLeaveConfirmation, setShowLeaveConfirmation] = React.useState(false);
+  const handleBackToHome = (event: React.MouseEvent) => {
+    event.preventDefault();
+    setShowLeaveConfirmation(true);
+  };
+  const handleLeaveConfirm = () => {
     quitGame();
-  }, [quitGame]);
+    router.push("/");
+  };
 
   // Gives up with confirmation to avoid accidental abandonment.
   const handleGiveUpClick = React.useCallback(() => {
@@ -177,7 +215,7 @@ function GamePage({ gameId }: { gameId: GameId }) {
               </button>
             </>
           )}
-          <BackHomeLink className={styles.startBackHome} />
+          <BackLink className={styles.startBackHome} />
         </div>
       </div>
     );
@@ -212,23 +250,6 @@ function GamePage({ gameId }: { gameId: GameId }) {
       <div className="menuDivider" role="separator" />
       {accountMenuItems}
     </>
-  );
-
-  const giveUpConfirmation = (
-    <div className={styles.modalBackdrop} onClick={handleGiveUpCancel}>
-      <div className={styles.modalBox} onClick={(event) => event.stopPropagation()}>
-        <h2 className={styles.modalTitle}>{copy.giveUpConfirm.title}</h2>
-        <p className={styles.modalText}>{copy.giveUpConfirm.body}</p>
-        <div className={styles.modalActions}>
-          <button type="button" className={styles.modalCancelButton} onClick={handleGiveUpCancel}>
-            {copy.giveUpConfirm.cancelLabel}
-          </button>
-          <button type="button" className={styles.modalConfirmButton} onClick={handleGiveUpConfirm}>
-            {copy.giveUpConfirm.confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 
   // "Best" only appears once the player actually has a personal best on record: a guest
@@ -302,7 +323,20 @@ function GamePage({ gameId }: { gameId: GameId }) {
             onClose={closeInstructions}
             copy={copy.instructions}
           />
-          {showGiveUpConfirmation && giveUpConfirmation}
+          {showGiveUpConfirmation && (
+            <ConfirmModal
+              copy={copy.giveUpConfirm}
+              onConfirm={handleGiveUpConfirm}
+              onCancel={handleGiveUpCancel}
+            />
+          )}
+          {showLeaveConfirmation && (
+            <ConfirmModal
+              copy={copy.leaveConfirm}
+              onConfirm={handleLeaveConfirm}
+              onCancel={() => setShowLeaveConfirmation(false)}
+            />
+          )}
         </>
       }
       bannerContent={bannerContent}

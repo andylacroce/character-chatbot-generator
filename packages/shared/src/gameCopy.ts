@@ -21,6 +21,13 @@ export interface GameCopy {
     confirmLabel: string;
     cancelLabel: string;
   };
+  /** Asked before web's "Back to Home" ends a run in progress. */
+  leaveConfirm: {
+    title: string;
+    body: string;
+    confirmLabel: string;
+    cancelLabel: string;
+  };
   /** `{revealedName}`/`{streak}` are template placeholders, substituted before display. */
   correctBanner: string;
   streakLabel: string;
@@ -62,6 +69,12 @@ export const GUESS_WHO_NEXT_COPY: GameCopy = {
     confirmLabel: "Yes, give up",
     cancelLabel: "Cancel",
   },
+  leaveConfirm: {
+    title: "Leave this run?",
+    body: "Going back to Home ends this run and your current character.",
+    confirmLabel: "Yes, leave",
+    cancelLabel: "Stay",
+  },
   correctBanner: "🎉 Correct! It was {revealedName}! Streak: {streak}.",
   streakLabel: "Streak",
   screen: {
@@ -100,6 +113,12 @@ export const GUESS_WHO_COPY: GameCopy = {
     body: "The mystery character will be revealed and the run will end. Your streak will stay as it is.",
     confirmLabel: "Yes, give up",
     cancelLabel: "Cancel",
+  },
+  leaveConfirm: {
+    title: "Leave this run?",
+    body: "Going back to Home ends this run and your current character.",
+    confirmLabel: "Yes, leave",
+    cancelLabel: "Stay",
   },
   correctBanner: "🎉 Correct! It was {revealedName}! Streak: {streak}.",
   streakLabel: "Streak",

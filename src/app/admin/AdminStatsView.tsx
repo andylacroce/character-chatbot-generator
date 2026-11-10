@@ -35,6 +35,8 @@ import { CharacterStatsPanel } from "./CharacterStatsPanel";
 import { REFRESH_INTERVAL_OPTIONS, useAdminStats } from "./useAdminStats";
 import { TIME_WINDOW_PRESETS } from "./adminStatsTypes";
 import AppHeader from "../components/common/AppHeader";
+import { BackLink } from "../components/common/BackLink";
+import AdminNav from "./AdminNav";
 import { useAccountMenu } from "../components/account/useAccountMenu";
 import styles from "../components/styles/AdminStats.module.css";
 
@@ -81,10 +83,12 @@ export default function AdminStatsView() {
     <>
       <AppHeader
         menuItems={fullMenuItems}
+        left={<BackLink />}
         center={<h1 className={styles.title}>Internal stats</h1>}
       />
       {modals}
       <div className={styles.page}>
+        <AdminNav />
         <div className={styles.header}>
           {status === "authenticated" && (
             <div className={styles.meta}>

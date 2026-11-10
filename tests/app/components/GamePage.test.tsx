@@ -185,12 +185,34 @@ describe.each([GUESS_WHO, GUESS_WHO_NEXT])("GamePage ($title)", (game) => {
   });
 
   describe("menu", () => {
-    it("ends the run when Back to Home is clicked", () => {
+    it("asks before Back to Home ends the run, and Stay keeps it", () => {
       controllerState = running();
       renderPage();
       fireEvent.click(screen.getByLabelText(/open menu/i));
       fireEvent.click(screen.getByText("Back to Home"));
+      expect(mockQuitGame).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByText("Stay"));
+      expect(mockQuitGame).not.toHaveBeenCalled();
+      expect(screen.queryByText("Leave this run?")).toBeNull();
+    });
+
+    it("ends the run and goes home once leaving is confirmed", () => {
+      controllerState = running();
+      renderPage();
+      fireEvent.click(screen.getByLabelText(/open menu/i));
+      fireEvent.click(screen.getByText("Back to Home"));
+      fireEvent.click(screen.getByText("Yes, leave"));
       expect(mockQuitGame).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith("/");
+    });
+
+    it("closes the confirmation on Escape", () => {
+      controllerState = running();
+      renderPage();
+      fireEvent.click(screen.getByLabelText(/open menu/i));
+      fireEvent.click(screen.getByText("Back to Home"));
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(screen.queryByText("Leave this run?")).toBeNull();
     });
 
     it("shows a confirmation before giving up, and only calls giveUp once confirmed", () => {

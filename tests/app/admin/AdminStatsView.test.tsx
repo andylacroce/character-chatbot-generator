@@ -3,6 +3,11 @@ import { render, screen, waitFor, fireEvent, act, within } from "@testing-librar
 import AdminStatsView from "@/src/app/admin/AdminStatsView";
 import { FULL_STATS } from "../../helpers/adminStatsFixture";
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  usePathname: () => "/admin",
+}));
+
 const mockUseSession = jest.fn();
 jest.mock("next-auth/react", () => ({
   useSession: () => mockUseSession(),

@@ -8,6 +8,7 @@
 import React from "react";
 import Image from "next/image";
 import { REPORT_COPY } from "character-chatbot-shared";
+import { useEscapeToClose } from "./useEscapeToClose";
 import styles from "../styles/ChatPage.module.css";
 import viewerStyles from "../styles/ModalImageViewer.module.css";
 
@@ -28,6 +29,7 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({
   onClose,
   onReport,
 }) => {
+  useEscapeToClose(show, onClose);
   if (!show) return null;
   return (
     <div className={styles.modalBackdrop} data-testid="modal-image-backdrop" onClick={onClose}>
