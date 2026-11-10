@@ -9,7 +9,8 @@ import Image from "next/image";
 import { Bot } from "../character/BotCreator";
 import { sanitizeForReact } from "../../../utils/server/security";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { FaVolumeUp } from "react-icons/fa";
+import { FaFlag, FaVolumeUp } from "react-icons/fa";
+import { REPORT_COPY } from "character-chatbot-shared";
 import { displayCharacterName } from "character-chatbot-shared";
 
 /**
@@ -36,6 +37,8 @@ interface ChatMessageProps {
   onAvatarClick?: () => void;
   /** Replays this character response through the shared chat audio player. */
   onReplayAudio?: (message: Message) => void;
+  /** Opens the report dialog for this character reply. */
+  onReport?: (message: Message) => void;
   /** Keeps replay visible but unavailable while the global audio preference is muted. */
   replayDisabled?: boolean;
   // The visitor's own preferred name (see useUserName.ts) — shown on their own
@@ -61,6 +64,7 @@ const ChatMessage = React.memo(
     bot,
     onAvatarClick,
     onReplayAudio,
+    onReport,
     replayDisabled = false,
     userName,
   }: ChatMessageProps) => {
@@ -132,6 +136,17 @@ const ChatMessage = React.memo(
               title={replayDisabled ? "Turn audio on to replay this message" : "Replay audio"}
             >
               <FaVolumeUp aria-hidden="true" focusable="false" />
+            </button>
+          )}
+          {!isUser && onReport && (
+            <button
+              type="button"
+              className={`${styles.replayButton} ${styles.reportButton} ${!onReplayAudio ? styles.reportOnly : ""}`}
+              onClick={() => onReport(message)}
+              aria-label={`${REPORT_COPY.trigger}: ${senderName}'s message`}
+              title={REPORT_COPY.trigger}
+            >
+              <FaFlag aria-hidden="true" focusable="false" />
             </button>
           )}
         </div>

@@ -95,7 +95,7 @@ read. If a task starts from a description rather than a file, read the matching 
 `chat-tts` (chat, SSE, TTS, voices), `avatar`, `moderation` (validation, allow/blocklist, supported
 gate), `account` (auth, DB, bots, messages, deletion), `character-wall`, `voice-input`,
 `client-state-greeting`, `header` (AppHeader, landing carousel), `games` (engine, token, round flow), `game-judging` (classifier, replies, persona), `game-content` (curated names, rate limits), `game-modes` (Guess Who, Next, leaderboard), `game-simulator`,
-`analytics` (/admin), `prompts`, `logging`, `docs-conventions` (JSDoc, OpenAPI), `testing` (incl. e2e),
+`reports` (Report a problem), `analytics` (/admin), `prompts`, `logging`, `docs-conventions` (JSDoc, OpenAPI), `testing` (incl. e2e),
 `mobile`. Keep a rule current when you change the behavior it documents.
 
 ## Architecture

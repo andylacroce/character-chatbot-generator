@@ -14,10 +14,11 @@ import {
 import { useHeaderHeight } from "@react-navigation/elements";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { displayCharacterName, type ThemeColors } from "character-chatbot-shared";
+import { displayCharacterName, REPORT_COPY, type ThemeColors } from "character-chatbot-shared";
 import { useTheme } from "../ThemeContext";
 import type { ReplyAudio } from "../useReplyAudio";
 import Avatar from "./Avatar";
+import ReportModal, { type ReportTarget } from "./ReportModal";
 
 /** A transcript entry. `avatarUrl` pins a past speaker's portrait (the game changes speakers). */
 export type ChatViewMessage = {
@@ -78,6 +79,7 @@ export default function ChatView({
   // each time was the actual cause of the send button intermittently failing to paint its
   // background on real Android devices while typing — not reproducible in the web preview.
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   // `inverted` FlatList was tried for bottom-anchoring, but RN's per-item scaleY(-1)
   // counter-transform didn't take effect on this RN/Hermes/Android combo. Bottom-anchoring
   // instead comes from an explicit scrollToEnd, re-fired on every signal that can change
@@ -166,6 +168,20 @@ export default function ChatView({
                     <Ionicons name="volume-medium-outline" size={16} color={colors.accent} />
                   </Pressable>
                 ) : null}
+                <Pressable
+                  onPress={() =>
+                    setReportTarget({
+                      targetType: "message",
+                      characterName: item.sender,
+                      messageText: item.text,
+                    })
+                  }
+                  hitSlop={10}
+                  accessibilityLabel={`${REPORT_COPY.trigger}: ${displayCharacterName(item.sender)}'s message`}
+                  style={styles.reportButton}
+                >
+                  <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
+                </Pressable>
               </View>
               <View style={styles.quote}>
                 <Text style={styles.botText}>{item.text}</Text>
@@ -245,6 +261,7 @@ export default function ChatView({
           />
         </Pressable>
       </View>
+      <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
     </KeyboardAvoidingView>
   );
 }
@@ -273,6 +290,7 @@ function makeStyles(colors: ThemeColors) {
     botBlock: { alignItems: "flex-start" },
     botByline: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
     replayDisabled: { opacity: 0.4 },
+    reportButton: { marginLeft: "auto" },
     quote: {
       borderLeftWidth: 2,
       borderLeftColor: colors.accent,

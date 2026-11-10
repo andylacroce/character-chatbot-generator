@@ -19,6 +19,7 @@ import styles from "../styles/CharsPage.module.css";
 import { SORT_OPTIONS, type GalleryGroup, type GallerySort } from "./charsGalleryHelpers";
 import PortraitMosaic from "./PortraitMosaic";
 import GalleryLightbox from "./GalleryLightbox";
+import ReportDialog, { type ReportTarget } from "../common/ReportDialog";
 import { useGalleryPages } from "./useGalleryPages";
 import { useGalleryLightbox } from "./useGalleryLightbox";
 import { useBackToTop } from "./useBackToTop";
@@ -49,6 +50,7 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
     regeneratePortrait,
     changeCategory,
   } = useGalleryLightbox(setCharacters, initialCharacterName);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const { showBackToTop, topMarkerRef, scrollToTop } = useBackToTop();
 
   const toggleGroup = useCallback((category: CharacterCategory) => {
@@ -187,12 +189,22 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
           isAdmin={isAdmin}
           adminState={adminState}
           onClose={closeLightbox}
+          onReport={(entry) => {
+            // The lightbox is a top-layer <dialog>, which would cover the report dialog.
+            closeLightbox();
+            setReportTarget({ targetType: "character", characterName: entry.name });
+          }}
           onDialogClose={handleDialogClose}
           onRegenerate={(entry) => void regeneratePortrait(entry)}
           onPurge={(entry) => void purgePortrait(entry)}
           onCategoryChange={(entry, category) => void changeCategory(entry, category)}
         />
       </div>
+      <ReportDialog
+        show={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        target={reportTarget}
+      />
       {characters.length > 0 && (
         <button
           type="button"

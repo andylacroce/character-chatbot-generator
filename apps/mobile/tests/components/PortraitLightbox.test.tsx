@@ -46,6 +46,18 @@ describe("PortraitLightbox", () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
+  it("fires onReport from the report link", async () => {
+    const onReport = jest.fn();
+    const { findByText } = await renderLightbox({ onReport });
+    fireEvent.press(await findByText("Report a problem"));
+    expect(onReport).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits the report link without onReport", async () => {
+    const { queryByText } = await renderLightbox();
+    expect(queryByText("Report a problem")).toBeNull();
+  });
+
   it("calls onClose when the close button is pressed", async () => {
     const onClose = jest.fn();
     const { findByLabelText } = await renderLightbox({ onClose });

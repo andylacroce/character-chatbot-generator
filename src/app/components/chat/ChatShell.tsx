@@ -21,6 +21,7 @@ import AppHeader from "../common/AppHeader";
 import type { Bot } from "../character/BotCreator";
 import type { Message } from "../../../types/message";
 import styles from "../styles/ChatPage.module.css";
+import ReportDialog, { type ReportTarget } from "../common/ReportDialog";
 import { displayCharacterName } from "character-chatbot-shared";
 
 // Dynamically imported for code splitting, shared by the avatar button here and every
@@ -93,6 +94,7 @@ function ChatShell({
 }: ChatShellProps) {
   const [showImageModal, setShowImageModal] = React.useState(false);
   const handleAvatarClick = React.useCallback(() => setShowImageModal(true), []);
+  const [reported, setReported] = React.useState<ReportTarget | null>(null);
 
   return (
     <div className={styles.chatLayout} data-testid="chat-layout">
@@ -137,6 +139,9 @@ function ChatShell({
             bot={bot}
             onAvatarClick={handleAvatarClick}
             onReplayAudio={onReplayAudio}
+            onReport={(m) =>
+              setReported({ targetType: "message", characterName: m.sender, messageText: m.text })
+            }
             replayDisabled={!audioEnabled}
             userName={userName}
           />
@@ -164,11 +169,16 @@ function ChatShell({
         onMicToggle={onMicToggle}
       />
       <ChatStatus error={error} retrying={retrying} />
+      <ReportDialog show={!!reported} onClose={() => setReported(null)} target={reported} />
       <ModalImageViewer
         show={showImageModal}
         imageUrl={bot.avatarUrl}
         alt={bot.name}
         onClose={() => setShowImageModal(false)}
+        onReport={() => {
+          setShowImageModal(false);
+          setReported({ targetType: "character", characterName: bot.name });
+        }}
       />
     </div>
   );

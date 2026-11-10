@@ -25,6 +25,7 @@ import AppHeader from "../../components/common/AppHeader";
 import { useAccountMenu } from "../../components/account/useAccountMenu";
 import styles from "../../components/styles/AdminModeration.module.css";
 import { ModerationSection } from "./ModerationSection";
+import { ReportsSection } from "./ReportsSection";
 import { WarningLogSection } from "./WarningLogSection";
 
 /** Admin moderation view (allowlist + blocklist) — see module doc above. */
@@ -70,6 +71,7 @@ export default function AdminModerationView() {
 
         {status === "authenticated" && (
           <>
+            <ReportsSection onChanged={handleChanged} />
             <WarningLogSection onChanged={handleChanged} />
 
             <div className={styles.grid}>

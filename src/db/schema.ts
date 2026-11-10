@@ -417,3 +417,29 @@ export const guessWhoGuestProfiles = pgTable("guess_who_guest_profiles", {
   leaderboardName: text("leaderboard_name"),
   showOnLeaderboard: boolean("show_on_leaderboard").default(false).notNull(),
 });
+
+/**
+ * User-submitted "Report a problem" reports about a character (name or portrait) or one reply
+ * a character gave, reviewed in /admin/moderation. Environment-scoped like `bots` so
+ * preview/dev reports never reach the production queue. `reporterUserId` is nullable (guests
+ * can report) and `set null` on delete: erasing an account must not erase the report a
+ * moderator may still need, and the row then holds no link back to the person.
+ * `messageText` is the reported reply, copied at report time because chat history is
+ * client-side for guests; capped by the API. `status` is `open` until an admin resolves it.
+ */
+export const contentReports = pgTable(
+  "content_reports",
+  {
+    id: serial("id").primaryKey(),
+    targetType: text("target_type").notNull(),
+    characterName: text("character_name").notNull(),
+    messageText: text("message_text"),
+    reason: text("reason").notNull(),
+    details: text("details"),
+    reporterUserId: text("reporter_user_id").references(() => users.id, { onDelete: "set null" }),
+    environment: text("environment").notNull(),
+    status: text("status").default("open").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [index("content_reports_status_idx").on(table.environment, table.status)],
+);

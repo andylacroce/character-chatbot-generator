@@ -30,6 +30,7 @@ import { loadGameInstructionsSeen, saveGameInstructionsSeen } from "../storage";
 import ChatView from "../components/ChatView";
 import CharacterHeaderTitle from "../components/CharacterHeaderTitle";
 import PortraitLightbox from "../components/PortraitLightbox";
+import ReportModal, { type ReportTarget } from "../components/ReportModal";
 import GameInstructionsModal from "../components/GameInstructionsModal";
 import LeaderboardClaim from "../components/LeaderboardClaim";
 import DarkModeButton from "../components/DarkModeButton";
@@ -57,6 +58,7 @@ function GameScreen({ navigation, game: definition }: Props) {
   const game = useGameController(definition);
   const [showInstructions, setShowInstructions] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const {
     started,
     lastEvent,
@@ -235,7 +237,13 @@ function GameScreen({ navigation, game: definition }: Props) {
         name={speaker.name}
         avatarUrl={speaker.avatarUrl}
         onClose={() => setLightboxOpen(false)}
+        onReport={() => {
+          // One modal at a time: iOS can't stack the report modal over the lightbox.
+          setLightboxOpen(false);
+          setReportTarget({ targetType: "character", characterName: speaker.name });
+        }}
       />
+      <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
       <ChatView
         messages={game.messages}
         characterName={speaker.name}

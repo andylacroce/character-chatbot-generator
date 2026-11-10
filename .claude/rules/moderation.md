@@ -84,6 +84,8 @@ user's saved characters). On a validation error, `blocked` and `warningLevel` fa
   log's buttons work. A `refreshKey` bumped on any mutation re-fetches every section. The table uses
   `table-layout: fixed` with ellipsis (one line per row) and drops Reason/Source/Added below 640px
   (icon-only actions keep `aria-label`/`title`); scrolling and stacked-card layouts were rejected.
+- **User reports feed the same tools.** "Report a problem" submissions show in `/admin/moderation` and
+  are actioned with the blocklist and portrait-purge routes above; see `reports.md`.
 - **Overriding a warning/caution never persists anything server-side.** `useBotCreation.ts` sets
   `skipPersistence` on the `Bot` when the user clicks "Continue Anyway". `generate-avatar.ts`
   (`bypassPersistence`) then skips `avatar_cache` and Vercel Blob (returns the base64 data URL),

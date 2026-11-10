@@ -79,6 +79,20 @@ describe("ChatMessage", () => {
     expect(onReplayAudio).toHaveBeenCalledWith(message);
   });
 
+  it("offers Report a problem on bot replies only", () => {
+    const onReport = jest.fn();
+    const message: Message = { text: "Hmm.", sender: "Gandalf" };
+    const { rerender } = render(
+      <ChatMessage message={message} bot={mockBot} onReport={onReport} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Report a problem: Gandalf's message" }));
+    expect(onReport).toHaveBeenCalledWith(message);
+    rerender(
+      <ChatMessage message={{ text: "Hi", sender: "User" }} bot={mockBot} onReport={onReport} />,
+    );
+    expect(screen.queryByRole("button", { name: /Report a problem/ })).not.toBeInTheDocument();
+  });
+
   it("does not show replay on user messages", () => {
     render(
       <ChatMessage

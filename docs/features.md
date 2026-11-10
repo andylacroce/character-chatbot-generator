@@ -9,6 +9,7 @@ How each user-facing feature works and what it stores. For how the code is organ
 - [Account Persistence](#account-persistence-optional)
 - [Character Wall](#character-wall-characters)
 - [Guessing Games](#guessing-games)
+- [Report a Problem](#report-a-problem)
 - [Personalized Greeting](#personalized-greeting)
 - [Internal Analytics](#internal-analytics-admin)
 - [Storage](#storage-client-side)
@@ -154,6 +155,19 @@ until the player loses or gives up.
 - **Leaderboards (`/leaderboard`, opt-in)**: the shared page has a separate tab and top
   ten for each game. Signed-in and guest players can claim a moderated public name when
   eligible; private scores still participate in ranking without exposing identity.
+
+## Report a Problem
+
+Anyone, signed in or not, can report a problem with a character (its name or portrait) or with
+one reply a character gave. Entry points: the Character Wall lightbox, a character page, the chat
+portrait viewer, and a flag button on each character reply in chat and the guessing games (web
+and mobile). The reporter picks a reason (offensive, portrait, wrong or misleading, copyright, or
+other) and may add up to 500 characters of detail.
+
+Reports land in the `content_reports` table and the admin queue at `/admin/moderation`, where an
+admin can block the name, purge the portrait, or dismiss. A signed-in reporter's account id is
+stored; deleting the account removes that link but keeps the report. Rate limit: 5 per minute per
+IP. See `.claude/rules/reports.md` for the implementation notes.
 
 ## Personalized Greeting
 

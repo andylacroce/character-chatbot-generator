@@ -290,3 +290,42 @@
     padding: 0.35rem 0.5rem;
   }
 }
+
+.reportList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.reportItem {
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-outline) 40%, transparent);
+}
+
+.reportHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.reportQuote {
+  margin: 0.3rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--color-outline);
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.reportDetails {
+  margin: 0.3rem 0 0.6rem;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
