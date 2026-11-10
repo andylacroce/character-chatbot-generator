@@ -28,7 +28,7 @@ async function persistedUserId(req: NextRequest): Promise<string | null> {
 }
 
 /**
- * Next.js API route handler for persisting and listing a signed-in user's characters.
+ * Lists, saves and deletes a signed-in user's characters.
  *
  * @swagger
  * /bots:

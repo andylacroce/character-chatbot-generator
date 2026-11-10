@@ -24,7 +24,7 @@ hooks. Each platform adds only its own transport, storage, and logging.
 
 1. **`src/proxy.ts` is the single auth choke point.** Browsers pass on a matching Origin; everyone else
    needs `x-api-key`. It is CSRF protection, not authentication, so the per-route rate limiter
-   (`src/utils/server/rateLimit.ts`) is the real cost ceiling.
+   (`src/utils/server/withRoute.ts`) is the real cost ceiling.
 2. **Claude calls use model tiers**, chosen at the call site (`src/utils/claude/claudeModelSelector.ts`):
    `text` for chat replies, `text-simple` for short structured JSON tasks, and `image` for avatar prompts.
    All calls share one client (`anthropicClient.ts`) and pass `thinking` settings from `claudeThinking.ts`.

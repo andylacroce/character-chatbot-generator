@@ -14,8 +14,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for validating character names.
- * Returns whether the character is safe to use, if copyright/trademark concerns
+ * Reports whether the character is safe to use, if copyright/trademark concerns
  * exist, and whether the name itself must be hard-blocked (abusive content, or a
  * living person with serious real-world legal risk).
  *

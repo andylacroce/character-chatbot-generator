@@ -13,11 +13,8 @@
  * automatic check's gap: an abusive name, or a living person with serious real-world
  * legal risk (see characterBlocklist.ts's doc comment for what "content" means).
  * A manual add also scrubs the name from the shared avatar cache and any user's own
- * saved copy immediately — added 2026-09-17 after this endpoint's original version
- * only prevented *future* generations, leaving an already-cached/saved name (e.g. a
- * live report of "Bill Cosby" being publicly visible on the Character Wall) fully
- * visible until someone happened to re-trigger validate-character for that exact
- * name again.
+ * saved copy immediately, so an already-cached or saved name doesn't stay visible on the
+ * Character Wall until someone happens to re-trigger validate-character for it.
  *
  * A name is never on both the blocklist and the admin-managed allowlist at once —
  * POST here also removes the name from the allowlist (see
@@ -43,7 +40,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for the admin character-blocklist panel.
+ * Lists, adds and removes names on the admin character blocklist.
  *
  * @swagger
  * /admin/blocklist:

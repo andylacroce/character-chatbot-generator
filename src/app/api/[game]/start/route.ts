@@ -24,7 +24,7 @@ import { recordEvent } from "../../../../utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 
 /**
- * Next.js API route handler that starts a new guessing-game run.
+ * Starts a new guessing-game run.
  *
  * @swagger
  * /{game}/start:

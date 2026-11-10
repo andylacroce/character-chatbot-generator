@@ -22,7 +22,7 @@ import { recordEvent } from "../../../../utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 
 /**
- * Next.js API route handler that generates the next round after a correct guess.
+ * Generates the next round after a correct guess.
  *
  * @swagger
  * /{game}/continue:

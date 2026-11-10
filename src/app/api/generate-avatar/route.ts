@@ -26,7 +26,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for generating a character avatar image.
+ * Generates (or reuses) a character's avatar image.
  *
  * @swagger
  * /generate-avatar:
@@ -86,8 +86,6 @@ const LIMIT = {
  *                   nullable: true
  *       400:
  *         description: Valid name required, or invalid character name
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  */

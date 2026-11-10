@@ -16,9 +16,9 @@ export const STORAGE_KEYS = {
   authToken: "chatbot-auth-token",
   /** Mobile's own guest game identity — the equivalent of the web's HttpOnly `portrayal-game-guest` cookie, which a native client can't reliably persist. Kept in expo-secure-store. */
   gameGuestId: "chatbot-game-guest-id",
-  /** One-time "how to play" gate for "Guess Who's Next", mirrors the web's own key. Renamed 2026-09-28 alongside the old game's full internal rename — an in-flight value under the old key string is simply not read again, so this just re-shows the modal once, same low-stakes degrade as a secret rotation elsewhere in this app. */
+  /** One-time "how to play" gate for "Guess Who's Next", mirrors the web's own key. */
   guessWhoNextInstructionsSeen: "chatbot-guess-who-next-instructions-seen",
-  /** "Guess Who's Next"'s opaque round token (never decoded client-side), mirrors the web's own key. Renamed 2026-09-28 — an in-flight round token under the old key string is simply lost once, same "please start a new game" degrade as a secret rotation elsewhere in this app. */
+  /** "Guess Who's Next"'s opaque round token (never decoded client-side), mirrors the web's own key. */
   guessWhoNextToken: "chatbot-guess-who-next-token",
   /** "Guess Who's Next"'s transcript and round state, stored alongside `guessWhoNextToken`. */
   guessWhoNextTranscript: "chatbot-guess-who-next-transcript",

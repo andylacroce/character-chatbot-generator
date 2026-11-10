@@ -18,7 +18,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for the admin "Recently warned" panel.
+ * Lists the log of copyright warnings (the "Recently warned" panel).
  *
  * @swagger
  * /admin/warnings:

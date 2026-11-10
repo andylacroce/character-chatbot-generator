@@ -25,7 +25,7 @@ export interface CharacterValidationResult {
   // name itself is profane, a slur, or otherwise abusive, or (2) it identifies a
   // real, currently-living person with a serious, well-documented real-world
   // criminal conviction or extensive credible allegations of serious criminal
-  // conduct (added 2026-09-17 after a live report — deliberately excludes
+  // conduct (deliberately excludes
   // historical/deceased figures however controversial, and ordinary celebrity/
   // political controversy; only serious real-world criminal conduct by someone
   // still alive today). A blocked name has no override either way: the character

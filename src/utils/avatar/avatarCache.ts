@@ -217,8 +217,7 @@ export async function setCachedCategory(
  * Deletes every signed-in user's own saved `bots` row matching this name
  * case-insensitively — across every user and every environment, not just the one the
  * request happened to come from, since a blocklist concern is global (see
- * characterBlocklist.ts's doc comment). Added 2026-09-17 alongside the living-person
- * legal-risk guardrail: scrubbing only the shared avatar_cache (scrubCachedAvatar
+ * characterBlocklist.ts's doc comment). Scrubbing only the shared avatar_cache (scrubCachedAvatar
  * above) would leave a user's own already-saved copy of a now-blocked name — and its
  * full chat history — untouched, even though it's the same underlying concern. A
  * user's own saved bot is never public on its own (only the shared, `recognized`

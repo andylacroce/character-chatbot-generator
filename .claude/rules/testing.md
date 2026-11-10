@@ -28,8 +28,14 @@ paths:
   exist". Set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to the installed binary (e.g.
   `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`) instead of running `playwright install`.
 
-- Tests live under `tests/`, mirroring source (`tests/api`, `tests/app`, `tests/pages`, `tests/src`,
+- Tests live under `tests/`, mirroring source (`tests/api`, `tests/app`, `tests/src`,
   `tests/utils`, `tests/integration`, `tests/unit`).
+- **API route tests** (`tests/app/api/**`, route files in `src/app/api/**/route.ts`) start with
+  `/** @jest-environment node */` (Web `Request`/`Response` don't exist in jsdom). Build a request with
+  `tests/helpers/routeRequest.ts` and call the exported method, or wrap the module in
+  `tests/helpers/asHandler.ts` to keep a `(req, res)`-style test. `tests/setup.js` mocks `withRoute`
+  (so one fake IP never trips the limiter) and runs `after()` tasks immediately; the limiter itself is
+  tested in `tests/utils/withRoute.test.ts`, which unmocks it. Don't test 405s: Next answers those.
 - **A module split out of a larger file gets its own test file named after it** (`useChatIntro.test.ts`,
   `gameStats.test.ts`), in the folder its neighbors use. The original integration-style tests of the
   parent (`chat.test.ts`, `useChatController.*`) stay as the behavior pin; don't fold them into the new files.

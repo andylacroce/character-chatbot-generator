@@ -23,7 +23,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler resolving the caller's bearer token to a display identity.
+ * Resolves the caller's bearer token to a display identity.
  *
  * @swagger
  * /auth/mobile-session:
@@ -50,8 +50,6 @@ const LIMIT = {
  *                 name:
  *                   type: string
  *                   nullable: true
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  */

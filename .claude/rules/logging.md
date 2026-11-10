@@ -29,7 +29,7 @@ All server routes use structured logging, ESLint-enforced.
   lower-detail `info` always fires, because the endpoint is hit on every chat mount and transient
   provider blips shouldn't drive alerting. Don't collapse it without re-reading why.
 - **Centralize cross-cutting logging:** 429 logging lives once in `withRoute`
-  (`src/utils/server/rateLimit.ts`), tagged with the limiter's `name`.
+  (`src/utils/server/withRoute.ts`), tagged with the limiter's `name`.
 - **Enforcement:** `no-console` (scoped to `src/**`, excluding `logger.ts` and tests) plus a
   `no-restricted-syntax` rule banning `logger.info(`/`.warn(`/`.error(` in `src/app/api/**/route.ts`.
   Client code (`src/app/components`) already uses `logEvent` exclusively; keep it that way.

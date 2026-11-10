@@ -25,7 +25,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for listing a signed-in user's chat history for one character.
+ * Lists a signed-in user's saved chat history for one character.
  *
  * @swagger
  * /messages:
@@ -60,8 +60,6 @@ const LIMIT = {
  *                         type: string
  *                       text:
  *                         type: string
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:

@@ -109,7 +109,7 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
   current round's first message). `sendMessage` sends `messages.slice(roundStartIndex)` as history.
   `continueRound()` captures `messages.length` *before* appending the new greeting. An earlier
   off-by-offset bug only worked on the first round switch;
-  `tests/app/components/useGuessWhoNextController.test.ts` plays three consecutive switches.
+  `tests/app/components/useGameController.test.ts` plays three consecutive switches.
 - **Replay keeps each speaker's voice.** Every transcript message pins its round's avatar and
   gender; a message with no `audioFileUrl` (its TTS failed) is replayed via
   `packages/shared/src/replayAudio.ts`'s `findSpeakerVoiceConfig`, which recovers the speaker's

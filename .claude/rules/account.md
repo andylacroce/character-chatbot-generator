@@ -21,9 +21,9 @@ paths:
 Optional accounts with server-persisted bots and history, additive: guest usage works unchanged and
 everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401.
 
-- **Auth:** Auth.js (`next-auth@4`, stable; v5's `auth()` is App-Router-only) with Google, JWT
+- **Auth:** Auth.js (`next-auth@4`, stable) with Google, JWT
   sessions (no `sessions` table). `src/auth/authOptions.ts` holds config;
-  `src/pages/api/auth/[...nextauth].ts` mounts it in Pages Router. Use
+  `src/app/api/auth/[...nextauth]/route.ts` mounts it as an App Router route handler. Use
   `src/utils/account/getSessionUserId.ts` in any handler needing the signed-in user, never a client-supplied
   id. `proxy.ts` bypasses its origin/key check for `/api/auth/*` (Auth.js has its own CSRF/state
   cookies, and Google's callback carries Google's Referer). `next.config.mjs`'s CSP `form-action`

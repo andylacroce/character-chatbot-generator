@@ -11,12 +11,9 @@
  * See mobile-auth-complete.ts for the second leg, and character-chatbot-mobile's
  * CLAUDE.md for why this exists instead of a native SDK.
  *
- * Replaces the earlier mobile-google-start.ts/-callback.ts pair, which hand-rolled the
- * Google OAuth code exchange itself (google-auth-library's OAuth2Client) — duplicating
- * logic NextAuth's own configured Google provider already does for web. This version
- * has zero provider-specific code: it also automatically inherits whatever
- * authOptions.ts's environment-based provider swapping already does (e.g. the
- * preview-stub Credentials provider on Vercel Preview), with no special-casing needed.
+ * This bridge has zero provider-specific code: it inherits whatever authOptions.ts's
+ * environment-based provider swapping does (e.g. the preview-stub Credentials provider on
+ * Vercel Preview), with no special-casing.
  *
  * Deliberately placed under /api/auth/ so proxy.ts's origin/API-key check doesn't apply
  * to it (see proxy.ts's own `/api/auth/` bypass comment) — same as every other NextAuth
@@ -45,7 +42,32 @@ const LIMIT = {
   message: "Too many sign-in attempts from this IP, please try again later.",
 };
 
-/** Next.js API route handler that starts the mobile sign-in bridge (see module doc above). */
+/**
+ * Starts the mobile sign-in bridge (see the module doc above).
+ *
+ * @swagger
+ * /auth/mobile-auth-start:
+ *   get:
+ *     summary: Start the mobile sign-in bridge
+ *     description: >
+ *       Opens the app's own sign-in page for the mobile app: redirects (302) to
+ *       /api/auth/signin with a callback through /auth/mobile-auth-complete. Only the
+ *       installed app's redirect URI, or an Expo Go dev URI, is accepted.
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: query
+ *         name: redirect_uri
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       302:
+ *         description: Redirect to the sign-in page
+ *       400:
+ *         description: redirect_uri is missing or not an allowed app redirect
+ *       429:
+ *         description: Rate limit exceeded
+ */
 export const GET = withRoute(LIMIT, async (req: NextRequest) => {
   const redirectUri = req.nextUrl.searchParams.get("redirect_uri");
   if (!redirectUri || !isAllowedRedirectUri(redirectUri)) {

@@ -204,7 +204,7 @@ acting as a general-purpose observability service.
   streaks, and fixed outcome labels. None record character names, guesses, or chat text.
 - **`/admin`** is an admin-only page with separate Guessing game and Character conversations
   tabs showing aggregate counts only — no per-user or
-  per-guest detail. The access check runs server-side (`isAdminSession()`) and 404s
+  per-guest detail. The access check runs server-side (`isAdmin()`) and 404s
   anyone who isn't a confirmed admin before the stats view or its bundle ever renders,
   rather than loading the page and showing a "not authorized" message. Gated by the
   optional `ADMIN_EMAILS` env var (comma-separated allowlist of emails); with none set,

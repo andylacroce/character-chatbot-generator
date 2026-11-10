@@ -40,7 +40,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for deleting the signed-in user's account and its data.
+ * Deletes the signed-in user's account and its data.
  *
  * @swagger
  * /account:
@@ -63,8 +63,6 @@ const LIMIT = {
  *                   type: boolean
  *       401:
  *         description: Not signed in
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:

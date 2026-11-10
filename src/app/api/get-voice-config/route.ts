@@ -16,10 +16,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for retrieving a character's TTS voice configuration.
- * Accepts POST requests with a character name and returns a voice config object.
- *
- * @returns {Promise<void>} Resolves when the response is sent.
+ * Returns a character's TTS voice configuration.
  *
  * @swagger
  * /get-voice-config:
