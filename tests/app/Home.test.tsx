@@ -12,7 +12,7 @@ jest.mock("../../src/utils/storage", () => ({
 
 // Mock next/navigation
 const mockSearchParams = new URLSearchParams();
-const mockRouter = { push: jest.fn() };
+const mockRouter = { push: jest.fn(), replace: jest.fn() };
 jest.mock("next/navigation", () => ({
   useSearchParams: () => mockSearchParams,
   useRouter: () => mockRouter,
@@ -394,7 +394,7 @@ describe("Home component URL parameter functionality", () => {
       // helper (see getValidBotFromStorage.ts) rather than direct storage.removeItem
       // calls here, so AuthControl/SignInModal can reuse the exact same cleanup.
       expect(mockClearStoredBot).toHaveBeenCalled();
-      expect(mockRouter.push).toHaveBeenCalledWith("/");
+      expect(mockRouter.replace).toHaveBeenCalledWith("/");
       expect(screen.getByTestId("bot-creator")).toBeInTheDocument();
     });
   });

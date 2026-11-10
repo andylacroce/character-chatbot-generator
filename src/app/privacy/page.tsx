@@ -3,6 +3,7 @@
  * @module PrivacyPage
  */
 
+import Link from "next/link";
 import { LegalBackLink } from "../components/common/BackLink";
 import { AnalyticsPreferences } from "../components/common/GoogleAnalyticsConsent";
 import styles from "../components/styles/LegalPage.module.css";
@@ -199,8 +200,8 @@ export default function PrivacyPage() {
           delete them. On the <strong>Past chats</strong> page you can delete any single chat, or
           clear them all. To delete everything, open the menu and choose{" "}
           <strong>Delete account</strong>. Either way, the data is erased immediately once you
-          confirm. See our <a href="/data-deletion">data deletion instructions</a> for the full
-          details.
+          confirm. See our <Link href="/data-deletion">data deletion instructions</Link> for the
+          full details.
         </p>
       </div>
 

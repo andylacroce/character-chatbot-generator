@@ -18,6 +18,13 @@ describe("ConfirmDialog", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("closes on Escape", () => {
+    const onClose = jest.fn();
+    render(<ConfirmDialog show copy={copy} onConfirm={jest.fn()} onClose={onClose} />);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it("cancel closes without confirming", () => {
     const onClose = jest.fn();
     const onConfirm = jest.fn();

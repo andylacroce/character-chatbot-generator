@@ -90,9 +90,9 @@ export function LandingFooterLinks({
       >
         Disclaimer
       </button>
-      <a href="/privacy" className={styles.footerLink}>
+      <Link href="/privacy" className={styles.footerLink}>
         Privacy
-      </a>
+      </Link>
     </div>
   );
 }

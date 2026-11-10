@@ -3,6 +3,11 @@ import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import AdminModerationView from "@/src/app/admin/moderation/AdminModerationView";
 
 const mockUseSession = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  usePathname: () => "/admin/moderation",
+}));
+
 jest.mock("next-auth/react", () => ({
   useSession: () => mockUseSession(),
   getProviders: () => Promise.resolve({}),

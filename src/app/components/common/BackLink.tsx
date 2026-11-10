@@ -7,8 +7,8 @@ import { useGoBack } from "./useGoBack";
 import styles from "../styles/LegalPage.module.css";
 
 /** Header "Back" pill for pages reachable from several places; see `useGoBack`. */
-export const BackLink: React.FC = () => (
-  <BackHomeLink label="Back" icon="back" onClick={useGoBack()} />
+export const BackLink: React.FC<{ className?: string }> = ({ className }) => (
+  <BackHomeLink label="Back" icon="back" className={className} onClick={useGoBack()} />
 );
 
 /** The text "Back" link at the top of the legal pages; see `useGoBack`. */

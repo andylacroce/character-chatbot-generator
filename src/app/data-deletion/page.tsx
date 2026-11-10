@@ -3,6 +3,7 @@
  * @module DataDeletionPage
  */
 
+import Link from "next/link";
 import { LegalBackLink } from "../components/common/BackLink";
 import styles from "../components/styles/LegalPage.module.css";
 
@@ -97,7 +98,8 @@ export default function DataDeletionPage() {
 
       <div className={styles.section}>
         <p>
-          See our full <a href="/privacy">Privacy Policy</a> for more on what we collect and why.
+          See our full <Link href="/privacy">Privacy Policy</Link> for more on what we collect and
+          why.
         </p>
       </div>
     </div>
