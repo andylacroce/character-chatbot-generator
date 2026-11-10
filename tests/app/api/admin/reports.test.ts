@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { createMocks } from "node-mocks-http";
 
 jest.mock("../../../../src/utils/account/getSessionUserId", () => ({
@@ -14,12 +16,8 @@ jest.mock("../../../../src/utils/moderation/contentReports", () => ({
   resolveReport: (...args: unknown[]) => mockResolve(...args),
 }));
 
-jest.mock("express-rate-limit", () => {
-  return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
-});
-
 async function call(method: string, body?: object) {
-  const handler = (await import("../../../../src/pages/api/admin/reports")).default;
+  const handler = asHandler(await import("../../../../src/app/api/admin/reports/route"));
   const { req, res } = createMocks({ method: method as "GET", body });
   await handler(req, res);
   return res;
