@@ -47,6 +47,7 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
     handleDialogClose,
     purgePortrait,
     regeneratePortrait,
+    changeCategory,
   } = useGalleryLightbox(setCharacters, initialCharacterName);
   const { showBackToTop, topMarkerRef, scrollToTop } = useBackToTop();
 
@@ -189,6 +190,7 @@ const CharsGallery: React.FC<{ initialCharacterName?: string }> = ({ initialChar
           onDialogClose={handleDialogClose}
           onRegenerate={(entry) => void regeneratePortrait(entry)}
           onPurge={(entry) => void purgePortrait(entry)}
+          onCategoryChange={(entry, category) => void changeCategory(entry, category)}
         />
       </div>
       {characters.length > 0 && (

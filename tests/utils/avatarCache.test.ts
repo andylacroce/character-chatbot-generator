@@ -5,6 +5,7 @@ jest.mock("../../src/db/client", () => ({
   getDb: () => ({
     select: () => ({ from: () => ({ where: mockSelectRows }) }),
     delete: () => ({ where: () => ({ returning: mockReturning }) }),
+    update: () => ({ set: () => ({ where: () => ({ returning: mockReturning }) }) }),
     insert: () => ({ values: () => ({ onConflictDoUpdate: mockUpsert }) }),
   }),
 }));
@@ -21,6 +22,7 @@ import {
   getCachedAvatar,
   persistAvatarToBlob,
   scrubUserBotsByName,
+  setCachedCategory,
 } from "../../src/utils/avatar/avatarCache";
 
 const original = { ...process.env };
@@ -99,5 +101,20 @@ describe("scrubUserBotsByName", () => {
     process.env.DATABASE_URL = "postgres://test";
     mockReturning.mockRejectedValue(new Error("db down"));
     await expect(scrubUserBotsByName("X")).resolves.toBe(0);
+  });
+});
+
+describe("setCachedCategory", () => {
+  it("reports whether a cached row was updated", async () => {
+    process.env.DATABASE_URL = "postgres://test";
+    mockReturning.mockResolvedValueOnce([{ name: "hamlet" }]);
+    await expect(setCachedCategory("Hamlet", "literature")).resolves.toBe(true);
+    mockReturning.mockResolvedValueOnce([]);
+    await expect(setCachedCategory("Nobody", "history")).resolves.toBe(false);
+  });
+
+  it("is a no-op without a database", async () => {
+    delete process.env.DATABASE_URL;
+    await expect(setCachedCategory("Hamlet", "literature")).resolves.toBe(false);
   });
 });

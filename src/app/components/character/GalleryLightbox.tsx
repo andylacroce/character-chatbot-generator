@@ -1,6 +1,11 @@
 import React from "react";
 import Link from "next/link";
-import { characterSlug, displayCharacterName } from "character-chatbot-shared";
+import {
+  CHARACTER_CATEGORIES,
+  characterSlug,
+  displayCharacterName,
+  type CharacterCategory,
+} from "character-chatbot-shared";
 import styles from "../styles/CharsPage.module.css";
 import type { CharEntry } from "./charsGalleryHelpers";
 import type { AdminState } from "./useGalleryLightbox";
@@ -14,6 +19,7 @@ interface GalleryLightboxProps {
   onDialogClose: () => void;
   onRegenerate: (entry: CharEntry) => void;
   onPurge: (entry: CharEntry) => void;
+  onCategoryChange: (entry: CharEntry, category: CharacterCategory) => void;
 }
 
 /**
@@ -31,6 +37,7 @@ const GalleryLightbox: React.FC<GalleryLightboxProps> = ({
   onDialogClose,
   onRegenerate,
   onPurge,
+  onCategoryChange,
 }) => (
   <dialog
     ref={dialogRef}
@@ -67,6 +74,19 @@ const GalleryLightbox: React.FC<GalleryLightboxProps> = ({
         )}
         {isAdmin && (
           <div className={styles.lightboxAdmin}>
+            <select
+              aria-label="Category"
+              className={styles.lightboxAdminButton}
+              value={selected.category}
+              onChange={(e) => onCategoryChange(selected, e.target.value as CharacterCategory)}
+            >
+              {CHARACTER_CATEGORIES.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            {adminState === "categoryError" && <span role="alert">Category change failed</span>}
             <button
               type="button"
               className={styles.lightboxAdminButton}

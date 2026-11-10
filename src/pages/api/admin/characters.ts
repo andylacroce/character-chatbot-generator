@@ -1,6 +1,6 @@
 /**
- * Admin-only control of a character's shared portrait (`avatar_cache` row), for a bad image.
- * DELETE purges it (the next creation of that name builds a fresh one); POST regenerates it
+ * Admin-only control of a character's shared `avatar_cache` row. PATCH moves it to another Wall
+ * category. For a bad image, DELETE purges the portrait (the next creation of that name builds a fresh one); POST regenerates it
  * now, swapping the new image in place. Both leave users' saved characters, the blocklist, and
  * the allowlist alone (blocking a name is the separate /admin/blocklist action), and both clear
  * the Wall's per-instance list cache so a stale tile doesn't point at a deleted image.
@@ -10,7 +10,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { readAdminName, requireAdmin } from "../../../utils/account/adminGuard";
 import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { purgeCachedAvatar, regenerateCachedAvatar } from "../../../utils/avatar/avatarGeneration";
+import { isCharacterCategory } from "character-chatbot-shared";
+import {
+  purgeCachedAvatar,
+  regenerateCachedAvatar,
+  setCachedCategory,
+} from "../../../utils/avatar/avatarGeneration";
 import { clearCharactersCache } from "../../../utils/moderation/charactersWall";
 import { withRequestLog } from "../../../utils/server/withRequestLog";
 
@@ -52,6 +57,37 @@ const adminCharactersRateLimit = createRateLimiter({
  *         description: Rate limit exceeded
  *       502:
  *         description: No image provider produced a portrait; the old one is unchanged
+ *   patch:
+ *     summary: Move a character to another Wall category (admin-only)
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, category]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *                 enum: [history, mythology, literature, folklore, religion]
+ *     responses:
+ *       200:
+ *         description: Updated
+ *       400:
+ *         description: Valid name and category required
+ *       401:
+ *         description: Not signed in
+ *       403:
+ *         description: Signed in but not an admin
+ *       404:
+ *         description: Name isn't cached
+ *       429:
+ *         description: Rate limit exceeded
+ *       500:
+ *         description: Database failure
  *   delete:
  *     summary: Purge a character's cached portrait so it regenerates (admin-only)
  *     tags: [Admin]
@@ -88,8 +124,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
   if (!userId) return;
 
-  if (req.method !== "DELETE" && req.method !== "POST") {
-    res.setHeader("Allow", ["DELETE", "POST"]);
+  if (req.method !== "DELETE" && req.method !== "POST" && req.method !== "PATCH") {
+    res.setHeader("Allow", ["DELETE", "PATCH", "POST"]);
     res.status(405).end(`Method ${req.method} Not Allowed`);
     return;
   }
@@ -97,6 +133,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const name = readAdminName(req, res);
   if (!name) return;
   try {
+    if (req.method === "PATCH") {
+      const category: unknown = req.body?.category;
+      if (!isCharacterCategory(category)) {
+        res.status(400).json({ error: "Valid category required" });
+        return;
+      }
+      if (!(await setCachedCategory(name, category))) {
+        res.status(404).json({ error: "Character not found" });
+        return;
+      }
+      clearCharactersCache();
+      logEvent(
+        "info",
+        "admin_character_recategorized",
+        "Admin changed a character's Wall category",
+        sanitizeLogMeta({ userId, characterName: name, category }),
+      );
+      res.status(200).json({ ok: true });
+      return;
+    }
     if (req.method === "POST") {
       const avatarUrl = await regenerateCachedAvatar(name);
       clearCharactersCache();

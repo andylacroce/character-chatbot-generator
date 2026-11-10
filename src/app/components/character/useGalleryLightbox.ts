@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import type { CharacterCategory } from "character-chatbot-shared";
 import { authenticatedFetch } from "../../../utils/api";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { withViewTransition, type CharEntry } from "./charsGalleryHelpers";
 
 /** Admin portrait-control state. Purge needs a second click ("confirm"); regenerate is one click. */
 export type AdminState =
-  "idle" | "confirm" | "purging" | "regenerating" | "purgeError" | "regenError";
+  "idle" | "confirm" | "purging" | "regenerating" | "purgeError" | "regenError" | "categoryError";
 
-/** Admin only: DELETE purges this character's cached portrait, POST regenerates it in place. */
-async function adminPortraitCall(entry: CharEntry, method: "DELETE" | "POST") {
+/** Admin only: DELETE purges the cached portrait, POST regenerates it, PATCH recategorizes it. */
+async function adminPortraitCall(
+  entry: CharEntry,
+  method: "DELETE" | "POST" | "PATCH",
+  category?: CharacterCategory,
+) {
   const res = await authenticatedFetch("/api/admin/characters", {
     method,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: entry.name }),
+    body: JSON.stringify({ name: entry.name, category }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res;
@@ -94,6 +99,23 @@ export function useGalleryLightbox(
     }
   };
 
+  const changeCategory = async (entry: CharEntry, category: CharacterCategory) => {
+    try {
+      await adminPortraitCall(entry, "PATCH", category);
+      setCharacters((prev) => prev.map((c) => (c.name === entry.name ? { ...c, category } : c)));
+      setSelected({ ...entry, category });
+      setAdminState("idle");
+    } catch (err) {
+      logEvent(
+        "error",
+        "chars_recategorize_failed",
+        "Admin category change failed",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
+      setAdminState("categoryError");
+    }
+  };
+
   // Carousel links carry only the character name so they stay small even when an
   // avatar is a large base64 data URL. Resolve that one cached entry independently
   // of the paginated wall, then open the same lightbox used by an ordinary tile.
@@ -126,5 +148,6 @@ export function useGalleryLightbox(
     handleDialogClose,
     purgePortrait,
     regeneratePortrait,
+    changeCategory,
   };
 }

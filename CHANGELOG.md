@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.31.0 - 2026-11-09 - Fix a wall category in place
+
+- Admins can change a character's Wall category from the portrait lightbox on `/characters`, next to Regenerate and Purge, instead of editing the database.
+
 ## v0.30.1 - 2026-11-09 - No catch-all on the Wall
 
 - The Character Wall no longer has an "Other" group. Characters are sorted into Historical Figures, Mythology, Literature, Folklore & Legend, or Religion, with clearer rules (Sherlock and Hamlet are literature, philosophers are history, "Religion" is for religious figures only). The "Religion & Philosophy" heading is now "Religion".

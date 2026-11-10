@@ -197,6 +197,23 @@ export async function purgeCachedAvatar(name: string): Promise<boolean> {
 }
 
 /**
+ * Admin recategorization of one cached character. Returns whether a row existed; throws on DB
+ * failure so the admin sees the error instead of a false success.
+ */
+export async function setCachedCategory(
+  name: string,
+  category: CharacterCategory,
+): Promise<boolean> {
+  if (!process.env.DATABASE_URL) return false;
+  const rows = await getDb()
+    .update(avatarCache)
+    .set({ category })
+    .where(eq(avatarCache.characterName, avatarCacheKey(name)))
+    .returning({ name: avatarCache.characterName });
+  return rows.length > 0;
+}
+
+/**
  * Deletes every signed-in user's own saved `bots` row matching this name
  * case-insensitively — across every user and every environment, not just the one the
  * request happened to come from, since a blocklist concern is global (see

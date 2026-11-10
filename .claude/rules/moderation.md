@@ -62,8 +62,9 @@ user's saved characters). On a validation error, `blocked` and `warningLevel` fa
   `scrubUserBotsByName` delete the shared cache row and every user's saved `bots` row for the name
   (case-insensitive, all users and environments; `messages` cascade). The manual admin add does the
   same immediately and defaults to `category: "content"` unless it passes `"copyright"`.
-- **Fixing a bad portrait (not a block):** an admin sees "Regenerate portrait" and "Purge portrait"
-  in the `/characters` lightbox (`useAccountMenu`'s `isAdmin`), both via `/api/admin/characters`.
+- **Fixing a bad portrait or category (not a block):** an admin sees a Category select (`PATCH`, via
+  `setCachedCategory`, same cache clear) plus "Regenerate portrait" and "Purge portrait"
+  in the `/characters` lightbox (`useAccountMenu`'s `isAdmin`), all via `/api/admin/characters`.
   Purge (`DELETE`, two clicks) → `purgeCachedAvatar` deletes only the shared `avatar_cache` row (the
   tile leaves the Wall until someone recreates the name). Regenerate (`POST`, one click, one image
   generation) → `regenerateCachedAvatar` generates past the cache and upserts the row in place, so a
