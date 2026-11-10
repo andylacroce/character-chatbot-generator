@@ -5,18 +5,15 @@
  * the same session + ADMIN_EMAILS check that route already gates on.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { isAdmin } from "../../../utils/account/isAdmin";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
+import { isAdmin } from "../../../../utils/account/isAdmin";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
+import { withRoute } from "../../../../utils/server/withRoute";
 
-/** Rate limiter: 30 requests per minute per IP — cheap enough to allow a generous budget. */
-const isAdminRateLimit = createRateLimiter({
+const LIMIT = {
   name: "admin-is-admin",
   max: 30,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler reporting whether the caller is a signed-in admin.
@@ -41,21 +38,11 @@ const isAdminRateLimit = createRateLimiter({
  *               properties:
  *                 isAdmin:
  *                   type: boolean
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(isAdminRateLimit, req, res))) return;
-
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  const admin = await isAdmin(req, res).catch((err) => {
+export const GET = withRoute(LIMIT, async () => {
+  const admin = await isAdmin().catch((err) => {
     // Recoverable and worth a human's attention: the account menu just won't show the
     // admin link this request, but a broken isAdmin() check (e.g. an auth/session
     // problem) is unusual enough to be worth a trace rather than a silent swallow.
@@ -67,7 +54,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     );
     return false;
   });
-  res.status(200).json({ isAdmin: admin });
-}
-
-export default withRequestLog(handler);
+  return Response.json({ isAdmin: admin });
+});

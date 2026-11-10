@@ -5,19 +5,16 @@
  * characters routes, then resolves the report.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { requireAdmin } from "../../../utils/account/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { listOpenReports, resolveReport } from "../../../utils/moderation/contentReports";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
+import { adminRoute } from "../../../../utils/account/adminGuard";
+import { listOpenReports, resolveReport } from "../../../../utils/moderation/contentReports";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
+import { readJson } from "../../../../utils/server/withRoute";
 
-/** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
-const adminReportsRateLimit = createRateLimiter({
+const LIMIT = {
   name: "admin-reports",
   max: 20,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for the admin report queue.
@@ -63,33 +60,23 @@ const adminReportsRateLimit = createRateLimiter({
  *       500:
  *         description: Database failure
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(adminReportsRateLimit, req, res))) return;
+const FORBIDDEN = {
+  event: "admin_reports_forbidden",
+  message: "Non-admin user denied access to the report queue",
+};
 
-  const userId = await requireAdmin(req, res, {
-    event: "admin_reports_forbidden",
-    message: "Non-admin user denied access to the report queue",
-  });
-  if (!userId) return;
+export const GET = adminRoute(LIMIT, FORBIDDEN, async () =>
+  Response.json({ entries: await listOpenReports() }),
+);
 
-  if (req.method === "GET") {
-    res.status(200).json({ entries: await listOpenReports() });
-    return;
-  }
-  if (req.method !== "POST") {
-    res.setHeader("Allow", ["GET", "POST"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  const id = req.body?.id;
+/** POST: mark one report resolved. */
+export const POST = adminRoute(LIMIT, FORBIDDEN, async (req, userId) => {
+  const { id } = await readJson(req);
   if (!Number.isInteger(id)) {
-    res.status(400).json({ error: "Valid id required" });
-    return;
+    return Response.json({ error: "Valid id required" }, { status: 400 });
   }
   if (!(await resolveReport(id))) {
-    res.status(500).json({ error: "Failed to resolve report" });
-    return;
+    return Response.json({ error: "Failed to resolve report" }, { status: 500 });
   }
   logEvent(
     "info",
@@ -97,7 +84,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     "Admin resolved a report",
     sanitizeLogMeta({ userId, reportId: id }),
   );
-  res.status(200).json({ ok: true });
-}
-
-export default withRequestLog(handler);
+  return Response.json({ ok: true });
+});

@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { createMocks } from "node-mocks-http";
 
 const mockGetSessionUserId = jest.fn();
@@ -24,12 +26,8 @@ jest.mock("../../../../src/utils/moderation/charactersWall", () => ({
   clearCharactersCache: () => mockClearCharactersCache(),
 }));
 
-jest.mock("express-rate-limit", () => {
-  return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
-});
-
 async function call(method: "GET" | "DELETE" | "POST" | "PATCH", body?: unknown) {
-  const handler = (await import("../../../../src/pages/api/admin/characters")).default;
+  const handler = asHandler(await import("../../../../src/app/api/admin/characters/route"));
   const { req, res } = createMocks({ method, body: body as Record<string, unknown> });
   await handler(req, res);
   return res;

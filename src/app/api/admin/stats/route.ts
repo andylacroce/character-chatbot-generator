@@ -15,22 +15,18 @@
  * passes both its current AND its pre-rename legacy event names).
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { getDb } from "../../../db/client";
-import { getCurrentEnvironment } from "../../../utils/environment";
-import { requireAdmin } from "../../../utils/account/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
-import { EMPTY_STATS, loadAdminStats } from "../../../utils/admin/adminStats";
-import { parseTimeRange } from "../../../utils/admin/statsHelpers";
+import { getDb } from "../../../../db/client";
+import { getCurrentEnvironment } from "../../../../utils/environment";
+import { adminRoute } from "../../../../utils/account/adminGuard";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
+import { EMPTY_STATS, loadAdminStats } from "../../../../utils/admin/adminStats";
+import { parseTimeRange } from "../../../../utils/admin/statsHelpers";
 
-/** Rate limiter: 20 requests per minute per IP, same budget as other authenticated routes. */
-const adminStatsRateLimit = createRateLimiter({
+const LIMIT = {
   name: "admin-stats",
   max: 20,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler returning aggregate character-creation and guessing-game
@@ -74,58 +70,44 @@ const adminStatsRateLimit = createRateLimiter({
  *         description: Not signed in
  *       403:
  *         description: Signed in but not an admin
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:
  *         description: Failed to load stats
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(adminStatsRateLimit, req, res))) return;
-
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  const userId = await requireAdmin(req, res, {
+export const GET = adminRoute(
+  LIMIT,
+  {
     event: "admin_stats_forbidden",
     message: "Non-admin user denied access to admin stats",
-  });
-  if (!userId) return;
+  },
+  async (req) => {
+    const { range, preset } = parseTimeRange(Object.fromEntries(req.nextUrl.searchParams));
+    const environment = getCurrentEnvironment();
 
-  const { range, preset } = parseTimeRange(req.query);
+    if (!process.env.DATABASE_URL) {
+      return Response.json({
+        ...EMPTY_STATS,
+        environment,
+        generatedAt: new Date().toISOString(),
+        timeWindow: {
+          from: range?.from ? range.from.toISOString() : null,
+          to: range?.to ? range.to.toISOString() : null,
+          preset,
+        },
+      });
+    }
 
-  if (!process.env.DATABASE_URL) {
-    res.status(200).json({
-      ...EMPTY_STATS,
-      environment: getCurrentEnvironment(),
-      generatedAt: new Date().toISOString(),
-      timeWindow: {
-        from: range?.from ? range.from.toISOString() : null,
-        to: range?.to ? range.to.toISOString() : null,
-        preset,
-      },
-    });
-    return;
-  }
-
-  const db = getDb();
-  const environment = getCurrentEnvironment();
-
-  try {
-    res.status(200).json(await loadAdminStats(db, environment, range, preset));
-  } catch (err) {
-    logEvent(
-      "error",
-      "admin_stats_load_failed",
-      "Failed to load admin stats",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    res.status(500).json({ error: "Failed to load stats" });
-  }
-}
-
-export default withRequestLog(handler);
+    try {
+      return Response.json(await loadAdminStats(getDb(), environment, range, preset));
+    } catch (err) {
+      logEvent(
+        "error",
+        "admin_stats_load_failed",
+        "Failed to load admin stats",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
+      return Response.json({ error: "Failed to load stats" }, { status: 500 });
+    }
+  },
+);

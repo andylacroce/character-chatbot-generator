@@ -8,12 +8,12 @@
  */
 
 import { notFound } from "next/navigation";
-import { isAdminSession } from "../../utils/account/isAdmin";
+import { isAdmin } from "../../utils/account/isAdmin";
 import AdminStatsView from "./AdminStatsView";
 
 /** Renders the admin stats view for a confirmed admin, otherwise 404s. */
 export default async function AdminPage() {
-  if (!(await isAdminSession())) {
+  if (!(await isAdmin())) {
     notFound();
   }
   return <AdminStatsView />;

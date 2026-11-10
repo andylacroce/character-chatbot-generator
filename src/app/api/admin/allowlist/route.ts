@@ -1,7 +1,7 @@
 /**
  * Admin-only CRUD over the admin-managed character allowlist (src/utils/
  * characterAllowlist.ts, src/db/schema.ts's `character_allowlist` table) — the
- * counterpart to pages/api/admin/blocklist.ts, managed on the same /admin/moderation
+ * counterpart to app/api/admin/blocklist/route.ts, managed on the same /admin/moderation
  * page. A name here is permanently treated as copyright-safe without ever calling
  * Claude, for a name that isn't on the static curated list (src/data/
  * characterNames.ts) but an admin wants allowed anyway (e.g. a real person Claude
@@ -13,24 +13,21 @@
  * action on a blocked row just POST here.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { readAdminName, requireAdmin } from "../../../utils/account/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { adminRoute, readAdminName } from "../../../../utils/account/adminGuard";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 import {
   listAllowlist,
   addToAllowlist,
   removeFromAllowlist,
-} from "../../../utils/moderation/characterAllowlist";
-import { removeFromBlocklist } from "../../../utils/moderation/characterBlocklist";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
+} from "../../../../utils/moderation/characterAllowlist";
+import { removeFromBlocklist } from "../../../../utils/moderation/characterBlocklist";
+import { readJson } from "../../../../utils/server/withRoute";
 
-/** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
-const adminAllowlistRateLimit = createRateLimiter({
+const LIMIT = {
   name: "admin-allowlist",
   max: 20,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for the admin character-allowlist panel.
@@ -100,55 +97,43 @@ const adminAllowlistRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(adminAllowlistRateLimit, req, res))) return;
+const FORBIDDEN = {
+  event: "admin_allowlist_forbidden",
+  message: "Non-admin user denied access to the character allowlist",
+};
 
-  const userId = await requireAdmin(req, res, {
-    event: "admin_allowlist_forbidden",
-    message: "Non-admin user denied access to the character allowlist",
-  });
-  if (!userId) return;
+export const GET = adminRoute(LIMIT, FORBIDDEN, async () =>
+  Response.json({ entries: await listAllowlist() }),
+);
 
-  if (req.method === "GET") {
-    const entries = await listAllowlist();
-    res.status(200).json({ entries });
-    return;
-  }
+/** POST: allow a name (and un-block it). */
+export const POST = adminRoute(LIMIT, FORBIDDEN, async (req, userId) => {
+  const body = await readJson(req);
+  const name = readAdminName(body);
+  if (name instanceof Response) return name;
+  await addToAllowlist(name, typeof body.reason === "string" ? body.reason.trim() : null);
+  // A name is never on both lists at once: allowing it also un-blocks it, which is
+  // also what makes this endpoint double as "move to allowed" from the blocklist.
+  await removeFromBlocklist(name);
+  logEvent(
+    "info",
+    "admin_allowlist_added",
+    "Admin manually added a character to the allowlist",
+    sanitizeLogMeta({ userId, characterName: name }),
+  );
+  return Response.json({ ok: true });
+});
 
-  if (req.method === "POST") {
-    const { reason } = req.body ?? {};
-    const trimmedName = readAdminName(req, res);
-    if (!trimmedName) return;
-    await addToAllowlist(trimmedName, typeof reason === "string" ? reason.trim() : null);
-    // A name is never on both lists at once — allowing it also un-blocks it, which is
-    // also what makes this endpoint double as "move to allowed" from the blocklist.
-    await removeFromBlocklist(trimmedName);
-    logEvent(
-      "info",
-      "admin_allowlist_added",
-      "Admin manually added a character to the allowlist",
-      sanitizeLogMeta({ userId, characterName: trimmedName }),
-    );
-    res.status(200).json({ ok: true });
-    return;
-  }
-
-  if (req.method === "DELETE") {
-    const trimmedName = readAdminName(req, res);
-    if (!trimmedName) return;
-    const removed = await removeFromAllowlist(trimmedName);
-    logEvent(
-      "info",
-      "admin_allowlist_removed",
-      "Admin removed a character from the allowlist",
-      sanitizeLogMeta({ userId, characterName: trimmedName, removed }),
-    );
-    res.status(200).json({ ok: true, removed });
-    return;
-  }
-
-  res.setHeader("Allow", ["GET", "POST", "DELETE"]);
-  res.status(405).end(`Method ${req.method} Not Allowed`);
-}
-
-export default withRequestLog(handler);
+/** DELETE: remove a name from the allowlist. */
+export const DELETE = adminRoute(LIMIT, FORBIDDEN, async (req, userId) => {
+  const name = readAdminName(await readJson(req));
+  if (name instanceof Response) return name;
+  const removed = await removeFromAllowlist(name);
+  logEvent(
+    "info",
+    "admin_allowlist_removed",
+    "Admin removed a character from the allowlist",
+    sanitizeLogMeta({ userId, characterName: name, removed }),
+  );
+  return Response.json({ ok: true, removed });
+});

@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { createMocks } from "node-mocks-http";
 
 const mockGetSessionUserId = jest.fn();
@@ -31,10 +33,6 @@ jest.mock("../../../../src/utils/avatar/avatarGeneration", () => ({
   scrubUserBotsByName: (...args: unknown[]) => mockScrubUserBotsByName(...args),
 }));
 
-jest.mock("express-rate-limit", () => {
-  return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
-});
-
 describe("admin/blocklist API", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -48,7 +46,7 @@ describe("admin/blocklist API", () => {
 
   it("returns 401 for a guest (no session)", async () => {
     mockGetSessionUserId.mockResolvedValue(null);
-    const handler = (await import("../../../../src/pages/api/admin/blocklist")).default;
+    const handler = asHandler(await import("../../../../src/app/api/admin/blocklist/route"));
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(401);
@@ -58,20 +56,11 @@ describe("admin/blocklist API", () => {
   it("returns 403 for a signed-in user who isn't an admin", async () => {
     mockGetSessionUserId.mockResolvedValue("user-1");
     mockIsAdmin.mockResolvedValue(false);
-    const handler = (await import("../../../../src/pages/api/admin/blocklist")).default;
+    const handler = asHandler(await import("../../../../src/app/api/admin/blocklist/route"));
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(403);
     expect(mockListBlocklist).not.toHaveBeenCalled();
-  });
-
-  it("returns 405 for an unsupported method", async () => {
-    mockGetSessionUserId.mockResolvedValue("admin-1");
-    mockIsAdmin.mockResolvedValue(true);
-    const handler = (await import("../../../../src/pages/api/admin/blocklist")).default;
-    const { req, res } = createMocks({ method: "PATCH" });
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(405);
   });
 
   describe("as an admin", () => {
@@ -90,7 +79,7 @@ describe("admin/blocklist API", () => {
           createdAt: new Date("2026-01-01"),
         },
       ]);
-      const handler = (await import("../../../../src/pages/api/admin/blocklist")).default;
+      const handler = asHandler(await import("../../../../src/app/api/admin/blocklist/route"));
       const { req, res } = createMocks({ method: "GET" });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -100,7 +89,7 @@ describe("admin/blocklist API", () => {
     });
 
     it("POST adds a name with source 'admin', defaulting to category 'content', and scrubs it immediately", async () => {
-      const handler = (await import("../../../../src/pages/api/admin/blocklist")).default;
+      const handler = asHandler(await import("../../../../src/app/api/admin/blocklist/route"));
       const { req, res } = createMocks({
         method: "POST",
         body: { name: "Fake Character", reason: "Testing" },
@@ -121,7 +110,7 @@ describe("admin/blocklist API", () => {
     });
 
     it("POST honors an explicit category: 'copyright'", async () => {
-      const handler = (await import("../../../../src/pages/api/admin/blocklist")).default;
+      const handler = asHandler(await import("../../../../src/app/api/admin/blocklist/route"));
       const { req, res } = createMocks({
         method: "POST",
         body: { name: "Fake Franchise Character", reason: "Testing", category: "copyright" },
@@ -137,7 +126,7 @@ describe("admin/blocklist API", () => {
     });
 
     it("POST returns 400 for a missing/blank name", async () => {
-      const handler = (await import("../../../../src/pages/api/admin/blocklist")).default;
+      const handler = asHandler(await import("../../../../src/app/api/admin/blocklist/route"));
       const { req, res } = createMocks({ method: "POST", body: { name: "   " } });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);
@@ -145,7 +134,7 @@ describe("admin/blocklist API", () => {
     });
 
     it("DELETE removes a name and reports whether it existed", async () => {
-      const handler = (await import("../../../../src/pages/api/admin/blocklist")).default;
+      const handler = asHandler(await import("../../../../src/app/api/admin/blocklist/route"));
       const { req, res } = createMocks({ method: "DELETE", body: { name: "Elsa" } });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(200);
@@ -154,7 +143,7 @@ describe("admin/blocklist API", () => {
     });
 
     it("DELETE returns 400 for a missing/blank name", async () => {
-      const handler = (await import("../../../../src/pages/api/admin/blocklist")).default;
+      const handler = asHandler(await import("../../../../src/app/api/admin/blocklist/route"));
       const { req, res } = createMocks({ method: "DELETE", body: {} });
       await handler(req, res);
       expect(res._getStatusCode()).toBe(400);

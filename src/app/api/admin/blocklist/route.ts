@@ -1,7 +1,7 @@
 /**
  * Admin-only CRUD over the persistent character blocklist (src/utils/
  * characterBlocklist.ts, src/db/schema.ts's `character_blocklist` table) — the same
- * table pages/api/validate-character.ts checks before ever calling Claude. Backs the
+ * table app/api/validate-character/route.ts checks before ever calling Claude. Backs the
  * /admin/moderation panel: lists every entry, lets an admin add a name manually
  * (`source: "admin"`, for a name Claude hasn't flagged yet), and remove one (an
  * "unblock" action, e.g. to correct a false positive like a name that's actually
@@ -25,25 +25,22 @@
  * moderation page's "Move to Blocked" action on an allowlisted row just POST here.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { readAdminName, requireAdmin } from "../../../utils/account/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { adminRoute, readAdminName } from "../../../../utils/account/adminGuard";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 import {
   listBlocklist,
   addToBlocklist,
   removeFromBlocklist,
-} from "../../../utils/moderation/characterBlocklist";
-import { removeFromAllowlist } from "../../../utils/moderation/characterAllowlist";
-import { scrubCachedAvatar, scrubUserBotsByName } from "../../../utils/avatar/avatarGeneration";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
+} from "../../../../utils/moderation/characterBlocklist";
+import { removeFromAllowlist } from "../../../../utils/moderation/characterAllowlist";
+import { scrubCachedAvatar, scrubUserBotsByName } from "../../../../utils/avatar/avatarGeneration";
+import { readJson } from "../../../../utils/server/withRoute";
 
-/** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
-const adminBlocklistRateLimit = createRateLimiter({
+const LIMIT = {
   name: "admin-blocklist",
   max: 20,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for the admin character-blocklist panel.
@@ -120,64 +117,52 @@ const adminBlocklistRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(adminBlocklistRateLimit, req, res))) return;
+const FORBIDDEN = {
+  event: "admin_blocklist_forbidden",
+  message: "Non-admin user denied access to the character blocklist",
+};
 
-  const userId = await requireAdmin(req, res, {
-    event: "admin_blocklist_forbidden",
-    message: "Non-admin user denied access to the character blocklist",
-  });
-  if (!userId) return;
+export const GET = adminRoute(LIMIT, FORBIDDEN, async () =>
+  Response.json({ entries: await listBlocklist() }),
+);
 
-  if (req.method === "GET") {
-    const entries = await listBlocklist();
-    res.status(200).json({ entries });
-    return;
-  }
+/** POST: block a name (and un-allow it), scrubbing its portrait and users' saved copies now. */
+export const POST = adminRoute(LIMIT, FORBIDDEN, async (req, userId) => {
+  const body = await readJson(req);
+  const name = readAdminName(body);
+  if (name instanceof Response) return name;
+  const category = body.category === "copyright" ? "copyright" : "content";
+  await addToBlocklist(
+    name,
+    typeof body.reason === "string" ? body.reason.trim() : null,
+    "admin",
+    category,
+  );
+  // A name is never on both lists at once: blocking it also un-allows it, which is
+  // also what makes this endpoint double as "move to blocked" from the allowlist.
+  await removeFromAllowlist(name);
+  // Scrub immediately, not just for future requests.
+  await scrubCachedAvatar(name);
+  await scrubUserBotsByName(name);
+  logEvent(
+    "info",
+    "admin_blocklist_added",
+    "Admin manually added a character to the blocklist",
+    sanitizeLogMeta({ userId, characterName: name, category }),
+  );
+  return Response.json({ ok: true });
+});
 
-  if (req.method === "POST") {
-    const { reason, category } = req.body ?? {};
-    const trimmedName = readAdminName(req, res);
-    if (!trimmedName) return;
-    const resolvedCategory = category === "copyright" ? "copyright" : "content";
-    await addToBlocklist(
-      trimmedName,
-      typeof reason === "string" ? reason.trim() : null,
-      "admin",
-      resolvedCategory,
-    );
-    // A name is never on both lists at once — blocking it also un-allows it, which is
-    // also what makes this endpoint double as "move to blocked" from the allowlist.
-    await removeFromAllowlist(trimmedName);
-    // Scrub immediately, not just for future requests — see module doc above.
-    await scrubCachedAvatar(trimmedName);
-    await scrubUserBotsByName(trimmedName);
-    logEvent(
-      "info",
-      "admin_blocklist_added",
-      "Admin manually added a character to the blocklist",
-      sanitizeLogMeta({ userId, characterName: trimmedName, category: resolvedCategory }),
-    );
-    res.status(200).json({ ok: true });
-    return;
-  }
-
-  if (req.method === "DELETE") {
-    const trimmedName = readAdminName(req, res);
-    if (!trimmedName) return;
-    const removed = await removeFromBlocklist(trimmedName);
-    logEvent(
-      "info",
-      "admin_blocklist_removed",
-      "Admin removed a character from the blocklist",
-      sanitizeLogMeta({ userId, characterName: trimmedName, removed }),
-    );
-    res.status(200).json({ ok: true, removed });
-    return;
-  }
-
-  res.setHeader("Allow", ["GET", "POST", "DELETE"]);
-  res.status(405).end(`Method ${req.method} Not Allowed`);
-}
-
-export default withRequestLog(handler);
+/** DELETE: remove a name from the blocklist. */
+export const DELETE = adminRoute(LIMIT, FORBIDDEN, async (req, userId) => {
+  const name = readAdminName(await readJson(req));
+  if (name instanceof Response) return name;
+  const removed = await removeFromBlocklist(name);
+  logEvent(
+    "info",
+    "admin_blocklist_removed",
+    "Admin removed a character from the blocklist",
+    sanitizeLogMeta({ userId, characterName: name, removed }),
+  );
+  return Response.json({ ok: true, removed });
+});

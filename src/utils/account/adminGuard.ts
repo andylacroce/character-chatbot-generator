@@ -4,44 +4,41 @@
  * real 401/403 logic here via their mocked isAdmin/getSessionUserId.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextRequest } from "next/server";
 import { getSessionUserId } from "./getSessionUserId";
 import { isAdmin } from "./isAdmin";
 import { logEvent, sanitizeLogMeta } from "../logger";
+import { withRoute, type RouteLimit } from "../server/withRoute";
 
 /**
- * Combines the sign-in and admin checks every admin API route needs: 401s an anonymous
- * caller, 403s (with a `warn`-level log) a signed-in non-admin, and returns the caller's
- * user id only once both pass. Callers should `return` immediately when this resolves to
- * `null` — the response has already been sent.
+ * Wraps an admin route handler with the per-IP limit, a 401 for an anonymous caller, and a 403
+ * (with a `warn`-level log) for a signed-in non-admin. The handler runs, with the caller's
+ * user id, only once both checks pass.
  */
-export async function requireAdmin(
-  req: NextApiRequest,
-  res: NextApiResponse,
-  options: { event: string; message: string },
-): Promise<string | null> {
-  const userId = await getSessionUserId(req);
-  if (!userId) {
-    res.status(401).json({ error: "Not signed in" });
-    return null;
-  }
-  if (!(await isAdmin(req, res))) {
-    logEvent("warn", options.event, options.message, sanitizeLogMeta({ userId }));
-    res.status(403).json({ error: "Not authorized" });
-    return null;
-  }
-  return userId;
+export function adminRoute(
+  limit: RouteLimit,
+  forbidden: { event: string; message: string },
+  handler: (req: NextRequest, userId: string) => Promise<Response>,
+) {
+  return withRoute(limit, async (req) => {
+    const userId = await getSessionUserId(req);
+    if (!userId) return Response.json({ error: "Not signed in" }, { status: 401 });
+    if (!(await isAdmin())) {
+      logEvent("warn", forbidden.event, forbidden.message, sanitizeLogMeta({ userId }));
+      return Response.json({ error: "Not authorized" }, { status: 403 });
+    }
+    return handler(req, userId);
+  });
 }
 
 /**
- * Reads and trims the required `name` from an admin mutation's JSON body. Sends the 400 and
- * returns `null` when it's missing or blank; callers should `return` immediately in that case.
+ * Reads and trims the required `name` from an admin mutation's JSON body, or returns the 400
+ * response to send when it's missing or blank.
  */
-export function readAdminName(req: NextApiRequest, res: NextApiResponse): string | null {
-  const name: unknown = req.body?.name;
+export function readAdminName(body: { name?: unknown }): string | Response {
+  const { name } = body;
   if (typeof name !== "string" || !name.trim()) {
-    res.status(400).json({ error: "Valid name required" });
-    return null;
+    return Response.json({ error: "Valid name required" }, { status: 400 });
   }
   return name.trim();
 }

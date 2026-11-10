@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { createMocks } from "node-mocks-http";
 
 const mockIsAdmin = jest.fn();
@@ -10,16 +12,9 @@ describe("admin/is-admin API", () => {
     jest.clearAllMocks();
   });
 
-  it("returns 405 for non-GET methods", async () => {
-    const handler = (await import("../../../../src/pages/api/admin/is-admin")).default;
-    const { req, res } = createMocks({ method: "POST" });
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(405);
-  });
-
   it("returns isAdmin: true for an admin session", async () => {
     mockIsAdmin.mockResolvedValue(true);
-    const handler = (await import("../../../../src/pages/api/admin/is-admin")).default;
+    const handler = asHandler(await import("../../../../src/app/api/admin/is-admin/route"));
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -28,7 +23,7 @@ describe("admin/is-admin API", () => {
 
   it("returns isAdmin: false for a guest or non-admin — never 401/403", async () => {
     mockIsAdmin.mockResolvedValue(false);
-    const handler = (await import("../../../../src/pages/api/admin/is-admin")).default;
+    const handler = asHandler(await import("../../../../src/app/api/admin/is-admin/route"));
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -37,7 +32,7 @@ describe("admin/is-admin API", () => {
 
   it("fails closed to isAdmin: false when the check throws", async () => {
     mockIsAdmin.mockRejectedValue(new Error("session lookup failed"));
-    const handler = (await import("../../../../src/pages/api/admin/is-admin")).default;
+    const handler = asHandler(await import("../../../../src/app/api/admin/is-admin/route"));
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);

@@ -4,22 +4,18 @@
  * "warning"-level copyright/trademark classification Claude has ever returned,
  * independent of whatever action (if any) was later taken on that name. Backs the
  * /admin/moderation page's "Recently warned" panel. No POST/DELETE here — this is a
- * log, not a manageable list; use pages/api/admin/{allowlist,blocklist}.ts to act on
+ * log, not a manageable list; use app/api/admin/{allowlist,blocklist}/route.ts to act on
  * a name found here.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { requireAdmin } from "../../../utils/account/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { listWarnings } from "../../../utils/moderation/characterWarningLog";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
+import { adminRoute } from "../../../../utils/account/adminGuard";
+import { listWarnings } from "../../../../utils/moderation/characterWarningLog";
 
-/** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
-const adminWarningsRateLimit = createRateLimiter({
+const LIMIT = {
   name: "admin-warnings",
   max: 20,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for the admin "Recently warned" panel.
@@ -36,28 +32,14 @@ const adminWarningsRateLimit = createRateLimiter({
  *         description: Not signed in
  *       403:
  *         description: Signed in but not an admin
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(adminWarningsRateLimit, req, res))) return;
-
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  const userId = await requireAdmin(req, res, {
+export const GET = adminRoute(
+  LIMIT,
+  {
     event: "admin_warnings_forbidden",
     message: "Non-admin user denied access to the warning log",
-  });
-  if (!userId) return;
-
-  const entries = await listWarnings();
-  res.status(200).json({ entries });
-}
-
-export default withRequestLog(handler);
+  },
+  async () => Response.json({ entries: await listWarnings() }),
+);

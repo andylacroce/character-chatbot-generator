@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 
 const mockIsAdminSession = jest.fn();
 jest.mock("@/src/utils/account/isAdmin", () => ({
-  isAdminSession: () => mockIsAdminSession(),
+  isAdmin: () => mockIsAdminSession(),
 }));
 
 const mockNotFound = jest.fn(() => {

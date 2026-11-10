@@ -6,12 +6,12 @@
  */
 
 import { notFound } from "next/navigation";
-import { isAdminSession } from "../../../utils/account/isAdmin";
+import { isAdmin } from "../../../utils/account/isAdmin";
 import AdminModerationView from "./AdminModerationView";
 
 /** Renders the admin moderation view for a confirmed admin, otherwise 404s. */
 export default async function AdminModerationPage() {
-  if (!(await isAdminSession())) {
+  if (!(await isAdmin())) {
     notFound();
   }
   return <AdminModerationView />;

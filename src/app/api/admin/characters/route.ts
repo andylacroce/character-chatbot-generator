@@ -6,25 +6,22 @@
  * the Wall's per-instance list cache so a stale tile doesn't point at a deleted image.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { readAdminName, requireAdmin } from "../../../utils/account/adminGuard";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { isCharacterCategory } from "character-chatbot-shared";
+import { adminRoute, readAdminName } from "../../../../utils/account/adminGuard";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
+import { isCharacterCategory } from "character-chatbot-shared/src/core";
 import {
   purgeCachedAvatar,
   regenerateCachedAvatar,
   setCachedCategory,
-} from "../../../utils/avatar/avatarGeneration";
-import { clearCharactersCache } from "../../../utils/moderation/charactersWall";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
+} from "../../../../utils/avatar/avatarGeneration";
+import { clearCharactersCache } from "../../../../utils/moderation/charactersWall";
+import { readJson } from "../../../../utils/server/withRoute";
 
-/** Rate limiter: 20 requests per minute per IP, same budget as the other admin routes. */
-const adminCharactersRateLimit = createRateLimiter({
+const LIMIT = {
   name: "admin-characters",
   max: 20,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for purging or regenerating a character's cached portrait.
@@ -115,78 +112,79 @@ const adminCharactersRateLimit = createRateLimiter({
  *       500:
  *         description: Database failure
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(adminCharactersRateLimit, req, res))) return;
+const FORBIDDEN = {
+  event: "admin_characters_forbidden",
+  message: "Non-admin user denied access to purge a character",
+};
 
-  const userId = await requireAdmin(req, res, {
-    event: "admin_characters_forbidden",
-    message: "Non-admin user denied access to purge a character",
+/** Builds a handler that parses the target name, runs `action`, and maps a throw to a 500. */
+function characterAction(
+  action: (name: string, userId: string, body: Record<string, unknown>) => Promise<Response>,
+) {
+  return adminRoute(LIMIT, FORBIDDEN, async (req, userId) => {
+    const body = await readJson(req);
+    const name = readAdminName(body);
+    if (name instanceof Response) return name;
+    try {
+      return await action(name, userId, body);
+    } catch (err) {
+      logEvent(
+        "error",
+        "admin_character_update_failed",
+        "Failed to purge or regenerate a character's cached portrait",
+        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+      );
+      return Response.json({ error: "Failed to update character" }, { status: 500 });
+    }
   });
-  if (!userId) return;
-
-  if (req.method !== "DELETE" && req.method !== "POST" && req.method !== "PATCH") {
-    res.setHeader("Allow", ["DELETE", "PATCH", "POST"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  const name = readAdminName(req, res);
-  if (!name) return;
-  try {
-    if (req.method === "PATCH") {
-      const category: unknown = req.body?.category;
-      if (!isCharacterCategory(category)) {
-        res.status(400).json({ error: "Valid category required" });
-        return;
-      }
-      if (!(await setCachedCategory(name, category))) {
-        res.status(404).json({ error: "Character not found" });
-        return;
-      }
-      clearCharactersCache();
-      logEvent(
-        "info",
-        "admin_character_recategorized",
-        "Admin changed a character's Wall category",
-        sanitizeLogMeta({ userId, characterName: name, category }),
-      );
-      res.status(200).json({ ok: true });
-      return;
-    }
-    if (req.method === "POST") {
-      const avatarUrl = await regenerateCachedAvatar(name);
-      clearCharactersCache();
-      logEvent(
-        "info",
-        "admin_character_regenerated",
-        "Admin regenerated a character's cached portrait",
-        sanitizeLogMeta({ userId, characterName: name, regenerated: avatarUrl !== null }),
-      );
-      if (!avatarUrl) {
-        res.status(502).json({ error: "No portrait could be generated; the old one is unchanged" });
-        return;
-      }
-      res.status(200).json({ ok: true, avatarUrl });
-      return;
-    }
-    const removed = await purgeCachedAvatar(name);
-    clearCharactersCache();
-    logEvent(
-      "info",
-      "admin_character_purged",
-      "Admin purged a character's cached portrait",
-      sanitizeLogMeta({ userId, characterName: name, removed }),
-    );
-    res.status(200).json({ ok: true, removed });
-  } catch (err) {
-    logEvent(
-      "error",
-      "admin_character_update_failed",
-      "Failed to purge or regenerate a character's cached portrait",
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    res.status(500).json({ error: "Failed to update character" });
-  }
 }
 
-export default withRequestLog(handler);
+export const PATCH = characterAction(async (name, userId, body) => {
+  const category = body.category;
+  if (!isCharacterCategory(category)) {
+    return Response.json({ error: "Valid category required" }, { status: 400 });
+  }
+  if (!(await setCachedCategory(name, category))) {
+    return Response.json({ error: "Character not found" }, { status: 404 });
+  }
+  clearCharactersCache();
+  logEvent(
+    "info",
+    "admin_character_recategorized",
+    "Admin changed a character's Wall category",
+    sanitizeLogMeta({ userId, characterName: name, category }),
+  );
+  return Response.json({ ok: true });
+});
+
+/** POST: regenerate the cached portrait now. */
+export const POST = characterAction(async (name, userId) => {
+  const avatarUrl = await regenerateCachedAvatar(name);
+  clearCharactersCache();
+  logEvent(
+    "info",
+    "admin_character_regenerated",
+    "Admin regenerated a character's cached portrait",
+    sanitizeLogMeta({ userId, characterName: name, regenerated: avatarUrl !== null }),
+  );
+  if (!avatarUrl) {
+    return Response.json(
+      { error: "No portrait could be generated; the old one is unchanged" },
+      { status: 502 },
+    );
+  }
+  return Response.json({ ok: true, avatarUrl });
+});
+
+/** DELETE: purge the cached portrait. */
+export const DELETE = characterAction(async (name, userId) => {
+  const removed = await purgeCachedAvatar(name);
+  clearCharactersCache();
+  logEvent(
+    "info",
+    "admin_character_purged",
+    "Admin purged a character's cached portrait",
+    sanitizeLogMeta({ userId, characterName: name, removed }),
+  );
+  return Response.json({ ok: true, removed });
+});
