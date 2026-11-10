@@ -52,7 +52,7 @@ never be the thing that fails late), then runs, in order:
 | Semgrep | `semgrep.yml` | PR and push to `main` | `Semgrep scan` |
 | Secret Scan | `secret-scan.yml` | PR and push to `main` | `secret-scan` |
 | CodeQL | GitHub default setup (no file) | PR and push to `main` | Code scanning rule: no error-level or high-severity alerts |
-| Dependabot auto-merge | `dependabot-auto-merge.yml` | Dependabot PRs | None (it only turns on auto-merge) |
+| PR auto-merge | `dependabot-auto-merge.yml` | Every non-draft PR | None (it only turns on auto-merge) |
 | Tag release | `tag-release.yml` | Push to `main` | None (after a merge, it creates the annotated `v<package.json version>` tag if missing) |
 | Expo SDK upgrade | `expo-sdk-upgrade.yml` | Mondays 14:00 UTC, or manually | None (it opens a PR that goes through the checks above) |
 
@@ -81,7 +81,7 @@ Dependabot (`.github/dependabot.yml`) checks daily for the root workspace and fo
 can't each pass CI alone and then conflict in the shared `package-lock.json` (an
 out-of-sync lockfile once broke `npm ci` on `main` this way). It ignores eslint and
 TypeScript majors, and every Expo and React Native package: the weekly SDK upgrade below
-owns those. `dependabot-auto-merge.yml` turns on auto-merge, so a PR merges by itself once
+owns those. `dependabot-auto-merge.yml` turns on auto-merge for every non-draft PR, so a PR merges by itself once
 the required checks pass and sits open if they don't.
 
 ### The Expo SDK check
