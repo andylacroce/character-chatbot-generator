@@ -1,8 +1,8 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+/** @jest-environment node */
 
-jest.mock("express-rate-limit", () => {
-  return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
-});
+jest.mock("../../../src/utils/server/withRoute", () => ({
+  withRoute: (_limit: unknown, handler: unknown) => handler,
+}));
 
 const mockModelsList = jest.fn();
 jest.mock("../../../src/utils/claude/anthropicClient", () => ({
@@ -46,22 +46,16 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import handler from "../../../src/pages/api/health";
+import { GET } from "../../../src/app/api/health/route";
+import { routeRequest } from "../../helpers/routeRequest";
 
 const SERVICE_ACCOUNT = JSON.stringify({
   client_email: "test@test.iam.gserviceaccount.com",
   private_key: "fake-key",
 });
 
-function makeRes() {
-  const res: Partial<NextApiResponse> = {};
-  res.status = jest.fn().mockReturnValue(res as NextApiResponse);
-  res.json = jest.fn().mockReturnValue(res as NextApiResponse);
-  return res as NextApiResponse;
-}
-
 function makeReq(headers: Record<string, string> = {}) {
-  return { headers } as unknown as NextApiRequest;
+  return routeRequest("GET", { headers });
 }
 
 function claudeHealthy() {
@@ -87,17 +81,16 @@ describe("health API", () => {
   it("returns 200 when both Claude and TTS respond", async () => {
     claudeHealthy();
     ttsHealthy();
-    const res = makeRes();
-    await handler(makeReq(), res);
+    const res = await GET(makeReq());
 
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ status: "ok", requestId: "generated-id" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: "ok", requestId: "generated-id" });
   });
 
   it("checks Claude via models.list and TTS via listVoices, not a real completion/synthesis", async () => {
     claudeHealthy();
     ttsHealthy();
-    await handler(makeReq(), makeRes());
+    await GET(makeReq());
 
     expect(mockModelsList).toHaveBeenCalledWith({ limit: 1 });
     expect(mockListVoices).toHaveBeenCalledWith({ languageCode: "en-GB" });
@@ -106,16 +99,15 @@ describe("health API", () => {
   it("echoes a caller-supplied request id", async () => {
     claudeHealthy();
     ttsHealthy();
-    const res = makeRes();
-    await handler(makeReq({ "x-request-id": "caller-id" }), res);
+    const res = await GET(makeReq({ "x-request-id": "caller-id" }));
 
-    expect(res.json).toHaveBeenCalledWith({ status: "ok", requestId: "caller-id" });
+    expect(await res.json()).toEqual({ status: "ok", requestId: "caller-id" });
   });
 
   it("builds an explicit auth client from the service account credentials", async () => {
     claudeHealthy();
     ttsHealthy();
-    await handler(makeReq(), makeRes());
+    await GET(makeReq());
 
     expect(mockGoogleAuth).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -129,19 +121,17 @@ describe("health API", () => {
     mockReadFileSync.mockReturnValueOnce(SERVICE_ACCOUNT);
     claudeHealthy();
     ttsHealthy();
-    const res = makeRes();
-    await handler(makeReq(), res);
+    const res = await GET(makeReq());
 
     expect(mockReadFileSync).toHaveBeenCalledWith("/secrets/sa.json", "utf8");
-    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.status).toBe(200);
   });
 
   it("falls back to application default credentials when the key material is incomplete", async () => {
     process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON = JSON.stringify({ project_id: "p" });
     claudeHealthy();
     ttsHealthy();
-    const res = makeRes();
-    await handler(makeReq(), res);
+    const res = await GET(makeReq());
 
     expect(mockGoogleAuth).not.toHaveBeenCalled();
     expect(mockTtsClientCtor).toHaveBeenCalledWith(undefined);
@@ -151,17 +141,16 @@ describe("health API", () => {
       expect.any(String),
       expect.any(Object),
     );
-    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.status).toBe(200);
   });
 
   it("reports a Claude failure as 500 without leaking the raw error message to the client", async () => {
     mockModelsList.mockRejectedValueOnce(new Error("anthropic down"));
     ttsHealthy();
-    const res = makeRes();
-    await handler(makeReq(), res);
+    const res = await GET(makeReq());
 
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({
       status: "error",
       claude: { status: "error" },
       tts: { status: "ok" },
@@ -179,10 +168,9 @@ describe("health API", () => {
   it("treats a non-array models.list response as unhealthy", async () => {
     mockModelsList.mockResolvedValueOnce({ data: undefined });
     ttsHealthy();
-    const res = makeRes();
-    await handler(makeReq(), res);
+    const res = await GET(makeReq());
 
-    expect(res.json).toHaveBeenCalledWith(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         claude: { status: "error" },
       }),
@@ -192,11 +180,10 @@ describe("health API", () => {
   it("reports missing TTS credentials as unhealthy", async () => {
     delete process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
     claudeHealthy();
-    const res = makeRes();
-    await handler(makeReq(), res);
+    const res = await GET(makeReq());
 
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith(
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         tts: { status: "error" },
       }),
@@ -206,10 +193,9 @@ describe("health API", () => {
   it("treats an empty voices list as unhealthy", async () => {
     claudeHealthy();
     mockListVoices.mockResolvedValueOnce([{ voices: [] }]);
-    const res = makeRes();
-    await handler(makeReq(), res);
+    const res = await GET(makeReq());
 
-    expect(res.json).toHaveBeenCalledWith(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         tts: { status: "error" },
       }),
@@ -219,10 +205,9 @@ describe("health API", () => {
   it("stringifies non-Error throws from both probes", async () => {
     mockModelsList.mockRejectedValueOnce("claude string throw");
     mockListVoices.mockRejectedValueOnce("tts string throw");
-    const res = makeRes();
-    await handler(makeReq(), res);
+    const res = await GET(makeReq());
 
-    expect(res.json).toHaveBeenCalledWith(
+    expect(await res.json()).toEqual(
       expect.objectContaining({
         claude: { status: "error" },
         tts: { status: "error" },
@@ -247,7 +232,7 @@ describe("health API", () => {
     Object.defineProperty(process.env, "NODE_ENV", { value: "production", configurable: true });
     mockModelsList.mockRejectedValueOnce(new Error("anthropic down"));
     ttsHealthy();
-    await handler(makeReq(), makeRes());
+    await GET(makeReq());
     Object.defineProperty(process.env, "NODE_ENV", { value: originalNodeEnv, configurable: true });
 
     const events = mockLogEvent.mock.calls.map((c) => c[1]);

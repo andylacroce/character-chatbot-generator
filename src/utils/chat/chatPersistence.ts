@@ -50,7 +50,7 @@ export async function lookupBot(userId: string, botName: string): Promise<BotRow
 }
 
 /**
- * Looks up a signed-in user's stored preferred name (see pages/api/user-profile.ts), or
+ * Looks up a signed-in user's stored preferred name (see app/api/user-profile/route.ts), or
  * null for a guest, no DATABASE_URL, no value set, or any DB error — same
  * never-throws/degrade-gracefully shape as lookupBot above.
  */

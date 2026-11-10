@@ -1,5 +1,5 @@
 /**
- * Generates public/openapi.json from @swagger JSDoc comments in src/pages/api/*.ts.
+ * Generates public/openapi.json from @swagger JSDoc comments in src/pages/api and src/app/api (routes are migrating to the latter).
  *
  * Runs at dev/build time (see predev/build in package.json) rather than reading
  * route source at request time: Vercel's serverless bundler doesn't reliably ship
@@ -54,7 +54,9 @@ const spec = swaggerJsdoc({
   // swagger-jsdoc's glob resolution doesn't match backslash-separated paths, so
   // force forward slashes regardless of platform. Recursive (**) so nested routes
   // like src/pages/api/admin/stats.ts are picked up too, not just the top level.
-  apis: [path.join(__dirname, "..", "src", "pages", "api", "**", "*.ts").split(path.sep).join("/")],
+  apis: ["pages", "app"].map((router) =>
+    path.join(__dirname, "..", "src", router, "api", "**", "*.ts").split(path.sep).join("/"),
+  ),
 });
 
 const outPath = path.join(__dirname, "..", "public", "openapi.json");

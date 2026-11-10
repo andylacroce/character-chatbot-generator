@@ -1,6 +1,6 @@
 ---
 paths:
-  - "src/pages/api/report.ts"
+  - "src/app/api/report/route.ts"
   - "src/pages/api/admin/reports.ts"
   - "src/utils/moderation/contentReports.ts"
   - "src/app/components/common/ReportDialog.tsx"
@@ -21,7 +21,7 @@ portrait, a wrong reply), not about another user. Keep that wording in UI, route
   `copyright`, `other`), limits (`REPORT_DETAILS_MAX` 500, `REPORT_MESSAGE_MAX` 1000), all copy
   (`REPORT_COPY`), and `useReportForm`, the form state machine both platforms wrap. A new reason
   is one entry in `REPORT_REASONS`; the API validates against the same list.
-- **`POST /api/report`** (`src/pages/api/report.ts`, 5/min/IP): body `{ targetType: "character" |
+- **`POST /api/report`** (`src/app/api/report/route.ts`, 5/min/IP): body `{ targetType: "character" |
   "message", characterName, reason, details?, messageText? }`. Open to guests; the reporter's id is
   stored only when signed in (`getSessionUserId`). The name is trimmed and capped but **not**
   passed through `sanitizeCharacterName` (it strips apostrophes, and an admin acts on this exact

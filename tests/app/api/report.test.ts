@@ -1,4 +1,5 @@
-import { createMocks } from "node-mocks-http";
+/** @jest-environment node */
+import { routeRequest } from "../../helpers/routeRequest";
 
 const mockGetSessionUserId = jest.fn();
 jest.mock("../../../src/utils/account/getSessionUserId", () => ({
@@ -10,15 +11,13 @@ jest.mock("../../../src/utils/moderation/contentReports", () => ({
   createReport: (...args: unknown[]) => mockCreateReport(...args),
 }));
 
-jest.mock("express-rate-limit", () => {
-  return jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next());
-});
+jest.mock("../../../src/utils/server/withRoute", () => ({
+  withRoute: (_limit: unknown, handler: unknown) => handler,
+}));
 
 async function call(body: unknown, method = "POST") {
-  const handler = (await import("../../../src/pages/api/report")).default;
-  const { req, res } = createMocks({ method: method as "POST", body: body as object });
-  await handler(req, res);
-  return res;
+  const route = await import("../../../src/app/api/report/route");
+  return route.POST(routeRequest(method, { body }));
 }
 
 describe("report API", () => {
@@ -26,10 +25,6 @@ describe("report API", () => {
     jest.clearAllMocks();
     mockGetSessionUserId.mockResolvedValue(null);
     mockCreateReport.mockResolvedValue(true);
-  });
-
-  it("rejects non-POST methods", async () => {
-    expect((await call({}, "GET")).statusCode).toBe(405);
   });
 
   it.each([
@@ -41,7 +36,7 @@ describe("report API", () => {
       { targetType: "message", characterName: "Ada", reason: "other" },
     ],
   ])("returns 400 for %s", async (_label, body) => {
-    expect((await call(body)).statusCode).toBe(400);
+    expect((await call(body)).status).toBe(400);
     expect(mockCreateReport).not.toHaveBeenCalled();
   });
 
@@ -53,7 +48,7 @@ describe("report API", () => {
       details: "  bad  ",
       messageText: "ignored for character reports",
     });
-    expect(res.statusCode).toBe(200);
+    expect(res.status).toBe(200);
     expect(mockCreateReport).toHaveBeenCalledWith({
       targetType: "character",
       characterName: "Joan d'Arc",
@@ -80,6 +75,6 @@ describe("report API", () => {
   it("returns 503 when the report could not be stored", async () => {
     mockCreateReport.mockResolvedValue(false);
     const res = await call({ targetType: "character", characterName: "Ada", reason: "other" });
-    expect(res.statusCode).toBe(503);
+    expect(res.status).toBe(503);
   });
 });

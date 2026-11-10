@@ -54,7 +54,7 @@ export const users = pgTable("users", {
   // Distinct from `name` above (which Auth.js populates from the OAuth profile and
   // AuthControl.tsx uses only for the "Sign out (X)" label): this is what the user
   // explicitly typed in as the name they want a character to greet them by — see
-  // pages/api/user-profile.ts and pages/api/chat.ts's greeting injection. Nullable,
+  // app/api/user-profile/route.ts and pages/api/chat.ts's greeting injection. Nullable,
   // purely additive; a guest's equivalent lives client-side only (localStorage key
   // "chatbot-user-name", see src/utils/storage.ts's known-keys doc in CLAUDE.md).
   preferredName: text("preferred_name"),
