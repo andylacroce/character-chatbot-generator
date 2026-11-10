@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { authenticatedFetch } from "../../../utils/api";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { isCharacterCategory } from "character-chatbot-shared";
 import { withViewTransition, type CharEntry } from "./charsGalleryHelpers";
 
 /** Admin portrait-control state. Purge needs a second click ("confirm"); regenerate is one click. */
@@ -107,11 +106,7 @@ export function useGalleryLightbox(
       .then((res) => res.json())
       .then((data) => {
         if (cancelled || !data?.character) return;
-        const entry = data.character as CharEntry;
-        openLightbox({
-          ...entry,
-          category: isCharacterCategory(entry.category) ? entry.category : "other",
-        });
+        openLightbox(data.character as CharEntry);
       })
       .catch(() => {
         // The wall itself remains fully usable when this optional deep link fails.

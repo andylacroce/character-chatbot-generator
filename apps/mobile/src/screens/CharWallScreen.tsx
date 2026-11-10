@@ -16,7 +16,6 @@ import {
   displayCharacterName,
   generateCharacter,
   getCharacterCategoryLabel,
-  isCharacterCategory,
   type CharacterCategory,
   type CharacterEntry,
   type CharsGroup,
@@ -92,10 +91,7 @@ export default function CharWallScreen({ navigation }: Props) {
     try {
       const data = await getChars(PAGE_SIZE, offset, sort, group);
       if (queryVersion !== queryVersionRef.current) return;
-      const page = data.characters.map((entry) => ({
-        ...entry,
-        category: isCharacterCategory(entry.category) ? entry.category : "other",
-      }));
+      const page = data.characters;
       setCharacters((prev) => (reset ? page : [...prev, ...page]));
       offsetRef.current = offset + page.length;
       hasMoreRef.current = data.hasMore;

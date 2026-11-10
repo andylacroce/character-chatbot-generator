@@ -9,7 +9,7 @@ jest.mock("../../../src/db/client", () => ({ getDb: () => mockDb }));
 function makeRow(
   name: string,
   avatarUrl = `https://example.test/${name}.png`,
-  category: string | null = null,
+  category: string | null = "literature",
   createdAt = new Date(0), // fixed so the newest-first sort keeps input order (a ticking clock made it flaky)
 ) {
   return { characterName: name, avatarUrl, gender: null, category, createdAt };
@@ -50,6 +50,16 @@ describe("chars API", () => {
     expect(mockSelect).not.toHaveBeenCalled();
   });
 
+  it("keeps rows without a valid category off the Wall", async () => {
+    mockOrderBy.mockResolvedValue([makeRow("ada lovelace"), makeRow("nobody", undefined, null)]);
+    const handler = (await import("../../../src/pages/api/chars")).default;
+    const { req, res } = createMocks({ method: "GET" });
+    await handler(req, res);
+    expect(res._getJSONData().characters.map((c: { name: string }) => c.name)).toEqual([
+      "Ada Lovelace",
+    ]);
+  });
+
   it("title-cases lowercased character names and reports hasMore", async () => {
     mockOrderBy.mockResolvedValue([makeRow("sherlock holmes"), makeRow("ada lovelace")]);
     const handler = (await import("../../../src/pages/api/chars")).default;
@@ -61,7 +71,7 @@ describe("chars API", () => {
         {
           name: "Sherlock Holmes",
           avatarUrl: "https://example.test/sherlock holmes.png",
-          category: "other",
+          category: "literature",
         },
       ],
       hasMore: true,
@@ -92,7 +102,7 @@ describe("chars API", () => {
         {
           name: "Ada Lovelace",
           avatarUrl: "https://example.test/ada lovelace.png",
-          category: "other",
+          category: "literature",
         },
       ],
       hasMore: false,
@@ -163,12 +173,12 @@ describe("chars API", () => {
         {
           name: "Character 0",
           avatarUrl: "https://example.test/character 0.png",
-          category: "other",
+          category: "literature",
         },
         {
           name: "Character 1",
           avatarUrl: "https://example.test/character 1.png",
-          category: "other",
+          category: "literature",
         },
       ],
       hasMore: true,

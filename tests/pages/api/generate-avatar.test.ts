@@ -48,7 +48,9 @@ function makeRes() {
   return res as NextApiResponse;
 }
 
-function mockAnthropic(promptJson: Record<string, unknown> = { subject: "s", gender: "female" }) {
+function mockAnthropic(
+  promptJson: Record<string, unknown> = { subject: "s", gender: "female", category: "history" },
+) {
   const mockCreate = jest.fn().mockResolvedValueOnce({
     content: [{ type: "text", text: JSON.stringify(promptJson) }],
   });
@@ -555,6 +557,34 @@ describe("generate-avatar API", () => {
             gender: "female",
           }),
         );
+      });
+    });
+
+    it("does not cache a new portrait the classifier left uncategorized", async () => {
+      await jest.isolateModulesAsync(async () => {
+        jest.resetModules();
+        process.env.DATABASE_URL = "postgres://user:pass@host/db";
+
+        const { mockInsert } = mockDbWith([]);
+
+        mockAnthropic({ subject: "s", gender: "female" });
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: true,
+          arrayBuffer: async () => Buffer.from("pollinationsdata"),
+        }) as unknown as typeof fetch;
+        mockLoggerAndDeps();
+
+        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const res = makeRes();
+        await handler(
+          {
+            method: "POST",
+            body: { name: "New Character" },
+          } as Partial<NextApiRequest> as NextApiRequest,
+          res,
+        );
+
+        expect(mockInsert).not.toHaveBeenCalled();
       });
     });
 

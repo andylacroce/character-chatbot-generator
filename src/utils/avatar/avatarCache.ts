@@ -116,7 +116,14 @@ export async function cacheAvatar(
       })
       .onConflictDoUpdate({
         target: avatarCache.characterName,
-        set: { avatarUrl, gender, recognized, displayName: sanitizedName, category },
+        // A null category never erases an existing one (admin regenerate keeps the row's group).
+        set: {
+          avatarUrl,
+          gender,
+          recognized,
+          displayName: sanitizedName,
+          ...(category && { category }),
+        },
       });
   } catch (err) {
     logEvent(

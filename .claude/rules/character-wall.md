@@ -24,8 +24,12 @@ discover a row by typing its name, so nothing new is disclosed). Every
 `avatar_cache` row is recognized (legacy unsupported rows were deleted), so `chars.ts` no longer filters.
 
 - **`avatar_cache.category`** (`packages/shared/src/characterCategories.ts`) is a nullable taxonomy
-  of six identifiers: `history`, `mythology`, `literature`, `folklore`, `religion`, `other`; missing
-  or unknown values degrade to `other`.
+  of five identifiers: `history`, `mythology`, `literature`, `folklore`, `religion`. There is no
+  catch-all bucket. The classifier (`avatarPrompt.ts`) must pick one, with tie-break rules
+  (book/play characters are `literature` even when famous elsewhere; philosophers are `history`;
+  `religion` is for religious figures only). A generation with no valid category is not written to
+  the shared cache, and `getAllCharacters()` keeps rows without one off the Wall. Add a category
+  only when real rows keep fitting none of the five.
 - **`chars.ts`** is `GET`-only, paginated (`limit`/`offset`, default 60, max 100, `hasMore`).
   `sort`: `newest` (default), `oldest`, `name-asc`, `name-desc`; `group`: `none` (default) or
   `category` (taxonomy order primary, sort secondary). The full list is ordered before pagination

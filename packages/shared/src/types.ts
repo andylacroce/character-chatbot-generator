@@ -142,8 +142,7 @@ export interface GenerateAvatarResponse {
 }
 
 /** Taxonomy assigned to a character at creation time (packages/shared/src/characterCategories.ts). */
-export type CharacterCategory =
-  "history" | "mythology" | "literature" | "folklore" | "religion" | "other";
+export type CharacterCategory = "history" | "mythology" | "literature" | "folklore" | "religion";
 
 /** `sort` query param accepted by GET /api/chars. */
 export type CharsSort = "newest" | "oldest" | "name-asc" | "name-desc";

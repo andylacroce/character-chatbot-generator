@@ -107,7 +107,7 @@ generated once for it to show up here for everyone.
 - **Sort and group controls**: the toolbar defaults to Recently added with grouping off. It
   can order the complete collection by newest, oldest, or name, while the Group by category
   switch reveals collapsed, independently expandable sections for Historical Figures,
-  Mythology, Literature, Folklore & Legend, Religion & Philosophy, and Other. Sorting happens
+  Mythology, Literature, Folklore & Legend, and Religion. Sorting happens
   before API pagination, so scrolling never produces page-local ordering artifacts.
 - **Long-gallery navigation**: a high-contrast floating "To top" control appears only after
   360px of actual scrolling. It listens to the body (the scroll owner in this app's flex
