@@ -7,34 +7,35 @@
  * @module api/chat
  */
 
-import { NextApiRequest, NextApiResponse } from "next";
-import { synthesizeReplyAudio } from "../../utils/chat/ttsReply";
-import { generateRequestId, logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { setReplyCache, getReplyCache } from "../../utils/cache";
+import { after, type NextRequest } from "next/server";
+import { synthesizeReplyAudio } from "../../../utils/chat/ttsReply";
+import { generateRequestId, logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { setReplyCache, getReplyCache } from "../../../utils/cache";
 import crypto from "crypto";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { buildClaudeMessages, type ClaudeMessage } from "../../utils/chat/conversationSummarizer";
-import { generatePersonalityPrompt } from "../../config/serverConfig";
-import { setSseHeaders, writeSseFrame } from "../../utils/sse";
-import { sanitizeCharacterName } from "../../utils/server/security";
-import { stripActionEmotes, gracefullyWrapResponse } from "../../utils/chat/chatReplyFormatting";
+import {
+  buildClaudeMessages,
+  type ClaudeMessage,
+} from "../../../utils/chat/conversationSummarizer";
+import { generatePersonalityPrompt } from "../../../config/serverConfig";
+import { sseResponse } from "../../../utils/sse";
+import { sanitizeCharacterName } from "../../../utils/server/security";
+import { stripActionEmotes, gracefullyWrapResponse } from "../../../utils/chat/chatReplyFormatting";
 import {
   buildChatContext,
   buildSystemPrompt,
   resolveChatIdentity,
-} from "../../utils/chat/chatContext";
-import { findChatInputProblem } from "../../utils/chat/chatRequest";
-import { createClaudeReply, streamClaudeReply } from "../../utils/chat/chatReply";
-import { withRequestLog } from "../../utils/server/withRequestLog";
-import { cleanupOldAudioFiles } from "../../utils/chat/audioFileCleanup";
-import { finalizeChatPersistence } from "../../utils/chat/chatPersistence";
+} from "../../../utils/chat/chatContext";
+import { findChatInputProblem } from "../../../utils/chat/chatRequest";
+import { createClaudeReply, streamClaudeReply } from "../../../utils/chat/chatReply";
+import { readJson, withRoute } from "../../../utils/server/withRoute";
+import { cleanupOldAudioFiles } from "../../../utils/chat/audioFileCleanup";
+import { finalizeChatPersistence } from "../../../utils/chat/chatPersistence";
 
-/** Rate limiter for chat endpoint: 10 requests per minute per IP. */
-const chatRateLimit = createRateLimiter({
+const LIMIT = {
   name: "chat",
   max: 10,
   message: "Too many chat requests from this IP, please try again later.",
-});
+};
 
 let requestCount = 0;
 const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
@@ -117,8 +118,6 @@ const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
  *               type: string
  *       400:
  *         description: Message or voice config missing
- *       405:
- *         description: Method not allowed
  *       408:
  *         description: Request timed out (20s)
  *       429:
@@ -126,25 +125,9 @@ const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
  *       500:
  *         description: Claude or TTS call failed
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const requestId = req.headers["x-request-id"] || generateRequestId();
+export const POST = withRoute(LIMIT, async (req: NextRequest) => {
+  const requestId = req.headers.get("x-request-id") || generateRequestId();
 
-  // Apply rate limiting
-  if (!(await applyRateLimit(chatRateLimit, req, res))) {
-    return;
-  }
-
-  if (req.method !== "POST") {
-    logEvent(
-      "info",
-      "chat_method_not_allowed",
-      "Method not allowed",
-      sanitizeLogMeta({ method: req.method, requestId }),
-    );
-    res.setHeader("Allow", ["POST"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
   try {
     // Periodic cleanup of old audio files
     requestCount++;
@@ -152,36 +135,36 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       cleanupOldAudioFiles();
     }
 
-    const userMessage = req.body.message;
+    const body = await readJson(req);
+    const userMessage = body.message;
     const requestPersonality =
-      req.body.personality || (await generatePersonalityPrompt("a character chatbot")).prompt;
+      body.personality || (await generatePersonalityPrompt("a character chatbot")).prompt;
     // Same sanitization saved characters are stored under; also bounds what reaches prompts and file names.
-    const botName = sanitizeCharacterName(req.body.botName) || "Character";
-    const gender = req.body.gender;
-    const conversationHistory = req.body.conversationHistory || [];
-    const stream = req.body.stream === true; // Support streaming mode
-    const voiceConfig = req.body.voiceConfig;
-    // The client's internal "Introduce yourself..." prompt, not something the user typed —
+    const botName = sanitizeCharacterName(body.botName) || "Character";
+    const gender = body.gender;
+    const conversationHistory = body.conversationHistory || [];
+    const stream = body.stream === true; // Support streaming mode
+    const voiceConfig = body.voiceConfig;
+    // The client's internal "Introduce yourself..." prompt, not something the user typed;
     // see finalizeChatPersistence, which skips persisting it as a "User" turn.
-    const isIntro = req.body.isIntro === true;
+    const isIntro = body.isIntro === true;
 
     const problem = findChatInputProblem({
       userMessage,
-      personality: req.body.personality,
+      personality: body.personality,
       conversationHistory,
       voiceConfig,
     });
     if (problem) {
       logEvent("info", problem.event, problem.message, sanitizeLogMeta({ requestId }));
-      res.status(400).json({ error: problem.error, requestId });
-      return;
+      return Response.json({ error: problem.error, requestId }, { status: 400 });
     }
 
     const { botRow, personality, userName } = await resolveChatIdentity(
       req,
       botName,
       requestPersonality,
-      req.body.userName,
+      body.userName,
     );
 
     const { conversationSummary, limitedHistory, newSummaryCheckpoint } = await buildChatContext(
@@ -192,34 +175,36 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     );
     const systemPrompt = buildSystemPrompt(personality, userName, conversationSummary);
 
-    // One place for what every successful path does last: log it, then persist the turn.
-    const finish = async (
+    // One place for what every successful path does last: log it, then persist the turn. It runs
+    // after the response is sent (`after`), so the client isn't kept waiting on the database.
+    const finish = (
       reply: string,
       audioFileUrl: string | undefined,
       how: { cached: boolean; streamed: boolean },
-    ) => {
-      logEvent(
-        "info",
-        "chat_reply_sent",
-        "Reply sent",
-        sanitizeLogMeta({
-          requestId,
+    ) =>
+      after(async () => {
+        logEvent(
+          "info",
+          "chat_reply_sent",
+          "Reply sent",
+          sanitizeLogMeta({
+            requestId,
+            botName,
+            userMessageLength: userMessage.length,
+            botReplyLength: reply.length,
+            ...how,
+            hasAudio: !!audioFileUrl,
+          }),
+        );
+        await finalizeChatPersistence(
+          botRow,
+          userMessage,
           botName,
-          userMessageLength: userMessage.length,
-          botReplyLength: reply.length,
-          ...how,
-          hasAudio: !!audioFileUrl,
-        }),
-      );
-      await finalizeChatPersistence(
-        botRow,
-        userMessage,
-        botName,
-        reply,
-        newSummaryCheckpoint,
-        isIntro,
-      );
-    };
+          reply,
+          newSummaryCheckpoint,
+          isIntro,
+        );
+      });
 
     // Build messages array: full conversation history (verbatim) + new user message
     const messages: ClaudeMessage[] = buildClaudeMessages(limitedHistory, userMessage);
@@ -234,7 +219,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
     const cachedReply = getReplyCache(cacheKey);
     if (cachedReply) {
-      // Logs a hash rather than the cache key itself — the key embeds the full
+      // Logs a hash rather than the cache key itself: the key embeds the full
       // personality and recent history, which shouldn't be written to logs verbatim.
       const cacheKeyHash = crypto.createHash("sha256").update(cacheKey).digest("hex").slice(0, 16);
       logEvent(
@@ -251,69 +236,61 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         false,
         "chat",
       );
-      res.status(200).json({ reply: cachedReply, audioFileUrl, cached: true, requestId });
-      await finish(cachedReply, audioFileUrl, { cached: true, streamed: false });
-      return;
+      finish(cachedReply, audioFileUrl, { cached: true, streamed: false });
+      return Response.json({ reply: cachedReply, audioFileUrl, cached: true, requestId });
     }
 
     // Handle streaming mode
     if (stream) {
-      setSseHeaders(res);
+      return sseResponse(async (send) => {
+        try {
+          let botReply = await streamClaudeReply(send, systemPrompt, messages);
 
-      try {
-        let botReply = await streamClaudeReply(res, systemPrompt, messages);
+          if (!botReply || botReply.trim() === "") {
+            logEvent(
+              "warn",
+              "chat_stream_empty_response",
+              "Streamed response was empty",
+              sanitizeLogMeta({ requestId }),
+            );
+            send({ error: "Empty response", done: true });
+            return;
+          }
 
-        if (!botReply || botReply.trim() === "") {
-          logEvent(
-            "warn",
-            "chat_stream_empty_response",
-            "Streamed response was empty",
-            sanitizeLogMeta({ requestId }),
+          botReply = stripActionEmotes(gracefullyWrapResponse(botReply));
+
+          // Audio is an enhancement: botReply is already streamed, so a TTS failure just omits the URL.
+          const audioFileUrl = await synthesizeReplyAudio(
+            botReply,
+            botName,
+            gender,
+            voiceConfig,
+            false,
+            "chat",
           );
-          writeSseFrame(res, { error: "Empty response", done: true });
-          res.end();
-          return;
+
+          send({ reply: botReply, audioFileUrl, done: true });
+          setReplyCache(cacheKey, botReply);
+          finish(botReply, audioFileUrl, { cached: false, streamed: true });
+        } catch (streamErr) {
+          logEvent(
+            "error",
+            "chat_stream_failed",
+            "Streaming chat response failed",
+            sanitizeLogMeta({
+              requestId,
+              error: streamErr instanceof Error ? streamErr.message : String(streamErr),
+            }),
+          );
+          send({ error: "Streaming failed", done: true });
         }
-
-        botReply = stripActionEmotes(gracefullyWrapResponse(botReply));
-
-        // Audio is an enhancement: botReply is already streamed, so a TTS failure just omits the URL.
-        const audioFileUrl = await synthesizeReplyAudio(
-          botReply,
-          botName,
-          gender,
-          voiceConfig,
-          false,
-          "chat",
-        );
-
-        writeSseFrame(res, { reply: botReply, audioFileUrl, done: true });
-        res.end();
-
-        setReplyCache(cacheKey, botReply);
-        await finish(botReply, audioFileUrl, { cached: false, streamed: true });
-        return;
-      } catch (streamErr) {
-        logEvent(
-          "error",
-          "chat_stream_failed",
-          "Streaming chat response failed",
-          sanitizeLogMeta({
-            requestId,
-            error: streamErr instanceof Error ? streamErr.message : String(streamErr),
-          }),
-        );
-        writeSseFrame(res, { error: "Streaming failed", done: true });
-        res.end();
-        return;
-      }
+      });
     }
 
     // Non-streaming mode
     const reply = await createClaudeReply(systemPrompt, messages, requestId);
     if (reply === null) {
-      res.status(408).json({ reply: "Request timed out.", requestId });
-      return;
+      return Response.json({ reply: "Request timed out.", requestId }, { status: 408 });
     }
     const botReply = stripActionEmotes(gracefullyWrapResponse(reply));
 
@@ -326,9 +303,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       "chat",
     );
     setReplyCache(cacheKey, botReply);
-    res.status(200).json({ reply: botReply, audioFileUrl, requestId });
-    await finish(botReply, audioFileUrl, { cached: false, streamed: false });
-    return;
+    finish(botReply, audioFileUrl, { cached: false, streamed: false });
+    return Response.json({ reply: botReply, audioFileUrl, requestId });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     logEvent(
@@ -338,13 +314,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sanitizeLogMeta({ requestId, error: errorMessage }),
     );
     // The cause is in the log (by requestId); upstream error text isn't for the client.
-    res.status(500).json({
-      reply: "Error fetching response from bot.",
-      error: "Chat request failed",
-      requestId,
-    });
-    return;
+    return Response.json(
+      {
+        reply: "Error fetching response from bot.",
+        error: "Chat request failed",
+        requestId,
+      },
+      { status: 500 },
+    );
   }
-}
-
-export default withRequestLog(handler);
+});

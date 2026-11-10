@@ -1,9 +1,8 @@
-import type { NextApiResponse } from "next";
 import anthropic from "../claude/anthropicClient";
 import { getClaudeModel } from "../claude/claudeModelSelector";
 import { thinkingFor } from "../claude/claudeThinking";
 import { logEvent, sanitizeLogMeta } from "../logger";
-import { writeSseFrame } from "../sse";
+import type { SseSend } from "../sse";
 import { isClaudeResponse } from "./chatReplyFormatting";
 import type { ClaudeMessage } from "./conversationSummarizer";
 
@@ -28,7 +27,7 @@ function replyParams(system: string, messages: ClaudeMessage[]) {
  * the audio URL that can only be made once the whole reply exists. Throws if the stream fails.
  */
 export async function streamClaudeReply(
-  res: NextApiResponse,
+  send: SseSend,
   system: string,
   messages: ClaudeMessage[],
 ): Promise<string> {
@@ -39,7 +38,7 @@ export async function streamClaudeReply(
       const content = chunk.delta.text;
       if (content) {
         botReply += content;
-        writeSseFrame(res, { chunk: content, done: false });
+        send({ chunk: content, done: false });
       }
     }
   }

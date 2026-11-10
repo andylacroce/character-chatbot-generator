@@ -124,3 +124,11 @@ jest.mock("../src/utils/server/withRoute", () => ({
   ...jest.requireActual("../src/utils/server/withRoute"),
   withRoute: (_limit, handler) => handler,
 }));
+
+// `after` only works inside a real request; in tests run its task right away.
+jest.mock("next/server", () => ({
+  ...jest.requireActual("next/server"),
+  after: (task) => {
+    void (typeof task === "function" ? task() : task);
+  },
+}));

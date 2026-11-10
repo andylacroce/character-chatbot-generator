@@ -1,10 +1,12 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
 import {
   bots as botsTable,
   messages as messagesTable,
   users as usersTable,
 } from "../../../src/db/schema";
-import handlerDefault from "../../../src/pages/api/chat";
+import * as chatRoute from "../../../src/app/api/chat/route";
 
 // Phase 3c: chat.ts looks up a signed-in user's saved character before deciding whether to
 // trust the client-supplied personality/history or the server's own copy. Defaults to a
@@ -142,7 +144,10 @@ jest.mock("../../../src/config/serverConfig", () => ({
     Promise.resolve({ prompt: "default personality", correctedName: "a character chatbot" }),
 }));
 
-const handler = handlerDefault as (req: NextApiRequest, res: NextApiResponse) => Promise<void>;
+const handler = asHandler(chatRoute) as (
+  req: NextApiRequest,
+  res: NextApiResponse,
+) => Promise<void>;
 
 const voiceConfig = { languageCodes: ["en-GB"], name: "en-GB-Wavenet-D", ssmlGender: "MALE" };
 
@@ -212,22 +217,6 @@ describe("chat API", () => {
   afterAll(() => jest.useRealTimers());
 
   describe("request validation", () => {
-    it("returns 405 for non-POST methods", async () => {
-      const res = makeRes();
-      await handler(makeReq({}, { method: "GET" }), res);
-
-      expect(res.setHeader).toHaveBeenCalledWith("Allow", ["POST"]);
-      expect(res.status).toHaveBeenCalledWith(405);
-    });
-
-    it("stops after the rate limiter has already responded", async () => {
-      const res = makeRes();
-      res.headersSent = true;
-      await handler(makeReq(), res);
-
-      expect(mockCreate).not.toHaveBeenCalled();
-    });
-
     it.each([
       ["message", { message: "x".repeat(4001) }],
       ["personality", { personality: "x".repeat(20001) }],

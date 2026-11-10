@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../helpers/asHandler";
 /**
  * Producer/consumer contract for chat audio: what `synthesizeReplyAudio` writes must be exactly
  * what `/api/audio` serves. Real helper, real route, real temp dir; only Google synthesis and
@@ -30,7 +32,7 @@ jest.mock("../../src/utils/logger", () => ({
 import { synthesizeReplyAudio } from "../../src/utils/chat/ttsReply";
 import type { CharacterVoiceConfig } from "../../src/utils/chat/characterVoices";
 
-const handler = require("../../src/pages/api/audio").default as (
+const handler = asHandler(require("../../src/app/api/audio/route")) as (
   req: NextApiRequest,
   res: NextApiResponse,
 ) => Promise<void>;
