@@ -59,3 +59,16 @@
   font-size: 0.92rem;
   line-height: 1.6;
 }
+
+.report {
+  display: block;
+  margin: 1.25rem auto 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  text-decoration: underline;
+  cursor: pointer;
+}

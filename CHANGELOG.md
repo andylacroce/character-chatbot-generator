@@ -2,6 +2,12 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.32.0 - 2026-11-09 - Report a problem
+
+- Anyone can report a problem with a character's name or portrait, or with a single reply, from the Character Wall, a character page, the chat portrait viewer, and a flag button on each character reply (chat and both guessing games, web and mobile). Pick a reason and optionally add a note.
+- Reports go to a new queue at the top of `/admin/moderation`, where an admin can block the name, purge the portrait, or dismiss. New `content_reports` table (additive; apply with `npm run db:push`).
+- The privacy policy now says what a report stores.
+
 ## v0.31.0 - 2026-11-09 - Fix a wall category in place
 
 - Admins can change a character's Wall category from the portrait lightbox on `/characters`, next to Regenerate and Purge, instead of editing the database.

@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import {
   CHARACTER_CATEGORIES,
+  REPORT_COPY,
   characterSlug,
   displayCharacterName,
   type CharacterCategory,
@@ -16,6 +17,7 @@ interface GalleryLightboxProps {
   isAdmin: boolean;
   adminState: AdminState;
   onClose: () => void;
+  onReport: (entry: CharEntry) => void;
   onDialogClose: () => void;
   onRegenerate: (entry: CharEntry) => void;
   onPurge: (entry: CharEntry) => void;
@@ -34,6 +36,7 @@ const GalleryLightbox: React.FC<GalleryLightboxProps> = ({
   isAdmin,
   adminState,
   onClose,
+  onReport,
   onDialogClose,
   onRegenerate,
   onPurge,
@@ -72,6 +75,9 @@ const GalleryLightbox: React.FC<GalleryLightboxProps> = ({
             Character page
           </Link>
         )}
+        <button type="button" className={styles.lightboxReport} onClick={() => onReport(selected)}>
+          {REPORT_COPY.trigger}
+        </button>
         {isAdmin && (
           <div className={styles.lightboxAdmin}>
             <select

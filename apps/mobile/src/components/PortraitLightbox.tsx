@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { resolveApiUrl } from "../api";
 import { useTheme } from "../ThemeContext";
-import { displayCharacterName } from "character-chatbot-shared";
+import { REPORT_COPY, displayCharacterName } from "character-chatbot-shared";
 
 type Props = {
   visible: boolean;
@@ -12,12 +12,21 @@ type Props = {
   onClose: () => void;
   /** Optional CTA below the name, e.g. "Chat with X" from the Character Wall. */
   action?: { label: string; onPress: () => void };
+  /** Shows a "Report a problem" link; the owner closes this lightbox and opens the report modal. */
+  onReport?: () => void;
 };
 
 const serif = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
 
 /** Full-screen portrait viewer — mirrors CharsGallery.tsx's <dialog> lightbox. */
-export default function PortraitLightbox({ visible, name, avatarUrl, onClose, action }: Props) {
+export default function PortraitLightbox({
+  visible,
+  name,
+  avatarUrl,
+  onClose,
+  action,
+  onReport,
+}: Props) {
   const { colors } = useTheme();
   const usable = avatarUrl && !avatarUrl.endsWith(".svg");
 
@@ -48,6 +57,11 @@ export default function PortraitLightbox({ visible, name, avatarUrl, onClose, ac
           {action ? (
             <Pressable onPress={action.onPress} style={styles.actionButton}>
               <Text style={[styles.actionText, { color: colors.primary }]}>{action.label}</Text>
+            </Pressable>
+          ) : null}
+          {onReport ? (
+            <Pressable onPress={onReport} hitSlop={8} style={styles.reportLink}>
+              <Text style={styles.reportText}>{REPORT_COPY.trigger}</Text>
             </Pressable>
           ) : null}
           <Pressable
@@ -84,5 +98,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   actionText: { fontSize: 15, fontWeight: "700" },
+  reportLink: { marginTop: 14 },
+  reportText: { color: "#fff", opacity: 0.8, fontSize: 13, textDecorationLine: "underline" },
   closeButton: { position: "absolute", top: -8, right: 8, padding: 8 },
 });

@@ -18,6 +18,7 @@ import { useReplyAudio } from "../useReplyAudio";
 import ChatView from "../components/ChatView";
 import CharacterHeaderTitle from "../components/CharacterHeaderTitle";
 import PortraitLightbox from "../components/PortraitLightbox";
+import ReportModal, { type ReportTarget } from "../components/ReportModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Chat">;
 
@@ -38,6 +39,7 @@ export default function ChatScreen({ route, navigation }: Props) {
   const audio = useReplyAudio();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -151,7 +153,13 @@ export default function ChatScreen({ route, navigation }: Props) {
         name={bot.name}
         avatarUrl={bot.avatarUrl}
         onClose={() => setLightboxOpen(false)}
+        onReport={() => {
+          // One modal at a time: iOS can't stack the report modal over the lightbox.
+          setLightboxOpen(false);
+          setReportTarget({ targetType: "character", characterName: bot.name });
+        }}
       />
+      <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
       <ChatView
         messages={messages}
         characterName={bot.name}

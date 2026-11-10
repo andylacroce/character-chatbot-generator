@@ -17,7 +17,7 @@ export default function PrivacyPage() {
     <div className={styles.page}>
       <LegalBackLink />
       <h1 className={styles.title}>Privacy Policy</h1>
-      <p className={styles.updated}>Last updated: September 24, 2026</p>
+      <p className={styles.updated}>Last updated: November 9, 2026</p>
 
       <div className={styles.section}>
         <p>
@@ -170,6 +170,17 @@ export default function PrivacyPage() {
           We also keep a small internal log of product-usage events (e.g. how many characters are
           created, whether a guess was correct) for our own analytics. It never includes chat text,
           character names, or guesses — only counts and outcome labels.
+        </p>
+      </div>
+
+      <div className={styles.section}>
+        <h2 className={styles.sectionTitle}>Reporting a problem</h2>
+        <p>
+          If you use <strong>Report a problem</strong> on a character, portrait, or reply, we store
+          the report so we can review it: the character&apos;s name, the reply text if you reported
+          one, the reason you chose, anything you typed, and your account if you were signed in.
+          Reports are used only for moderation. Deleting your account removes the link to you but
+          not the report itself.
         </p>
       </div>
 

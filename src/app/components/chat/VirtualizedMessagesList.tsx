@@ -17,6 +17,7 @@ interface VirtualizedMessagesListProps {
   bot: Bot;
   onAvatarClick?: () => void;
   onReplayAudio?: (message: VisibleMessage) => void;
+  onReport?: (message: VisibleMessage) => void;
   replayDisabled?: boolean;
   maxHeight?: number;
   /** The visitor's own preferred name — see ChatMessage.tsx. */
@@ -51,6 +52,7 @@ interface RowProps {
   bot: Bot;
   onAvatarClick?: () => void;
   onReplayAudio?: (message: VisibleMessage) => void;
+  onReport?: (message: VisibleMessage) => void;
   replayDisabled?: boolean;
   userName?: string;
 }
@@ -67,6 +69,7 @@ function Row({
   bot,
   onAvatarClick,
   onReplayAudio,
+  onReport,
   replayDisabled,
   userName,
 }: RowComponentProps<RowProps>) {
@@ -77,6 +80,7 @@ function Row({
         bot={bot}
         onAvatarClick={onAvatarClick}
         onReplayAudio={onReplayAudio}
+        onReport={onReport}
         replayDisabled={replayDisabled}
         userName={userName}
       />
@@ -90,6 +94,7 @@ const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({
   bot,
   onAvatarClick,
   onReplayAudio,
+  onReport,
   replayDisabled,
   maxHeight = 480,
   userName,
@@ -124,6 +129,7 @@ const VirtualizedMessagesList: React.FC<VirtualizedMessagesListProps> = ({
           bot,
           onAvatarClick,
           onReplayAudio,
+          onReport,
           replayDisabled,
           userName,
         }}

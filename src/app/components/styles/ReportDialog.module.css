@@ -1,0 +1,79 @@
+/* Form pieces for ReportDialog; the modal shell comes from DisclaimerStyleModal. */
+.reasons {
+  border: 0;
+  margin: 0 0 0.9rem;
+  padding: 0;
+}
+
+.legend {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+  color: var(--color-text-secondary);
+}
+
+.reason {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.details {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 0.5rem;
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-outline);
+  border-radius: 8px;
+}
+
+.error {
+  margin: 0.6rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-error, #c0392b);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.cancel,
+.submit {
+  padding: 0.5rem 1.1rem;
+  font: inherit;
+  font-weight: 600;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.cancel {
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-outline);
+}
+
+.submit {
+  margin-top: 0.9rem;
+  color: #fff;
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.actions .submit {
+  margin-top: 0;
+}
+
+.submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

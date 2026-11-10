@@ -28,6 +28,7 @@ import { saveBot } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useTheme } from "../ThemeContext";
 import PortraitLightbox from "../components/PortraitLightbox";
+import ReportModal, { type ReportTarget } from "../components/ReportModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, "CharWall">;
 
@@ -64,6 +65,7 @@ export default function CharWallScreen({ navigation }: Props) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<CharacterEntry | null>(null);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [sortBy, setSortBy] = useState<CharsSort>("newest");
@@ -186,11 +188,18 @@ export default function CharWallScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      <ReportModal target={reportTarget} onClose={() => setReportTarget(null)} />
       <PortraitLightbox
         visible={!!selected}
         name={selected?.name ?? ""}
         avatarUrl={selected?.avatarUrl}
         onClose={() => (creating ? null : setSelected(null))}
+        onReport={() => {
+          // One modal at a time: iOS can't stack the report modal over the lightbox.
+          if (!selected) return;
+          setReportTarget({ targetType: "character", characterName: selected.name });
+          setSelected(null);
+        }}
         action={{
           label: creating ? "Loading…" : `Chat with ${displayCharacterName(selected?.name ?? "")}`,
           onPress: handleChatWith,

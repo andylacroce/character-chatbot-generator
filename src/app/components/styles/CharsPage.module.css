@@ -924,3 +924,22 @@
     animation: none;
   }
 }
+
+.lightboxReport {
+  display: block;
+  margin: 0.6rem auto 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+  opacity: 0.8;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.lightboxReport:hover,
+.lightboxReport:focus-visible {
+  opacity: 1;
+}

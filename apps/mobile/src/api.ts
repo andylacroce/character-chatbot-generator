@@ -24,6 +24,7 @@ import type {
   LeaderboardSettingsResponse,
   PersistedBot,
   PersistedMessage,
+  ReportRequest,
   RandomCharacterResponse,
   UserProfile,
   ValidateCharacterRequest,
@@ -79,6 +80,11 @@ export function resolveApiUrl(path: string): string {
 
 function post<T>(path: string, body: unknown): Promise<T> {
   return apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+}
+
+/** Files a "Report a problem" report; throws ApiError on failure. */
+export function submitReport(body: ReportRequest): Promise<unknown> {
+  return post("/api/report", body);
 }
 
 export function generatePersonality(

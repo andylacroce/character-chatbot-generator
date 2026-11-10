@@ -7,6 +7,7 @@
 
 import React from "react";
 import Image from "next/image";
+import { REPORT_COPY } from "character-chatbot-shared";
 import styles from "../styles/ChatPage.module.css";
 import viewerStyles from "../styles/ModalImageViewer.module.css";
 
@@ -15,10 +16,18 @@ interface ModalImageViewerProps {
   imageUrl: string;
   alt: string;
   onClose: () => void;
+  /** Shows a "Report a problem" link; the owner closes this viewer and opens the report dialog. */
+  onReport?: () => void;
 }
 
 /** Full-screen lightbox for viewing an enlarged image (e.g. a character avatar). */
-const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt, onClose }) => {
+const ModalImageViewer: React.FC<ModalImageViewerProps> = ({
+  show,
+  imageUrl,
+  alt,
+  onClose,
+  onReport,
+}) => {
   if (!show) return null;
   return (
     <div className={styles.modalBackdrop} data-testid="modal-image-backdrop" onClick={onClose}>
@@ -41,6 +50,11 @@ const ModalImageViewer: React.FC<ModalImageViewerProps> = ({ show, imageUrl, alt
           className={viewerStyles.image}
           onClick={onClose}
         />
+        {onReport && (
+          <button type="button" className={viewerStyles.report} onClick={onReport}>
+            {REPORT_COPY.trigger}
+          </button>
+        )}
       </div>
     </div>
   );

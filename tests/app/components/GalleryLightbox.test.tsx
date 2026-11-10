@@ -12,6 +12,7 @@ function setup(overrides: Partial<React.ComponentProps<typeof GalleryLightbox>> 
     isAdmin: false,
     adminState: "idle" as AdminState,
     onClose: jest.fn(),
+    onReport: jest.fn(),
     onDialogClose: jest.fn(),
     onRegenerate: jest.fn(),
     onPurge: jest.fn(),
@@ -36,6 +37,12 @@ describe("GalleryLightbox", () => {
     setup();
     expect(byRole("link", /Chat with/)).toHaveAttribute("href", "/?name=Ada%20Lovelace");
     expect(byRole("link", "Character page")).toHaveAttribute("href", "/characters/ada-lovelace");
+  });
+
+  it("hands the portrait to onReport", () => {
+    const { onReport } = setup();
+    fireEvent.click(byRole("button", "Report a problem"));
+    expect(onReport).toHaveBeenCalledWith(entry);
   });
 
   it("closes from the image and the close button", () => {

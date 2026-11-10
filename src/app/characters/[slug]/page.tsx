@@ -13,6 +13,7 @@ import { characterSlug, displayCharacterName } from "character-chatbot-shared/sr
 import { getCharacterBySlug } from "../../../utils/moderation/charactersWall";
 import { SITE_URL } from "../../../utils/site";
 import styles from "../../components/styles/CharacterPage.module.css";
+import ReportCharacterButton from "./ReportCharacterButton";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -67,6 +68,7 @@ export default async function CharacterPage({ params }: Params) {
         Portrayal lets you talk with historical figures, legends, and literary icons, or play Guess
         Who and work out which character you are speaking to.
       </p>
+      <ReportCharacterButton characterName={character.name} />
     </div>
   );
 }

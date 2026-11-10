@@ -95,7 +95,7 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
   clear personal local keys via shared `isPersonalStorageKey` (keeping dark mode, audio, GA consent,
   carousel cache) and sign out. Known gap: a JWT on another device stays decodable until expiry;
   its writes fail the `users` FK and degrade like any persistence error.
-  **A new per-user table needs an `onDelete: "cascade"` FK to `users`; a new guest-scoped table
+  **A new per-user table needs an `onDelete: "cascade"` FK to `users`** (exception: `content_reports.reporter_user_id` is `set null` so a moderator keeps the report; see `reports.md`); a new guest-scoped table
   needs an explicit delete here keyed by guest cookie,** or deletion silently misses it (a missing
   pair of Guess Who guest tables was exactly this gap, fixed 2026-09-29; `tests/pages/api/account.test.ts`
   asserts all four).

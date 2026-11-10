@@ -154,3 +154,12 @@
     font-size: calc(var(--chat-message-font-size) * 1.05);
   }
 }
+
+/* Report button: sits right after the replay button, or pushes itself right when there is none. */
+.reportButton {
+  margin-left: 0.4rem;
+}
+
+.reportOnly {
+  margin-left: auto;
+}
