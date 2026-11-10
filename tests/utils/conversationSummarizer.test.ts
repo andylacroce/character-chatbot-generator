@@ -24,6 +24,14 @@ describe("buildClaudeMessages", () => {
     expect(result[0]).toEqual({ role: "assistant", content: "I am fine" });
   });
 
+  it("drops blank turns, which Anthropic rejects", () => {
+    const result = buildClaudeMessages(["User: ", "Bot:  ", "User: hi"], "next");
+    expect(result).toEqual([
+      { role: "user", content: "hi" },
+      { role: "user", content: "next" },
+    ]);
+  });
+
   it("appends the new user message at the end", () => {
     const result = buildClaudeMessages([], "New message");
     expect(result).toEqual([{ role: "user", content: "New message" }]);
