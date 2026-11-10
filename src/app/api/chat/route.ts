@@ -41,7 +41,6 @@ let requestCount = 0;
 const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
 
 /**
- * Next.js API route handler for chat requests.
  * Handles user input, calls Claude, and returns the character chatbot's reply and audio.
  *
  * @swagger

@@ -68,14 +68,14 @@ function shuffled<T>(items: T[]): T[] {
 }
 
 /**
- * Next.js API route handler for listing every cached character portrait.
+ * Lists every cached character portrait, or looks one up by name.
  *
  * @swagger
  * /chars:
  *   get:
  *     summary: List every character portrait in the shared avatar cache
  *     description: >
- *       Public, no-auth gallery data for the /chars mosaic page, paginated so a large
+ *       Public, no-auth gallery data for the /characters mosaic page, paginated so a large
  *       gallery doesn't have to load (or render) all at once. Returns an empty list
  *       (never an error) when no DATABASE_URL is configured. Newest portraits first.
  *     tags: [Chars]
@@ -140,8 +140,6 @@ function shuffled<T>(items: T[]): T[] {
  *                         enum: [history, mythology, literature, folklore, religion, other]
  *                 hasMore:
  *                   type: boolean
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:

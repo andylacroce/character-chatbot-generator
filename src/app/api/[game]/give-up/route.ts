@@ -14,7 +14,7 @@ import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 import { recordEvent } from "../../../../utils/analytics";
 
 /**
- * Next.js API route handler for voluntarily giving up a guessing-game run.
+ * Voluntarily gives up a guessing-game run.
  *
  * @swagger
  * /{game}/give-up:

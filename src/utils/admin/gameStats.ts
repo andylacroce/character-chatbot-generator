@@ -12,7 +12,7 @@ import {
 /**
  * Event names a game's four lifecycle categories are recorded under. "Guess Who's
  * Next" lists BOTH its current (`guess_who_next_*`) and pre-rename legacy (`game_*`)
- * names in each category — the rename (2026-09-28) only changed what NEW writes use;
+ * names in each category — the rename only changed what NEW writes use;
  * historical rows keep their old names permanently in this append-only log, so a query
  * that only matched the new names would silently undercount everything written before
  * the rename. "Guess Who" (the new clue-reveal game) has no legacy names — it never had

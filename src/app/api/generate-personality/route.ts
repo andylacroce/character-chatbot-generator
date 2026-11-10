@@ -55,10 +55,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for generating a character personality prompt using Claude.
- * Accepts POST requests with a character name and returns a personality string.
- *
- * @returns {Promise<void>} Resolves when the response is sent.
+ * Generates a character's personality prompt with Claude.
  *
  * @swagger
  * /generate-personality:
@@ -98,8 +95,6 @@ const LIMIT = {
  *                     the two share one avatar_cache entry rather than spawning a duplicate.
  *       400:
  *         description: Valid name required, or invalid character name
- *       405:
- *         description: Method not allowed
  *       422:
  *         description: Name is not a recognized historical, mythological, literary, or fictional figure
  *       429:

@@ -1,6 +1,6 @@
 /**
  * API endpoint for generating downloadable chat transcripts.
- * Accepts POST requests with messages (up to 10MB) and returns HTML document.
+ * Accepts POST requests with messages (up to 5MB) and returns an HTML document.
  */
 
 import type { NextRequest } from "next/server";
@@ -20,9 +20,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for generating and downloading chat transcripts.
- * Accepts POST requests with a messages array and returns a text file.
- * @returns {Promise<void>} Resolves when the response is sent.
+ * Renders a chat as a downloadable HTML transcript.
  *
  * @swagger
  * /transcript:
@@ -30,8 +28,8 @@ const LIMIT = {
  *     summary: Generate a downloadable chat transcript
  *     description: >
  *       Renders the given messages as a styled, self-contained HTML document
- *       (all text HTML-escaped). Body size limit 10MB, message count limit
- *       10000, total messages payload limit 5MB. Rate limited to 10 requests/
+ *       (all text HTML-escaped). Message count limit 10000, total
+ *       messages payload limit 5MB. Rate limited to 10 requests/
  *       minute/IP.
  *     tags: [Transcript]
  *     requestBody:
@@ -77,8 +75,6 @@ const LIMIT = {
  *               type: string
  *       400:
  *         description: Invalid request body
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  */

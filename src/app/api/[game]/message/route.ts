@@ -57,7 +57,7 @@ function speak(game: ServerGame, state: GameState, text: string) {
 }
 
 /**
- * Next.js API route handler for one turn of a guessing game's chat.
+ * Handles one turn of a guessing game's chat.
  *
  * @swagger
  * /{game}/message:

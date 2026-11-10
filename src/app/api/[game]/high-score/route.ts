@@ -13,7 +13,7 @@ import { getSessionUserId } from "../../../../utils/account/getSessionUserId";
 import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 
 /**
- * Next.js API route handler for reading the caller's personal best streak.
+ * Reads the caller's personal best streak.
  *
  * @swagger
  * /{game}/high-score:

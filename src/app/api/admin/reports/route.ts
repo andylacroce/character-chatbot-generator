@@ -17,7 +17,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for the admin report queue.
+ * Lists open problem reports and marks one resolved.
  *
  * @swagger
  * /admin/reports:

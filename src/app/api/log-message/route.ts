@@ -59,10 +59,7 @@ function appendToBlobLog(filename: string, entry: string, token: string): Promis
 }
 
 /**
- * Next.js API route handler for logging chat messages and events to storage (Vercel Blob or local).
- * Includes XSS-safe HTML escaping for logs.
- *
- * @returns {Promise<void>} Resolves when the response is sent.
+ * Stores chat logs (Vercel Blob or a local file) with XSS-safe HTML escaping.
  *
  * @swagger
  * /log-message:
@@ -106,8 +103,6 @@ function appendToBlobLog(filename: string, entry: string, token: string): Promis
  *                   type: string
  *       400:
  *         description: Missing or invalid fields
- *       405:
- *         description: Method not allowed
  *       500:
  *         description: Internal server error
  */

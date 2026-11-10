@@ -64,7 +64,7 @@ type WinstonLike = {
 /**
  * Builds the human-readable `[timestamp] [LEVEL]: message {meta}` format
  * shared by the terminal's Console transport and the `__TEST_WINSTON__` test
- * hook — previously duplicated verbatim in both places. Takes a winston-shaped
+ * hook. Takes a winston-shaped
  * `format` module rather than a whole `WinstonLike`, since that's all either
  * caller actually has (the test hook doesn't provide `transports.File`).
  */

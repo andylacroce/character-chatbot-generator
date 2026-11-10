@@ -16,7 +16,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler reporting whether the caller is a signed-in admin.
+ * Reports whether the caller is a signed-in admin.
  *
  * @swagger
  * /admin/is-admin:

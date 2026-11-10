@@ -32,7 +32,33 @@ function redirectTo(redirectUri: string, params: Record<string, string>): Respon
   return new Response(null, { status: 302, headers: { Location: url.toString() } });
 }
 
-/** Next.js API route handler for the mobile sign-in bridge's complete leg (see module doc above). */
+/**
+ * Finishes the mobile sign-in bridge (see the module doc above).
+ *
+ * @swagger
+ * /auth/mobile-auth-complete:
+ *   get:
+ *     summary: Finish the mobile sign-in bridge
+ *     description: >
+ *       Reads the web session the sign-in just created and redirects (302) back into the
+ *       app's redirect URI with a bearer `token`, or with an `error` (`not_signed_in`,
+ *       `server_misconfigured`) when no session exists.
+ *     tags: [Auth]
+ *     parameters:
+ *       - in: query
+ *         name: state
+ *         required: true
+ *         description: The signed state minted by /auth/mobile-auth-start
+ *         schema:
+ *           type: string
+ *     responses:
+ *       302:
+ *         description: Redirect into the app with a token or an error
+ *       400:
+ *         description: Missing, invalid or expired state
+ *       429:
+ *         description: Rate limit exceeded
+ */
 export const GET = withRoute(LIMIT, async (req: NextRequest) => {
   const state = req.nextUrl.searchParams.get("state");
   if (!state) {

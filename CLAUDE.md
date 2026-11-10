@@ -151,7 +151,7 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
 - **`proxy.ts`'s Origin/Referer check is CSRF protection, not authentication.** It stops a malicious
   site's browser JS from riding a visitor's session, but a non-browser client can set any `Origin`.
   Don't treat an allowed-origin match as proof of a trusted caller when reasoning about request
-  volume or cost; the per-route rate limiter (`src/utils/server/rateLimit.ts`) is the real ceiling. Fully
+  volume or cost; the per-route rate limiter (`src/utils/server/withRoute.ts`) is the real ceiling. Fully
   closing this would mean requiring login on guest-usable routes (breaking core UX) or real
   session/token infrastructure, an accepted tradeoff.
 - **API key comparison is constant-time** (`secureCompare`, hash-then-`timingSafeEqual`), since Proxy

@@ -24,7 +24,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for purging or regenerating a character's cached portrait.
+ * Purges, regenerates or recategorizes a character's cached portrait.
  *
  * @swagger
  * /admin/characters:

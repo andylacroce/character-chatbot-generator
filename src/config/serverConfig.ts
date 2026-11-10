@@ -213,20 +213,15 @@ async function gameBasePersona(name: string, work?: string): Promise<string> {
  * any real sense. The rules block below explicitly guards two failure modes that follow
  * from that: the model claiming not to know or refusing to discuss someone from a
  * "different time/place/story" (breaks immersion), and giving away nothing at all before
- * the player has actually asked (see below for why that changed).
+ * the player has actually asked (see below).
  *
- * **Retuned 2026-09-19 after GitHub issue #878 ("game is too hard").** The original
- * design required the opening hint to be purely atmospheric mood with zero concrete
- * content, then escalate "gradually... across several exchanges," explicitly calibrated
- * so a well-read player would need "real inference... not win on a lucky first guess."
- * Real play showed that reads as stalling, not teaching: a hint with no actual content
- * gives the player nothing to reason from, so difficulty came from withholding
- * information rather than from the puzzle itself. The rules below now require the very
- * first hint to carry one real, narrowing category-level fact (broad era/culture/domain)
- * instead of pure mood, and ask for a specific, checkable fact within the first couple of
- * follow-up answers rather than holding back for "several exchanges." The goal is a
- * player walking away with a long streak of correct guesses, not stuck on their first
- * round — favor that outcome over stumping when the two are in tension.
+ * The opening hint must carry one real, narrowing category-level fact (broad
+ * era/culture/domain), not pure mood, and a specific, checkable fact should follow within
+ * the first couple of follow-up answers. A hint with no content reads as stalling rather
+ * than teaching: difficulty would come from withholding information instead of from the
+ * puzzle. The goal is a player walking away with a long streak of correct guesses, not
+ * stuck on their first round, so favor that outcome over stumping when the two are in
+ * tension.
  */
 export async function generateGameCluePersonaPrompt(
   currentCharacterName: string,

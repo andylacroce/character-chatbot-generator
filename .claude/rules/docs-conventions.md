@@ -31,7 +31,9 @@ component, and hook.
 
 ### API documentation
 
-Every `src/app/api/**/route.ts` and `src/app/api/**/route.ts` handler carries an OpenAPI 3.0 `@swagger` JSDoc block.
+Every `src/app/api/**/route.ts` handler carries an OpenAPI 3.0 `@swagger` JSDoc block (the Auth.js
+catch-all is the one exception: Auth.js defines those endpoints). Don't document a 405: Next answers
+that itself for any method a route doesn't export.
 `npm run docs:api` (`scripts/generate-openapi.cjs`, via `swagger-jsdoc`) writes
 `public/openapi.json` (a gitignored build artifact; never hand-edit) and runs automatically before
 `dev`/`build`/`vercel-build`. `src/app/reference/route.ts` serves the interactive UI

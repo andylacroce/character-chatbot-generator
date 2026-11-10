@@ -48,7 +48,7 @@ product-usage analytics, kept small rather than becoming general observability.
   and use the shared `AppHeader`/`useAccountMenu`. `src/utils/account/isAdmin.ts` admits a signed-in session
   whose email is in `ADMIN_EMAILS` (comma-separated) and **fails closed** (no list, no admins), the
   opposite default of other optional features because it grants read access to aggregate activity.
-  Pages 404 a non-admin (`notFound()` via `isAdminSession()`) rather than rendering a shell.
+  The admin pages 404 a non-admin (`notFound()` via `isAdmin()`) rather than rendering a shell.
   **Never honored on a Vercel Preview deployment,** since the stub provider signs in any typed
   email unverified; `isAdmin()` checks `VERCEL_ENV === "preview"` first. The API returns 401 with
   no session and 403 when not listed, before any DB query; the page's `useSession()` check is UX

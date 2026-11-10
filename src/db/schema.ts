@@ -161,8 +161,8 @@ export const messages = pgTable("messages", {
  * skips entirely, and callers need it for voice selection.
  *
  * `recognized` mirrors /api/validate-character's support gate. New generation only reaches
- * this table for recognized names, so every row is true (the last legacy unsupported rows were
- * deleted 2026-09-30). The column is retained so a drop stays an explicit, separate migration.
+ * this table for recognized names, so every row is true. The column is retained so a drop
+ * stays an explicit, separate migration.
  * Defaults true for compatibility with rows written before recognition existed.
  *
  * `displayName` is the properly-cased name as Claude itself produced it (generate-
@@ -178,8 +178,7 @@ export const messages = pgTable("messages", {
  * Wall's grouping control: history, mythology, literature, folklore, religion, or
  * other. New rows get it from the structured Claude call already used to create the
  * avatar prompt, so classification adds no model round-trip. Nullable for rows created
- * before the field existed; that historical backfill completed 2026-09-18 (all 129
- * eligible rows filled) and the one-time script has since been removed.
+ * before the field existed.
  */
 export const avatarCache = pgTable("avatar_cache", {
   characterName: text("character_name").primaryKey(),
@@ -209,9 +208,8 @@ export const avatarCache = pgTable("avatar_cache", {
  *   `scrubbed: true`.
  * - `"content"`: the *never*-overridable checks — either the name itself is abusive
  *   (profane/slur/sexual), or it identifies a real, currently-living person with a
- *   serious, well-documented real-world criminal conviction/allegation (added
- *   2026-09-17 after a live report that a name like this had no guardrail at all —
- *   the character wall at /characters is public, and impersonating a living person with
+ *   serious, well-documented real-world criminal conviction/allegation (the
+ *   character wall at /characters is public, and impersonating a living person with
  *   this kind of history is a legal/reputational risk independent of copyright).
  *   Deliberately excludes historical/deceased figures, however controversial, and
  *   ordinary celebrity/political controversy — only serious real-world criminal

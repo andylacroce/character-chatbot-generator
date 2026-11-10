@@ -29,10 +29,9 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler returning aggregate character-creation and guessing-game
- * usage stats for the signed-in admin. Every query is scoped to the current
- * deployment's environment (see getCurrentEnvironment) so production stats never mix
- * with local/preview noise.
+ * Returns aggregate character-creation and guessing-game usage stats for the signed-in
+ * admin. Every query is scoped to the current deployment's environment (see
+ * getCurrentEnvironment) so production stats never mix with local/preview noise.
  *
  * @swagger
  * /admin/stats:

@@ -30,7 +30,7 @@ const LIMIT = {
 };
 
 /**
- * Next.js API route handler for the admin character-allowlist panel.
+ * Lists, adds and removes names on the admin character allowlist.
  *
  * @swagger
  * /admin/allowlist:
