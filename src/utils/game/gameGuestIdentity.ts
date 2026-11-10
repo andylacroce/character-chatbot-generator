@@ -6,7 +6,7 @@
  */
 
 import crypto from "crypto";
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextRequest } from "next/server";
 
 const COOKIE_NAME = "portrayal-game-guest";
 const HEADER_NAME = "x-game-guest";
@@ -18,25 +18,26 @@ function hashGuestToken(token: string): string {
 }
 
 /** Reads a valid existing guest identity without creating one. */
-export function getGuestId(req: NextApiRequest): string | null {
-  const token = req.cookies?.[COOKIE_NAME] ?? req.headers?.[HEADER_NAME];
-  return typeof token === "string" && TOKEN_PATTERN.test(token) ? hashGuestToken(token) : null;
+export function getGuestId(req: NextRequest): string | null {
+  const token = req.cookies.get(COOKIE_NAME)?.value ?? req.headers.get(HEADER_NAME);
+  return token && TOKEN_PATTERN.test(token) ? hashGuestToken(token) : null;
 }
 
-/** Issues a persistent, HTTP-only browser identity if this guest has none. */
-export function ensureGuestId(req: NextApiRequest, res: NextApiResponse): string {
+/**
+ * Returns this guest's identity, minting one if they have none. A newly minted identity comes
+ * with the `Set-Cookie` value the caller must put on its response (a persistent, HTTP-only
+ * browser cookie); an existing one needs no cookie.
+ */
+export function ensureGuestId(req: NextRequest): { guestId: string; setCookie: string | null } {
   const existing = getGuestId(req);
-  if (existing) return existing;
+  if (existing) return { guestId: existing, setCookie: null };
   const token = crypto.randomBytes(32).toString("base64url");
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  res.setHeader(
-    "Set-Cookie",
-    `${COOKIE_NAME}=${token}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax${secure}`,
-  );
-  return hashGuestToken(token);
+  return {
+    guestId: hashGuestToken(token),
+    setCookie: `${COOKIE_NAME}=${token}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax${secure}`,
+  };
 }
 
-/** Expires this browser's guest identity cookie, so its next game mints a fresh one. */
-export function clearGuestId(res: NextApiResponse): void {
-  res.setHeader("Set-Cookie", `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`);
-}
+/** `Set-Cookie` value that expires this browser's guest identity, so its next game mints a fresh one. */
+export const CLEAR_GUEST_COOKIE = `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax`;

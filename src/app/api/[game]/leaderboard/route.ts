@@ -1,8 +1,8 @@
 /** Public leaderboard of a guessing game's players who opted in to showing their score. */
 
-import { gameRoute, rejectMethod } from "../../../utils/game/route";
-import { getLeaderboard } from "../../../utils/game/scores";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { gameRoute } from "../../../../utils/game/route";
+import { getLeaderboard } from "../../../../utils/game/scores";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 
 /**
  * Reads the current environment's public leaderboard.
@@ -33,27 +33,23 @@ import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
  *                       streak: { type: integer }
  *       404:
  *         description: Unknown game
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:
  *         description: Failed to load leaderboard
  */
-export default gameRoute(
+export const GET = gameRoute(
   {
     endpoint: "leaderboard",
     max: 30,
     message: "Too many requests from this IP, please try again later.",
   },
-  async (game, req, res) => {
-    if (rejectMethod(req, res, ["GET"])) return;
+  async (game) => {
     if (!process.env.DATABASE_URL) {
-      res.status(200).json({ entries: [] });
-      return;
+      return Response.json({ entries: [] });
     }
     try {
-      res.status(200).json({ entries: await getLeaderboard(game) });
+      return Response.json({ entries: await getLeaderboard(game) });
     } catch (err) {
       logEvent(
         "error",
@@ -61,7 +57,7 @@ export default gameRoute(
         "Failed to load leaderboard",
         sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
       );
-      res.status(500).json({ error: "Failed to load leaderboard" });
+      return Response.json({ error: "Failed to load leaderboard" }, { status: 500 });
     }
   },
 );

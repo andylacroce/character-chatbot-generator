@@ -7,7 +7,7 @@
  */
 
 import { and, asc, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
-import type { NextApiRequest } from "next";
+import type { NextRequest } from "next/server";
 import type { LeaderboardEntry } from "character-chatbot-shared/src/core";
 import { getDb } from "../../db/client";
 import { users } from "../../db/schema";
@@ -81,7 +81,7 @@ export async function updateHighScoreIfBeaten(
  * it was issued to, in the environment it was issued in. A copied token credits nobody.
  */
 export function scoringIdentity(
-  req: NextApiRequest,
+  req: NextRequest,
   state: GameState,
   userId: string | null,
 ): LeaderboardIdentity | null {

@@ -15,30 +15,31 @@
  *
  * Audio is synthesized for every reply the same way ordinary chat does. No streaming and no
  * server-side message persistence: the client resends its own truncated conversation history
- * each turn, the same pattern pages/api/chat.ts uses for a guest's conversation.
+ * each turn, the same pattern app/api/chat/route.ts uses for a guest's conversation.
  */
 
-import type { NextApiRequest } from "next";
-import { gameRoute, rejectMethod } from "../../../utils/game/route";
-import { signGameState, verifyGameState, type GameState } from "../../../utils/game/token";
+import type { NextRequest } from "next/server";
+import { readJson } from "../../../../utils/server/withRoute";
+import { gameRoute } from "../../../../utils/game/route";
+import { signGameState, verifyGameState, type GameState } from "../../../../utils/game/token";
 import {
   isRunEnded,
   markRunEnded,
   recordGameResult,
   scoringIdentity,
   updateHighScoreIfBeaten,
-} from "../../../utils/game/scores";
-import type { ServerGame } from "../../../utils/game/definitions";
-import { recordEvent } from "../../../utils/analytics";
+} from "../../../../utils/game/scores";
+import type { ServerGame } from "../../../../utils/game/definitions";
+import { recordEvent } from "../../../../utils/analytics";
 import {
   getGameReply,
   getGuessReactionReply,
   AMBIGUOUS_GUESS_NOTE,
-} from "../../../utils/game/gameReply";
-import { classifyGuess } from "../../../utils/game/classifyGuess";
-import { synthesizeReplyAudio } from "../../../utils/chat/ttsReply";
-import { getSessionUserId } from "../../../utils/account/getSessionUserId";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+} from "../../../../utils/game/gameReply";
+import { classifyGuess } from "../../../../utils/game/classifyGuess";
+import { synthesizeReplyAudio } from "../../../../utils/chat/ttsReply";
+import { getSessionUserId } from "../../../../utils/account/getSessionUserId";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 
 /** Input ceilings; a real round's history is a few dozen short lines. */
 const MAX_MESSAGE_LENGTH = 2000;
@@ -118,40 +119,38 @@ function speak(game: ServerGame, state: GameState, text: string) {
  *         description: Missing message, or invalid/expired round token
  *       404:
  *         description: Unknown game
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:
  *         description: Failed to generate a reply
  */
-export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res) => {
-  if (rejectMethod(req, res, ["POST"])) return;
+export const POST = gameRoute({ endpoint: "message", max: 10 }, async (game, req) => {
+  const body = await readJson(req);
 
-  const { message, conversationHistory } = req.body ?? {};
+  const { message, conversationHistory } = body ?? {};
 
   if (!message || typeof message !== "string") {
-    res.status(400).json({ error: "Message is required" });
-    return;
+    return Response.json({ error: "Message is required" }, { status: 400 });
   }
 
   if (
     message.length > MAX_MESSAGE_LENGTH ||
     (Array.isArray(conversationHistory) && conversationHistory.length > MAX_HISTORY_ENTRIES)
   ) {
-    res.status(400).json({ error: "Message or history is too long" });
-    return;
+    return Response.json({ error: "Message or history is too long" }, { status: 400 });
   }
 
-  const state = verifyGameState(req.body?.[game.tokenField], game.id);
+  const state = verifyGameState(body?.[game.tokenField], game.id);
   if (!state) {
     logEvent(
       "info",
       `${game.eventPrefix}_invalid_token`,
       "Rejected an invalid or expired game token",
     );
-    res.status(400).json({ error: "Your game session has expired. Please start a new game." });
-    return;
+    return Response.json(
+      { error: "Your game session has expired. Please start a new game." },
+      { status: 400 },
+    );
   }
 
   const history = Array.isArray(conversationHistory)
@@ -168,8 +167,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         `${game.eventPrefix}_give_up_requested_via_chat`,
         "Player asked to give up via chat",
       );
-      res.status(200).json({ giveUpRequested: true });
-      return;
+      return Response.json({ giveUpRequested: true });
     }
 
     if (classification.status !== "clear") {
@@ -181,8 +179,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         classification.status === "ambiguous" ? AMBIGUOUS_GUESS_NOTE : undefined,
         state.targetName,
       );
-      res.status(200).json({ reply, audioFileUrl: await speak(game, state, reply) });
-      return;
+      return Response.json({ reply, audioFileUrl: await speak(game, state, reply) });
     }
 
     const userId = await getSessionUserId(req);
@@ -211,7 +208,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
       // Deliberately not generating the next round here; see continue.ts, called once the
       // player clicks "Continue". The token is re-signed with canContinue:true but otherwise
       // unchanged, so continue can still read the target and usedNames from it.
-      res.status(200).json({
+      return Response.json({
         reply,
         audioFileUrl,
         [game.tokenField]: signGameState({ ...state, canContinue: true }),
@@ -221,7 +218,6 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         ...reveal,
         streak: newStreak,
       });
-      return;
     }
 
     if (state.wrongGuessCount >= 1) {
@@ -247,7 +243,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         { reason: "second_wrong", finalStreak: state.streak },
         userId,
       );
-      res.status(200).json({
+      return Response.json({
         reply,
         audioFileUrl,
         correct: false,
@@ -256,7 +252,6 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
         ...reveal,
         finalStreak: state.streak,
       });
-      return;
     }
 
     const reply = await getGuessReactionReply(state.personaPrompt, "wrong", state.targetName);
@@ -268,7 +263,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
       freeMiss ? { ...state, freeMissUsed: true } : { ...state, wrongGuessCount: 1 },
     );
     await recordEvent(`${game.eventPrefix}_guess_wrong`, { turn: clueRound }, userId);
-    res.status(200).json({
+    return Response.json({
       reply,
       audioFileUrl,
       correct: false,
@@ -283,7 +278,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
       `Failed to generate a ${game.title} reply`,
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
-    res.status(500).json({ error: "Failed to generate a reply" });
+    return Response.json({ error: "Failed to generate a reply" }, { status: 500 });
   }
 });
 
@@ -297,7 +292,7 @@ export default gameRoute({ endpoint: "message", max: 10 }, async (game, req, res
  */
 async function writeScore(
   game: ServerGame,
-  req: NextApiRequest,
+  req: NextRequest,
   state: GameState,
   userId: string | null,
   streak: number,

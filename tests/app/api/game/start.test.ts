@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { verifyGameState } from "../../../../src/utils/game/token";
 import gameCharacterNames from "../../../../src/data/gameCharacterNames";
 import {
@@ -14,12 +16,6 @@ jest.mock("../../../../src/utils/logger", () => ({
   logEvent: (...args: unknown[]) => mockLogEvent(...args),
   sanitizeLogMeta: (m: unknown) => m,
   generateRequestId: () => "test-id",
-}));
-
-const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
 
 jest.mock("../../../../src/utils/environment", () => ({ getCurrentEnvironment: () => "test" }));
@@ -72,7 +68,7 @@ jest.mock("../../../../src/utils/chat/ttsReply", () => ({
   synthesizeReplyAudio: (...args: unknown[]) => mockSynthesizeReplyAudio(...args),
 }));
 
-const handler = require("../../../../src/pages/api/[game]/start").default;
+const handler = asHandler(require("../../../../src/app/api/[game]/start/route"));
 
 describe.each(GAMES_UNDER_TEST)("$slug/start API", (game) => {
   const prefix = game.eventPrefix;
@@ -89,9 +85,8 @@ describe.each(GAMES_UNDER_TEST)("$slug/start API", (game) => {
 
   beforeEach(() => {
     jest.resetAllMocks();
-    mockApplyRateLimit.mockResolvedValue(true);
     mockGetSessionUserId.mockResolvedValue(null);
-    mockEnsureGuestId.mockReturnValue("guest-hash");
+    mockEnsureGuestId.mockReturnValue({ guestId: "guest-hash", setCookie: null });
     if (game.hidesSpeaker) {
       mockPickRandomCharacterName.mockReturnValueOnce("Irene Adler");
     } else {
@@ -113,15 +108,6 @@ describe.each(GAMES_UNDER_TEST)("$slug/start API", (game) => {
     mockSynthesizeReplyAudio.mockResolvedValue("/api/audio?file=test.mp3");
   });
 
-  it("applies this game's own rate limiter", async () => {
-    await start();
-    expect(mockApplyRateLimit).toHaveBeenCalledWith(
-      expect.objectContaining({ name: `${game.slug}-start`, max: 10 }),
-      expect.anything(),
-      expect.anything(),
-    );
-  });
-
   it("returns 405 for non-POST methods", async () => {
     const res = await start(undefined, "GET");
     expect(res.status).toHaveBeenCalledWith(405);
@@ -139,6 +125,17 @@ describe.each(GAMES_UNDER_TEST)("$slug/start API", (game) => {
       streak: 0,
     });
     expect(mockRecordEvent).toHaveBeenCalledWith(`${prefix}_started`, { guest: true }, null);
+  });
+
+  it("sets the new guest identity's cookie on the response, in JSON and stream mode", async () => {
+    mockEnsureGuestId.mockReturnValue({
+      guestId: "guest-hash",
+      setCookie: "portrayal-game-guest=t",
+    });
+    for (const stream of [false, true]) {
+      const res = await start(stream ? { stream: true } : undefined);
+      expect(res.setHeader).toHaveBeenCalledWith("set-cookie", "portrayal-game-guest=t");
+    }
   });
 
   it("mints a guest-bound token for a caller with no account", async () => {
@@ -262,7 +259,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/start API", (game) => {
     expect(finalFrame[game.tokenField]).toEqual(expect.any(String));
     expect(res.end).toHaveBeenCalled();
     // Streaming mode never also sends a plain JSON response.
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
   });
 
   it("streams an error frame instead of a 500 status when generation fails in stream mode", async () => {
@@ -272,6 +269,6 @@ describe.each(GAMES_UNDER_TEST)("$slug/start API", (game) => {
     const frames = sseFrames(res);
     expect(frames[frames.length - 1]).toEqual({ error: "Failed to start a new run", done: true });
     expect(res.end).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
   });
 });

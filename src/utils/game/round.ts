@@ -17,8 +17,8 @@ import { getOpeningReply, SELF_CLUE_OPENING_INSTRUCTION } from "./gameReply";
 import { getVoiceConfigForCharacter } from "../chat/characterVoices";
 import type { CharacterVoiceConfig } from "../chat/characterVoices";
 import { synthesizeReplyAudio } from "../chat/ttsReply";
-import { setSseHeaders, writeSseFrame } from "../sse";
-import type { NextApiResponse } from "next";
+import { sseResponse } from "../sse";
+import { logEvent, sanitizeLogMeta } from "../logger";
 import type { ServerGame } from "./definitions";
 import type { GameState } from "./token";
 
@@ -191,33 +191,41 @@ export function roundResult(
   };
 }
 
-/** Switches a response to SSE and returns the `onProgress` callback that reports real stages. */
-export function startRoundStream(res: NextApiResponse, stream: boolean) {
-  if (!stream) return undefined;
-  setSseHeaders(res);
-  return (stage: GameRoundProgressStage) => writeSseFrame(res, { stage, done: false });
-}
-
-/** Sends a round result as the JSON body, or as the final SSE frame when streaming. */
-export function sendRoundResult(
-  res: NextApiResponse,
+/**
+ * Runs a round-generating `run` and answers in the requested mode: a JSON body, or an SSE stream
+ * of real progress stages ending in the result as the final frame. A failure is logged under
+ * `failure.event` and reported as `failure.error` in whichever mode the response is in.
+ * `setCookie` (a newly minted guest identity) goes on the response either way.
+ */
+export async function roundResponse(
   stream: boolean,
-  result: Record<string, unknown>,
-): void {
-  if (stream) {
-    writeSseFrame(res, { ...result, done: true });
-    res.end();
-    return;
-  }
-  res.status(200).json(result);
-}
-
-/** Sends a round-generation failure in whichever mode the response is already in. */
-export function sendRoundError(res: NextApiResponse, stream: boolean, error: string): void {
-  if (stream) {
-    writeSseFrame(res, { error, done: true });
-    res.end();
-    return;
-  }
-  res.status(500).json({ error });
+  failure: { event: string; message: string; error: string },
+  run: (onProgress?: (stage: GameRoundProgressStage) => void) => Promise<Record<string, unknown>>,
+  setCookie: string | null = null,
+): Promise<Response> {
+  const fail = (err: unknown) =>
+    logEvent(
+      "error",
+      failure.event,
+      failure.message,
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+  const res = stream
+    ? sseResponse(async (send) => {
+        try {
+          send({ ...(await run((stage) => send({ stage, done: false }))), done: true });
+        } catch (err) {
+          fail(err);
+          send({ error: failure.error, done: true });
+        }
+      })
+    : await run().then(
+        (result) => Response.json(result),
+        (err) => {
+          fail(err);
+          return Response.json({ error: failure.error }, { status: 500 });
+        },
+      );
+  if (setCookie) res.headers.append("Set-Cookie", setCookie);
+  return res;
 }

@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { NextRequest } from "next/server";
 const mockLogEvent = jest.fn();
 jest.mock("../../../../src/utils/logger", () => ({
   logEvent: (...args: unknown[]) => mockLogEvent(...args),
@@ -122,7 +124,9 @@ describe.each(["guess-who", "guess-who-next"])("game scores (%s)", (slug) => {
         ...overrides,
       }) as never;
     const req = (token?: string) =>
-      ({ cookies: token ? { "portrayal-game-guest": token } : {}, headers: {} }) as never;
+      new NextRequest("http://localhost/api/x", {
+        headers: token ? { cookie: `portrayal-game-guest=${token}` } : {},
+      });
 
     it("credits only the user a token was issued to, in its own environment", () => {
       expect(scoringIdentity(req(), state({ issuedForUserId: "u1" }), "u1")).toEqual({

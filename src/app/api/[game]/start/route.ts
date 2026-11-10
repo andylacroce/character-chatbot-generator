@@ -7,22 +7,21 @@
  * route's rate limit is the only ceiling on that combined cost.
  */
 
-import { gameRoute, rejectMethod } from "../../../utils/game/route";
+import { readJson } from "../../../../utils/server/withRoute";
+import { gameRoute } from "../../../../utils/game/route";
 import {
   generateGameRound,
   planRound,
   roundResult,
   roundState,
-  sendRoundError,
-  sendRoundResult,
-  startRoundStream,
-} from "../../../utils/game/round";
-import { signGameState } from "../../../utils/game/token";
-import { getSessionUserId } from "../../../utils/account/getSessionUserId";
-import { ensureGuestId } from "../../../utils/game/gameGuestIdentity";
-import { getCurrentEnvironment } from "../../../utils/environment";
-import { recordEvent } from "../../../utils/analytics";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+  roundResponse,
+} from "../../../../utils/game/round";
+import { signGameState } from "../../../../utils/game/token";
+import { getSessionUserId } from "../../../../utils/account/getSessionUserId";
+import { ensureGuestId } from "../../../../utils/game/gameGuestIdentity";
+import { getCurrentEnvironment } from "../../../../utils/environment";
+import { recordEvent } from "../../../../utils/analytics";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 
 /**
  * Next.js API route handler that starts a new guessing-game run.
@@ -76,50 +75,47 @@ import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
  *               type: string
  *       404:
  *         description: Unknown game
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:
  *         description: Failed to start a new run
  */
-export default gameRoute({ endpoint: "start", max: 10 }, async (game, req, res) => {
-  if (rejectMethod(req, res, ["POST"])) return;
+export const POST = gameRoute({ endpoint: "start", max: 10 }, async (game, req) => {
+  const stream = (await readJson(req)).stream === true;
+  const userId = await getSessionUserId(req);
+  const guest = userId ? null : ensureGuestId(req);
 
-  const stream = req.body?.stream === true;
+  return roundResponse(
+    stream,
+    {
+      event: `${game.eventPrefix}_start_failed`,
+      message: `Failed to start a new ${game.title} run`,
+      error: "Failed to start a new run",
+    },
+    async (onProgress) => {
+      const plan = planRound(game);
+      const round = await generateGameRound(game, plan, onProgress);
 
-  try {
-    const userId = await getSessionUserId(req);
-    const guestId = userId ? null : ensureGuestId(req, res);
-    const plan = planRound(game);
-    const round = await generateGameRound(game, plan, startRoundStream(res, stream));
+      const token = signGameState(
+        roundState(game, plan, round, {
+          runId: crypto.randomUUID(),
+          streak: 0,
+          environment: getCurrentEnvironment(),
+          issuedForUserId: userId,
+          issuedForGuestId: guest?.guestId ?? null,
+        }),
+      );
 
-    const token = signGameState(
-      roundState(game, plan, round, {
-        runId: crypto.randomUUID(),
-        streak: 0,
-        environment: getCurrentEnvironment(),
-        issuedForUserId: userId,
-        issuedForGuestId: guestId,
-      }),
-    );
+      logEvent(
+        "info",
+        `${game.eventPrefix}_start_new_run`,
+        `Started a new ${game.title} run`,
+        sanitizeLogMeta({ streak: 0 }),
+      );
+      await recordEvent(`${game.eventPrefix}_started`, { guest: !userId }, userId);
 
-    logEvent(
-      "info",
-      `${game.eventPrefix}_start_new_run`,
-      `Started a new ${game.title} run`,
-      sanitizeLogMeta({ streak: 0 }),
-    );
-    await recordEvent(`${game.eventPrefix}_started`, { guest: !userId }, userId);
-
-    sendRoundResult(res, stream, roundResult(game, plan, round, token, 0));
-  } catch (err) {
-    logEvent(
-      "error",
-      `${game.eventPrefix}_start_failed`,
-      `Failed to start a new ${game.title} run`,
-      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-    );
-    sendRoundError(res, stream, "Failed to start a new run");
-  }
+      return roundResult(game, plan, round, token, 0);
+    },
+    guest?.setCookie,
+  );
 });

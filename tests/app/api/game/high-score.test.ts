@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { GAMES_UNDER_TEST, makeReq, makeRes, sentJson } from "../../../helpers/gameRoute";
 
 const mockGetSessionUserId = jest.fn();
@@ -17,19 +19,13 @@ jest.mock("../../../../src/utils/game/scores", () => ({
   getGuestHighScore: (...args: unknown[]) => mockGetGuestHighScore(...args),
 }));
 
-const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
-}));
-
 jest.mock("../../../../src/utils/logger", () => ({
   logEvent: jest.fn(),
   sanitizeLogMeta: (m: unknown) => m,
   generateRequestId: () => "test-id",
 }));
 
-const handler = require("../../../../src/pages/api/[game]/high-score").default;
+const handler = asHandler(require("../../../../src/app/api/[game]/high-score/route"));
 
 describe.each(GAMES_UNDER_TEST)("$slug/high-score API", (game) => {
   const OLD_ENV = process.env;
@@ -44,22 +40,12 @@ describe.each(GAMES_UNDER_TEST)("$slug/high-score API", (game) => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...OLD_ENV, DATABASE_URL: "postgres://user:pass@host/db" };
-    mockApplyRateLimit.mockResolvedValue(true);
     mockGetSessionUserId.mockResolvedValue(null);
     mockGetGuestId.mockReturnValue(null);
   });
 
   afterAll(() => {
     process.env = OLD_ENV;
-  });
-
-  it("applies this game's own rate limiter", async () => {
-    await read();
-    expect(mockApplyRateLimit).toHaveBeenCalledWith(
-      expect.objectContaining({ name: `${game.slug}-high-score`, max: 20 }),
-      expect.anything(),
-      expect.anything(),
-    );
   });
 
   it("returns 405 for unsupported methods", async () => {

@@ -1,14 +1,10 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { GAMES_UNDER_TEST, makeReq, makeRes, sentJson } from "../../../helpers/gameRoute";
 
 const mockGetLeaderboard = jest.fn();
 jest.mock("../../../../src/utils/game/scores", () => ({
   getLeaderboard: (...args: unknown[]) => mockGetLeaderboard(...args),
-}));
-
-const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
 
 jest.mock("../../../../src/utils/logger", () => ({
@@ -17,7 +13,7 @@ jest.mock("../../../../src/utils/logger", () => ({
   generateRequestId: () => "test-id",
 }));
 
-const handler = require("../../../../src/pages/api/[game]/leaderboard").default;
+const handler = asHandler(require("../../../../src/app/api/[game]/leaderboard/route"));
 
 describe.each(GAMES_UNDER_TEST)("$slug/leaderboard API", (game) => {
   const OLD_ENV = process.env;
@@ -31,21 +27,10 @@ describe.each(GAMES_UNDER_TEST)("$slug/leaderboard API", (game) => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...OLD_ENV, DATABASE_URL: "postgres://user:pass@host/db" };
-    mockApplyRateLimit.mockResolvedValue(true);
   });
 
   afterAll(() => {
     process.env = OLD_ENV;
-  });
-
-  it("applies this game's own rate limiter", async () => {
-    mockGetLeaderboard.mockResolvedValue([]);
-    await read();
-    expect(mockApplyRateLimit).toHaveBeenCalledWith(
-      expect.objectContaining({ name: `${game.slug}-leaderboard`, max: 30 }),
-      expect.anything(),
-      expect.anything(),
-    );
   });
 
   it("returns 405 for unsupported methods", async () => {

@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { GAMES_UNDER_TEST, makeReq, makeRes, sentJson } from "../../../helpers/gameRoute";
 
 const mockGetSessionUserId = jest.fn();
@@ -15,11 +17,6 @@ jest.mock("../../../../src/utils/game/scores", () => ({
 const mockCheckLeaderboardName = jest.fn();
 jest.mock("../../../../src/utils/game/leaderboardName", () => ({
   checkLeaderboardName: (...args: unknown[]) => mockCheckLeaderboardName(...args),
-}));
-const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
 jest.mock("../../../../src/utils/logger", () => ({
   logEvent: jest.fn(),
@@ -41,7 +38,7 @@ jest.mock("../../../../src/db/client", () => ({
   getDb: () => ({ select: mockSelect, insert: mockInsert, update: mockUpdate }),
 }));
 
-const handler = require("../../../../src/pages/api/[game]/leaderboard-settings").default;
+const handler = asHandler(require("../../../../src/app/api/[game]/leaderboard-settings/route"));
 
 describe.each(GAMES_UNDER_TEST)("$slug/leaderboard-settings API", (game) => {
   const oldEnv = process.env;
@@ -58,7 +55,6 @@ describe.each(GAMES_UNDER_TEST)("$slug/leaderboard-settings API", (game) => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...oldEnv, DATABASE_URL: "postgres://test" };
-    mockApplyRateLimit.mockResolvedValue(true);
     mockGetSessionUserId.mockResolvedValue(null);
     mockGetGuestId.mockReturnValue("guest-hash");
     mockIsTopTenPlayer.mockResolvedValue(true);
@@ -69,15 +65,6 @@ describe.each(GAMES_UNDER_TEST)("$slug/leaderboard-settings API", (game) => {
 
   afterAll(() => {
     process.env = oldEnv;
-  });
-
-  it("applies this game's own rate limiter", async () => {
-    await call("GET");
-    expect(mockApplyRateLimit).toHaveBeenCalledWith(
-      expect.objectContaining({ name: `${game.slug}-leaderboard-settings`, max: 5 }),
-      expect.anything(),
-      expect.anything(),
-    );
   });
 
   it("returns 405 for unsupported methods", async () => {

@@ -5,12 +5,13 @@
  * shows its ordinary game-over UI, identical to the two-wrong-guesses path.
  */
 
-import { gameRoute, rejectMethod } from "../../../utils/game/route";
-import { verifyGameState } from "../../../utils/game/token";
-import { markRunEnded, scoringIdentity } from "../../../utils/game/scores";
-import { getSessionUserId } from "../../../utils/account/getSessionUserId";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { recordEvent } from "../../../utils/analytics";
+import { readJson } from "../../../../utils/server/withRoute";
+import { gameRoute } from "../../../../utils/game/route";
+import { verifyGameState } from "../../../../utils/game/token";
+import { markRunEnded, scoringIdentity } from "../../../../utils/game/scores";
+import { getSessionUserId } from "../../../../utils/account/getSessionUserId";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
+import { recordEvent } from "../../../../utils/analytics";
 
 /**
  * Next.js API route handler for voluntarily giving up a guessing-game run.
@@ -52,23 +53,23 @@ import { recordEvent } from "../../../utils/analytics";
  *         description: Missing token, or invalid/expired token
  *       404:
  *         description: Unknown game
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  */
-export default gameRoute({ endpoint: "give-up", max: 10 }, async (game, req, res) => {
-  if (rejectMethod(req, res, ["POST"])) return;
+export const POST = gameRoute({ endpoint: "give-up", max: 10 }, async (game, req) => {
+  const body = await readJson(req);
 
-  const state = verifyGameState(req.body?.[game.tokenField], game.id);
+  const state = verifyGameState(body?.[game.tokenField], game.id);
   if (!state) {
     logEvent(
       "info",
       `${game.eventPrefix}_invalid_token`,
       "Rejected an invalid or expired game token",
     );
-    res.status(400).json({ error: "Your game session has expired. Please start a new game." });
-    return;
+    return Response.json(
+      { error: "Your game session has expired. Please start a new game." },
+      { status: 400 },
+    );
   }
 
   // The answer is about to be revealed, so end the run: its tokens stay decryptable and
@@ -88,7 +89,7 @@ export default gameRoute({ endpoint: "give-up", max: 10 }, async (game, req, res
     state.issuedForUserId,
   );
 
-  res.status(200).json({
+  return Response.json({
     revealedName: state.targetName,
     ...(game.hidesSpeaker ? { avatarUrl: state.avatarUrl, gender: state.gender } : {}),
     finalStreak: state.streak,

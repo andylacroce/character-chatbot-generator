@@ -8,14 +8,15 @@
  */
 
 import { eq } from "drizzle-orm";
-import { getDb } from "../../../db/client";
-import { users } from "../../../db/schema";
-import { gameRoute, rejectMethod } from "../../../utils/game/route";
-import { isTopTenPlayer } from "../../../utils/game/scores";
-import { checkLeaderboardName } from "../../../utils/game/leaderboardName";
-import { getGuestId } from "../../../utils/game/gameGuestIdentity";
-import { getSessionUserId } from "../../../utils/account/getSessionUserId";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { getDb } from "../../../../db/client";
+import { users } from "../../../../db/schema";
+import { readJson } from "../../../../utils/server/withRoute";
+import { gameRoute } from "../../../../utils/game/route";
+import { isTopTenPlayer } from "../../../../utils/game/scores";
+import { checkLeaderboardName } from "../../../../utils/game/leaderboardName";
+import { getGuestId } from "../../../../utils/game/gameGuestIdentity";
+import { getSessionUserId } from "../../../../utils/account/getSessionUserId";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 
 /**
  * Reads or changes this account or guest browser's public score visibility.
@@ -65,8 +66,6 @@ import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
  *         description: A top-ten score is required to opt in
  *       404:
  *         description: Unknown game
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       503:
@@ -74,29 +73,30 @@ import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
  *       500:
  *         description: Failed to load or save setting
  */
-export default gameRoute(
+export const GET = gameRoute(
   {
     endpoint: "leaderboard-settings",
     max: 5,
     message: "Too many requests from this IP, please try again later.",
   },
-  async (game, req, res) => {
-    if (rejectMethod(req, res, ["GET", "POST"])) return;
+  async (game, req) => {
+    const body = await readJson(req);
     const userId = await getSessionUserId(req);
     const guestId = userId ? null : getGuestId(req);
     if ((!userId && !guestId) || !process.env.DATABASE_URL) {
       if (req.method === "GET") {
-        res
-          .status(200)
-          .json({ available: false, showOnLeaderboard: false, eligible: false, name: null });
+        return Response.json({
+          available: false,
+          showOnLeaderboard: false,
+          eligible: false,
+          name: null,
+        });
       } else {
-        res.status(401).json({ error: "Play a game to join the leaderboard" });
+        return Response.json({ error: "Play a game to join the leaderboard" }, { status: 401 });
       }
-      return;
     }
-    if (req.method === "POST" && typeof req.body?.showOnLeaderboard !== "boolean") {
-      res.status(400).json({ error: "Invalid leaderboard setting" });
-      return;
+    if (req.method === "POST" && typeof body?.showOnLeaderboard !== "boolean") {
+      return Response.json({ error: "Invalid leaderboard setting" }, { status: 400 });
     }
     const { guestProfiles } = game.tables;
     try {
@@ -114,30 +114,28 @@ export default gameRoute(
               })
               .from(guestProfiles)
               .where(eq(guestProfiles.guestId, guestId!));
-        res.status(200).json({
+        return Response.json({
           available: true,
           showOnLeaderboard: rows[0]?.showOnLeaderboard ?? false,
           eligible: await isTopTenPlayer(game, identity),
           name: rows[0]?.name ?? null,
         });
       } else {
-        if (req.body.showOnLeaderboard && !(await isTopTenPlayer(game, identity))) {
-          res.status(403).json({ error: "Reach the top 10 to join the leaderboard" });
-          return;
+        if (body.showOnLeaderboard && !(await isTopTenPlayer(game, identity))) {
+          return Response.json(
+            { error: "Reach the top 10 to join the leaderboard" },
+            { status: 403 },
+          );
         }
-        const checked = req.body.showOnLeaderboard
-          ? await checkLeaderboardName(req.body.name)
-          : null;
+        const checked = body.showOnLeaderboard ? await checkLeaderboardName(body.name) : null;
         if (checked?.status === "rejected") {
-          res.status(400).json({ error: "Choose a different display name" });
-          return;
+          return Response.json({ error: "Choose a different display name" }, { status: 400 });
         }
         if (checked?.status === "unavailable") {
-          res.status(503).json({ error: "Name check is temporarily unavailable" });
-          return;
+          return Response.json({ error: "Name check is temporarily unavailable" }, { status: 503 });
         }
         const setting = {
-          showOnLeaderboard: req.body.showOnLeaderboard as boolean,
+          showOnLeaderboard: body.showOnLeaderboard as boolean,
           ...(checked?.status === "approved" ? { leaderboardName: checked.name } : {}),
         };
         const rows = userId
@@ -154,10 +152,9 @@ export default gameRoute(
                 name: guestProfiles.leaderboardName,
               });
         if (!rows[0]) {
-          res.status(401).json({ error: "Account unavailable" });
-          return;
+          return Response.json({ error: "Account unavailable" }, { status: 401 });
         }
-        res.status(200).json({
+        return Response.json({
           available: true,
           showOnLeaderboard: rows[0].showOnLeaderboard,
           eligible: await isTopTenPlayer(game, identity),
@@ -171,7 +168,9 @@ export default gameRoute(
         "Failed to load or save leaderboard setting",
         sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
       );
-      res.status(500).json({ error: "Failed to update leaderboard setting" });
+      return Response.json({ error: "Failed to update leaderboard setting" }, { status: 500 });
     }
   },
 );
+
+export const POST = GET;

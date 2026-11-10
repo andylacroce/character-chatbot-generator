@@ -6,11 +6,11 @@
  * a client-supplied field.
  */
 
-import { gameRoute, rejectMethod } from "../../../utils/game/route";
-import { getGuestHighScore, getHighScore } from "../../../utils/game/scores";
-import { getGuestId } from "../../../utils/game/gameGuestIdentity";
-import { getSessionUserId } from "../../../utils/account/getSessionUserId";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { gameRoute } from "../../../../utils/game/route";
+import { getGuestHighScore, getHighScore } from "../../../../utils/game/scores";
+import { getGuestId } from "../../../../utils/game/gameGuestIdentity";
+import { getSessionUserId } from "../../../../utils/account/getSessionUserId";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
 
 /**
  * Next.js API route handler for reading the caller's personal best streak.
@@ -37,32 +37,27 @@ import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
  *                 highScore: { type: integer, nullable: true }
  *       404:
  *         description: Unknown game
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  */
-export default gameRoute(
+export const GET = gameRoute(
   {
     endpoint: "high-score",
     max: 20,
     message: "Too many requests from this IP, please try again later.",
   },
-  async (game, req, res) => {
-    if (rejectMethod(req, res, ["GET"])) return;
-
+  async (game, req) => {
     const userId = await getSessionUserId(req);
     const guestId = userId ? null : getGuestId(req);
     if ((!userId && !guestId) || !process.env.DATABASE_URL) {
-      res.status(200).json({ highScore: null });
-      return;
+      return Response.json({ highScore: null });
     }
 
     try {
       const highScore = userId
         ? await getHighScore(game, userId)
         : await getGuestHighScore(game, guestId!);
-      res.status(200).json({ highScore });
+      return Response.json({ highScore });
     } catch (err) {
       logEvent(
         "error",
@@ -70,7 +65,7 @@ export default gameRoute(
         "Failed to load guest personal best",
         sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
       );
-      res.status(200).json({ highScore: null });
+      return Response.json({ highScore: null });
     }
   },
 );
