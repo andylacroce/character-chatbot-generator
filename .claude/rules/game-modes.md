@@ -35,7 +35,9 @@ and steers toward a fresh hidden target, building a streak. TTS plays for every 
   without naming it; never claim not to know it or refuse it as being from another time/place (the
   pool spans eras and universes); the opening greeting includes one real, narrowing category-level
   fact ("a queen from ancient Egypt"), not pure mood; follow-ups escalate to a specific checkable
-  fact within a couple of exchanges. This was deliberately made easier (issue #878, "game is too
+  fact by the third or fourth answer, one new clue per reply, and a direct "who is it / who next?"
+  gets deflection plus at most one fresh detail (the speaker once nearly named the figure by turn two).
+  This was earlier made easier (issue #878, "game is too
   hard"): a contentless hint reads as stalling, and the prompt favors players finishing with long
   streaks over unsolvable rounds.
 - **`start.ts`** picks both names, builds persona + avatar + voice, and returns the greeting (with

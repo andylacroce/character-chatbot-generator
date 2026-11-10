@@ -61,13 +61,11 @@ export async function summarizeConversation(
 export function buildClaudeMessages(history: string[], userMessage: string): ClaudeMessage[] {
   const messages: ClaudeMessage[] = [];
   for (const entry of history) {
-    if (entry.startsWith("User: ")) {
-      messages.push({ role: "user", content: entry.replace(/^User: /, "") });
-    } else if (entry.startsWith("Bot: ")) {
-      messages.push({
-        role: "assistant",
-        content: entry.replace(/^Bot: /, ""),
-      });
+    // Anthropic rejects empty message content, so a blank turn is dropped rather than 500ing the call.
+    if (entry.startsWith("User: ") && entry.slice(6).trim()) {
+      messages.push({ role: "user", content: entry.slice(6) });
+    } else if (entry.startsWith("Bot: ") && entry.slice(5).trim()) {
+      messages.push({ role: "assistant", content: entry.slice(5) });
     }
   }
   messages.push({ role: "user", content: userMessage });
