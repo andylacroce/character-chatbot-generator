@@ -1,6 +1,6 @@
 /**
  * Last-resort free fallback image generation via Pollinations.ai — free, anonymous,
- * no API key or account required. Used by pages/api/generate-avatar.ts when
+ * no API key or account required. Used by app/api/generate-avatar/route.ts when
  * Cloudflare Workers AI isn't configured or fails, including exhausting its free
  * daily neuron allocation: unlike Cloudflare's tier, Pollinations has no comparable
  * cap, so this keeps avatar generation entirely free with no payment method ever

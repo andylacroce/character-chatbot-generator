@@ -16,7 +16,7 @@ which triggers an automatic `tsc` build (via the `prepare` script) on install:
 ## What belongs here
 
 - **API contract types** (`src/types.ts`) — request/response shapes for the
-  backend's `src/pages/api/*` routes. These mirror each route's `@swagger` JSDoc
+  backend's `src/app/api/*` routes. These mirror each route's `@swagger` JSDoc
   block in the web repo; update both together when a contract changes.
 - **Input sanitization** (`src/validation.ts`) — client-side copies of the
   same rules the server enforces authoritatively (`src/utils/server/security.ts` in

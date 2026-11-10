@@ -80,7 +80,7 @@ export function useAccountMenu(): AccountMenu {
     if (sessionStatus !== "authenticated") setIsAdmin(false);
   }
 
-  // Cheap, DB-free check (see pages/api/admin/is-admin.ts) purely to decide whether to
+  // Cheap, DB-free check (see app/api/admin/is-admin/route.ts) purely to decide whether to
   // show the "Admin Stats" link — the real /api/admin/stats route enforces its own
   // access control independently, so this is never the actual security boundary.
   useEffect(() => {

@@ -12,9 +12,9 @@
  *    that isn't on the static list but an admin wants permanently allowed anyway
  *    (e.g. the live report that motivated this table: "Alice Munro," a real person
  *    not in the curated list at all). Managed from /admin/moderation alongside the
- *    blocklist (see src/utils/moderation/characterBlocklist.ts, pages/api/admin/moderation.ts).
+ *    blocklist (see src/utils/moderation/characterBlocklist.ts, app/api/admin/moderation/route.ts).
  *
- * pages/api/validate-character.ts checks both (isAllowlisted) before ever calling
+ * app/api/validate-character/route.ts checks both (isAllowlisted) before ever calling
  * Claude. Every DB function degrades gracefully (no-op / empty / null) without
  * DATABASE_URL or on any DB error, same as characterBlocklist.ts.
  */

@@ -1,8 +1,8 @@
 /**
  * Access to the persistent character-name blocklist (src/db/schema.ts's
  * `characterBlocklist` table) — names known to fail copyright/trademark review,
- * checked by pages/api/validate-character.ts before ever calling Claude, and
- * manageable from the /admin blocklist panel (pages/api/admin/blocklist.ts).
+ * checked by app/api/validate-character/route.ts before ever calling Claude, and
+ * manageable from the /admin blocklist panel (app/api/admin/blocklist/route.ts).
  *
  * Every function here degrades gracefully (no-op / empty / null) without
  * DATABASE_URL or on any DB error — this is a moderation aid, never something that

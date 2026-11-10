@@ -1,5 +1,5 @@
 /**
- * Sign-in via the backend's browser-redirect bridge (pages/api/auth/mobile-auth-start.ts
+ * Sign-in via the backend's browser-redirect bridge (app/api/auth/mobile-auth-start/route.ts
  * / -complete.ts in the backend repo) — not expo-auth-session or
  * @react-native-google-signin, since plain Expo Go has no supported native Google
  * Sign-In path and a magic-link email flow needs a real browser tab regardless of

@@ -10,7 +10,7 @@ Browser / Expo app
       v
 src/proxy.ts            checks Origin/Referer (web) or x-api-key (everything else)
       v
-src/pages/api/*         thin handlers: validate input, rate limit, call utils, respond
+src/app/api/**/route.ts  thin handlers: validate input, rate limit, call utils, respond
       v
 src/utils/*             Claude calls, TTS, moderation, game rules, persistence
       v
@@ -31,7 +31,7 @@ hooks. Each platform adds only its own transport, storage, and logging.
 3. **Everything optional degrades quietly.** No database means guest-only. No Redis means in-process rate
    limits. No Cloudflare means Pollinations avatars. Code must keep those fallbacks working.
 4. **Games are stateless on the server.** A round's hidden answer lives in an encrypted token the client holds
-   (`src/utils/game/token.ts`). Both games share one engine; `src/pages/api/[game]/` serves them and
+   (`src/utils/game/token.ts`). Both games share one engine; `src/app/api/[game]/` serves them and
    `src/utils/game/definitions.ts` describes how they differ.
 5. **Signed-in chats are server-authoritative.** Once a character is saved, `/api/chat` reads personality and
    history from the database instead of trusting the client, and keeps a rolling summary so long chats stay cheap.
@@ -44,7 +44,7 @@ hooks. Each platform adds only its own transport, storage, and logging.
 | Path | Contents |
 | --- | --- |
 | `src/app/` | App Router pages. `components/` is grouped by feature, with CSS modules in `components/styles/` |
-| `src/pages/api/` | API routes. Pages Router on purpose: see [decisions-history.md](decisions-history.md) |
+| `src/app/api/` | API route handlers (App Router); see [decisions-history.md](decisions-history.md) |
 | `src/utils/claude/` | Anthropic client, model tiers, thinking config, JSON parsing |
 | `src/utils/chat/` | Chat context, summarization, persistence, TTS, voices, transcripts |
 | `src/utils/avatar/` | Avatar image rendering through Cloudflare and Pollinations |
@@ -61,7 +61,7 @@ hooks. Each platform adds only its own transport, storage, and logging.
 
 ## How an API route is organized
 
-A handler in `src/pages/api/` does only HTTP work: rate limit, method check, read the request, call into
+A handler in `src/app/api/` does only HTTP work: rate limit (via `withRoute`), read the request, call into
 `src/utils/`, and write the response. Logic that could be read or tested on its own lives in the util it
 calls, such as `chatRequest.ts` (validation), `chatReply.ts` (the Claude calls), `validateCharacter.ts` (the
 moderation pipeline), or `transcriptHtml.ts` (rendering). Handlers keep their `@swagger` block and their
@@ -71,8 +71,8 @@ route-level log events, and each split-out module has a matching test file under
 
 - **No `"type": "module"` in `package.json`.** Adding it once crashed Vercel's CJS launcher. `next.config.mjs`
   stays ESM through its extension.
-- **API routes stay on the Pages Router.** They use Node-only SDKs, already stream with `res.write`, and mobile
-  depends on their behavior.
+- **API routes are App Router route handlers**, wrapped by `withRoute` (rate limit and request log); mobile depends on
+  their URLs and responses, which did not change.
 - **Server-sent events for game progress on web only.** React Native's `fetch` cannot read an SSE stream, so
   mobile uses plain JSON.
 

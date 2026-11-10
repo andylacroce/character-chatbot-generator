@@ -12,17 +12,15 @@
  * that calls getSessionUserId/getToken.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
+import { withRoute } from "../../../../utils/server/withRoute";
 
-/** Rate limiter: 10 requests per minute per IP, matching the other mobile-auth-* routes. */
-const mobileSessionRateLimit = createRateLimiter({
+const LIMIT = {
   name: "mobile-session",
   max: 10,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler resolving the caller's bearer token to a display identity.
@@ -57,21 +55,11 @@ const mobileSessionRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(mobileSessionRateLimit, req, res))) return;
-
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
+export const GET = withRoute(LIMIT, async (req: NextRequest) => {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  res.status(200).json({
+  return Response.json({
     userId: typeof token?.sub === "string" ? token.sub : null,
     email: typeof token?.email === "string" ? token.email : null,
     name: typeof token?.name === "string" ? token.name : null,
   });
-}
-
-export default withRequestLog(handler);
+});

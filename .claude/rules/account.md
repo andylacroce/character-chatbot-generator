@@ -2,11 +2,11 @@
 paths:
   - "src/auth/**"
   - "src/db/**"
-  - "src/pages/api/bots.ts"
-  - "src/pages/api/messages.ts"
-  - "src/pages/api/account.ts"
-  - "src/pages/api/auth/**"
-  - "src/pages/api/log-message.ts"
+  - "src/app/api/bots/route.ts"
+  - "src/app/api/messages/route.ts"
+  - "src/app/api/account/route.ts"
+  - "src/app/api/auth/**"
+  - "src/app/api/log-message/route.ts"
   - "src/utils/account/userBlobs.ts"
   - "src/utils/account/getSessionUserId.ts"
   - "src/utils/environment.ts"
@@ -54,7 +54,7 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
   `src/utils/environment.ts`, from `VERCEL_ENV`, else `"development"`). Every `bots` query must
   filter on it. Not applied to `users`/`accounts` (identity is the same everywhere) or
   `avatar_cache` (intentionally global).
-- **`bots`** (`src/pages/api/bots.ts`: `POST` upsert, `GET` list most-recently-updated first) is
+- **`bots`** (`src/app/api/bots/route.ts`: `POST` upsert, `GET` list most-recently-updated first) is
   wired fire-and-forget into `index.tsx`'s `handleBotCreated`, so a persistence failure never
   breaks creation. **`/history`** ("Past chats", `HistoryPage.tsx`, signed-in only, linked from the
   landing footer and account menu) lists saved characters with `formatRelativeTime`. It's named
@@ -97,7 +97,7 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
   its writes fail the `users` FK and degrade like any persistence error.
   **A new per-user table needs an `onDelete: "cascade"` FK to `users`** (exception: `content_reports.reporter_user_id` is `set null` so a moderator keeps the report; see `reports.md`); a new guest-scoped table
   needs an explicit delete here keyed by guest cookie,** or deletion silently misses it (a missing
-  pair of Guess Who guest tables was exactly this gap, fixed 2026-09-29; `tests/pages/api/account.test.ts`
+  pair of Guess Who guest tables was exactly this gap, fixed 2026-09-29; `tests/app/api/account.test.ts`
   asserts all four).
 - **Deleting chats (Past chats):** `DELETE /api/bots` clears every saved character in the current
   environment; `?id=<id>` deletes one. Messages cascade; `deleteUserBlobs` removes portraits only

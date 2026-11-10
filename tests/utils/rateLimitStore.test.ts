@@ -9,7 +9,6 @@ jest.mock("../../src/utils/logger", () => ({
   },
 }));
 
-import type { Options } from "express-rate-limit";
 import {
   RedisRestStore,
   createRateLimitStore,
@@ -35,7 +34,7 @@ function commandsSent(callIndex = 0): unknown[][] {
 
 function newStore(name = "chat", windowMs = 60_000) {
   const store = new RedisRestStore(CONFIG, name);
-  store.init({ windowMs } as Options);
+  store.init({ windowMs });
   return store;
 }
 
@@ -121,12 +120,6 @@ describe("RedisRestStore", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     global.fetch = jest.fn();
-  });
-
-  it("reports that counters are shared across instances", () => {
-    // This is the whole point of the store: express-rate-limit must not treat
-    // the counters as instance-local.
-    expect(newStore().localKeys).toBe(false);
   });
 
   describe("increment", () => {
@@ -231,20 +224,6 @@ describe("RedisRestStore", () => {
 
       await expect(newStore().increment("1.2.3.4")).rejects.toThrow("network down");
     });
-  });
-
-  it("decrements a namespaced key", async () => {
-    redisReturns(0);
-    await newStore().decrement("1.2.3.4");
-
-    expect(commandsSent()).toEqual([["DECR", "rl:chat:1.2.3.4"]]);
-  });
-
-  it("resets a namespaced key", async () => {
-    redisReturns(1);
-    await newStore().resetKey("1.2.3.4");
-
-    expect(commandsSent()).toEqual([["DEL", "rl:chat:1.2.3.4"]]);
   });
 
   it("defaults the window before init runs", async () => {

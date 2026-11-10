@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 const mockGetToken = jest.fn();
 const mockEncode = jest.fn();
 jest.mock("next-auth/jwt", () => ({
@@ -8,21 +10,14 @@ const mockVerify = jest.fn();
 jest.mock("../../../../src/utils/account/mobileAuthState", () => ({
   verifyMobileAuthState: (...args: unknown[]) => mockVerify(...args),
 }));
-const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
-}));
-jest.mock("../../../../src/utils/server/withRequestLog", () => ({
-  withRequestLog: (handler: unknown) => handler,
-}));
 jest.mock("../../../../src/utils/logger", () => ({
   logEvent: jest.fn(),
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import handler from "../../../../src/pages/api/auth/mobile-auth-complete";
+import * as route from "../../../../src/app/api/auth/mobile-auth-complete/route";
+const handler = asHandler(route);
 
 const REDIRECT = "character-chatbot-mobile://auth";
 
@@ -46,7 +41,6 @@ describe("mobile-auth-complete", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env = { ...OLD_ENV, NEXTAUTH_SECRET: "secret" };
-    mockApplyRateLimit.mockResolvedValue(true);
     mockVerify.mockResolvedValue({ redirectUri: REDIRECT });
     mockGetToken.mockResolvedValue({ sub: "u1", email: "a@b.c", name: "Ada", picture: "x" });
     mockEncode.mockResolvedValue("bearer-token");
@@ -85,16 +79,9 @@ describe("mobile-auth-complete", () => {
     expect(res.redirect).toHaveBeenCalledWith(302, `${REDIRECT}?error=server_misconfigured`);
   });
 
-  it("nulls non-string email/name claims, and rejects other methods", async () => {
+  it("nulls non-string email/name claims", async () => {
     mockGetToken.mockResolvedValue({ sub: "u1", email: 1, name: {} });
     await run({ state: "s" });
     expect(mockEncode.mock.calls[0][0].token).toEqual({ sub: "u1", email: null, name: null });
-    expect((await run({ state: "s" }, "POST")).status).toHaveBeenCalledWith(405);
-  });
-
-  it("stops when rate limited", async () => {
-    mockApplyRateLimit.mockResolvedValue(false);
-    await run({ state: "s" });
-    expect(mockVerify).toHaveBeenCalledTimes(0);
   });
 });

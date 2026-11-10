@@ -3,7 +3,7 @@
 /**
  * NextAuth's configured `pages.signIn` page (see authOptions.ts). Reached two ways:
  * directly by a browser navigation (the mobile sign-in bridge's whole reason for
- * existing — see pages/api/auth/mobile-auth-start.ts's doc comment), and, since no
+ * existing — see app/api/auth/mobile-auth-start/route.ts's doc comment), and, since no
  * separate `pages.error` is configured, also for an `?error=` redirect after a failed
  * sign-in attempt. Web's own sign-in entry point is SignInModal.tsx (an in-app
  * lightbox using the same signIn() calls) and never navigates here in the ordinary
@@ -39,7 +39,7 @@ export default function AuthSignInPage() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams?.get("callbackUrl") ?? "/";
   const errorCode = searchParams?.get("error") ?? null;
-  // The mobile sign-in bridge (pages/api/auth/mobile-auth-start.ts) always sets
+  // The mobile sign-in bridge (app/api/auth/mobile-auth-start/route.ts) always sets
   // callbackUrl to its own mobile-auth-complete route — a reliable signal that this
   // page is running inside expo-web-browser's in-app browser tab, not an ordinary
   // browser. "Back to Home" would just navigate within that same tab (there's no way

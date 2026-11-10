@@ -1,12 +1,12 @@
 ---
 paths:
-  - "src/pages/api/generate-avatar.ts"
-  - "src/pages/api/generate-personality.ts"
+  - "src/app/api/generate-avatar/route.ts"
+  - "src/app/api/generate-personality/route.ts"
   - "src/utils/avatar/**"
   - "src/config/serverConfig.ts"
 ---
 
-### Avatar generation (`src/pages/api/generate-avatar.ts`)
+### Avatar generation (`src/app/api/generate-avatar/route.ts`)
 
 **Free image providers only; no payment method is required.** Claude (`text-simple`) writes an
 SFW image prompt from the established name, then the first provider that succeeds renders it:

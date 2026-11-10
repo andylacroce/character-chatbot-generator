@@ -1,9 +1,9 @@
 ---
 paths:
   - "src/utils/game/**"
-  - "src/pages/api/*/start.ts"
-  - "src/pages/api/*/continue.ts"
-  - "src/pages/api/*/message.ts"
+  - "src/app/api/*/start/route.ts"
+  - "src/app/api/*/continue/route.ts"
+  - "src/app/api/*/message/route.ts"
   - "src/app/components/game/**"
   - "src/data/game*"
   - "packages/shared/src/game*"
@@ -30,7 +30,7 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
   token until a correct guess, second wrong guess, or give-up. The header shows a silhouette and
   "???" until then, and **a reveal retroactively rewrites the round's already-shown transcript**
   (`revealGameMessages`).
-- **Server: one implementation per endpoint under `src/pages/api/[game]/`** (`start`, `continue`,
+- **Server: one implementation per endpoint under `src/app/api/[game]/`** (`start`, `continue`,
   `message`, `give-up`, `high-score`, `leaderboard`, `leaderboard-settings`), wrapped by
   `src/utils/game/route.ts`'s `gameRoute` (resolves `[game]`, 404 otherwise, per-game-per-endpoint
   limiter `<slug>-<endpoint>`, request log). One `@swagger` block per route covers both games via a

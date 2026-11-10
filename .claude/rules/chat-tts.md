@@ -1,8 +1,8 @@
 ---
 paths:
-  - "src/pages/api/chat.ts"
-  - "src/pages/api/audio.ts"
-  - "src/pages/api/transcript.ts"
+  - "src/app/api/chat/route.ts"
+  - "src/app/api/audio/route.ts"
+  - "src/app/api/transcript/route.ts"
   - "src/utils/chat/audioFiles.ts"
   - "src/utils/chat/chatRequest.ts"
   - "src/utils/chat/chatReply.ts"
@@ -18,7 +18,7 @@ paths:
   - "src/app/components/chat/chatControllerHelpers.ts"
 ---
 
-### Chat + streaming (`src/pages/api/chat.ts`)
+### Chat + streaming (`src/app/api/chat/route.ts`)
 
 The most complex endpoint: calls Claude, summarizes history once it exceeds 20 messages
 (`src/utils/chat/conversationSummarizer.ts`; a signed-in user's saved character differs, see "Account

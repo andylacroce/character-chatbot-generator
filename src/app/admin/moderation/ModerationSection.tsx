@@ -27,7 +27,7 @@ interface ModerationSectionProps {
    * The other list's API path + button label — lets a row move directly to the other
    * list (e.g. "Move to Blocked" on an Allowed row) instead of only being removable.
    * POSTing to either list's endpoint already removes the name from the other one
-   * server-side (see pages/api/admin/{allowlist,blocklist}.ts), so this is just that
+   * server-side (see app/api/admin/{allowlist,blocklist}/route.ts), so this is just that
    * same POST from the opposite direction, then a refetch of *this* list.
    */
   transferTo: { apiPath: string; label: string };

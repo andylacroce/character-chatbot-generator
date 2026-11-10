@@ -1,6 +1,6 @@
 ---
 paths:
-  - "src/pages/api/**"
+  - "src/app/api/**"
   - "src/utils/logger.ts"
   - "src/utils/server/rateLimit.ts"
 ---
@@ -28,10 +28,10 @@ All server routes use structured logging, ESLint-enforced.
   `health.ts`: its `error` detail is gated behind `NODE_ENV !== "production"` while an unconditional
   lower-detail `info` always fires, because the endpoint is hit on every chat mount and transient
   provider blips shouldn't drive alerting. Don't collapse it without re-reading why.
-- **Centralize cross-cutting logging:** 429 logging lives once in `applyRateLimit`
+- **Centralize cross-cutting logging:** 429 logging lives once in `withRoute`
   (`src/utils/server/rateLimit.ts`), tagged with the limiter's `name`.
 - **Enforcement:** `no-console` (scoped to `src/**`, excluding `logger.ts` and tests) plus a
-  `no-restricted-syntax` rule banning `logger.info(`/`.warn(`/`.error(` in `src/pages/api/**/*.ts`.
+  `no-restricted-syntax` rule banning `logger.info(`/`.warn(`/`.error(` in `src/app/api/**/route.ts`.
   Client code (`src/app/components`) already uses `logEvent` exclusively; keep it that way.
 - **Not mechanically enforced:** whether a *new* failure path should log at all is a judgment call,
   as is whether this file or the README needs updating. Review both deliberately before opening a PR

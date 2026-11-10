@@ -1,5 +1,5 @@
 /**
- * Claude reply post-processing shared by pages/api/chat.ts and the guessing game's
+ * Claude reply post-processing shared by app/api/chat/route.ts and the guessing game's
  * the guessing games (via src/utils/game/gameReply.ts) — extracted so both call sites
  * apply identical cleanup instead of copy-pasting it.
  */

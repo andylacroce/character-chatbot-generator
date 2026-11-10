@@ -105,7 +105,7 @@ module.exports = [
   // log line goes through src/utils/logger.ts, not a raw console call, so it's captured
   // by the same server-side (Winston) / client-side (browser) formatting either way.
   {
-    files: ["src/app/**/*.{ts,tsx}", "src/pages/**/*.ts", "src/!(app|pages)/**/*.ts"],
+    files: ["src/app/**/*.{ts,tsx}", "src/!(app)/**/*.ts"],
     ignores: ["**/*.test.{ts,tsx}", "src/utils/logger.ts"],
     rules: {
       "no-console": "warn",
@@ -116,7 +116,7 @@ module.exports = [
   // greppable `event` name instead of a hand-formatted message string. src/utils/logger.ts
   // itself and its tests are exempt (they implement/exercise the `logger` object).
   {
-    files: ["src/pages/api/**/*.ts", "src/app/api/**/*.ts"],
+    files: ["src/app/api/**/*.ts"],
     ignores: ["**/*.test.ts"],
     rules: {
       "no-restricted-syntax": [
@@ -140,12 +140,7 @@ module.exports = [
   // primary form of in-code documentation; this layer is about the public API
   // surface being discoverable, not about re-explaining every parameter.
   {
-    files: [
-      "src/app/components/**/*.{ts,tsx}",
-      "src/pages/api/**/*.ts",
-      "src/app/api/**/*.ts",
-      "src/!(app|pages)/**/*.ts",
-    ],
+    files: ["src/app/components/**/*.{ts,tsx}", "src/app/api/**/*.ts", "src/!(app)/**/*.ts"],
     ignores: ["**/*.test.{ts,tsx}", "**/*.d.ts"],
     plugins: { jsdoc: jsdocPlugin },
     rules: {
@@ -203,7 +198,7 @@ module.exports = [
   // rules above — scripts/tests/config files are excluded, matching this file's
   // existing convention.
   {
-    files: ["src/app/**/*.{ts,tsx}", "src/pages/**/*.ts", "src/!(app|pages)/**/*.ts"],
+    files: ["src/app/**/*.{ts,tsx}", "src/!(app)/**/*.ts"],
     ignores: ["**/*.test.{ts,tsx}"],
     plugins: { security: securityPlugin },
     rules: {
@@ -216,7 +211,7 @@ module.exports = [
       // future finding from the other rules isn't lost in noise from this one.
       "security/detect-object-injection": "off",
       // Flagged 47 pre-existing, already-reviewed call sites in the TTS/audio-cache
-      // subsystem (src/pages/api/audio.ts, chat.ts, src/utils/chat/tts.ts, ttsReply.ts) — every
+      // subsystem (src/app/api/audio/route.ts, chat.ts, src/utils/chat/tts.ts, ttsReply.ts) — every
       // one builds its path from a hashed cache key run through sanitizeFilename()
       // (or, in audio.ts, an explicit escapesRoot()/realpathSync() traversal guard),
       // inside a fixed root (os.tmpdir()/public), never from raw request input. The

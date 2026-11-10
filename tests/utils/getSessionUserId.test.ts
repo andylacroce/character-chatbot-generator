@@ -4,7 +4,7 @@ jest.mock("next-auth/jwt", () => ({
   getToken: (...args: unknown[]) => mockGetToken(...args),
 }));
 
-import type { NextApiRequest } from "next";
+import type { NextRequest } from "next/server";
 import { getSessionUserId } from "../../src/utils/account/getSessionUserId";
 
 describe("getSessionUserId", () => {
@@ -14,19 +14,19 @@ describe("getSessionUserId", () => {
 
   it("returns null when there is no token (cookie or bearer)", async () => {
     mockGetToken.mockResolvedValueOnce(null);
-    const result = await getSessionUserId({} as NextApiRequest);
+    const result = await getSessionUserId({} as NextRequest);
     expect(result).toBeNull();
   });
 
   it("returns null when the token has no sub", async () => {
     mockGetToken.mockResolvedValueOnce({});
-    const result = await getSessionUserId({} as NextApiRequest);
+    const result = await getSessionUserId({} as NextRequest);
     expect(result).toBeNull();
   });
 
   it("returns the user id from the token's sub claim", async () => {
     mockGetToken.mockResolvedValueOnce({ sub: "user-123" });
-    const result = await getSessionUserId({} as NextApiRequest);
+    const result = await getSessionUserId({} as NextRequest);
     expect(result).toBe("user-123");
   });
 });

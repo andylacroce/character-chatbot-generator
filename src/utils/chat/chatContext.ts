@@ -1,6 +1,6 @@
 /**
  * Builds what Claude sees for a chat turn: the (possibly summarized) history and the
- * system prompt. Split out of pages/api/chat.ts so each piece can be read and tested alone.
+ * system prompt. Split out of app/api/chat/route.ts so each piece can be read and tested alone.
  */
 
 import anthropic from "../claude/anthropicClient";
@@ -26,7 +26,7 @@ export interface ChatIdentity {
 /**
  * For a signed-in user's saved character, the server becomes the source of truth for
  * personality/history instead of trusting the client-supplied values on every request —
- * same rationale as bot ownership in pages/api/bots.ts. Guests, no DATABASE_URL, or a
+ * same rationale as bot ownership in app/api/bots/route.ts. Guests, no DATABASE_URL, or a
  * character never saved server-side (e.g. a copyright-warning override, never persisted at
  * all) fall through to the fully client-authoritative values.
  *

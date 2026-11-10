@@ -11,14 +11,9 @@
  * sets these itself rather than forwarding a client-supplied value.
  */
 
-import type { NextApiRequest } from "next";
-
 /** Derives `${protocol}://${host}` from the request's forwarded headers (see module doc above). */
-export function getRequestBaseUrl(req: NextApiRequest): string {
-  const forwardedProto = req.headers["x-forwarded-proto"];
-  const protocol =
-    (typeof forwardedProto === "string" ? forwardedProto.split(",")[0] : null) ?? "https";
-  const forwardedHost = req.headers["x-forwarded-host"];
-  const host = (typeof forwardedHost === "string" ? forwardedHost : req.headers.host) ?? "";
+export function getRequestBaseUrl(req: Request): string {
+  const protocol = req.headers.get("x-forwarded-proto")?.split(",")[0] ?? "https";
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
   return `${protocol}://${host}`;
 }

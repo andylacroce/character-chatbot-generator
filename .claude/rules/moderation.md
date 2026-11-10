@@ -1,8 +1,8 @@
 ---
 paths:
-  - "src/pages/api/validate-character.ts"
+  - "src/app/api/validate-character/route.ts"
   - "src/utils/moderation/validateCharacter.ts"
-  - "src/pages/api/admin/**"
+  - "src/app/api/admin/**"
   - "src/utils/moderation/character*.ts"
   - "src/app/admin/moderation/**"
   - "src/app/components/character/useBotCreation.ts"
@@ -15,7 +15,7 @@ paths:
 Bot creation is gated by a server round-trip, not just a client check:
 
 1. `useBotCreation.ts` calls `POST /api/validate-character` with `{ characterName }`.
-2. `src/pages/api/validate-character.ts` (rate-limited 30/min; the decision pipeline is
+2. `src/app/api/validate-character/route.ts` (rate-limited 30/min; the decision pipeline is
    `validateCharacterName` in `src/utils/moderation/validateCharacter.ts`, whose Claude call is
    schema-constrained) classifies
    `{ level: "warning" | "caution" | "none", message?, suggestions?, blocked, recognized }`:
@@ -79,7 +79,7 @@ user's saved characters). On a validation error, `blocked` and `warningLevel` fa
 - **`/admin/moderation`** (`src/app/admin/moderation/`: `AdminModerationView.tsx` composes `WarningLogSection.tsx` and `ModerationSection.tsx`) is one page with
   three sections: "Recently warned" (read-only, time-window filter, `GET /api/admin/warnings`, inline
   Allow/Block), "Allowed", and "Blocked" (CRUD via `POST`/`DELETE` on
-  `src/pages/api/admin/{allowlist,blocklist}.ts`, plus "Move to X"). A name is never on both lists:
+  `src/app/api/admin/{allowlist,blocklist}/route.ts`, plus "Move to X"). A name is never on both lists:
   each list's `POST` removes it from the other server-side, which is what makes Move and the warning
   log's buttons work. A `refreshKey` bumped on any mutation re-fetches every section. The table uses
   `table-layout: fixed` with ellipsis (one line per row) and drops Reason/Source/Added below 640px

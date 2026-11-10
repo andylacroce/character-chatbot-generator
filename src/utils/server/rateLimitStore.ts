@@ -1,13 +1,13 @@
 /**
  * Shared rate-limit counter storage.
  *
- * `express-rate-limit`'s default MemoryStore keeps counters in the process that
- * served the request. That is exactly right for local development — one process,
+ * Without a store, counters live in the process that served the request (the
+ * in-memory map in withRoute.ts). That is exactly right for local development — one process,
  * no infrastructure to run — but on Vercel every warm serverless instance keeps
  * its own copy, so a per-IP limit of N is really N x (concurrent instances).
  *
  * This module supplies a Redis-backed store when the deployment has one attached,
- * and returns `undefined` otherwise so the caller falls back to MemoryStore. The
+ * and returns `undefined` otherwise so the caller falls back to that in-memory map. The
  * transport is Upstash's REST API, which is what Vercel KV speaks, so no Redis
  * socket or extra dependency is needed in the serverless runtime.
  *
@@ -17,8 +17,15 @@
  *   - `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`   (Upstash directly)
  */
 
-import type { Options, Store, IncrementResponse } from "express-rate-limit";
 import logger from "../logger";
+
+/** Counter storage for a limiter's fixed windows. */
+export interface RateLimitStore {
+  /** Sets the window length (default one minute); call once before the first `increment`. */
+  init(options: { windowMs: number }): void;
+  /** Counts one hit for `key`, returning the hits in the current window and when it resets. */
+  increment(key: string): Promise<{ totalHits: number; resetTime: Date }>;
+}
 
 /** Connection details for the Upstash-compatible REST endpoint. */
 export interface RedisRestConfig {
@@ -55,9 +62,7 @@ export function getRedisRestConfig(
  * `passOnStoreError` so a Redis outage degrades to "unlimited" instead of failing
  * every request. Authentication is not this layer's job — `proxy.ts` is.
  */
-export class RedisRestStore implements Store {
-  /** Counters are visible to every instance, so express-rate-limit must not warn about double counting. */
-  localKeys = false;
+export class RedisRestStore implements RateLimitStore {
   prefix: string;
   private config: RedisRestConfig;
   private windowMs = 60_000;
@@ -67,7 +72,7 @@ export class RedisRestStore implements Store {
     this.prefix = `rl:${name}:`;
   }
 
-  init(options: Options): void {
+  init(options: { windowMs: number }): void {
     this.windowMs = options.windowMs;
   }
 
@@ -95,7 +100,7 @@ export class RedisRestStore implements Store {
     return body.map((entry) => entry?.result);
   }
 
-  async increment(key: string): Promise<IncrementResponse> {
+  async increment(key: string): Promise<{ totalHits: number; resetTime: Date }> {
     const namespaced = this.prefix + key;
     // SET ... NX establishes the window only on the first hit, so the expiry is
     // anchored to the start of the window rather than sliding with every request.
@@ -118,14 +123,6 @@ export class RedisRestStore implements Store {
     }
     return { totalHits, resetTime: new Date(Date.now() + remainingMs) };
   }
-
-  async decrement(key: string): Promise<void> {
-    await this.pipeline([["DECR", this.prefix + key]]);
-  }
-
-  async resetKey(key: string): Promise<void> {
-    await this.pipeline([["DEL", this.prefix + key]]);
-  }
 }
 
 /**
@@ -133,7 +130,7 @@ export class RedisRestStore implements Store {
  *
  * @param name - Limiter name, used to keep each route's counters separate.
  */
-export function createRateLimitStore(name: string): Store | undefined {
+export function createRateLimitStore(name: string): RateLimitStore | undefined {
   const config = getRedisRestConfig();
   if (!config) return undefined;
   return new RedisRestStore(config, name);

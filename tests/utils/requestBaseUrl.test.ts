@@ -1,7 +1,7 @@
-import type { NextApiRequest } from "next";
+/** @jest-environment node */
 import { getRequestBaseUrl } from "../../src/utils/server/requestBaseUrl";
 
-const req = (headers: Record<string, unknown>) => ({ headers }) as unknown as NextApiRequest;
+const req = (headers: Record<string, string>) => new Request("http://internal/api/x", { headers });
 
 describe("getRequestBaseUrl", () => {
   it("prefers the forwarded protocol (first value) and host", () => {
@@ -21,6 +21,6 @@ describe("getRequestBaseUrl", () => {
   });
 
   it("yields an empty host when none is present", () => {
-    expect(getRequestBaseUrl(req({}))).toBe("https://");
+    expect(getRequestBaseUrl(new Request("http://internal/api/x"))).toBe("https://");
   });
 });

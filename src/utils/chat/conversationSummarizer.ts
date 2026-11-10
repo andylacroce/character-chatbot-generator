@@ -13,7 +13,7 @@ export type ClaudeMessage = { role: "user" | "assistant"; content: string };
 
 /**
  * Summarizes a set of conversation messages into a short paragraph. When `priorSummary` is
- * given (the rolling checkpoint summary on `bots`, see pages/api/chat.ts), it's folded in as
+ * given (the rolling checkpoint summary on `bots`, see app/api/chat/route.ts), it's folded in as
  * prior context so the new summary compounds the old one instead of discarding everything
  * summarized before — each call only ever has to summarize the messages since the last
  * checkpoint, not the conversation from scratch.

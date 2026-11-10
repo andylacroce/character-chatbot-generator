@@ -1,7 +1,7 @@
 ---
 paths:
   - "src/app/api/report/route.ts"
-  - "src/pages/api/admin/reports.ts"
+  - "src/app/api/admin/reports/route.ts"
   - "src/utils/moderation/contentReports.ts"
   - "src/app/components/common/ReportDialog.tsx"
   - "src/app/components/common/ModalImageViewer.tsx"

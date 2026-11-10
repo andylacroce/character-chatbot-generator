@@ -1,6 +1,6 @@
 {
   "name": "portrayal",
-  "version": "0.32.4",
+  "version": "0.32.5",
   "private": true,
   "license": "UNLICENSED",
   "repository": {
@@ -54,7 +54,6 @@
     "@vercel/blob": "^2.8.0",
     "@vercel/speed-insights": "^2.1.0",
     "drizzle-orm": "^0.45.2",
-    "express-rate-limit": "^8.7.3",
     "google-auth-library": "^11.3.3",
     "next": "^16.4.5",
     "next-auth": "^4.24.15",

@@ -1,7 +1,7 @@
 /**
  * DB-backed persistence helpers for a signed-in user's saved character chat (phase 3c —
  * see CLAUDE.md's account-persistence section). All degrade gracefully (return null/[]/no-op)
- * for a guest, no DATABASE_URL, or any DB error, so pages/api/chat.ts can fall through to its
+ * for a guest, no DATABASE_URL, or any DB error, so app/api/chat/route.ts can fall through to its
  * fully client-authoritative behavior without special-casing failures at each call site.
  */
 
@@ -17,7 +17,7 @@ export type MessageRow = typeof messagesTable.$inferSelect;
 
 /**
  * Looks up a signed-in user's saved character by name, scoped to the current environment —
- * the same `(user_id, name, environment)` unique index pages/api/bots.ts relies on. Returns
+ * the same `(user_id, name, environment)` unique index app/api/bots/route.ts relies on. Returns
  * null for a guest, no DATABASE_URL, no match (including a copyright-warning-override
  * character, which is never saved — see CopyrightWarningModal), or any DB error, so the
  * caller can fall through to today's fully client-authoritative behavior. Never throws.

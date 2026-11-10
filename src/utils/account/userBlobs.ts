@@ -1,7 +1,7 @@
 /**
  * A signed-in user's own Vercel Blob files: chat troubleshooting logs
- * (pages/api/log-message.ts) and portraits made only for their characters. Shared by
- * account deletion (pages/api/account.ts) and clearing chat history (pages/api/bots.ts).
+ * (app/api/log-message/route.ts) and portraits made only for their characters. Shared by
+ * account deletion (app/api/account/route.ts) and clearing chat history (app/api/bots/route.ts).
  *
  * A user's logs live under a per-account prefix (a hash of their user id, since log
  * blobs are publicly addressable) so they can be found and removed; guest logs have no

@@ -123,7 +123,7 @@ export const authOptions: NextAuthOptions = {
   // Custom sign-in page (app/auth/signin/), styled to match the rest of the app instead
   // of NextAuth's generic default-rendered picker. Web's own sign-in entry point
   // (SignInModal.tsx, an in-app lightbox) never navigates here — this exists for the
-  // mobile sign-in bridge (pages/api/auth/mobile-auth-start.ts), which has no in-app
+  // mobile sign-in bridge (app/api/auth/mobile-auth-start/route.ts), which has no in-app
   // lightbox context to render into and must send the browser tab it opens somewhere.
   // No separate `pages.error` is configured, so a failed attempt also redirects back
   // here with `?error=<code>`, which AuthSignInPage.tsx reads and displays.

@@ -1,7 +1,7 @@
 ---
 paths:
   - "src/utils/analytics.ts"
-  - "src/pages/api/admin/stats.ts"
+  - "src/app/api/admin/stats/route.ts"
   - "src/utils/admin/**"
   - "src/app/admin/**"
   - "src/utils/account/isAdmin.ts"

@@ -18,10 +18,10 @@ Send a chat message and trace it. This single path teaches most of the codebase:
 1. `src/app/components/chat/useChatController.ts` holds the chat state and calls `authenticatedFetch`.
 2. `src/utils/api.ts` (`authenticatedFetch`) is the only way the UI talks to the server.
 3. `src/proxy.ts` checks the request origin and API key before any API route runs.
-4. `src/pages/api/chat.ts` is orchestration: it checks the body (`utils/chat/chatRequest.ts`), resolves who is
+4. `src/app/api/chat/route.ts` is orchestration: it checks the body (`utils/chat/chatRequest.ts`), resolves who is
    chatting (`resolveChatIdentity` in `utils/chat/chatContext.ts`, which also builds the prompt), gets the
    reply from Claude (`utils/chat/chatReply.ts`, on the shared client in `utils/claude/`), and returns it.
-5. `src/pages/api/audio.ts` turns the reply into speech (`src/utils/chat/tts.ts`).
+5. `src/app/api/audio/route.ts` turns the reply into speech (`src/utils/chat/tts.ts`).
 
 ## 3. Where does my change go?
 
@@ -32,7 +32,7 @@ Send a chat message and trace it. This single path teaches most of the codebase:
 | The guessing games' UI and leaderboard | `src/app/components/game/` |
 | Sign-in, account menu, past chats | `src/app/components/account/` |
 | Header, modals, dark mode, other shared UI | `src/app/components/common/` |
-| An API endpoint | `src/pages/api/` (add a `@swagger` JSDoc block) |
+| An API endpoint | `src/app/api/<name>/route.ts` (add a `@swagger` JSDoc block) |
 | A Claude prompt | `src/config/`, `src/utils/chat/`, `src/utils/game/` |
 | Game rules, scoring, tokens | `src/utils/game/` |
 | Validation and the allow/block lists | `src/utils/moderation/` |
@@ -53,7 +53,7 @@ AI agents but read fine as plain feature notes.
 
 - While coding: `npm run check` (lint, type-check, tests for your uncommitted changes).
 - Before opening a PR: `npm run ci`. It is slower, runs everything, and auto-formats.
-- Run one test file with `npx jest tests/pages/api/chat.test.ts`, or by name with `npx jest -t "some name"`.
+- Run one test file with `npx jest tests/app/api/chat.test.ts`, or by name with `npx jest -t "some name"`.
 - Tests live in `tests/`. Coverage must stay above 80%.
 
 ## 6. Ship it

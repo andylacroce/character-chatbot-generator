@@ -11,11 +11,9 @@ chatting with historical, mythological, literary, and original characters. It us
 hybrid routing architecture:
 
 - `src/app/` contains App Router pages, UI components, hooks, and CSS modules.
-- `src/pages/api/` contains the authoritative Pages Router API handlers. Do not migrate
-  these to App Router route handlers as incidental cleanup. They use Node-only SDKs, already
-  stream via `res.write`, and the mobile app depends on their URL/behavior parity, so a
-  migration adds churn for no new capability. Revisit only if Next.js deprecates Pages API
-  routes or a feature needs route handlers.
+- `src/app/api/**/route.ts` holds the API route handlers (App Router; they were Pages Router API
+  routes until 2026-11-10). Each is `withRoute(limit, handler)` from `src/utils/server/withRoute.ts`.
+  The mobile app depends on their URL and response parity, so keep both stable.
 - `src/` contains shared configuration, database, types, and utilities.
 - `tests/` mirrors the source tree and uses Jest plus Testing Library.
 - `proxy.ts` is the central API-origin and API-key security boundary.
@@ -121,7 +119,7 @@ it runs because its format step writes files.
 - Add no production dependency unless it materially improves the requested solution.
 - Keep TypeScript types explicit at public boundaries; avoid `any` and unchecked casts.
 - Add a one-sentence `/** ... */` JSDoc summary immediately above every new top-level
-  function, component, or hook under `src/app/components/`, `src/`, and `src/pages/api/`.
+  function, component, or hook under `src/app/components/`, `src/`, and `src/app/api/`.
   Parameters and return tags are optional unless they clarify a non-obvious contract.
 - Inline comments should explain constraints or reasoning, not restate the code.
 - Preserve accessibility: semantic controls, keyboard operation, visible focus,
