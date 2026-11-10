@@ -1,12 +1,11 @@
 import storage, {
   getVersionedJSON,
-  migrateToVersioned,
   setVersionedJSON,
   setJSON,
   getJSON,
 } from "../../src/utils/storage";
 
-describe("storage migration helper", () => {
+describe("storage helpers", () => {
   beforeEach(() => {
     // Clear in-memory fallback before each test
     storage.clearMemoryFallback();
@@ -14,55 +13,6 @@ describe("storage migration helper", () => {
     try {
       localStorage.clear();
     } catch {}
-  });
-
-  it("migrates unversioned JSON into a versioned wrapper", () => {
-    const key = "voiceConfig-TestBot";
-    const payload = { voice: "test-voice", stability: 0.5 };
-    // Simulate plain JSON saved in storage
-    storage.setItem(key, JSON.stringify(payload));
-
-    const migrated = migrateToVersioned<typeof payload>(key, 1);
-    expect(migrated).not.toBeNull();
-    expect(migrated!.v).toBe(1);
-    expect(migrated!.payload).toEqual(payload);
-
-    const read = getVersionedJSON<typeof payload>(key);
-    expect(read).not.toBeNull();
-    expect(read!.payload).toEqual(payload);
-  });
-
-  it("returns existing versioned record unchanged", () => {
-    const key = "voiceConfig-Existing";
-    const wrapper = { v: 1, createdAt: new Date().toISOString(), payload: { voice: "x" } };
-    storage.setItem(key, JSON.stringify(wrapper));
-    const migrated = migrateToVersioned(key, 2);
-    expect(migrated).not.toBeNull();
-    expect(migrated!.v).toBe(1); // Version should remain unchanged
-  });
-
-  it("returns null for invalid JSON", () => {
-    const key = "voiceConfig-Bad";
-    storage.setItem(key, "not-json");
-    const migrated = migrateToVersioned(key, 1);
-    expect(migrated).toBeNull();
-  });
-
-  it("applies transform function when migrating", () => {
-    const key = "voiceConfig-Transform";
-    const payload = { oldField: "value" };
-    storage.setItem(key, JSON.stringify(payload));
-
-    const transform = (p: unknown) => ({ newField: (p as { oldField: string }).oldField });
-    const migrated = migrateToVersioned<{ newField: string }>(key, 1, transform);
-
-    expect(migrated).not.toBeNull();
-    expect(migrated!.payload).toEqual({ newField: "value" });
-  });
-
-  it("returns null when key does not exist", () => {
-    const migrated = migrateToVersioned("nonexistent-key", 1);
-    expect(migrated).toBeNull();
   });
 
   it("handles setVersionedJSON and getVersionedJSON", () => {
@@ -118,16 +68,6 @@ describe("storage migration helper", () => {
     expect(retrieved).not.toBeNull();
     expect(retrieved!.v).toBe(1);
     expect(retrieved!.payload).toEqual({ flag: true });
-  });
-
-  it("migrateToVersioned uses default targetVersion=1 when not specified", () => {
-    // Exercises the default-arg branch: targetVersion = 1
-    const key = "test-default-target-version";
-    storage.setItem(key, JSON.stringify({ name: "Alice" }));
-    const result = migrateToVersioned(key);
-    expect(result).not.toBeNull();
-    expect(result!.v).toBe(1);
-    expect(result!.payload).toEqual({ name: "Alice" });
   });
 
   it("removeItem falls back to in-memory when localStorage is unavailable", () => {

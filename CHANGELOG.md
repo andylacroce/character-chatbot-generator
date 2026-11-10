@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.32.3 - 2026-11-10 - Dead code cleanup
+
+- Removed an unused Pages Router `_document`, an uncalled startup storage migration, and the helper only it used. No behavior change.
+
 ## v0.32.2 - 2026-11-10 - Navigation cleanup
 
 - Admin pages get a Back button and a Stats / Moderation switcher instead of hiding both in the menu.

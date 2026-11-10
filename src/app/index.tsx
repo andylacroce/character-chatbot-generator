@@ -14,46 +14,7 @@ import { Bot } from "./components/character/BotCreator";
 import { getValidBotFromStorage, clearStoredBot } from "../utils/getValidBotFromStorage";
 import storage from "../utils/storage";
 import { authenticatedFetch } from "../utils/api";
-import { STORAGE_KEYS, STORAGE_KEY_PREFIXES, voiceConfigKey } from "character-chatbot-shared";
-
-// Known storage key patterns to attempt migration on startup
-const KNOWN_KEYS_TO_MIGRATE = [
-  STORAGE_KEYS.bot,
-  STORAGE_KEYS.botTimestamp,
-  STORAGE_KEY_PREFIXES.lastPlayedAudioHash, // suffixed by bot name
-  STORAGE_KEY_PREFIXES.voiceConfig, // suffixed by bot name
-  STORAGE_KEY_PREFIXES.chatHistory, // suffixed by bot name
-  STORAGE_KEYS.audioEnabled,
-  STORAGE_KEYS.darkMode,
-];
-
-export function runStartupMigrations() {
-  try {
-    // For keys that are pattern-based (suffix), scan localStorage for matches
-    if (typeof window !== "undefined" && window.localStorage) {
-      const keys = Object.keys(localStorage || {});
-      keys.forEach((k) => {
-        // If any known prefix matches, attempt migration
-        for (const prefix of KNOWN_KEYS_TO_MIGRATE) {
-          if (prefix.endsWith("-") || prefix.endsWith("-")) {
-            // prefix already includes dash to indicate suffix-style keys
-          }
-          if (k === prefix || k.startsWith(prefix)) {
-            try {
-              // Attempt to migrate; transform is optional and not provided here
-              storage.migrateToVersioned(k, 1);
-            } catch {
-              // swallow migration errors — runtime should be tolerant
-            }
-            break;
-          }
-        }
-      });
-    }
-  } catch {
-    // not fatal
-  }
-}
+import { STORAGE_KEYS, voiceConfigKey } from "character-chatbot-shared";
 
 /**
  * Dynamically import the ChatPage component with server-side rendering enabled.
