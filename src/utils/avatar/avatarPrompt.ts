@@ -3,7 +3,7 @@ import { getClaudeModel } from "../claude/claudeModelSelector";
 import { extractJson } from "../claude/parseClaudeJson";
 import anthropic from "../claude/anthropicClient";
 import { thinkingFor } from "../claude/claudeThinking";
-import { isCharacterCategory, type CharacterCategory } from "character-chatbot-shared";
+import { isCharacterCategory, type CharacterCategory } from "character-chatbot-shared/src/core";
 
 /** What the Claude prompt step produces for one character. */
 export interface AvatarPromptResult {

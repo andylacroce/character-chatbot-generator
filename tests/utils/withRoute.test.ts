@@ -1,4 +1,5 @@
 /** @jest-environment node */
+jest.unmock("../../src/utils/server/withRoute");
 import { routeRequest } from "../helpers/routeRequest";
 
 const mockLogEvent = jest.fn();

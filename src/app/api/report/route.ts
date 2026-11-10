@@ -9,7 +9,7 @@ import {
   REPORT_DETAILS_MAX,
   REPORT_MESSAGE_MAX,
   isReportReason,
-} from "character-chatbot-shared/src/report";
+} from "character-chatbot-shared/src/core";
 import { getSessionUserId } from "../../../utils/account/getSessionUserId";
 import { createReport } from "../../../utils/moderation/contentReports";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";

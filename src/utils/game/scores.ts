@@ -8,7 +8,7 @@
 
 import { and, asc, desc, eq, gt, inArray, isNotNull, sql } from "drizzle-orm";
 import type { NextApiRequest } from "next";
-import type { LeaderboardEntry } from "character-chatbot-shared";
+import type { LeaderboardEntry } from "character-chatbot-shared/src/core";
 import { getDb } from "../../db/client";
 import { users } from "../../db/schema";
 import { getCurrentEnvironment } from "../environment";

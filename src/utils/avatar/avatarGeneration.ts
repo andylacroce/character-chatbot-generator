@@ -1,5 +1,5 @@
 /**
- * Core avatar generation pipeline, extracted from pages/api/generate-avatar.ts so it can
+ * Core avatar generation pipeline, extracted from app/api/generate-avatar/route.ts so it can
  * be called in-process by both that route and the guessing game (src/utils/game/round.ts,
  * guess.ts) without an internal HTTP self-fetch. Uses Claude to build a detailed image
  * prompt, then renders it on free image providers only — Cloudflare Workers AI (Flux
@@ -15,7 +15,7 @@ import { generateImageWithCloudflare } from "./cloudflareImageGen";
 import { generateImageWithPollinations } from "./pollinationsImageGen";
 import { recordEvent } from "../analytics";
 import { deleteOrphanedAvatars } from "../account/userBlobs";
-import type { CharacterCategory } from "character-chatbot-shared";
+import type { CharacterCategory } from "character-chatbot-shared/src/core";
 import { buildAvatarPrompt } from "./avatarPrompt";
 import { cacheAvatar, getCachedAvatar, persistAvatarToBlob } from "./avatarCache";
 
@@ -26,7 +26,7 @@ export {
   setCachedCategory,
 } from "./avatarCache";
 
-/** Options controlling avatar cache/persistence behavior — see pages/api/generate-avatar.ts's @swagger block for the full rationale on each. */
+/** Options controlling avatar cache/persistence behavior — see app/api/generate-avatar/route.ts's @swagger block for the full rationale on each. */
 export interface AvatarGenerationOptions {
   skipPersistence?: boolean;
   /** Skip the cache read and generate anew; the new image overwrites the cached row. */

@@ -6,7 +6,7 @@
  * route loads it; round generation's persona and opening choices live in round.ts.
  */
 
-import { gameBySlug, GAMES, type GameDefinition } from "character-chatbot-shared";
+import { gameBySlug, GAMES, type GameDefinition } from "character-chatbot-shared/src/core";
 import {
   guessWhoGuestProfiles,
   guessWhoHighScores,

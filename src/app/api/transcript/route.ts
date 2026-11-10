@@ -3,41 +3,25 @@
  * Accepts POST requests with messages (up to 10MB) and returns HTML document.
  */
 
-import { NextApiRequest, NextApiResponse } from "next";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { withRequestLog } from "../../utils/server/withRequestLog";
-import { findTranscriptProblem } from "../../utils/chat/transcriptRequest";
+import type { NextRequest } from "next/server";
+import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { withRoute, readJson } from "../../../utils/server/withRoute";
+import { findTranscriptProblem } from "../../../utils/chat/transcriptRequest";
 import {
   defaultExportTimestamp,
-  isValidAvatarUrl,
   renderTranscriptHtml,
   transcriptFilename,
-} from "../../utils/chat/transcriptHtml";
+} from "../../../utils/chat/transcriptHtml";
 
-// Re-exported because the avatar check is part of this route's tested surface.
-export { isValidAvatarUrl };
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "10mb",
-    },
-  },
-};
-
-/** Rate limiter: 10 requests per minute per IP to prevent transcript generation abuse. */
-const transcriptRateLimit = createRateLimiter({
+const LIMIT = {
   name: "transcript",
   max: 10,
   message: "Too many transcript requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for generating and downloading chat transcripts.
  * Accepts POST requests with a messages array and returns a text file.
- * @param {NextApiRequest} req - The API request object.
- * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
  *
  * @swagger
@@ -98,26 +82,10 @@ const transcriptRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    logEvent(
-      "info",
-      "transcript_method_not_allowed",
-      "Method not allowed",
-      sanitizeLogMeta({ method: req.method }),
-    );
-    res.setHeader("Allow", ["POST"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  // Apply rate limiting middleware to this request
-  if (!(await applyRateLimit(transcriptRateLimit, req, res))) {
-    return;
-  }
-
+export const POST = withRoute(LIMIT, async (req: NextRequest) => {
+  const body = await readJson(req);
   // Extract messages from request body (sent by downloadTranscript utility)
-  const { messages, bot, exportedAt, userName } = req.body;
+  const { messages, bot, exportedAt, userName } = body;
   const senderName = typeof userName === "string" && userName.trim() ? userName.trim() : "Me";
 
   const problem = findTranscriptProblem({ messages, bot });
@@ -128,8 +96,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       problem.message,
       sanitizeLogMeta(problem.meta),
     );
-    res.status(400).json({ error: problem.error });
-    return;
+    return Response.json({ error: problem.error }, { status: 400 });
   }
 
   // Use friendly timestamp if provided, otherwise generate machine-readable one
@@ -145,15 +112,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     senderName,
   });
 
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
   // CodeQL [js/reflected-xss] - All user inputs are validated and properly HTML-escaped before insertion into the HTML template
-  res.status(200).send(htmlTranscript);
   logEvent(
     "info",
     "transcript_sent",
     "Transcript sent for display",
     sanitizeLogMeta({ messageCount: messages.length }),
   );
-}
-
-export default withRequestLog(handler);
+  // CodeQL [js/reflected-xss] - All user inputs are validated and properly HTML-escaped before insertion into the HTML template
+  return new Response(htmlTranscript, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+});

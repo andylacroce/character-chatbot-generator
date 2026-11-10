@@ -3,17 +3,16 @@
  * Accepts POST requests with a character name and returns a personality string.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { sanitizeCharacterName } from "../../utils/server/security";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { generatePersonalityPrompt } from "../../config/serverConfig";
-import { getSessionUserId } from "../../utils/account/getSessionUserId";
-import { recordEvent } from "../../utils/analytics";
+import type { NextRequest } from "next/server";
+import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { sanitizeCharacterName } from "../../../utils/server/security";
+import { generatePersonalityPrompt } from "../../../config/serverConfig";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
+import { recordEvent } from "../../../utils/analytics";
 import { desc } from "drizzle-orm";
-import { getDb } from "../../db/client";
-import { avatarCache } from "../../db/schema";
-import { withRequestLog } from "../../utils/server/withRequestLog";
+import { getDb } from "../../../db/client";
+import { avatarCache } from "../../../db/schema";
+import { withRoute, readJson } from "../../../utils/server/withRoute";
 
 // Capped so this stays a cheap, bounded addition to a call already being made — not a
 // full table dump on every character launch. Ordering by recency is an arbitrary but
@@ -49,19 +48,16 @@ async function fetchExistingCharacterNames(): Promise<string[]> {
   }
 }
 
-/** Rate limiter: 20 requests per minute per IP (personality generation is lightweight). */
-const personalityRateLimit = createRateLimiter({
+const LIMIT = {
   name: "personality",
   max: 20,
   message: "Too many personality generation requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for generating a character personality prompt using Claude.
  * Accepts POST requests with a character name and returns a personality string.
  *
- * @param {NextApiRequest} req - The API request object.
- * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
  *
  * @swagger
@@ -111,25 +107,15 @@ const personalityRateLimit = createRateLimiter({
  *       500:
  *         description: Failed to generate personality prompt
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.status(405).end();
-    return;
-  }
-
-  // Apply rate limiting
-  if (!(await applyRateLimit(personalityRateLimit, req, res))) {
-    return;
-  }
-  const { name: originalName } = req.body;
+export const POST = withRoute(LIMIT, async (req: NextRequest) => {
+  const body = await readJson(req);
+  const { name: originalName } = body;
   if (!originalName || typeof originalName !== "string") {
-    res.status(400).json({ error: "Valid name required" });
-    return;
+    return Response.json({ error: "Valid name required" }, { status: 400 });
   }
   const sanitizedName = sanitizeCharacterName(originalName);
   if (!sanitizedName) {
-    res.status(400).json({ error: "Invalid character name" });
-    return;
+    return Response.json({ error: "Invalid character name" }, { status: 400 });
   }
   try {
     logEvent(
@@ -153,8 +139,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         "Unrecognized character rejected by personality generation",
         sanitizeLogMeta({ name: sanitizedName }),
       );
-      res.status(422).json({ error: "Choose a character or person from history or fiction." });
-      return;
+      return Response.json(
+        { error: "Choose a character or person from history or fiction." },
+        { status: 422 },
+      );
     }
 
     logEvent(
@@ -172,7 +160,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userId = await getSessionUserId(req);
     await recordEvent("bot_created", { guest: !userId }, userId);
 
-    res.status(200).json({ personality: concisePrompt, correctedName });
+    return Response.json({ personality: concisePrompt, correctedName });
   } catch (err) {
     logEvent(
       "error",
@@ -183,9 +171,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         error: err instanceof Error ? err.message : String(err),
       }),
     );
-    res.status(500).json({ error: "Failed to generate personality prompt" });
+    return Response.json({ error: "Failed to generate personality prompt" }, { status: 500 });
   }
-  return;
-}
-
-export default withRequestLog(handler);
+});

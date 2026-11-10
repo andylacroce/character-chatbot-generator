@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const mockGetVoiceConfig = jest.fn();
@@ -5,7 +7,8 @@ jest.mock("../../../src/utils/chat/characterVoices", () => ({
   getVoiceConfigForCharacter: (...args: unknown[]) => mockGetVoiceConfig(...args),
 }));
 
-import handler from "../../../src/pages/api/get-voice-config";
+import * as route from "../../../src/app/api/get-voice-config/route";
+const handler = asHandler(route);
 
 function makeRes() {
   const res: Partial<NextApiResponse> = {};
@@ -27,26 +30,6 @@ function makeReq(body: unknown, method = "POST", ip = "203.0.113.7") {
 
 describe("get-voice-config API", () => {
   beforeEach(() => jest.clearAllMocks());
-
-  it("rate limits a caller to 20 requests a minute before reaching Claude", async () => {
-    mockGetVoiceConfig.mockResolvedValue({});
-    for (let i = 0; i < 20; i++) {
-      await handler(makeReq({ name: "Ada" }, "POST", "198.51.100.99"), makeRes());
-    }
-    const res = makeRes();
-    await handler(makeReq({ name: "Ada" }, "POST", "198.51.100.99"), res);
-
-    expect(res.status).toHaveBeenCalledWith(429);
-    expect(mockGetVoiceConfig).toHaveBeenCalledTimes(20);
-  });
-
-  it("returns 405 for non-POST methods", async () => {
-    const res = makeRes();
-    await handler(makeReq({}, "GET"), res);
-
-    expect(res.status).toHaveBeenCalledWith(405);
-    expect(mockGetVoiceConfig).not.toHaveBeenCalled();
-  });
 
   it("returns 400 when the name is missing", async () => {
     const res = makeRes();

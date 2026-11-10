@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import { createMocks } from "node-mocks-http";
 
 const mockOrderBy = jest.fn();
@@ -33,16 +35,9 @@ describe("chars API", () => {
     process.env = OLD_ENV;
   });
 
-  it("returns 405 for non-GET methods", async () => {
-    const handler = (await import("../../../src/pages/api/chars")).default;
-    const { req, res } = createMocks({ method: "POST" });
-    await handler(req, res);
-    expect(res._getStatusCode()).toBe(405);
-  });
-
   it("returns an empty list when DATABASE_URL is not configured", async () => {
     delete process.env.DATABASE_URL;
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -52,7 +47,7 @@ describe("chars API", () => {
 
   it("keeps rows without a valid category off the Wall", async () => {
     mockOrderBy.mockResolvedValue([makeRow("ada lovelace"), makeRow("nobody", undefined, null)]);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getJSONData().characters.map((c: { name: string }) => c.name)).toEqual([
@@ -62,7 +57,7 @@ describe("chars API", () => {
 
   it("title-cases lowercased character names and reports hasMore", async () => {
     mockOrderBy.mockResolvedValue([makeRow("sherlock holmes"), makeRow("ada lovelace")]);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET", query: { limit: "1", offset: "0" } });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -85,7 +80,7 @@ describe("chars API", () => {
       makeRow("vincent van gogh"),
       makeRow("the doctor"),
     ]);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     const names = (res._getJSONData().characters as Array<{ name: string }>).map((c) => c.name);
@@ -94,7 +89,7 @@ describe("chars API", () => {
 
   it("reports hasMore: false on the last page", async () => {
     mockOrderBy.mockResolvedValue([makeRow("ada lovelace")]);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET", query: { limit: "60", offset: "0" } });
     await handler(req, res);
     expect(res._getJSONData()).toEqual({
@@ -114,7 +109,7 @@ describe("chars API", () => {
       makeRow("ada lovelace", "/ada.png", "history"),
       makeRow("sherlock holmes", "/sherlock.png", "literature"),
     ]);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET", query: { name: "ADA LOVELACE" } });
 
     await handler(req, res);
@@ -127,7 +122,7 @@ describe("chars API", () => {
 
   it("returns a null character when a named lookup has no match", async () => {
     mockOrderBy.mockResolvedValue([makeRow("ada lovelace")]);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET", query: { name: "Unknown Person" } });
 
     await handler(req, res);
@@ -140,7 +135,7 @@ describe("chars API", () => {
       makeRow("zeus", undefined, "mythology", new Date("2026-01-02")),
       makeRow("ada lovelace", undefined, "history", new Date("2026-01-01")),
     ]);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET", query: { sort: "name-asc", limit: "1" } });
 
     await handler(req, res);
@@ -160,7 +155,7 @@ describe("chars API", () => {
   it("samples a small carousel response from the requested page", async () => {
     mockOrderBy.mockResolvedValue(Array.from({ length: 5 }, (_, i) => makeRow(`character ${i}`)));
     jest.spyOn(Math, "random").mockReturnValue(0.99);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({
       method: "GET",
       query: { limit: "4", sample: "2" },
@@ -191,7 +186,7 @@ describe("chars API", () => {
       makeRow("ada lovelace", undefined, "history"),
       makeRow("sherlock holmes", undefined, "literature"),
     ]);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({
       method: "GET",
       query: { sort: "name-asc", group: "category" },
@@ -206,7 +201,7 @@ describe("chars API", () => {
 
   it("clamps limit to the configured maximum", async () => {
     mockOrderBy.mockResolvedValue(Array.from({ length: 10 }, (_, i) => makeRow(`char ${i}`)));
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET", query: { limit: "99999", offset: "0" } });
     await handler(req, res);
     // All 10 rows fit under the max, so this just confirms the request doesn't reject/clip oddly.
@@ -216,7 +211,7 @@ describe("chars API", () => {
 
   it("reuses the cached row list across requests within the TTL window (does not re-query)", async () => {
     mockOrderBy.mockResolvedValue([makeRow("ada lovelace")]);
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
 
     const first = createMocks({ method: "GET" });
     await handler(first.req, first.res);
@@ -232,7 +227,7 @@ describe("chars API", () => {
 
   it("returns 500 when the query fails", async () => {
     mockOrderBy.mockRejectedValue(new Error("db down"));
-    const handler = (await import("../../../src/pages/api/chars")).default;
+    const handler = asHandler(await import("../../../src/app/api/chars/route"));
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(500);

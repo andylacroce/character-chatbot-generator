@@ -6,19 +6,17 @@
  * the character creator. GET-only, no auth required.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { getAllCharacters, type CharacterEntry } from "../../utils/moderation/charactersWall";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { withRequestLog } from "../../utils/server/withRequestLog";
-import { getCharacterCategoryOrder } from "character-chatbot-shared";
+import type { NextRequest } from "next/server";
+import { getAllCharacters, type CharacterEntry } from "../../../utils/moderation/charactersWall";
+import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { withRoute } from "../../../utils/server/withRoute";
+import { getCharacterCategoryOrder } from "character-chatbot-shared/src/core";
 
-/** Rate limiter: 60 requests per minute per IP — higher than most since infinite scroll on the gallery fires one request per batch. */
-const charsRateLimit = createRateLimiter({
+const LIMIT = {
   name: "chars",
   max: 60,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 const DEFAULT_LIMIT = 60;
 const MAX_LIMIT = 100;
@@ -149,20 +147,12 @@ function shuffled<T>(items: T[]): T[] {
  *       500:
  *         description: Failed to list characters
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(charsRateLimit, req, res))) return;
-
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  const lookupName = typeof req.query.name === "string" ? req.query.name.trim() : "";
+export const GET = withRoute(LIMIT, async (req: NextRequest) => {
+  const query = Object.fromEntries(req.nextUrl.searchParams);
+  const lookupName = typeof query.name === "string" ? query.name.trim() : "";
 
   if (!process.env.DATABASE_URL) {
-    res.status(200).json(lookupName ? { character: null } : { characters: [], hasMore: false });
-    return;
+    return Response.json(lookupName ? { character: null } : { characters: [], hasMore: false });
   }
 
   // Single-character lookup, used by the landing carousel's "open this character's
@@ -175,7 +165,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const all = await getAllCharacters();
       const needle = lookupName.toLowerCase();
       const match = all.find((entry) => entry.name.toLowerCase() === needle);
-      res.status(200).json({
+      return Response.json({
         character: match
           ? { name: match.name, avatarUrl: match.avatarUrl, category: match.category }
           : null,
@@ -187,16 +177,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         "Failed to look up a single character",
         sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
       );
-      res.status(500).json({ error: "Failed to look up character" });
+      return Response.json({ error: "Failed to look up character" }, { status: 500 });
     }
-    return;
   }
 
-  const limit = Math.min(parseIntParam(req.query.limit, DEFAULT_LIMIT), MAX_LIMIT) || DEFAULT_LIMIT;
-  const offset = parseIntParam(req.query.offset, 0);
-  const sample = Math.min(parseIntParam(req.query.sample, 0), limit);
-  const sort = parseOption(req.query.sort, GALLERY_SORTS, "newest");
-  const group = parseOption(req.query.group, GALLERY_GROUPS, "none");
+  const limit = Math.min(parseIntParam(query.limit, DEFAULT_LIMIT), MAX_LIMIT) || DEFAULT_LIMIT;
+  const offset = parseIntParam(query.offset, 0);
+  const sample = Math.min(parseIntParam(query.sample, 0), limit);
+  const sort = parseOption(query.sort, GALLERY_SORTS, "newest");
+  const group = parseOption(query.group, GALLERY_GROUPS, "none");
 
   try {
     const all = await getAllCharacters();
@@ -206,7 +195,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       ({ createdAtMs: _, ...entry }) => entry,
     );
 
-    res.status(200).json({
+    return Response.json({
       characters: page,
       hasMore: offset + limit < ordered.length,
     });
@@ -217,8 +206,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       "Failed to list characters",
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
-    res.status(500).json({ error: "Failed to list characters" });
+    return Response.json({ error: "Failed to list characters" }, { status: 500 });
   }
-}
-
-export default withRequestLog(handler);
+});

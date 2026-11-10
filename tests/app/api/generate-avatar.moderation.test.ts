@@ -1,12 +1,6 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
-
-jest.mock("../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: jest.fn().mockResolvedValue(true),
-}));
-jest.mock("../../../src/utils/server/withRequestLog", () => ({
-  withRequestLog: (handler: unknown) => handler,
-}));
 
 const mockGetOrGenerateAvatar = jest.fn();
 jest.mock("../../../src/utils/avatar/avatarGeneration", () => ({
@@ -29,7 +23,7 @@ jest.mock("../../../src/utils/moderation/characterClassifier", () => ({
 }));
 jest.mock("../../../src/utils/logger", () => ({ logEvent: jest.fn() }));
 
-const handler = require("../../../src/pages/api/generate-avatar").default;
+const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
 
 function makeRes() {
   const res: Partial<NextApiResponse> = {};

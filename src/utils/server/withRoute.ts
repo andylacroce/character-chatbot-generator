@@ -34,6 +34,16 @@ export function getRequestIp(req: Request): string {
   );
 }
 
+/**
+ * Parses a JSON request body, returning `{}` when it is absent or malformed (callers validate the
+ * fields they need, so a bad body falls into their normal "invalid input" path).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- callers validate each field
+export async function readJson(req: Request): Promise<Record<string, any>> {
+  const body: unknown = await req.json().catch(() => null);
+  return body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+}
+
 const memoryHits = new Map<string, { hits: number; resetAt: number }>();
 
 /** Fixed-window counter in this process's memory. */
@@ -50,15 +60,16 @@ function countInMemory(key: string, windowMs: number): { hits: number; resetAt: 
 }
 
 /**
- * Wraps `handler`, returning a 429 JSON response once the caller's IP exceeds the limit.
+ * Wraps `handler` (pass `null` for no limit, request log only), returning a 429 JSON response once the caller's IP exceeds the limit.
  * Unsupported HTTP methods are rejected by Next itself (405) because only the exported
  * method functions exist.
  */
 export function withRoute<Ctx = unknown>(
-  { name, max, message, windowMs = 60_000 }: RouteLimit,
+  limit: RouteLimit | null,
   handler: (req: NextRequest, ctx: Ctx) => Promise<Response>,
 ): (req: NextRequest, ctx?: Ctx) => Promise<Response> {
-  const store = createRateLimitStore(name);
+  const { name, max, message, windowMs = 60_000 } = limit ?? { name: "", max: 0, message: "" };
+  const store = limit ? createRateLimitStore(name) : undefined;
   store?.init?.({ windowMs } as never);
 
   /** Counts this request; returns the window reset time (ms) when over the limit, else null. */
@@ -80,7 +91,7 @@ export function withRoute<Ctx = unknown>(
     let status = 500;
     try {
       const ip = getRequestIp(req);
-      const resetAt = await overLimitUntil(ip);
+      const resetAt = limit ? await overLimitUntil(ip) : null;
       if (resetAt !== null) {
         logEvent(
           "warn",

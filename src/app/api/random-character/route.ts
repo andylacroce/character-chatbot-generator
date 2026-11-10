@@ -3,11 +3,11 @@
  * Uses a static in-process list; no LLM call required.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { pickRandomCharacterName } from "../../utils/moderation/pickRandomCharacterName";
-import characterNames from "../../data/characterNames";
-import { withRequestLog } from "../../utils/server/withRequestLog";
+import type { NextRequest } from "next/server";
+import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { pickRandomCharacterName } from "../../../utils/moderation/pickRandomCharacterName";
+import characterNames from "../../../data/characterNames";
+import { withRoute } from "../../../utils/server/withRoute";
 
 // Track names shown this server session to avoid repetition
 const recentNames: string[] = [];
@@ -36,21 +36,8 @@ const MAX_RECENT_NAMES = 100;
  *                 name:
  *                   type: string
  *                   example: Sherlock Holmes
- *       405:
- *         description: Method not allowed
  */
-function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    logEvent(
-      "warn",
-      "random_character_method_not_allowed",
-      "RandomCharacter API method not allowed",
-      sanitizeLogMeta({ method: req.method }),
-    );
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
-
+export const GET = withRoute(null, async (_req: NextRequest) => {
   const available = characterNames.filter((name) => !recentNames.includes(name));
   if (available.length === 0) {
     // All names have been shown — reset and start a fresh no-repeat cycle
@@ -71,7 +58,5 @@ function handler(req: NextApiRequest, res: NextApiResponse) {
     }),
   );
 
-  res.status(200).json({ name: chosen });
-}
-
-export default withRequestLog(handler);
+  return Response.json({ name: chosen });
+});

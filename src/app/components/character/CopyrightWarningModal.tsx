@@ -9,7 +9,7 @@
 
 import React, { useEffect } from "react";
 import styles from "../styles/BotCreator.module.css";
-import type { CharacterValidationResult } from "../../../pages/api/validate-character";
+import type { CharacterValidationResult } from "../../../utils/moderation/validateCharacter";
 
 interface CopyrightWarningModalProps {
   validation: CharacterValidationResult;

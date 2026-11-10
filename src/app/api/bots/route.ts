@@ -4,24 +4,28 @@
  * here should ever be reachable in a way that breaks the guest, localStorage-only flow.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextRequest } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
-import { getDb } from "../../db/client";
-import { bots } from "../../db/schema";
-import { getSessionUserId } from "../../utils/account/getSessionUserId";
-import { deleteUserBlobs, isBlobAvatarUrl, isBlobHostUrl } from "../../utils/account/userBlobs";
-import { sanitizeCharacterName } from "../../utils/server/security";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { getCurrentEnvironment } from "../../utils/environment";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { withRequestLog } from "../../utils/server/withRequestLog";
+import { getDb } from "../../../db/client";
+import { bots } from "../../../db/schema";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
+import { deleteUserBlobs, isBlobAvatarUrl, isBlobHostUrl } from "../../../utils/account/userBlobs";
+import { sanitizeCharacterName } from "../../../utils/server/security";
+import { getCurrentEnvironment } from "../../../utils/environment";
+import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { withRoute, readJson } from "../../../utils/server/withRoute";
 
-/** Rate limiter: 20 requests per minute per IP. */
-const botsRateLimit = createRateLimiter({
+const LIMIT = {
   name: "bots",
   max: 20,
   message: "Too many requests from this IP, please try again later.",
-});
+};
+
+/** Resolves the caller's id, or null (guest, or no DATABASE_URL) which every method treats as a no-op. */
+async function persistedUserId(req: NextRequest): Promise<string | null> {
+  const userId = await getSessionUserId(req);
+  return userId && process.env.DATABASE_URL ? userId : null;
+}
 
 /**
  * Next.js API route handler for persisting and listing a signed-in user's characters.
@@ -69,8 +73,6 @@ const botsRateLimit = createRateLimiter({
  *                   type: boolean
  *       400:
  *         description: Invalid name, personality or avatar
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:
@@ -93,8 +95,6 @@ const botsRateLimit = createRateLimiter({
  *                   type: array
  *                   items:
  *                     type: object
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:
@@ -123,105 +123,89 @@ const botsRateLimit = createRateLimiter({
  *               properties:
  *                 cleared:
  *                   type: integer
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  *       500:
  *         description: Failed to clear chat history
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(botsRateLimit, req, res))) return;
-
-  if (req.method !== "POST" && req.method !== "GET" && req.method !== "DELETE") {
-    res.setHeader("Allow", ["GET", "POST", "DELETE"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
+export const GET = withRoute(LIMIT, async (req: NextRequest) => {
+  const userId = await persistedUserId(req);
+  if (!userId) return Response.json({ bots: [] });
+  try {
+    const rows = await getDb()
+      .select()
+      .from(bots)
+      .where(and(eq(bots.userId, userId), eq(bots.environment, getCurrentEnvironment())))
+      .orderBy(desc(bots.updatedAt))
+      .limit(50);
+    return Response.json({ bots: rows });
+  } catch (err) {
+    logEvent(
+      "error",
+      "bots_list_failed",
+      "Failed to list bots",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+    return Response.json({ error: "Failed to list characters" }, { status: 500 });
   }
+});
 
-  const userId = await getSessionUserId(req);
-  if (!userId || !process.env.DATABASE_URL) {
-    const noop = { GET: { bots: [] }, DELETE: { cleared: 0 } }[req.method as string];
-    res.status(200).json(noop ?? { persisted: false });
-    return;
+/** DELETE: one saved chat by `?id=`, or (no id) every saved chat. */
+export const DELETE = withRoute(LIMIT, async (req: NextRequest) => {
+  const userId = await persistedUserId(req);
+  if (!userId) return Response.json({ cleared: 0 });
+  const id = req.nextUrl.searchParams.get("id");
+  let deleted: { avatarUrl: string | null }[];
+  try {
+    // Cascades to `messages` via its FK to bots.id.
+    deleted = await getDb()
+      .delete(bots)
+      .where(
+        and(
+          eq(bots.userId, userId),
+          eq(bots.environment, getCurrentEnvironment()),
+          id ? eq(bots.id, id) : undefined,
+        ),
+      )
+      .returning({ avatarUrl: bots.avatarUrl });
+  } catch (err) {
+    logEvent(
+      "error",
+      "bots_clear_failed",
+      "Failed to clear chat history",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
+    return Response.json({ error: "Failed to clear chat history" }, { status: 500 });
   }
-
-  const db = getDb();
-  const environment = getCurrentEnvironment();
-
-  if (req.method === "GET") {
-    try {
-      const rows = await db
-        .select()
-        .from(bots)
-        .where(and(eq(bots.userId, userId), eq(bots.environment, environment)))
-        .orderBy(desc(bots.updatedAt))
-        .limit(50);
-      res.status(200).json({ bots: rows });
-    } catch (err) {
-      logEvent(
-        "error",
-        "bots_list_failed",
-        "Failed to list bots",
-        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-      );
-      res.status(500).json({ error: "Failed to list characters" });
-    }
-    return;
+  // History is already gone; a leftover blob is logged for manual cleanup, not a failure.
+  try {
+    await deleteUserBlobs(
+      userId,
+      deleted.map((row) => row.avatarUrl),
+      { chatLogs: !id },
+    );
+  } catch (err) {
+    logEvent(
+      "error",
+      "bots_clear_blob_failed",
+      "Chat history cleared but its avatar images or chat logs could not be removed",
+      sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
+    );
   }
+  logEvent("info", id ? "bots_deleted" : "bots_cleared", "Saved chats deleted", {
+    count: deleted.length,
+  });
+  return Response.json({ cleared: deleted.length });
+});
 
-  if (req.method === "DELETE") {
-    const id = typeof req.query.id === "string" ? req.query.id : null;
-    let deleted: { avatarUrl: string | null }[];
-    try {
-      // Cascades to `messages` via its FK to bots.id.
-      deleted = await db
-        .delete(bots)
-        .where(
-          and(
-            eq(bots.userId, userId),
-            eq(bots.environment, environment),
-            id ? eq(bots.id, id) : undefined,
-          ),
-        )
-        .returning({ avatarUrl: bots.avatarUrl });
-    } catch (err) {
-      logEvent(
-        "error",
-        "bots_clear_failed",
-        "Failed to clear chat history",
-        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-      );
-      res.status(500).json({ error: "Failed to clear chat history" });
-      return;
-    }
-    // History is already gone; a leftover blob is logged for manual cleanup, not a failure.
-    try {
-      await deleteUserBlobs(
-        userId,
-        deleted.map((row) => row.avatarUrl),
-        { chatLogs: !id },
-      );
-    } catch (err) {
-      logEvent(
-        "error",
-        "bots_clear_blob_failed",
-        "Chat history cleared but its avatar images or chat logs could not be removed",
-        sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-      );
-    }
-    logEvent("info", id ? "bots_deleted" : "bots_cleared", "Saved chats deleted", {
-      count: deleted.length,
-    });
-    res.status(200).json({ cleared: deleted.length });
-    return;
-  }
-
-  const { name, personality, avatarUrl, gender, voiceConfig } = req.body;
+/** POST: create or update the signed-in user's saved character. */
+export const POST = withRoute(LIMIT, async (req: NextRequest) => {
+  const userId = await persistedUserId(req);
+  if (!userId) return Response.json({ persisted: false });
+  const { name, personality, avatarUrl, gender, voiceConfig } = await readJson(req);
   const sanitizedName = sanitizeCharacterName(name);
   if (!sanitizedName || typeof personality !== "string" || !personality.trim()) {
-    res.status(400).json({ error: "Invalid name or personality" });
-    return;
+    return Response.json({ error: "Invalid name or personality" }, { status: 400 });
   }
 
   // A blob URL must be one of this app's portraits: deleting a saved character deletes its
@@ -230,12 +214,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     avatarUrl != null &&
     (typeof avatarUrl !== "string" || (isBlobHostUrl(avatarUrl) && !isBlobAvatarUrl(avatarUrl)))
   ) {
-    res.status(400).json({ error: "Invalid avatar" });
-    return;
+    return Response.json({ error: "Invalid avatar" }, { status: 400 });
   }
 
   try {
-    await db
+    await getDb()
       .insert(bots)
       .values({
         userId,
@@ -244,7 +227,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         avatarUrl: avatarUrl ?? null,
         gender: gender ?? null,
         voiceConfig: voiceConfig ?? null,
-        environment,
+        environment: getCurrentEnvironment(),
       })
       .onConflictDoUpdate({
         target: [bots.userId, bots.name, bots.environment],
@@ -256,7 +239,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           updatedAt: new Date(),
         },
       });
-    res.status(200).json({ persisted: true });
+    return Response.json({ persisted: true });
   } catch (err) {
     logEvent(
       "error",
@@ -264,8 +247,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       "Failed to persist bot",
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
-    res.status(500).json({ error: "Failed to save character" });
+    return Response.json({ error: "Failed to save character" }, { status: 500 });
   }
-}
-
-export default withRequestLog(handler);
+});

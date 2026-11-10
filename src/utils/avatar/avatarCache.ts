@@ -12,7 +12,7 @@ import { logEvent, sanitizeLogMeta } from "../logger";
 import { getDb } from "../../db/client";
 import { avatarCache, bots } from "../../db/schema";
 import { deleteOrphanedAvatars } from "../account/userBlobs";
-import type { CharacterCategory } from "character-chatbot-shared";
+import type { CharacterCategory } from "character-chatbot-shared/src/core";
 
 /**
  * Uploads a base64 data URL image to Vercel Blob and returns its durable public URL.
@@ -138,7 +138,7 @@ export async function cacheAvatar(
 /**
  * Deletes a character's row from the shared avatar cache entirely — a moderation
  * action, not a cost-optimization path like the functions above. Used when a live
- * re-check (pages/api/validate-character.ts) flags a name that was previously
+ * re-check (app/api/validate-character/route.ts) flags a name that was previously
  * cached/publicly displayed on the Character Wall/carousel as a copyright/trademark
  * "warning": rather than just leaving a bad name cached, this removes it so it stops
  * being served/shown going forward. Returns whether a row actually existed to delete,

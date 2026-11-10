@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const mockHead = jest.fn();
@@ -42,7 +44,8 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import handler from "../../../src/pages/api/log-message";
+import * as route from "../../../src/app/api/log-message/route";
+const handler = asHandler(route);
 import { BlobNotFoundError as MockBlobNotFoundError } from "@vercel/blob";
 
 /** The mocked BlobNotFoundError; the real type declares a no-arg constructor. */
@@ -86,14 +89,6 @@ describe("log-message API", () => {
 
   afterAll(() => {
     process.env = OLD_ENV;
-  });
-
-  it("returns 405 for non-POST methods", async () => {
-    const res = makeRes();
-    await handler(makeReq(validBody, { method: "GET" }), res);
-
-    expect(res.setHeader).toHaveBeenCalledWith("Allow", ["POST"]);
-    expect(res.status).toHaveBeenCalledWith(405);
   });
 
   describe("input validation", () => {
@@ -335,28 +330,6 @@ describe("log-message API", () => {
       await handler(makeReq(validBody), makeRes());
 
       expect(mockPut.mock.calls[0][2]).toMatchObject({ token: "legacy-token" });
-    });
-  });
-
-  it("rate limits a caller to 60 log writes a minute", async () => {
-    const headers = { "x-forwarded-for": "198.51.100.77" };
-    for (let i = 0; i < 60; i++) {
-      await handler(makeReq(validBody, { headers }), makeRes());
-    }
-    const res = makeRes();
-    await handler(makeReq(validBody, { headers }), res);
-
-    expect(res.status).toHaveBeenCalledWith(429);
-  });
-
-  it("returns 500 when the body cannot be destructured", async () => {
-    const res = makeRes();
-    await handler(makeReq(null), res);
-
-    expect(res.status).toHaveBeenCalledWith(500);
-    expect(res.json).toHaveBeenCalledWith({
-      error: "Internal Server Error",
-      requestId: "generated-id",
     });
   });
 });

@@ -2,25 +2,24 @@
  * API endpoint for logging chat messages and events.
  * Stores logs using Vercel Blob or local file storage with XSS-safe HTML escaping. A
  * signed-in user's logs go under their per-account prefix (utils/userBlobs.ts) so
- * pages/api/account.ts can delete them with the account.
+ * app/api/account/route.ts can delete them with the account.
  */
 
+import type { NextRequest } from "next/server";
 import { BlobNotFoundError, head, put } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
-import { generateRequestId, logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { escapeHtml } from "../../utils/server/security";
-import { chatLogPrefix } from "../../utils/account/userBlobs";
-import { getSessionUserId } from "../../utils/account/getSessionUserId";
-import { withRequestLog } from "../../utils/server/withRequestLog";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
+import { generateRequestId, logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { escapeHtml } from "../../../utils/server/security";
+import { chatLogPrefix } from "../../../utils/account/userBlobs";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
+import { withRoute, readJson } from "../../../utils/server/withRoute";
 
-/** Rate limiter: 60 requests per minute per IP (two log lines per chat turn, which is itself capped). */
-const logRateLimit = createRateLimiter({
+const LIMIT = {
   name: "log-message",
   max: 60,
   message: "Too many log requests from this IP, please try again later.",
-});
+};
 
 /** Per-log append chains, so concurrent appends from one instance don't overwrite each other. */
 const blobAppendQueues = new Map<string, Promise<unknown>>();
@@ -63,8 +62,6 @@ function appendToBlobLog(filename: string, entry: string, token: string): Promis
  * Next.js API route handler for logging chat messages and events to storage (Vercel Blob or local).
  * Includes XSS-safe HTML escaping for logs.
  *
- * @param {NextApiRequest} req - The API request object.
- * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
  *
  * @swagger
@@ -114,27 +111,10 @@ function appendToBlobLog(filename: string, entry: string, token: string): Promis
  *       500:
  *         description: Internal server error
  */
-async function handler(req: import("next").NextApiRequest, res: import("next").NextApiResponse) {
-  const requestId = req.headers["x-request-id"] || generateRequestId();
-
-  if (!(await applyRateLimit(logRateLimit, req, res))) return;
-
-  if (req.method !== "POST") {
-    logEvent(
-      "warn",
-      "log_api_method_not_allowed",
-      "Method not allowed",
-      sanitizeLogMeta({
-        method: req.method,
-        requestId,
-      }),
-    );
-    res.setHeader("Allow", ["POST"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
+export const POST = withRoute(LIMIT, async (req: NextRequest) => {
+  const requestId = req.headers.get("x-request-id") || generateRequestId();
   try {
-    const { sender, text, sessionId, sessionDatetime } = req.body;
+    const { sender, text, sessionId, sessionDatetime } = await readJson(req);
     if (!sender || typeof text === "undefined" || !sessionId || !sessionDatetime) {
       logEvent(
         "warn",
@@ -144,11 +124,13 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
           requestId,
         }),
       );
-      res.status(400).json({
-        error: "Sender, text, sessionId, and sessionDatetime required",
-        requestId,
-      });
-      return;
+      return Response.json(
+        {
+          error: "Sender, text, sessionId, and sessionDatetime required",
+          requestId,
+        },
+        { status: 400 },
+      );
     }
 
     // Validate input types and lengths BEFORE any transformations
@@ -162,8 +144,7 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
           requestId,
         }),
       );
-      res.status(400).json({ error: "Invalid sender", requestId });
-      return;
+      return Response.json({ error: "Invalid sender", requestId }, { status: 400 });
     }
     if (typeof text !== "string" || text.length > 2000) {
       logEvent(
@@ -175,8 +156,7 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
           requestId,
         }),
       );
-      res.status(400).json({ error: "Invalid text", requestId });
-      return;
+      return Response.json({ error: "Invalid text", requestId }, { status: 400 });
     }
     if (typeof sessionId !== "string" || sessionId.length > 100) {
       logEvent(
@@ -188,8 +168,7 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
           requestId,
         }),
       );
-      res.status(400).json({ error: "Invalid sessionId", requestId });
-      return;
+      return Response.json({ error: "Invalid sessionId", requestId }, { status: 400 });
     }
     if (typeof sessionDatetime !== "string" || sessionDatetime.length > 30) {
       logEvent(
@@ -201,8 +180,7 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
           requestId,
         }),
       );
-      res.status(400).json({ error: "Invalid sessionDatetime", requestId });
-      return;
+      return Response.json({ error: "Invalid sessionDatetime", requestId }, { status: 400 });
     }
 
     // Sanitize sender and text to prevent XSS in stored logs
@@ -242,8 +220,7 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
             error: error instanceof Error ? error.message : String(error),
           }),
         );
-        res.status(500).json({ error: "Internal Server Error" });
-        return;
+        return Response.json({ error: "Internal Server Error" }, { status: 500 });
       }
     } else {
       // Append to local file
@@ -270,8 +247,7 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
             error: error instanceof Error ? error.message : String(error),
           }),
         );
-        res.status(500).json({ error: "Internal Server Error" });
-        return;
+        return Response.json({ error: "Internal Server Error" }, { status: 500 });
       }
     }
     // --- End Append to Log ---
@@ -290,8 +266,7 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
         text: cleanText,
       }),
     );
-    res.status(200).json({ success: true, requestId });
-    return;
+    return Response.json({ success: true, requestId });
   } catch (error) {
     logEvent(
       "error",
@@ -302,8 +277,6 @@ async function handler(req: import("next").NextApiRequest, res: import("next").N
         error: error instanceof Error ? error.message : String(error),
       }),
     );
-    res.status(500).json({ error: "Internal Server Error", requestId });
+    return Response.json({ error: "Internal Server Error", requestId }, { status: 500 });
   }
-}
-
-export default withRequestLog(handler);
+});
