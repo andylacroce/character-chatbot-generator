@@ -112,45 +112,6 @@ export function getVersionedJSON<T = unknown>(key: string): VersionedRecord<T> |
   }
 }
 
-/**
- * Attempt to migrate an existing unversioned JSON value at `key` into a versioned record.
- * - If the stored value is already a versioned record, returns it.
- * - If the stored value is unversioned JSON, it will be wrapped with the provided targetVersion
- *   and the wrapped record will be written back to storage.
- * - If parsing fails or there's no value, returns null.
- *
- * Optional `transform` can be provided to modify the parsed payload before storing.
- */
-export function migrateToVersioned<T = unknown>(
-  key: string,
-  targetVersion = 1,
-  transform?: (payload: unknown) => T,
-): VersionedRecord<T> | null {
-  const raw = getItem(key);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    // Already versioned
-    if (parsed && typeof parsed.v === "number" && parsed.createdAt && "payload" in parsed) {
-      return parsed as VersionedRecord<T>;
-    }
-    const payload = transform ? transform(parsed) : parsed;
-    const wrapper: VersionedRecord<T> = {
-      v: targetVersion,
-      createdAt: new Date().toISOString(),
-      payload,
-    };
-    try {
-      setItem(key, JSON.stringify(wrapper));
-    } catch {
-      // Silently ignore storage write errors
-    }
-    return wrapper;
-  } catch {
-    return null;
-  }
-}
-
 /** Removes every stored key matching `predicate` (e.g. all personal data on account deletion). */
 export function removeItemsWhere(predicate: (key: string) => boolean) {
   try {
@@ -175,7 +136,6 @@ const storageExports = {
   clearMemoryFallback,
   setVersionedJSON,
   getVersionedJSON,
-  migrateToVersioned,
 };
 
 export default storageExports;
