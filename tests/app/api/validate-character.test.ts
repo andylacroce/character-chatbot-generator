@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 // Mock logger
@@ -23,7 +25,7 @@ jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
 }));
 
 // Now that mocks are set up, require the handler module
-const handler = require("../../../src/pages/api/validate-character").default;
+const handler = asHandler(require("../../../src/app/api/validate-character/route"));
 
 function makeRes() {
   const res: Partial<NextApiResponse> = {};
@@ -35,20 +37,6 @@ function makeRes() {
 describe("validate-character API", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it("returns 405 for non-POST methods", async () => {
-    const req = { method: "GET" } as Partial<NextApiRequest> as NextApiRequest;
-    const res = makeRes();
-    await handler(req, res);
-    expect(res.status).toHaveBeenCalledWith(405);
-    expect(res.json).toHaveBeenCalledWith({ error: "Method not allowed" });
-    expect(mockLogEvent).toHaveBeenCalledWith(
-      "warn",
-      "validate_character_method_not_allowed",
-      "Validate character API method not allowed",
-      expect.any(Object),
-    );
   });
 
   it("returns 400 for missing or invalid name", async () => {
@@ -113,53 +101,5 @@ describe("validate-character API", () => {
       "Character validation completed",
       expect.any(Object),
     );
-  });
-
-  it("returns early when rate limiter sets headersSent (429)", async () => {
-    jest.resetModules();
-
-    const localMockCreate = jest.fn();
-    jest.mock("@anthropic-ai/sdk", () => ({
-      default: function AnthropicMock() {
-        return { messages: { create: localMockCreate } };
-      },
-      __esModule: true,
-    }));
-
-    const localMockLog = jest.fn();
-    jest.mock("../../../src/utils/logger", () => ({
-      logEvent: (...args: unknown[]) => localMockLog(...(args as unknown[])),
-      sanitizeLogMeta: (m: unknown) => m,
-    }));
-    jest.mock("../../../src/utils/claude/claudeModelSelector", () => ({
-      getClaudeModel: (_: string) => "claude-test",
-    }));
-
-    jest.mock("express-rate-limit", () => {
-      return jest.fn().mockImplementation(() => {
-        return (req: Partial<NextApiRequest>, res: Partial<NextApiResponse>, next: () => void) => {
-          res.status?.(429 as unknown as number);
-          res.json?.({ error: "Too many validation requests" } as unknown as object);
-          (res as Partial<NextApiResponse> & { headersSent?: boolean }).headersSent = true;
-          next();
-        };
-      });
-    });
-
-    const handler2 = require("../../../src/pages/api/validate-character").default;
-
-    const req = {
-      method: "POST",
-      body: { name: "Spam" },
-      headers: {},
-      socket: {},
-    } as Partial<NextApiRequest> as NextApiRequest;
-    const res = makeRes();
-
-    await handler2(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(429);
-    expect(res.json).toHaveBeenCalledWith({ error: "Too many validation requests" });
-    expect(localMockCreate).not.toHaveBeenCalled();
   });
 });

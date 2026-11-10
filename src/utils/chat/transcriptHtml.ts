@@ -1,5 +1,5 @@
 import { escapeHtml, sanitizeForDisplay } from "../server/security";
-import { displayCharacterName } from "character-chatbot-shared";
+import { displayCharacterName } from "character-chatbot-shared/src/core";
 
 /**
  * Palette, type pairing (Inter for labels, Playfair Display for titles, Lora for the actual

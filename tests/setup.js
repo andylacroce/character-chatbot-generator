@@ -117,3 +117,10 @@ afterAll(() => {
     // ignore in test environment
   }
 });
+
+// Route handlers are tested without the per-IP limiter (it counts every call from one fake IP and
+// would trip mid-suite); tests/utils/withRoute.test.ts unmocks this to test the limiter itself.
+jest.mock("../src/utils/server/withRoute", () => ({
+  ...jest.requireActual("../src/utils/server/withRoute"),
+  withRoute: (_limit, handler) => handler,
+}));

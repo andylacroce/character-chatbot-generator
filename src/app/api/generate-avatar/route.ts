@@ -10,22 +10,20 @@
  * over HTTP.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { sanitizeCharacterName } from "../../utils/server/security";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { getOrGenerateAvatar } from "../../utils/avatar/avatarGeneration";
-import { isAllowlisted } from "../../utils/moderation/characterAllowlist";
-import { getBlocklistEntry } from "../../utils/moderation/characterBlocklist";
-import { classifyCharacterName } from "../../utils/moderation/characterClassifier";
-import { logEvent } from "../../utils/logger";
-import { withRequestLog } from "../../utils/server/withRequestLog";
+import type { NextRequest } from "next/server";
+import { sanitizeCharacterName } from "../../../utils/server/security";
+import { getOrGenerateAvatar } from "../../../utils/avatar/avatarGeneration";
+import { isAllowlisted } from "../../../utils/moderation/characterAllowlist";
+import { getBlocklistEntry } from "../../../utils/moderation/characterBlocklist";
+import { classifyCharacterName } from "../../../utils/moderation/characterClassifier";
+import { logEvent } from "../../../utils/logger";
+import { withRoute, readJson } from "../../../utils/server/withRoute";
 
-/** Rate limiter: 5 requests per minute per IP (avatar generation is expensive). */
-const avatarRateLimit = createRateLimiter({
+const LIMIT = {
   name: "avatar",
   max: 5,
   message: "Too many avatar generation requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for generating a character avatar image.
@@ -93,26 +91,15 @@ const avatarRateLimit = createRateLimiter({
  *       429:
  *         description: Rate limit exceeded
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.status(405).end();
-    return;
-  }
-
-  // Apply rate limiting
-  if (!(await applyRateLimit(avatarRateLimit, req, res))) {
-    return;
-  }
-
-  const { name, skipPersistence } = req.body;
+export const POST = withRoute(LIMIT, async (req: NextRequest) => {
+  const body = await readJson(req);
+  const { name, skipPersistence } = body;
   if (!name || typeof name !== "string") {
-    res.status(400).json({ error: "Valid name required" });
-    return;
+    return Response.json({ error: "Valid name required" }, { status: 400 });
   }
   const sanitizedName = sanitizeCharacterName(name);
   if (!sanitizedName) {
-    res.status(400).json({ error: "Invalid character name" });
-    return;
+    return Response.json({ error: "Invalid character name" }, { status: 400 });
   }
 
   // This route is callable directly, so it can't rely on the client having run
@@ -124,8 +111,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (persist && !(allowlisted = await isAllowlisted(sanitizedName))) {
     const blocked = await getBlocklistEntry(sanitizedName);
     if (blocked?.category === "content") {
-      res.status(200).json({ avatarUrl: "/silhouette.svg", gender: null });
-      return;
+      return Response.json({ avatarUrl: "/silhouette.svg", gender: null });
     }
     persist = !blocked;
   }
@@ -169,7 +155,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     mayPersistNew,
   });
 
-  res.status(200).json({ avatarUrl: result.avatarUrl, gender: result.gender });
-}
-
-export default withRequestLog(handler);
+  return Response.json({ avatarUrl: result.avatarUrl, gender: result.gender });
+});

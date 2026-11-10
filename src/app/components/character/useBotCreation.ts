@@ -11,7 +11,7 @@ import { authenticatedFetch } from "../../../utils/api";
 import type { Bot } from "./BotCreator";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { persistVoiceConfig } from "../../../utils/chat/voiceConfigPersistence";
-import type { CharacterValidationResult } from "../../../pages/api/validate-character";
+import type { CharacterValidationResult } from "../../../utils/moderation/validateCharacter";
 import type { UserNameContext } from "../account/useUserName";
 
 const DEFAULT_RANDOM_NAME = "Sherlock Holmes";

@@ -1,28 +1,24 @@
 // =============================
-// pages/api/get-voice-config.ts
+// app/api/get-voice-config/route.ts
 // Next.js API route for retrieving a character's TTS voice configuration.
 // Accepts POST requests with a character name and returns a voice config object.
 // =============================
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { getVoiceConfigForCharacter } from "../../utils/chat/characterVoices";
-import { sanitizeCharacterName, sanitizeVoiceContext } from "../../utils/server/security";
-import { withRequestLog } from "../../utils/server/withRequestLog";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
+import type { NextRequest } from "next/server";
+import { getVoiceConfigForCharacter } from "../../../utils/chat/characterVoices";
+import { sanitizeCharacterName, sanitizeVoiceContext } from "../../../utils/server/security";
+import { withRoute, readJson } from "../../../utils/server/withRoute";
 
-/** Rate limiter: 20 requests per minute per IP (each uncached name is a Claude call). */
-const voiceConfigRateLimit = createRateLimiter({
+const LIMIT = {
   name: "get-voice-config",
   max: 20,
   message: "Too many voice requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for retrieving a character's TTS voice configuration.
  * Accepts POST requests with a character name and returns a voice config object.
  *
- * @param {NextApiRequest} req - The API request object.
- * @param {NextApiResponse} res - The API response object.
  * @returns {Promise<void>} Resolves when the response is sent.
  *
  * @swagger
@@ -58,23 +54,15 @@ const voiceConfigRateLimit = createRateLimiter({
  *               type: object
  *       400:
  *         description: Name required
- *       405:
- *         description: Method not allowed
  *       500:
  *         description: Failed to get voice config
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(voiceConfigRateLimit, req, res))) return;
-
-  if (req.method !== "POST") {
-    res.status(405).end();
-    return;
-  }
-  const { name, gender, voiceContext } = req.body;
+export const POST = withRoute(LIMIT, async (req: NextRequest) => {
+  const body = await readJson(req);
+  const { name, gender, voiceContext } = body;
   const sanitizedName = typeof name === "string" ? sanitizeCharacterName(name) : "";
   if (!sanitizedName) {
-    res.status(400).json({ error: "Name required" });
-    return;
+    return Response.json({ error: "Name required" }, { status: 400 });
   }
   const sanitizedVoiceContext =
     typeof voiceContext === "string" ? sanitizeVoiceContext(voiceContext) : undefined;
@@ -84,12 +72,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       typeof gender === "string" ? gender : null,
       sanitizedVoiceContext,
     );
-    res.status(200).json(config);
-    return;
+    return Response.json(config);
   } catch {
-    res.status(500).json({ error: "Failed to get voice config" });
-    return;
+    return Response.json({ error: "Failed to get voice config" }, { status: 500 });
   }
-}
-
-export default withRequestLog(handler);
+});

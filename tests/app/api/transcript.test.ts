@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const mockLogEvent = jest.fn();
@@ -7,7 +9,9 @@ jest.mock("../../../src/utils/logger", () => ({
   sanitizeLogMeta: (m: unknown) => m,
 }));
 
-import handler, { isValidAvatarUrl } from "../../../src/pages/api/transcript";
+import * as route from "../../../src/app/api/transcript/route";
+const handler = asHandler(route);
+import { isValidAvatarUrl } from "../../../src/utils/chat/transcriptHtml";
 
 function makeRes() {
   const res: Partial<NextApiResponse> & { headersSent: boolean } = { headersSent: false };
@@ -40,27 +44,6 @@ const messages = [
 
 describe("transcript API", () => {
   beforeEach(() => jest.clearAllMocks());
-
-  it("accepts a 10mb body so long transcripts are not truncated", () => {
-    const { config } = jest.requireActual("../../../src/pages/api/transcript");
-    expect(config.api.bodyParser.sizeLimit).toBe("10mb");
-  });
-
-  it("returns 405 for non-POST methods", async () => {
-    const res = makeRes();
-    await handler(makeReq({}, "GET"), res);
-
-    expect(res.setHeader).toHaveBeenCalledWith("Allow", ["POST"]);
-    expect(res.status).toHaveBeenCalledWith(405);
-  });
-
-  it("stops after the rate limiter has already responded", async () => {
-    const res = makeRes();
-    res.headersSent = true;
-    await handler(makeReq({ messages }), res);
-
-    expect(res.send).not.toHaveBeenCalled();
-  });
 
   describe("validation", () => {
     it.each([

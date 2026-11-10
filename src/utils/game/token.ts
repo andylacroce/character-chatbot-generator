@@ -20,7 +20,7 @@
  * the OTHER game returns null, never a partially-trusted state.
  */
 
-import type { GameId } from "character-chatbot-shared";
+import type { GameId } from "character-chatbot-shared/src/core";
 import type { CharacterVoiceConfig } from "../chat/characterVoices";
 import { encryptPayload, decryptPayload } from "../server/tokenCrypto";
 

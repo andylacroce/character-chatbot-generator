@@ -3,21 +3,15 @@
  * Uses Claude to determine if a character is likely protected by copyright or trademark.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import {
-  validateCharacterName,
-  type CharacterValidationResult,
-} from "../../utils/moderation/validateCharacter";
-import { withRequestLog } from "../../utils/server/withRequestLog";
+import type { NextRequest } from "next/server";
+import { validateCharacterName } from "../../../utils/moderation/validateCharacter";
+import { withRoute, readJson } from "../../../utils/server/withRoute";
 
-/** Rate limiter: 30 requests per minute per IP. */
-const validationRateLimit = createRateLimiter({
+const LIMIT = {
   name: "validate-character",
   max: 30,
   message: "Too many validation requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for validating character names.
@@ -109,43 +103,15 @@ const validationRateLimit = createRateLimiter({
  *                     brand-new name.
  *       400:
  *         description: Valid character name required
- *       405:
- *         description: Method not allowed
  *       429:
  *         description: Rate limit exceeded
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    logEvent(
-      "warn",
-      "validate_character_method_not_allowed",
-      "Validate character API method not allowed",
-      sanitizeLogMeta({
-        method: req.method,
-      }),
-    );
-    res.status(405).json({ error: "Method not allowed" });
-    return;
-  }
-
-  // Apply rate limiting
-  if (!(await applyRateLimit(validationRateLimit, req, res))) {
-    return;
-  }
-
-  const { name } = req.body;
+export const POST = withRoute(LIMIT, async (req: NextRequest) => {
+  const { name } = await readJson(req);
 
   if (!name || typeof name !== "string" || !name.trim()) {
-    res.status(400).json({ error: "Valid character name required" });
-    return;
+    return Response.json({ error: "Valid character name required" }, { status: 400 });
   }
 
-  const characterName = name.trim();
-
-  res.status(200).json(await validateCharacterName(characterName));
-}
-
-// Re-exported because the client components import this type from the route module.
-export type { CharacterValidationResult };
-
-export default withRequestLog(handler);
+  return Response.json(await validateCharacterName(name.trim()));
+});

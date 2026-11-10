@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const mockLogEvent = jest.fn();
@@ -28,7 +30,8 @@ const mockFrom = jest.fn(() => ({ orderBy: mockOrderBy }));
 const mockSelect = jest.fn(() => ({ from: mockFrom }));
 jest.mock("../../../src/db/client", () => ({ getDb: () => ({ select: mockSelect }) }));
 
-import handler from "../../../src/pages/api/generate-personality";
+import * as route from "../../../src/app/api/generate-personality/route";
+const handler = asHandler(route);
 
 function makeRes() {
   const res: Partial<NextApiResponse> = { headersSent: false };
@@ -50,14 +53,6 @@ function makeReq(body: unknown, method = "POST") {
 
 describe("generate-personality API", () => {
   beforeEach(() => jest.clearAllMocks());
-
-  it("returns 405 for non-POST methods", async () => {
-    const res = makeRes();
-    await handler(makeReq({}, "GET"), res);
-
-    expect(res.status).toHaveBeenCalledWith(405);
-    expect(mockGeneratePersonalityPrompt).not.toHaveBeenCalled();
-  });
 
   it.each([
     ["a missing name", {}],
@@ -155,14 +150,6 @@ describe("generate-personality API", () => {
       expect.any(String),
       expect.objectContaining({ error: "claude exploded" }),
     );
-  });
-
-  it("stops after the rate limiter has already responded", async () => {
-    const res = makeRes();
-    (res as { headersSent: boolean }).headersSent = true;
-    await handler(makeReq({ name: "Ada Lovelace" }), res);
-
-    expect(mockGeneratePersonalityPrompt).not.toHaveBeenCalled();
   });
 
   describe("fuzzy-matching against existing characters (DATABASE_URL configured)", () => {

@@ -1,10 +1,10 @@
 /**
  * The Claude content-safety / copyright / recognition classifier for a character name. Shared by
- * pages/api/validate-character.ts (the creation gate) and pages/api/generate-avatar.ts (which
+ * app/api/validate-character/route.ts (the creation gate) and app/api/generate-avatar/route.ts (which
  * re-checks a brand-new name before it can reach the public Character Wall).
  */
 
-import type { CharacterValidationResult } from "character-chatbot-shared";
+import type { CharacterValidationResult } from "character-chatbot-shared/src/core";
 import anthropic from "../claude/anthropicClient";
 import { getClaudeModel } from "../claude/claudeModelSelector";
 import { extractJson } from "../claude/parseClaudeJson";

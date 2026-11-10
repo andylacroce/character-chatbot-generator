@@ -4,27 +4,25 @@
  * copyright-warning override, which is never persisted at all) all get an empty list, not
  * an error — accounts are additive, and nothing here should ever be reachable in a way that
  * breaks the guest, localStorage-only flow. GET-only: messages are written server-side as a
- * side effect of a real chat turn (see pages/api/chat.ts), never through a directly-callable
+ * side effect of a real chat turn (see app/api/chat/route.ts), never through a directly-callable
  * write endpoint.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextRequest } from "next/server";
 import { and, desc, eq } from "drizzle-orm";
-import { getDb } from "../../db/client";
-import { bots, messages } from "../../db/schema";
-import { getSessionUserId } from "../../utils/account/getSessionUserId";
-import { sanitizeCharacterName } from "../../utils/server/security";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { getCurrentEnvironment } from "../../utils/environment";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { withRequestLog } from "../../utils/server/withRequestLog";
+import { getDb } from "../../../db/client";
+import { bots, messages } from "../../../db/schema";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
+import { sanitizeCharacterName } from "../../../utils/server/security";
+import { getCurrentEnvironment } from "../../../utils/environment";
+import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { withRoute } from "../../../utils/server/withRoute";
 
-/** Rate limiter: 30 requests per minute per IP. */
-const messagesRateLimit = createRateLimiter({
+const LIMIT = {
   name: "messages",
   max: 30,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for listing a signed-in user's chat history for one character.
@@ -69,21 +67,13 @@ const messagesRateLimit = createRateLimiter({
  *       500:
  *         description: Failed to list messages
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(messagesRateLimit, req, res))) return;
-
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
+export const GET = withRoute(LIMIT, async (req: NextRequest) => {
+  const query = Object.fromEntries(req.nextUrl.searchParams);
   const userId = await getSessionUserId(req);
-  const botName = typeof req.query.botName === "string" ? req.query.botName : "";
+  const botName = typeof query.botName === "string" ? query.botName : "";
   const sanitizedName = sanitizeCharacterName(botName);
   if (!userId || !sanitizedName || !process.env.DATABASE_URL) {
-    res.status(200).json({ messages: [] });
-    return;
+    return Response.json({ messages: [] });
   }
 
   const db = getDb();
@@ -100,8 +90,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         ),
       );
     if (!botRow) {
-      res.status(200).json({ messages: [] });
-      return;
+      return Response.json({ messages: [] });
     }
 
     const rows = await db
@@ -111,7 +100,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       .orderBy(desc(messages.id))
       .limit(200);
 
-    res.status(200).json({
+    return Response.json({
       messages: rows.reverse().map((m) => ({ sender: m.sender, text: m.text })),
     });
   } catch (err) {
@@ -121,8 +110,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       "Failed to list messages",
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
-    res.status(500).json({ error: "Failed to list messages" });
+    return Response.json({ error: "Failed to list messages" }, { status: 500 });
   }
-}
-
-export default withRequestLog(handler);
+});

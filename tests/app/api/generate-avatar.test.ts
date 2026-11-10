@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 // Module-level Anthropic mock prevents the SDK constructor from running in jsdom
@@ -102,16 +104,8 @@ describe("generate-avatar API", () => {
     process.env = OLD_ENV;
   });
 
-  it("returns 405 for non-POST methods", async () => {
-    const handler = require("../../../src/pages/api/generate-avatar").default;
-    const req = { method: "GET" } as Partial<NextApiRequest> as NextApiRequest;
-    const res = makeRes();
-    await handler(req, res);
-    expect(res.status).toHaveBeenCalledWith(405);
-  });
-
   it("returns 400 for missing or invalid name", async () => {
-    const handler = require("../../../src/pages/api/generate-avatar").default;
+    const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
     const req = { method: "POST", body: {} } as Partial<NextApiRequest> as NextApiRequest;
     const res = makeRes();
     await handler(req, res);
@@ -126,7 +120,7 @@ describe("generate-avatar API", () => {
       jest.doMock("../../../src/utils/server/security", () => ({
         sanitizeCharacterName: (_: string) => "",
       }));
-      const handler = require("../../../src/pages/api/generate-avatar").default;
+      const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
       const req = {
         method: "POST",
         body: { name: "???" },
@@ -153,7 +147,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "TestName" },
@@ -185,7 +179,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "TestName" },
@@ -222,7 +216,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "TestName" },
@@ -249,7 +243,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "NoImage" },
@@ -268,7 +262,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "FailImage" },
@@ -300,7 +294,7 @@ describe("generate-avatar API", () => {
       global.fetch = mockFetch as unknown as typeof fetch;
       mockLoggerAndDeps();
 
-      const handler = require("../../../src/pages/api/generate-avatar").default;
+      const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
       const req = {
         method: "POST",
         body: { name: "PromptFail" },
@@ -347,7 +341,7 @@ describe("generate-avatar API", () => {
         sanitizeCharacterName: (s: string) => (typeof s === "string" ? s.trim() : ""),
       }));
 
-      const handler = require("../../../src/pages/api/generate-avatar").default;
+      const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
       const req = {
         method: "POST",
         body: { name: "Throws" },
@@ -380,7 +374,7 @@ describe("generate-avatar API", () => {
 
       process.env.BLOB_READ_WRITE_TOKEN = "fake-blob-token";
 
-      const handler = require("../../../src/pages/api/generate-avatar").default;
+      const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
       const req = {
         method: "POST",
         body: { name: "BlobBacked" },
@@ -424,7 +418,7 @@ describe("generate-avatar API", () => {
 
       process.env.BLOB_READ_WRITE_TOKEN = "fake-blob-token";
 
-      const handler = require("../../../src/pages/api/generate-avatar").default;
+      const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
       const req = {
         method: "POST",
         body: { name: "BlobFails" },
@@ -457,7 +451,7 @@ describe("generate-avatar API", () => {
       global.fetch = mockFetch as unknown as typeof fetch;
       mockLoggerAndDeps();
 
-      const handler = require("../../../src/pages/api/generate-avatar").default;
+      const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
       const req = {
         method: "POST",
         body: { name: "LongPrompt" },
@@ -509,7 +503,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "Cached Character" },
@@ -542,7 +536,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "New Character" },
@@ -574,7 +568,7 @@ describe("generate-avatar API", () => {
         }) as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const res = makeRes();
         await handler(
           {
@@ -608,7 +602,7 @@ describe("generate-avatar API", () => {
           }) as unknown as typeof fetch;
           mockLoggerAndDeps();
 
-          const handler = require("../../../src/pages/api/generate-avatar").default;
+          const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
           const res = makeRes();
           await handler({ method: "POST", body: { name: "Sneaky Name" } } as NextApiRequest, res);
 
@@ -634,7 +628,7 @@ describe("generate-avatar API", () => {
         }) as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const res = makeRes();
         await handler({ method: "POST", body: { name: "New Character" } } as NextApiRequest, res);
 
@@ -653,7 +647,7 @@ describe("generate-avatar API", () => {
         mockAnthropic();
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         await handler(
           { method: "POST", body: { name: "Cached Character" } } as NextApiRequest,
           makeRes(),
@@ -677,7 +671,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "NoImage" },
@@ -715,7 +709,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "FallbackAfterLookupFail" },
@@ -751,7 +745,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "WriteFails" },
@@ -799,7 +793,7 @@ describe("generate-avatar API", () => {
         global.fetch = mockFetch as unknown as typeof fetch;
         mockLoggerAndDeps();
 
-        const handler = require("../../../src/pages/api/generate-avatar").default;
+        const handler = asHandler(require("../../../src/app/api/generate-avatar/route"));
         const req = {
           method: "POST",
           body: { name: "Mickey Mouse", skipPersistence: true },
