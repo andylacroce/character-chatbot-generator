@@ -88,7 +88,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.5",
-    "eslint-plugin-jsdoc": "^65.4.4",
+    "eslint-plugin-jsdoc": "^65.4.5",
     "eslint-plugin-regexp": "^3.3.3",
     "eslint-plugin-security": "^4.2.1",
     "express": "^5.2.1",
