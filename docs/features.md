@@ -197,10 +197,12 @@ acting as a general-purpose observability service.
   nobody can access it. It's never reachable on a Vercel Preview deployment regardless of
   email match, since Preview's sign-in stub issues sessions with zero identity
   verification (see [Account Persistence](#account-persistence-optional) above).
-  The guessing-game section shows starts, guess accuracy, guest share, continued rounds,
-  ending reasons, final streaks, and a 7/30/90-day activity chart with an exact-count
-  table. The date control applies only to that chart and table; the other game totals
-  cover all recorded activity. Game analytics begin with the deployment that adds these events; earlier plays
+  A time-window control (All time, Today, 7d, 30d, 90d, or a custom date range, all UTC) scopes
+  every figure and chart except the Character Wall catalog, and each section says which window it
+  covers. The guessing-game section has one set of figures per game (Guess Who, Guess Who's Next):
+  runs, guess accuracy, exchanges to solve, streaks, guest share, and how runs end. The character
+  section covers the validate-to-create funnel, saved characters and messages (signed-in users
+  only), avatar providers and cache use, and the Wall catalog by category. Game analytics begin with the deployment that adds these events; earlier plays
   cannot be reconstructed from the stateless game token or personal high scores. Abandoned
   runs have no ending event, and the event counts are best effort.
 - **Discoverable, if you're an admin**: a cheap `GET /api/admin/is-admin` check (no

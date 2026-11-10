@@ -1,4 +1,4 @@
-import { formatPct, pct } from "@/src/app/admin/adminStatsTypes";
+import { describeWindow, formatPct, pct } from "@/src/app/admin/adminStatsTypes";
 
 describe("formatPct", () => {
   it("renders a percentage", () => {
@@ -21,5 +21,23 @@ describe("pct", () => {
   it("is null when the total is zero or negative", () => {
     expect(pct(0, 0)).toBeNull();
     expect(pct(3, -1)).toBeNull();
+  });
+});
+
+describe("describeWindow", () => {
+  it("describes presets and custom ranges in plain words", () => {
+    expect(describeWindow({ from: null, to: null, preset: "all" })).toBe("all recorded activity");
+    expect(describeWindow({ from: null, to: null, preset: "today" })).toBe("today (UTC)");
+    expect(describeWindow({ from: null, to: null, preset: "7d" })).toBe("the last 7 days");
+    expect(
+      describeWindow({
+        from: "2026-03-01T00:00:00.000Z",
+        to: "2026-03-09T23:59:59.999Z",
+        preset: "custom",
+      }),
+    ).toBe("Mar 1 to Mar 9 (UTC)");
+    expect(describeWindow({ from: "2026-03-01T00:00:00.000Z", to: null, preset: "custom" })).toBe(
+      "since Mar 1 (UTC)",
+    );
   });
 });

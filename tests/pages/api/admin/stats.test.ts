@@ -49,6 +49,10 @@ const AVATAR_PROVIDER_ROWS = [
 ];
 const BOTS_TOTAL_ROW = [{ total: 2 }];
 const MESSAGES_TOTAL_ROW = [{ total: 10 }];
+const CATALOG_ROWS = [
+  { category: "history", total: 5 },
+  { category: "mythology", total: 3 },
+];
 const GAME_DAILY_ROWS = [
   { day: new Date().toISOString().slice(0, 10), started: 3, correct: 2, ended: 1 },
 ];
@@ -81,6 +85,7 @@ function queueDefaultSelects(mockSelect: jest.Mock) {
     .mockImplementationOnce(() => makeQuery(AVATAR_PROVIDER_ROWS))
     .mockImplementationOnce(() => makeQuery(BOTS_TOTAL_ROW))
     .mockImplementationOnce(() => makeQuery(MESSAGES_TOTAL_ROW))
+    .mockImplementationOnce(() => makeQuery(CATALOG_ROWS))
     .mockImplementationOnce(() => makeQuery(GAME_DAILY_ROWS))
     .mockImplementationOnce(() => makeQuery(GAME_AGG_ROWS))
     // "Guess Who" (the new game) has no activity in this fixture.
@@ -144,7 +149,11 @@ describe("admin/stats API", () => {
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
     expect(data.environment).toBe("test-env");
-    expect(data.totals).toEqual({ bots: 0, messages: 0, avgMessagesPerBot: 0 });
+    expect(data.totals).toEqual({
+      bots: 0,
+      messages: 0,
+      avgMessagesPerBot: 0,
+    });
     expect(data.activity).toEqual({ createdToday: 0, createdLast7Days: 0, daily: [] });
     expect(data.funnel).toEqual({ validated: 0, blocked: 0, created: 0, creationRatePct: null });
     expect(data.creators).toEqual({ guestCount: 0, signedInCount: 0, guestPct: null });
@@ -166,7 +175,18 @@ describe("admin/stats API", () => {
     const data = res._getJSONData();
 
     expect(data.environment).toBe("test-env");
-    expect(data.totals).toEqual({ bots: 2, messages: 10, avgMessagesPerBot: 5 });
+    expect(data.totals).toEqual({
+      bots: 2,
+      messages: 10,
+      avgMessagesPerBot: 5,
+    });
+    expect(data.catalog).toEqual({
+      totalCached: 8,
+      byCategory: [
+        { category: "history", total: 5, pct: 62.5 },
+        { category: "mythology", total: 3, pct: 37.5 },
+      ],
+    });
     expect(data.activity.daily).toEqual(DAILY_ROWS);
     // validated=10, created=6 -> 60.0%
     expect(data.funnel).toEqual({ validated: 10, blocked: 1, created: 6, creationRatePct: 60 });
@@ -240,6 +260,7 @@ describe("admin/stats API", () => {
       .mockImplementationOnce(() => makeQuery([]))
       .mockImplementationOnce(() => makeQuery([]))
       .mockImplementationOnce(() => makeQuery([]))
+      .mockImplementationOnce(() => makeQuery([]))
       .mockImplementationOnce(() => makeQuery([]));
     const handler = (await import("../../../../src/pages/api/admin/stats")).default;
     const { req, res } = createMocks({ method: "GET" });
@@ -264,5 +285,20 @@ describe("admin/stats API", () => {
     const { req, res } = createMocks({ method: "GET" });
     await handler(req, res);
     expect(res._getStatusCode()).toBe(500);
+  });
+
+  it("returns timeWindow preset information in the response", async () => {
+    mockGetSessionUserId.mockResolvedValue("admin-1");
+    mockIsAdmin.mockResolvedValue(true);
+    queueDefaultSelects(mockSelect);
+    const handler = (await import("../../../../src/pages/api/admin/stats")).default;
+    const { req, res } = createMocks({ method: "GET", query: { window: "7d" } });
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.timeWindow).toBeDefined();
+    expect(data.timeWindow.preset).toBe("7d");
+    expect(data.timeWindow.from).not.toBeNull();
+    expect(data.timeWindow.to).not.toBeNull();
   });
 });

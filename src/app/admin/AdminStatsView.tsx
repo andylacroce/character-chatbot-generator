@@ -33,6 +33,7 @@ import { formatRelativeTime } from "character-chatbot-shared";
 import { GameStatsPanel } from "./GameStatsPanel";
 import { CharacterStatsPanel } from "./CharacterStatsPanel";
 import { REFRESH_INTERVAL_OPTIONS, useAdminStats } from "./useAdminStats";
+import { TIME_WINDOW_PRESETS } from "./adminStatsTypes";
 import AppHeader from "../components/common/AppHeader";
 import { useAccountMenu } from "../components/account/useAccountMenu";
 import styles from "../components/styles/AdminStats.module.css";
@@ -41,9 +42,19 @@ import styles from "../components/styles/AdminStats.module.css";
 export default function AdminStatsView() {
   const { status } = useSession();
   const { menuItems, modals } = useAccountMenu();
-  const { stats, error, isRefreshing, refreshIntervalMs, setRefreshIntervalMs, fetchStats } =
-    useAdminStats(status === "authenticated");
+  const {
+    stats,
+    error,
+    isRefreshing,
+    refreshIntervalMs,
+    setRefreshIntervalMs,
+    fetchStats,
+    timeWindow,
+    setTimeWindow,
+  } = useAdminStats(status === "authenticated");
   const [activeView, setActiveView] = useState<"game" | "characters">("game");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   // A pure re-render tick — formatRelativeTime(stats.generatedAt) re-derives its string
   // from Date.now() on every render, but without something forcing a render between
   // fetches, "Updated 3s ago" would stay frozen at whatever it said when the data last
@@ -86,7 +97,7 @@ export default function AdminStatsView() {
                   >
                     {stats.environment}
                   </span>
-                  <span>
+                  <span className={styles.updatedTime}>
                     {isRefreshing
                       ? "Refreshing…"
                       : `Updated ${formatRelativeTime(stats.generatedAt)}`}
@@ -94,15 +105,29 @@ export default function AdminStatsView() {
                 </div>
               )}
               <div className={styles.metaControls}>
-                <button
-                  type="button"
-                  className={styles.refreshButton}
-                  onClick={() => fetchStats()}
-                  disabled={isRefreshing}
-                  aria-label="Refresh stats"
+                <select
+                  className={styles.timeWindowSelect}
+                  value={timeWindow.preset}
+                  onChange={(e) => {
+                    const preset = e.target.value;
+                    if (preset === "custom") {
+                      setTimeWindow({
+                        preset: "custom",
+                        from: customFrom || undefined,
+                        to: customTo || undefined,
+                      });
+                    } else {
+                      setTimeWindow({ preset });
+                    }
+                  }}
+                  aria-label="Time window for all figures except the Character Wall catalog"
                 >
-                  <FaSyncAlt size={13} className={isRefreshing ? styles.spinning : undefined} />
-                </button>
+                  {TIME_WINDOW_PRESETS.map((p) => (
+                    <option key={p.preset} value={p.preset}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
                 <select
                   className={styles.refreshSelect}
                   value={refreshIntervalMs}
@@ -115,7 +140,60 @@ export default function AdminStatsView() {
                     </option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  className={styles.refreshButton}
+                  onClick={() => fetchStats()}
+                  disabled={isRefreshing}
+                  aria-label="Refresh stats"
+                >
+                  <FaSyncAlt size={13} className={isRefreshing ? styles.spinning : undefined} />
+                </button>
               </div>
+            </div>
+          )}
+
+          {stats && timeWindow.preset === "custom" && (
+            <div className={styles.customDateBarWrap}>
+              <form
+                className={styles.customDateBar}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setTimeWindow({
+                    preset: "custom",
+                    from: customFrom || undefined,
+                    to: customTo || undefined,
+                  });
+                }}
+              >
+                <span className={styles.customDateLabel}>Custom range:</span>
+                <div className={styles.customDateInputsRow}>
+                  <input
+                    type="date"
+                    className={styles.compactDateInput}
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    max={customTo || undefined}
+                    aria-label="Start date"
+                  />
+                  <span className={styles.customDateSep}>to</span>
+                  <input
+                    type="date"
+                    className={styles.compactDateInput}
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    min={customFrom || undefined}
+                    aria-label="End date"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className={styles.compactApplyButton}
+                  disabled={!customFrom && !customTo}
+                >
+                  Apply
+                </button>
+              </form>
             </div>
           )}
         </div>

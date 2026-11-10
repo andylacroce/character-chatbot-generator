@@ -37,8 +37,11 @@ product-usage analytics, kept small rather than becoming general observability.
   that combines them) aggregates the current environment: game starts (today/7d/all time),
   guest share, scored guess accuracy, continued rounds, ending reasons, streak distribution, and 90
   days of daily activity. `/admin` has keyboard-operable tabs (Guessing game, Character
-  conversations); both daily charts use `AdminActivityChart`, whose 7/30/90-day range changes only
-  the chart and its table (other figures are all-time except the labeled today/7d counts). Figures
+  conversations) and a time-window control (`?window=today|7d|30d|90d` or `?from=&to=`, UTC, parsed
+  by `parseTimeRange`) that scopes every figure except the all-time Wall catalog; the daily charts
+  (`AdminActivityChart`) end at the window's end and keep their own 7/30/90-day zoom.
+  Saved messages are counted for the characters saved in the window, so the per-character average
+  divides like by like. Figures
   start when instrumentation deployed (no backfill: tokens hold no history, and abandoned runs emit
   no event). Writes are best effort, so counts can include retries and aren't a unique-run ledger.
 - **Access:** `/admin` (`src/app/admin/page.tsx`) and `/admin/moderation` are unlinked-but-reachable

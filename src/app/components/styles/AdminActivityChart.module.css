@@ -16,6 +16,9 @@
 
 .root {
   margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   --series-validated: #2a78d6;
   --series-created: #eb6834;
   --series-avatar: #1baf7a;
@@ -68,16 +71,20 @@
 .chartWrap {
   position: relative;
   width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-/* aspect-ratio must match the component's VIEW_W/VIEW_H (640/220) — height:auto plus a
+/* aspect-ratio must match the component's VIEW_W/VIEW_H (640/150) — height:auto plus a
    matching aspect-ratio keeps the viewBox scaling uniform at any container width. A fixed
    height with width:100% (the earlier version) forced non-uniform x/y scaling on narrow
    (mobile) viewports, visibly squashing the axis text and lines. */
 .svg {
   width: 100%;
   height: auto;
-  aspect-ratio: 640 / 220;
+  aspect-ratio: 640 / 150;
   display: block;
   overflow: visible;
 }
@@ -327,4 +334,8 @@
   font-size: 0.9rem;
   padding: 2rem 0;
   text-align: center;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

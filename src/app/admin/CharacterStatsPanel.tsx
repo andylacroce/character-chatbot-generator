@@ -1,3 +1,4 @@
+import { getCharacterCategoryLabel } from "character-chatbot-shared";
 import React from "react";
 import AdminActivityChart from "../components/admin/AdminActivityChart";
 import styles from "../components/styles/AdminStats.module.css";
@@ -5,12 +6,16 @@ import {
   AdminStats,
   WARNING_LEVEL_LABELS,
   PROVIDER_LABELS,
+  describeWindow,
   formatPct,
   pct,
 } from "./adminStatsTypes";
 
 /** The character-conversations tab of the admin stats view. */
 export function CharacterStatsPanel({ stats }: { stats: AdminStats }) {
+  const avatarTotal = stats.avatars.byProvider.reduce((sum, row) => sum + row.total, 0);
+  const cacheHits = stats.avatars.byProvider.find((row) => row.provider === "cache")?.total ?? 0;
+
   return (
     <section
       id="character-stats-panel"
@@ -21,36 +26,40 @@ export function CharacterStatsPanel({ stats }: { stats: AdminStats }) {
       <div className={styles.gameSectionHeading}>
         <div>
           <h2 className={styles.groupHeading}>Character conversations</h2>
-          <p className={styles.sectionHint}>Conversation launches and saved chats</p>
+          <p className={styles.sectionHint}>
+            Figures cover {describeWindow(stats.timeWindow)}, except the Character Wall catalog.
+            Funnel and creator counts come from event logs (guests included); saved characters and
+            messages are signed-in users only.
+          </p>
         </div>
       </div>
       <div className={styles.statGrid}>
         <div className={styles.statTile}>
           <p className={styles.statLabel}>Saved characters</p>
           <p className={styles.statValue}>{stats.totals.bots}</p>
-          <p className={styles.statSub}>Signed-in users, persisted</p>
+          <p className={styles.statSub}>Signed-in users only</p>
         </div>
         <div className={styles.statTile}>
-          <p className={styles.statLabel}>Persisted messages</p>
+          <p className={styles.statLabel}>Saved messages</p>
           <p className={styles.statValue}>{stats.totals.messages}</p>
-          <p className={styles.statSub}>{stats.totals.avgMessagesPerBot} avg per bot</p>
+          <p className={styles.statSub}>{stats.totals.avgMessagesPerBot} per saved character</p>
         </div>
         <div className={styles.statTile}>
-          <p className={styles.statLabel}>Started today</p>
+          <p className={styles.statLabel}>Characters created today</p>
           <p className={styles.statValue}>{stats.activity.createdToday}</p>
           <p className={styles.statSub}>Guests + signed-in</p>
         </div>
         <div className={styles.statTile}>
-          <p className={styles.statLabel}>Started last 7 days</p>
+          <p className={styles.statLabel}>Created in the last 7 days</p>
           <p className={styles.statValue}>{stats.activity.createdLast7Days}</p>
           <p className={styles.statSub}>Guests + signed-in</p>
         </div>
       </div>
 
       <div className={styles.mainGrid}>
-        <div className={styles.section}>
+        <div className={`${styles.section} ${styles.chartSection}`}>
           <h3 className={styles.sectionTitle}>Daily activity</h3>
-          <AdminActivityChart data={stats.activity.daily} />
+          <AdminActivityChart data={stats.activity.daily} endDay={stats.timeWindow.to} />
         </div>
 
         <div className={`${styles.section} ${styles.funnelCard}`}>
@@ -163,15 +172,51 @@ export function CharacterStatsPanel({ stats }: { stats: AdminStats }) {
               )}
             </tbody>
           </table>
-          {stats.avatars.fallbackRatePct !== null && stats.avatars.fallbackRatePct > 0 && (
-            <div className={styles.calloutRow}>
+          <div className={styles.calloutRow}>
+            {cacheHits > 0 && (
+              <span className={styles.callout}>
+                {cacheHits} of {avatarTotal} portraits ({formatPct(pct(cacheHits, avatarTotal))})
+                came from the cache instead of a new image generation
+              </span>
+            )}
+            {stats.avatars.fallbackRatePct !== null && stats.avatars.fallbackRatePct > 0 && (
               <span className={styles.calloutWarn}>
                 {formatPct(stats.avatars.fallbackRatePct)} of requests fell back to the plain
                 silhouette — no provider returned an image
               </span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        {stats.catalog.byCategory.length > 0 && (
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Character Wall catalog (all time)</h2>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Portraits</th>
+                  <th>Share</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.catalog.byCategory.map((row) => (
+                  <tr key={row.category}>
+                    <td>{getCharacterCategoryLabel(row.category)}</td>
+                    <td>{row.total}</td>
+                    <td>{row.pct}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className={styles.calloutRow}>
+              <span className={styles.callout}>
+                {stats.catalog.totalCached} cached portraits in total; not affected by the time
+                window
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

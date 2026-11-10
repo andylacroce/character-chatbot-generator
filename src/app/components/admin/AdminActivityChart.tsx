@@ -21,7 +21,7 @@ const SERIES = [
 ];
 
 const VIEW_W = 640;
-const VIEW_H = 220;
+const VIEW_H = 150;
 const PAD = { top: 12, right: 12, bottom: 24, left: 32 };
 const PLOT_W = VIEW_W - PAD.left - PAD.right;
 const PLOT_H = VIEW_H - PAD.top - PAD.bottom;
@@ -36,10 +36,14 @@ function niceCeil(max: number): number {
 }
 
 /** Fills gaps in sparse per-day rows so the last `days` calendar days all render, zero-filled. */
-function buildDenseSeries(data: DailyActivityRow[], days: number): DailyActivityRow[] {
+function buildDenseSeries(
+  data: DailyActivityRow[],
+  days: number,
+  endDay?: string | null,
+): DailyActivityRow[] {
   const byDay = new Map(data.map((row) => [row.day, row]));
   const result: DailyActivityRow[] = [];
-  const today = new Date();
+  const today = endDay ? new Date(endDay) : new Date();
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setUTCDate(d.getUTCDate() - i);
@@ -79,17 +83,20 @@ export default function AdminActivityChart({
   labels = ["Names validated", "Characters created", "Avatars generated"],
   dayLabels = ["validated", "created", "avatars generated"],
   activityLabel = "Daily activity",
+  endDay,
 }: {
   data: DailyActivityRow[];
   labels?: readonly [string, string, string];
   dayLabels?: readonly [string, string, string];
   activityLabel?: string;
+  /** Last day to plot (ISO timestamp); defaults to today. Lets a past custom window show its own days. */
+  endDay?: string | null;
 }) {
   const [range, setRange] = useState<RangeDays>(30);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const series = SERIES.map((item, index) => ({ ...item, label: labels[index] }));
 
-  const rows = useMemo(() => buildDenseSeries(data, range), [data, range]);
+  const rows = useMemo(() => buildDenseSeries(data, range, endDay), [data, range, endDay]);
   const n = rows.length;
 
   const yMax = useMemo(

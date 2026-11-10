@@ -15,7 +15,13 @@ const GAME_LABELS = ["Runs started", "Correct guesses", "Runs ended"] as const;
 const GAME_DAY_LABELS = ["started", "correct", "ended"] as const;
 
 /** Presents game activity with the same chart controls and interaction as character activity. */
-export default function GameActivityChart({ data }: { data: GameDailyActivityRow[] }) {
+export default function GameActivityChart({
+  data,
+  endDay,
+}: {
+  data: GameDailyActivityRow[];
+  endDay?: string | null;
+}) {
   const chartData = useMemo(
     () =>
       data.map((row) => ({
@@ -32,6 +38,7 @@ export default function GameActivityChart({ data }: { data: GameDailyActivityRow
       labels={GAME_LABELS}
       dayLabels={GAME_DAY_LABELS}
       activityLabel="Game activity"
+      endDay={endDay}
     />
   );
 }
