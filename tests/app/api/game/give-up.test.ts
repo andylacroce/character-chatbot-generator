@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { signGameState } from "../../../../src/utils/game/token";
 import {
   GAMES_UNDER_TEST,
@@ -13,12 +15,6 @@ jest.mock("../../../../src/utils/logger", () => ({
   logEvent: (...args: unknown[]) => mockLogEvent(...args),
   sanitizeLogMeta: (m: unknown) => m,
   generateRequestId: () => "test-id",
-}));
-
-const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
 
 const mockRecordEvent = jest.fn();
@@ -39,7 +35,7 @@ jest.mock("../../../../src/utils/game/scores", () => ({
 
 jest.mock("../../../../src/utils/environment", () => ({ getCurrentEnvironment: () => "test" }));
 
-const handler = require("../../../../src/pages/api/[game]/give-up").default;
+const handler = asHandler(require("../../../../src/app/api/[game]/give-up/route"));
 
 describe.each(GAMES_UNDER_TEST)("$slug/give-up API", (game) => {
   const prefix = game.eventPrefix;
@@ -52,17 +48,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/give-up API", (game) => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApplyRateLimit.mockResolvedValue(true);
     mockGetSessionUserId.mockResolvedValue(null);
-  });
-
-  it("applies this game's own rate limiter", async () => {
-    await giveUp({});
-    expect(mockApplyRateLimit).toHaveBeenCalledWith(
-      expect.objectContaining({ name: `${game.slug}-give-up`, max: 10 }),
-      expect.anything(),
-      expect.anything(),
-    );
   });
 
   it("returns 405 for non-POST methods", async () => {

@@ -1,13 +1,10 @@
+/** @jest-environment node */
+import { asHandler } from "../../helpers/asHandler";
 import { createMocks } from "node-mocks-http";
 
 const mockGetSessionUserId = jest.fn();
 jest.mock("../../../src/utils/account/getSessionUserId", () => ({
   getSessionUserId: (...args: unknown[]) => mockGetSessionUserId(...args),
-}));
-
-jest.mock("../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: () => ({ limiterName: "test" }),
-  applyRateLimit: () => Promise.resolve(true),
 }));
 
 const mockDeleteUserBlobs = jest.fn();
@@ -58,7 +55,7 @@ describe("account API", () => {
   });
 
   const run = async (opts: Parameters<typeof createMocks>[0] = { method: "DELETE" }) => {
-    const handler = (await import("../../../src/pages/api/account")).default;
+    const handler = asHandler(await import("../../../src/app/api/account/route"));
     const { req, res } = createMocks(opts);
     await handler(req, res);
     return res;

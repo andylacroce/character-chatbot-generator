@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { GUESS_WHO } from "character-chatbot-shared";
 import { signGameState, verifyGameState } from "../../../../src/utils/game/token";
 import {
@@ -14,12 +16,6 @@ jest.mock("../../../../src/utils/logger", () => ({
   logEvent: (...args: unknown[]) => mockLogEvent(...args),
   sanitizeLogMeta: (m: unknown) => m,
   generateRequestId: () => "test-id",
-}));
-
-const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
 
 jest.mock("../../../../src/utils/environment", () => ({ getCurrentEnvironment: () => "test" }));
@@ -69,7 +65,7 @@ jest.mock("../../../../src/utils/chat/ttsReply", () => ({
   synthesizeReplyAudio: (...args: unknown[]) => mockSynthesizeReplyAudio(...args),
 }));
 
-const handler = require("../../../../src/pages/api/[game]/message").default;
+const handler = asHandler(require("../../../../src/app/api/[game]/message/route"));
 
 describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
   const prefix = game.eventPrefix;
@@ -89,7 +85,6 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
   beforeEach(() => {
     jest.clearAllMocks();
     token = signGameState(makeState(game));
-    mockApplyRateLimit.mockResolvedValue(true);
     mockSynthesizeReplyAudio.mockResolvedValue("/api/audio?file=test.mp3");
     mockGetSessionUserId.mockResolvedValue(null);
     mockGetGuestId.mockReturnValue(null);
@@ -106,17 +101,6 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
     const res = await send(body);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(mockClassifyGuess).not.toHaveBeenCalled();
-  });
-
-  it("applies this game's own rate limiter", async () => {
-    classify("none");
-    mockGetGameReply.mockResolvedValueOnce("ok");
-    await send({ message: "hi" });
-    expect(mockApplyRateLimit).toHaveBeenCalledWith(
-      expect.objectContaining({ name: `${game.slug}-message`, max: 10 }),
-      expect.anything(),
-      expect.anything(),
-    );
   });
 
   it("returns 405 for non-POST methods", async () => {

@@ -15,9 +15,9 @@
  * sent.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
-import { getDb } from "../../db/client";
+import { getDb } from "../../../db/client";
 import {
   bots,
   guessWhoGuestProfiles,
@@ -26,20 +26,18 @@ import {
   guessWhoResults,
   users,
   verificationTokens,
-} from "../../db/schema";
-import { getSessionUserId } from "../../utils/account/getSessionUserId";
-import { deleteUserBlobs } from "../../utils/account/userBlobs";
-import { clearGuestId, getGuestId } from "../../utils/game/gameGuestIdentity";
-import { createRateLimiter, applyRateLimit } from "../../utils/server/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../utils/logger";
-import { withRequestLog } from "../../utils/server/withRequestLog";
+} from "../../../db/schema";
+import { getSessionUserId } from "../../../utils/account/getSessionUserId";
+import { deleteUserBlobs } from "../../../utils/account/userBlobs";
+import { CLEAR_GUEST_COOKIE, getGuestId } from "../../../utils/game/gameGuestIdentity";
+import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
+import { withRoute } from "../../../utils/server/withRoute";
 
-/** Rate limiter: 5 requests per minute per IP. */
-const accountRateLimit = createRateLimiter({
+const LIMIT = {
   name: "account",
   max: 5,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
 /**
  * Next.js API route handler for deleting the signed-in user's account and its data.
@@ -72,27 +70,18 @@ const accountRateLimit = createRateLimiter({
  *       500:
  *         description: Failed to delete account
  */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(accountRateLimit, req, res))) return;
-
-  if (req.method !== "DELETE") {
-    res.setHeader("Allow", ["DELETE"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
+export const DELETE = withRoute(LIMIT, async (req: NextRequest) => {
   const userId = await getSessionUserId(req);
   if (!userId) {
-    res.status(401).json({ error: "Not signed in" });
-    return;
+    return Response.json({ error: "Not signed in" }, { status: 401 });
   }
   if (!process.env.DATABASE_URL) {
-    res.status(200).json({ deleted: false });
-    return;
+    return Response.json({ deleted: false });
   }
 
   const db = getDb();
   let avatarUrls: (string | null)[];
+  let clearGuestCookie = false;
   try {
     const botRows = await db
       .select({ avatarUrl: bots.avatarUrl })
@@ -111,13 +100,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const guestId = getGuestId(req);
     if (guestId) {
+      clearGuestCookie = true;
       await Promise.all([
         db.delete(guessWhoNextResults).where(eq(guessWhoNextResults.guestId, guestId)),
         db.delete(guessWhoNextGuestProfiles).where(eq(guessWhoNextGuestProfiles.guestId, guestId)),
         db.delete(guessWhoResults).where(eq(guessWhoResults.guestId, guestId)),
         db.delete(guessWhoGuestProfiles).where(eq(guessWhoGuestProfiles.guestId, guestId)),
       ]);
-      clearGuestId(res);
     }
   } catch (err) {
     logEvent(
@@ -126,8 +115,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       "Failed to delete account",
       sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
     );
-    res.status(500).json({ error: "Failed to delete account" });
-    return;
+    return Response.json({ error: "Failed to delete account" }, { status: 500 });
   }
 
   // The account itself is gone at this point; a Blob failure is logged for manual
@@ -148,7 +136,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   logEvent("info", "account_deleted", "Account deleted", sanitizeLogMeta({ blobsDeleted }));
-  res.status(200).json({ deleted: true });
-}
-
-export default withRequestLog(handler);
+  const res = Response.json({ deleted: true });
+  if (clearGuestCookie) res.headers.append("Set-Cookie", CLEAR_GUEST_COOKIE);
+  return res;
+});

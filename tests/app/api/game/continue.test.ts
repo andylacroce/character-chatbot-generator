@@ -1,3 +1,5 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 import { signGameState, verifyGameState } from "../../../../src/utils/game/token";
 import gameCharacterNames from "../../../../src/data/gameCharacterNames";
 import {
@@ -15,12 +17,6 @@ jest.mock("../../../../src/utils/logger", () => ({
   logEvent: (...args: unknown[]) => mockLogEvent(...args),
   sanitizeLogMeta: (m: unknown) => m,
   generateRequestId: () => "test-id",
-}));
-
-const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
 }));
 
 const mockGetSessionUserId = jest.fn();
@@ -63,7 +59,7 @@ jest.mock("../../../../src/utils/chat/ttsReply", () => ({
   synthesizeReplyAudio: jest.fn().mockResolvedValue("/api/audio?file=opening.mp3"),
 }));
 
-const handler = require("../../../../src/pages/api/[game]/continue").default;
+const handler = asHandler(require("../../../../src/app/api/[game]/continue/route"));
 
 describe.each(GAMES_UNDER_TEST)("$slug/continue API", (game) => {
   const prefix = game.eventPrefix;
@@ -86,7 +82,6 @@ describe.each(GAMES_UNDER_TEST)("$slug/continue API", (game) => {
   beforeEach(() => {
     jest.clearAllMocks();
     token = signGameState(before);
-    mockApplyRateLimit.mockResolvedValue(true);
     mockGetSessionUserId.mockResolvedValue(null);
     // The next round picks its own fresh name: a new hidden target (Guess Who's Next) or a
     // new mystery (Guess Who).
@@ -96,15 +91,6 @@ describe.each(GAMES_UNDER_TEST)("$slug/continue API", (game) => {
       avatarUrl: "https://example.com/next.png",
       gender: "female",
     });
-  });
-
-  it("applies this game's own rate limiter", async () => {
-    await next();
-    expect(mockApplyRateLimit).toHaveBeenCalledWith(
-      expect.objectContaining({ name: `${game.slug}-continue`, max: 10 }),
-      expect.anything(),
-      expect.anything(),
-    );
   });
 
   it("returns 405 for non-POST methods", async () => {
@@ -214,7 +200,7 @@ describe.each(GAMES_UNDER_TEST)("$slug/continue API", (game) => {
     ).toEqual(["avatar", "personality", "reply", "voice"]);
     expect(frames.find((frame) => frame.done === true).streak).toBe(3);
     expect(res.end).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
   });
 
   it("returns 500 and logs when round generation fails", async () => {

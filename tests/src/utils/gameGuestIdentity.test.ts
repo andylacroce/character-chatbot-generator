@@ -1,43 +1,44 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { ensureGuestId, getGuestId } from "../../../src/utils/game/gameGuestIdentity";
+/** @jest-environment node */
+import { NextRequest } from "next/server";
+import {
+  CLEAR_GUEST_COOKIE,
+  ensureGuestId,
+  getGuestId,
+} from "../../../src/utils/game/gameGuestIdentity";
+
+const request = (headers: Record<string, string> = {}) =>
+  new NextRequest("http://localhost/api/guess-who/start", { headers });
 
 describe("game guest identity", () => {
   it("issues an HTTP-only cookie and reuses its hashed identity", () => {
-    const res = { setHeader: jest.fn() } as unknown as NextApiResponse;
-    const firstReq = { cookies: {} } as NextApiRequest;
-    const guestId = ensureGuestId(firstReq, res);
-    const cookie = (res.setHeader as jest.Mock).mock.calls[0][1] as string;
-    expect(cookie).toContain("HttpOnly; SameSite=Lax");
-    expect(cookie).toContain("Max-Age=31536000");
-    const token = cookie.match(/portrayal-game-guest=([^;]+)/)?.[1];
+    const first = ensureGuestId(request());
+    expect(first.setCookie).toContain("HttpOnly; SameSite=Lax");
+    expect(first.setCookie).toContain("Max-Age=31536000");
+    const token = first.setCookie?.match(/portrayal-game-guest=([^;]+)/)?.[1];
     expect(token).toBeTruthy();
-    expect(guestId).not.toBe(token);
-    const secondReq = { cookies: { "portrayal-game-guest": token } } as unknown as NextApiRequest;
-    expect(getGuestId(secondReq)).toBe(guestId);
-    expect(ensureGuestId(secondReq, res)).toBe(guestId);
-    expect(res.setHeader).toHaveBeenCalledTimes(1);
+    expect(first.guestId).not.toBe(token);
+
+    const returning = request({ cookie: `portrayal-game-guest=${token}` });
+    expect(getGuestId(returning)).toBe(first.guestId);
+    expect(ensureGuestId(returning)).toEqual({ guestId: first.guestId, setCookie: null });
   });
 
   it("does not accept a malformed cookie as an identity", () => {
-    expect(
-      getGuestId({ cookies: { "portrayal-game-guest": "short" } } as unknown as NextApiRequest),
-    ).toBeNull();
+    expect(getGuestId(request({ cookie: "portrayal-game-guest=short" }))).toBeNull();
   });
 
   it("accepts the mobile app's x-game-guest header, without issuing a cookie", () => {
     const token = "a".repeat(43);
-    const res = { setHeader: jest.fn() } as unknown as NextApiResponse;
-    const req = { cookies: {}, headers: { "x-game-guest": token } } as unknown as NextApiRequest;
-    const fromCookie = getGuestId({
-      cookies: { "portrayal-game-guest": token },
-    } as unknown as NextApiRequest);
-    expect(ensureGuestId(req, res)).toBe(fromCookie);
-    expect(res.setHeader).not.toHaveBeenCalled();
-    expect(
-      getGuestId({
-        cookies: {},
-        headers: { "x-game-guest": "short" },
-      } as unknown as NextApiRequest),
-    ).toBeNull();
+    const fromCookie = getGuestId(request({ cookie: `portrayal-game-guest=${token}` }));
+    expect(ensureGuestId(request({ "x-game-guest": token }))).toEqual({
+      guestId: fromCookie,
+      setCookie: null,
+    });
+    expect(getGuestId(request({ "x-game-guest": "short" }))).toBeNull();
+  });
+
+  it("expires the cookie with CLEAR_GUEST_COOKIE", () => {
+    expect(CLEAR_GUEST_COOKIE).toContain("portrayal-game-guest=;");
+    expect(CLEAR_GUEST_COOKIE).toContain("Max-Age=0");
   });
 });
