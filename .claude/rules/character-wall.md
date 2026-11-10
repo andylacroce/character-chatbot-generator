@@ -1,6 +1,6 @@
 ---
 paths:
-  - "src/pages/api/chars.ts"
+  - "src/app/api/chars/route.ts"
   - "src/app/characters/**"
   - "src/app/components/character/CharsGallery.tsx"
   - "src/app/components/character/PortraitMosaic.tsx"

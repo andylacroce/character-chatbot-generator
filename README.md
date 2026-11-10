@@ -69,7 +69,7 @@ The full list is in [`package.json`](package.json). API routes are documented wi
 src/
    app/                  # Next.js App Router pages
       components/        # UI by feature: chat/, character/, game/, account/, admin/, common/ (+ styles/ CSS modules)
-   pages/api/            # API routes (Pages Router; the authoritative server handlers)
+   app/api/**/route.ts   # API route handlers (the authoritative server endpoints)
    proxy.ts              # API authentication (Next.js 16 proxy)
    utils/                # Server and client helpers by feature: claude/, chat/, avatar/,
                          # moderation/, game/, account/, server/ (plus api, logger, storage, ...)

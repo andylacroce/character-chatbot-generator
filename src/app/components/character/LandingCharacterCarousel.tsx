@@ -2,7 +2,7 @@
 
 /**
  * Rotating backdrop of recognized character portraits for the landing page — the same
- * data `pages/api/chars.ts`/`CharsGallery.tsx` already serves. Auto-advances through a
+ * data `app/api/chars/route.ts`/`CharsGallery.tsx` already serves. Auto-advances through a
  * small sample, pausing on hover/focus of the name pill; clicking it opens that
  * portrait in the Character Wall, where the visitor can choose to chat.
  */

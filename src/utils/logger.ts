@@ -87,7 +87,7 @@ function buildConsoleFormat(format: NonNullable<WinstonLike["format"]>) {
 /**
  * Builds the dev-only file transport that persists every structured log line
  * — including the per-request `http_request_completed` event from
- * withRequestLog.ts, so this file has real method/status/duration info, not
+ * withRoute.ts, so this file has real method/status/duration info, not
  * just business events — to a gitignored `logs/dev.log` (`*.log` is already
  * ignored, see .gitignore), so it survives after the terminal/process is
  * gone. Skipped (returns null) outside development: Vercel's filesystem is

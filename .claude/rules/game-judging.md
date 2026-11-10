@@ -4,7 +4,7 @@ paths:
   - "src/utils/game/gameReply.ts"
   - "src/config/serverConfig.ts"
   - "src/utils/game/round.ts"
-  - "src/pages/api/*/message.ts"
+  - "src/app/api/*/message/route.ts"
 ---
 
 - **The classifier's bars** (`classifyGuess`): one specific candidate name is `"clear"`, even

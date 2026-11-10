@@ -30,68 +30,26 @@
  * residual (see README/CLAUDE.md if this ever needs tightening further).
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { signMobileAuthState } from "../../../utils/account/mobileAuthState";
-import { getRequestBaseUrl } from "../../../utils/server/requestBaseUrl";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
+import type { NextRequest } from "next/server";
+import {
+  isAllowedRedirectUri,
+  signMobileAuthState,
+} from "../../../../utils/account/mobileAuthState";
+import { getRequestBaseUrl } from "../../../../utils/server/requestBaseUrl";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
+import { withRoute } from "../../../../utils/server/withRoute";
 
-const mobileAuthStartRateLimit = createRateLimiter({
+const LIMIT = {
   name: "mobile-auth-start",
   max: 10,
   message: "Too many sign-in attempts from this IP, please try again later.",
-});
-
-/** The installed app's own redirect (`Linking.createURL("auth")` with scheme `character-chatbot-mobile`). */
-const APP_REDIRECT_URI = "character-chatbot-mobile://auth";
-
-/** Localhost or a private-network IPv4 address. */
-const LOCAL_HOST =
-  /^(?:localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+)$/;
-
-/** Expo Go dev hosts: a local address, or a label under Expo's tunnel domain. */
-function isExpoGoHost(hostname: string): boolean {
-  return LOCAL_HOST.test(hostname) || /^[a-z0-9-]+\.exp\.direct$/.test(hostname);
-}
-
-/**
- * True when `value` is a redirect URI this bridge is willing to hand a bearer token to: the
- * app's exact URI, or Expo Go's `exp://<dev host>/--/auth`. A bare scheme or `exp://` prefix
- * match would send the token to any host (or any app that registered the scheme).
- */
-export function isAllowedRedirectUri(value: string): boolean {
-  if (value === APP_REDIRECT_URI) return true;
-  try {
-    const url = new URL(value);
-    return (
-      url.protocol === "exp:" &&
-      !url.username &&
-      !url.password &&
-      !url.search &&
-      !url.hash &&
-      url.pathname === "/--/auth" &&
-      isExpoGoHost(url.hostname)
-    );
-  } catch {
-    return false;
-  }
-}
+};
 
 /** Next.js API route handler that starts the mobile sign-in bridge (see module doc above). */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(mobileAuthStartRateLimit, req, res))) return;
-
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  const redirectUri = req.query.redirect_uri;
-  if (typeof redirectUri !== "string" || !isAllowedRedirectUri(redirectUri)) {
-    res.status(400).send("Invalid redirect_uri");
-    return;
+export const GET = withRoute(LIMIT, async (req: NextRequest) => {
+  const redirectUri = req.nextUrl.searchParams.get("redirect_uri");
+  if (!redirectUri || !isAllowedRedirectUri(redirectUri)) {
+    return new Response("Invalid redirect_uri", { status: 400 });
   }
 
   // NEXTAUTH_URL isn't set in this app's production deployment (web's own sign-in
@@ -110,7 +68,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const signInUrl = `${nextAuthUrl}/api/auth/signin?callbackUrl=${encodeURIComponent(completeUrl)}`;
 
   logEvent("info", "mobile_auth_start", "Starting mobile sign-in bridge", sanitizeLogMeta({}));
-  res.redirect(302, signInUrl);
-}
-
-export default withRequestLog(handler);
+  return new Response(null, { status: 302, headers: { Location: signInUrl } });
+});

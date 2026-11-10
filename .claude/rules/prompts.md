@@ -4,7 +4,7 @@ paths:
   - "src/utils/game/classifyGuess.ts"
   - "src/utils/game/gameReply.ts"
   - "src/utils/moderation/character*.ts"
-  - "src/pages/api/validate-character.ts"
+  - "src/app/api/validate-character/route.ts"
   - "src/utils/claude/parseClaudeJson.ts"
 ---
 

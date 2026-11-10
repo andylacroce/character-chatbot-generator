@@ -10,7 +10,7 @@
  * `bots` persists a signed-in user's created characters server-side (phase 3b of
  * account persistence). `(user_id, name, environment)` is unique — recreating a
  * same-named character for the same user in the same environment updates the
- * existing row (see pages/api/bots.ts's upsert) rather than erroring, matching
+ * existing row (see app/api/bots/route.ts's upsert) rather than erroring, matching
  * "regenerate this character" UX.
  *
  * `environment` (here and nowhere else) walls off Production/Preview/Development
@@ -20,7 +20,7 @@
  * environment they're using) or `avatar_cache` (an intentionally global,
  * environment-agnostic cost optimization, not user data).
  *
- * `messages` persists per-bot chat history (phase 3c) — see pages/api/chat.ts, which
+ * `messages` persists per-bot chat history (phase 3c) — see app/api/chat/route.ts, which
  * becomes the source of truth for personality/history for a signed-in user's saved
  * character instead of trusting the client-supplied conversationHistory on every
  * request. `bots.summary`/`summarizedThroughMessageId` is the rolling summarization
@@ -54,7 +54,7 @@ export const users = pgTable("users", {
   // Distinct from `name` above (which Auth.js populates from the OAuth profile and
   // AuthControl.tsx uses only for the "Sign out (X)" label): this is what the user
   // explicitly typed in as the name they want a character to greet them by — see
-  // app/api/user-profile/route.ts and pages/api/chat.ts's greeting injection. Nullable,
+  // app/api/user-profile/route.ts and app/api/chat/route.ts's greeting injection. Nullable,
   // purely additive; a guest's equivalent lives client-side only (localStorage key
   // "chatbot-user-name", see src/utils/storage.ts's known-keys doc in CLAUDE.md).
   preferredName: text("preferred_name"),
@@ -154,7 +154,7 @@ export const messages = pgTable("messages", {
  * user (and guests), not scoped to `bots`. Gemini image generation is comparatively
  * expensive, so a name generated once is reused by everyone from then on; this
  * intentionally trades per-user visual variety for cost. Only successful Gemini
- * generations are cached (see pages/api/generate-avatar.ts) — never the
+ * generations are cached (see app/api/generate-avatar/route.ts) — never the
  * `/silhouette.svg` fallback, so a transient generation failure doesn't
  * permanently deny a name a real portrait. `gender` is cached alongside the image
  * because it's produced by the same Claude prompt-generation step that a cache hit
@@ -167,10 +167,10 @@ export const messages = pgTable("messages", {
  *
  * `displayName` is the properly-cased name as Claude itself produced it (generate-
  * personality's `correctedName`, e.g. "Richard III", "Joan of Arc") — captured once at
- * write time in pages/api/generate-avatar.ts's `cacheAvatar`, since that's the one place
+ * write time in app/api/generate-avatar/route.ts's `cacheAvatar`, since that's the one place
  * the correct casing is actually known; `characterName` (the primary key) stays
  * lowercased so lookups are case-insensitive. Nullable: rows written before this column
- * existed fall back to pages/api/chars.ts's regex-based `toDisplayName` reconstruction,
+ * existed fall back to app/api/chars/route.ts's regex-based `toDisplayName` reconstruction,
  * which is necessarily lossier (it can't know a name is a Roman numeral or a proper
  * noun exception on its own) than the name Claude already generated correctly.
  *
@@ -203,7 +203,7 @@ export const avatarCache = pgTable("avatar_cache", {
  * blocking concern about a name is the same fact in every environment.
  *
  * `category` distinguishes which of the two checks a row belongs to, since they need
- * different fast-path response shapes (see pages/api/validate-character.ts):
+ * different fast-path response shapes (see app/api/validate-character/route.ts):
  * - `"copyright"`: an overridable-if-caught-fresh copyright/trademark "warning" that's
  *   been made permanent — the fast path responds with `warningLevel: "warning"` and
  *   `scrubbed: true`.
@@ -222,7 +222,7 @@ export const avatarCache = pgTable("avatar_cache", {
  * Rows are added two ways: automatically, the moment validate-character.ts gets a
  * "warning" or `blocked: true` classification from Claude for any name
  * (`source: "claude"`), and manually by an admin via the `/admin/moderation` panel
- * (`source: "admin"`, `pages/api/admin/blocklist.ts`) for a name Claude hasn't flagged
+ * (`source: "admin"`, `app/api/admin/blocklist/route.ts`) for a name Claude hasn't flagged
  * (yet) or a false positive an admin wants removed. Deleting a row (un-blocking a
  * name) is always a manual admin action — nothing here re-adds a row automatically
  * once removed, short of Claude flagging it again on a fresh attempt.
@@ -258,7 +258,7 @@ export const characterAllowlist = pgTable("character_allowlist", {
 
 /**
  * Append-only record of every "warning"-level copyright/trademark classification
- * Claude has ever returned from pages/api/validate-character.ts — deliberately NOT
+ * Claude has ever returned from app/api/validate-character/route.ts — deliberately NOT
  * deduplicated by name (unlike `characterBlocklist`/`characterAllowlist`, both
  * upsert-on-conflict tables that only ever hold a name's *current* state). Backs the
  * /admin/moderation page's "Recently warned, filterable by duration" panel: since a
@@ -279,7 +279,7 @@ export const characterWarningLog = pgTable("character_warning_log", {
 
 /**
  * Append-only product-usage event log, backing the admin-only `/admin` stats view
- * (see pages/api/admin/stats.ts). Exists because most usage — guest sessions, which never
+ * (see app/api/admin/stats/route.ts). Exists because most usage — guest sessions, which never
  * write to `bots`/`messages` at all since there's no account to attach a row to — is
  * otherwise completely invisible in this database; this is a deliberately small
  * alternative to a third-party analytics service, not a general-purpose event pipeline.

@@ -1,6 +1,5 @@
 ---
 paths:
-  - "src/pages/api/**"
   - "src/app/api/**"
   - "scripts/generate-openapi.cjs"
   - "config/typedoc.mjs"
@@ -17,7 +16,7 @@ component, and hook.
   statement between breaks the association). Not required: exhaustive `@param`/`@returns` prose
   (signatures already say it); add tags only when they carry a non-obvious contract.
 - **Enforced** by `eslint.config.cjs`'s `eslint-plugin-jsdoc` block, scoped to
-  `src/app/components/**/*.{ts,tsx}`, `src/**/*.ts`, and `src/pages/api/**/*.ts` (tests and `.d.ts`
+  `src/app/components/**/*.{ts,tsx}`, `src/**/*.ts`, and `src/app/api/**/*.ts` (tests and `.d.ts`
   excluded). `jsdoc/require-jsdoc` matches by AST position (`Program > ...`), so both `export const
   Foo = () => {}` and `const Foo = () => {}; export default Foo` are covered, and
   `flat/recommended-typescript-flavor` validates syntax wherever a block exists. `@swagger` and
@@ -32,12 +31,12 @@ component, and hook.
 
 ### API documentation
 
-Every `src/pages/api/*.ts` and `src/app/api/**/route.ts` handler carries an OpenAPI 3.0 `@swagger` JSDoc block.
+Every `src/app/api/**/route.ts` and `src/app/api/**/route.ts` handler carries an OpenAPI 3.0 `@swagger` JSDoc block.
 `npm run docs:api` (`scripts/generate-openapi.cjs`, via `swagger-jsdoc`) writes
 `public/openapi.json` (a gitignored build artifact; never hand-edit) and runs automatically before
 `dev`/`build`/`vercel-build`. `src/app/reference/route.ts` serves the interactive UI
 (`@scalar/nextjs-api-reference`) at `/reference` from that static file, since Vercel's bundler
-doesn't reliably ship raw `.ts`; it sits outside `src/pages/api`, so `proxy.ts` auth doesn't apply.
-The globs are recursive (`src/pages/api/**/*.ts` and `src/app/api/**/*.ts`) so nested directories like `admin/` are picked up,
+doesn't reliably ship raw `.ts`; it sits outside `src/app/api`, so `proxy.ts` auth doesn't apply.
+The glob is recursive (`src/app/api/**/*.ts`) so nested directories like `admin/` are picked up,
 and the script normalizes to forward slashes because `swagger-jsdoc` doesn't match backslash paths
 (if `docs:api` reports 0 documented paths locally on Windows, suspect this).

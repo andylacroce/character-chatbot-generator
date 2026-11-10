@@ -1,16 +1,11 @@
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 const mockGetToken = jest.fn();
 jest.mock("next-auth/jwt", () => ({ getToken: (...args: unknown[]) => mockGetToken(...args) }));
-const mockApplyRateLimit = jest.fn();
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: (...args: unknown[]) => mockApplyRateLimit(...args),
-}));
-jest.mock("../../../../src/utils/server/withRequestLog", () => ({
-  withRequestLog: (handler: unknown) => handler,
-}));
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import handler from "../../../../src/pages/api/auth/mobile-session";
+import * as route from "../../../../src/app/api/auth/mobile-session/route";
+const handler = asHandler(route);
 
 function run(method = "GET") {
   const res = {
@@ -28,7 +23,6 @@ function run(method = "GET") {
 describe("mobile-session", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApplyRateLimit.mockResolvedValue(true);
   });
 
   it("returns the bearer token's identity", async () => {
@@ -47,12 +41,5 @@ describe("mobile-session", () => {
     mockGetToken.mockResolvedValue({ sub: 5, email: {}, name: [] });
     const res = await run();
     expect(res.json).toHaveBeenCalledWith({ userId: null, email: null, name: null });
-  });
-
-  it("rejects other methods and stops when rate limited", async () => {
-    expect((await run("POST")).status).toHaveBeenCalledWith(405);
-    mockApplyRateLimit.mockResolvedValue(false);
-    await run();
-    expect(mockGetToken).toHaveBeenCalledTimes(0);
   });
 });

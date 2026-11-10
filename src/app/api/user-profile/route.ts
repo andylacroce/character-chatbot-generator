@@ -1,7 +1,7 @@
 /**
  * API endpoint for a signed-in user's own preferred name — what a character should call
  * them, distinct from the OAuth-sourced `users.name` (see src/db/schema.ts). Guests get a
- * graceful no-op on every method, same as pages/api/bots.ts — this is additive and must
+ * graceful no-op on every method, same as app/api/bots/route.ts — this is additive and must
  * never break the localStorage-only guest flow.
  */
 

@@ -55,9 +55,11 @@ account/guest identity now; a player can update their public name at any time.
 
 These are not removed features; they are current decisions that newcomers often ask about.
 
-- **Pages Router API, App Router UI.** API handlers use Node-only SDKs, already stream with
-  `res.write`, and mobile depends on their URLs and behavior. Migrating adds churn with no new
-  capability. Revisit only if Next.js deprecates Pages API routes or a feature needs route handlers.
+- **API routes are App Router route handlers.** They were Pages Router API routes until 2026-11-10,
+  kept for a while because they use Node-only SDKs, streamed with `res.write`, and mobile depends on
+  their URLs. Route handlers run on the Node runtime too, stream with a `ReadableStream`, and kept
+  every URL and response shape, so the split was dropped for one router and one set of conventions
+  (`withRoute`, `sseResponse`).
 - **No `"type": "module"` in `package.json`.** Adding it caused a Vercel `ERR_REQUIRE_ESM` crash because
   the CJS serverless launcher could not `require()` compiled API output. `next.config.mjs` is ESM through
   its extension instead.

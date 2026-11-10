@@ -13,8 +13,7 @@
  * disambiguating suffix at a time as each incident surfaced live was reactive and
  * incomplete by construction. This map is the structural fix: `work` is required for
  * every entry, threaded into `generateGameCluePersonaPrompt` (src/config/serverConfig.ts)
- * for the hidden `nextCharacterName` and into `classifyGuess`'s (src/pages/api/guess-who-next/
- * message.ts) correctness judgment for both names, so the game's prompts never have to
+ * for the hidden `nextCharacterName` and into `classifyGuess`'s (src/app/api/[game]/message/route.ts) correctness judgment for both names, so the game's prompts never have to
  * guess at identity from a name string alone. `tests/src/data/gameCharacterWork.test.ts`
  * enforces completeness: every entry in `gameCharacterNames` must have a key here, and
  * every key here must exist verbatim in `gameCharacterNames` — so a newly added game

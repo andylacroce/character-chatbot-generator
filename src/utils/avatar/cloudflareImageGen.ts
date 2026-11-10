@@ -1,6 +1,6 @@
 /**
  * Free-tier fallback image generation via Cloudflare Workers AI (Flux Schnell),
- * used by pages/api/generate-avatar.ts when Gemini/Vertex isn't configured or
+ * used by app/api/generate-avatar/route.ts when Gemini/Vertex isn't configured or
  * fails to produce an image. See CLAUDE.md's "Avatar generation" section.
  */
 

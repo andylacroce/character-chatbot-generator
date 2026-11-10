@@ -1,11 +1,7 @@
-jest.mock("../../../../src/utils/server/rateLimit", () => ({
-  createRateLimiter: (options: unknown) => options,
-  applyRateLimit: jest.fn().mockResolvedValue(true),
-}));
-jest.mock("../../../../src/utils/server/withRequestLog", () => ({
-  withRequestLog: (handler: unknown) => handler,
-}));
+/** @jest-environment node */
+import { asHandler } from "../../../helpers/asHandler";
 jest.mock("../../../../src/utils/account/mobileAuthState", () => ({
+  ...jest.requireActual("../../../../src/utils/account/mobileAuthState"),
   signMobileAuthState: jest.fn().mockResolvedValue("signed-state"),
 }));
 jest.mock("../../../../src/utils/server/requestBaseUrl", () => ({
@@ -17,7 +13,9 @@ jest.mock("../../../../src/utils/logger", () => ({
 }));
 
 import type { NextApiRequest, NextApiResponse } from "next";
-import handler, { isAllowedRedirectUri } from "../../../../src/pages/api/auth/mobile-auth-start";
+import { isAllowedRedirectUri } from "../../../../src/utils/account/mobileAuthState";
+import * as route from "../../../../src/app/api/auth/mobile-auth-start/route";
+const handler = asHandler(route);
 
 describe("isAllowedRedirectUri", () => {
   it.each([

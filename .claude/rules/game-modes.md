@@ -3,8 +3,8 @@ paths:
   - "src/utils/game/scores.ts"
   - "src/utils/game/definitions.ts"
   - "src/utils/game/gameGuestIdentity.ts"
-  - "src/pages/api/*/high-score.ts"
-  - "src/pages/api/*/leaderboard*.ts"
+  - "src/app/api/*/high-score/route.ts"
+  - "src/app/api/*/leaderboard*/route.ts"
   - "packages/shared/src/gameCopy.ts"
 ---
 

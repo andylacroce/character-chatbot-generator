@@ -2,7 +2,7 @@
 
 /**
  * Public archival-mosaic gallery of every character portrait in the shared
- * avatar cache (see pages/api/chars.ts). Portraits are presented as an aged
+ * avatar cache (see app/api/chars/route.ts). Portraits are presented as an aged
  * parchment-backed mosaic rather than a conventional application grid.
  */
 

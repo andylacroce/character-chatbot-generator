@@ -13,54 +13,42 @@
  * redirect.
  */
 
-import type { NextApiRequest, NextApiResponse } from "next";
+import type { NextRequest } from "next/server";
 import { getToken, encode } from "next-auth/jwt";
-import { verifyMobileAuthState } from "../../../utils/account/mobileAuthState";
-import { createRateLimiter, applyRateLimit } from "../../../utils/server/rateLimit";
-import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
-import { withRequestLog } from "../../../utils/server/withRequestLog";
+import { verifyMobileAuthState } from "../../../../utils/account/mobileAuthState";
+import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
+import { withRoute } from "../../../../utils/server/withRoute";
 
-const mobileAuthCompleteRateLimit = createRateLimiter({
+const LIMIT = {
   name: "mobile-auth-complete",
   max: 10,
   message: "Too many requests from this IP, please try again later.",
-});
+};
 
-/** Redirects back into the app's own redirect URI with an `error` query param set. */
-function redirectWithError(res: NextApiResponse, redirectUri: string, error: string) {
+/** Builds the 302 back into the app's own redirect URI, with `params` set on it. */
+function redirectTo(redirectUri: string, params: Record<string, string>): Response {
   const url = new URL(redirectUri);
-  url.searchParams.set("error", error);
-  res.redirect(302, url.toString());
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  return new Response(null, { status: 302, headers: { Location: url.toString() } });
 }
 
 /** Next.js API route handler for the mobile sign-in bridge's complete leg (see module doc above). */
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!(await applyRateLimit(mobileAuthCompleteRateLimit, req, res))) return;
-
-  if (req.method !== "GET") {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
-    return;
-  }
-
-  const { state } = req.query;
-  if (typeof state !== "string") {
-    res.status(400).send("Missing state");
-    return;
+export const GET = withRoute(LIMIT, async (req: NextRequest) => {
+  const state = req.nextUrl.searchParams.get("state");
+  if (!state) {
+    return new Response("Missing state", { status: 400 });
   }
   const verifiedState = await verifyMobileAuthState(state);
   if (!verifiedState) {
     logEvent("info", "mobile_auth_complete_invalid_state", "Rejected invalid/expired state");
-    res.status(400).send("Your sign-in link has expired. Please try again.");
-    return;
+    return new Response("Your sign-in link has expired. Please try again.", { status: 400 });
   }
   const { redirectUri } = verifiedState;
 
   const nextAuthSecret = process.env.NEXTAUTH_SECRET;
   if (!nextAuthSecret) {
     logEvent("error", "mobile_auth_complete_misconfigured", "Missing NEXTAUTH_SECRET", {});
-    redirectWithError(res, redirectUri, "server_misconfigured");
-    return;
+    return redirectTo(redirectUri, { error: "server_misconfigured" });
   }
 
   // Reads the session cookie NextAuth's own callback route just set on this same
@@ -72,8 +60,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Reaching this endpoint without a valid session means sign-in didn't actually
     // complete (e.g. the visitor navigated here directly, or a magic link expired) —
     // hand back a clear error rather than a token-shaped success.
-    redirectWithError(res, redirectUri, "not_signed_in");
-    return;
+    return redirectTo(redirectUri, { error: "not_signed_in" });
   }
 
   const bearerToken = await encode({
@@ -87,9 +74,5 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   logEvent("info", "mobile_auth_complete", "Mobile sign-in succeeded", sanitizeLogMeta({}));
 
-  const url = new URL(redirectUri);
-  url.searchParams.set("token", bearerToken);
-  res.redirect(302, url.toString());
-}
-
-export default withRequestLog(handler);
+  return redirectTo(redirectUri, { token: bearerToken });
+});

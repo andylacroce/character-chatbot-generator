@@ -8,7 +8,7 @@ export interface AdminStatsTimeWindow {
   to?: string;
 }
 
-// The admin-stats rate limiter allows 20 req/min/IP (see pages/api/admin/stats.ts) — even
+// The admin-stats rate limiter allows 20 req/min/IP (see app/api/admin/stats/route.ts) — even
 // the fastest option here (every 15s) stays well under that.
 export const REFRESH_INTERVAL_OPTIONS = [
   { label: "Off", value: 0 },

@@ -12,7 +12,6 @@ const options = {
     "**/src/db/schema.ts",
     "**/src/app/!(components)/**",
     "**/src/app/*.{ts,tsx}",
-    "**/src/pages/*.tsx",
     "**/src/proxy.ts",
   ],
   tsconfig: "../tsconfig.json",

@@ -19,7 +19,7 @@
  * with real focal content there) since this page has nothing else to put there.
  *
  * Every number here is a *derived* metric (a rate, a share, a funnel stage) rather
- * than a raw `analytics_events` dump — see pages/api/admin/stats.ts, which computes
+ * than a raw `analytics_events` dump — see app/api/admin/stats/route.ts, which computes
  * these server-side specifically because the raw rows (boolean strings in jsonb
  * metadata, several unrelated event types in one table) are ambiguous without reading
  * the recording call sites.

@@ -1,7 +1,7 @@
 /**
  * API request/response contract types shared between the Next.js backend
  * (character-chatbot-generator) and its clients (web, mobile). These mirror the
- * `@swagger` JSDoc annotations on each pages/api/*.ts handler — that file's
+ * `@swagger` JSDoc annotations on each app/api/<route>/route.ts handler — that file's
  * comment block is the source of truth; update both together if a contract changes.
  */
 
@@ -17,7 +17,7 @@ export interface CharacterVoiceConfig {
 
 /**
  * POST /api/get-voice-config request body. Missing from this file's swagger-mirroring
- * convention until now — pages/api/get-voice-config.ts exists and is real, it was just
+ * convention until now — app/api/get-voice-config/route.ts exists and is real, it was just
  * never added here. Response body is a CharacterVoiceConfig.
  */
 export interface GetVoiceConfigRequest {
@@ -55,7 +55,7 @@ export interface ChatRequest {
   gender?: string;
   /**
    * Pre-formatted "User: <text>" / "Bot: <text>" lines, oldest first — NOT ChatMessage
-   * objects. pages/api/chat.ts feeds this straight into buildClaudeMessages(), which
+   * objects. app/api/chat/route.ts feeds this straight into buildClaudeMessages(), which
    * calls .startsWith() on each entry; sending {sender,text} objects 500s with
    * "t.startsWith is not a function". See useChatController.ts's own conversion of
    * `messages` before it builds this field.
@@ -67,7 +67,7 @@ export interface ChatRequest {
   /**
    * Marks a hidden "introduce yourself" turn (see useChatController.ts's intro-generation
    * effect) — the synthetic prompt used to elicit it is never shown to the user or counted
-   * as a real turn. Read as req.body.isIntro in pages/api/chat.ts.
+   * as a real turn. Read as req.body.isIntro in app/api/chat/route.ts.
    */
   isIntro?: boolean;
 }
@@ -87,7 +87,7 @@ export type ChatStreamFrame =
 
 /**
  * POST /api/validate-character request body. Was mistyped here as `{characterName}` —
- * pages/api/validate-character.ts actually reads `req.body.name` (its own swagger
+ * app/api/validate-character/route.ts actually reads `req.body.name` (its own swagger
  * requestBody schema agrees: `required: [name]`). `characterName` only exists on the
  * *response* (CharacterValidationResult, below). Sending `{characterName}` 400s with
  * "Valid character name required".
@@ -219,7 +219,7 @@ export interface RandomCharacterResponse {
  * completes (`/api/auth/callback/google` or `/api/auth/callback/email`, both unchanged),
  * the backend redirects back into the app's own `exp://`/custom-scheme redirect URI with
  * a `?token=` query param — a bearer JWT encoded the same way NextAuth's own session
- * cookie is (next-auth/jwt's `encode`). See pages/api/auth/mobile-auth-start.ts and
+ * cookie is (next-auth/jwt's `encode`). See app/api/auth/mobile-auth-start/route.ts and
  * -complete.ts. There's no request/response JSON shape to type for that leg (it's a
  * chain of GET redirects, not a POST); `MobileSessionResponse` below is the one JSON
  * contract mobile actually calls.
@@ -228,7 +228,7 @@ export interface RandomCharacterResponse {
 /**
  * GET /api/auth/mobile-session response — resolves the caller's bearer token to a
  * display identity (all fields null if not signed in). See
- * pages/api/auth/mobile-session.ts.
+ * app/api/auth/mobile-session/route.ts.
  */
 export interface MobileSessionResponse {
   userId: string | null;

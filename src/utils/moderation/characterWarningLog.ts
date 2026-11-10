@@ -1,10 +1,10 @@
 /**
  * Access to the append-only warning log (src/db/schema.ts's `character_warning_log`
  * table) — every "warning"-level copyright/trademark classification Claude has ever
- * returned from pages/api/validate-character.ts, independent of the current
+ * returned from app/api/validate-character/route.ts, independent of the current
  * allow/block state of that name (see the table's own doc comment for why a
  * deduplicated table can't serve this). Backs the /admin/moderation page's
- * "Recently warned" panel (pages/api/admin/warnings.ts).
+ * "Recently warned" panel (app/api/admin/warnings/route.ts).
  *
  * Degrades gracefully (no-op / empty) without DATABASE_URL or on any DB error — this
  * is an observability aid, never something that should block validate-character's

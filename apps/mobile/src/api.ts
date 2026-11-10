@@ -197,7 +197,7 @@ export function deleteSavedChats(id?: string): Promise<{ cleared: number }> {
 }
 
 /**
- * Permanently deletes the signed-in account (see the backend's pages/api/account.ts). Sends
+ * Permanently deletes the signed-in account (see the backend's app/api/account/route.ts). Sends
  * this device's guest identity too, so its anonymous game results are erased with it.
  */
 export async function deleteAccount(): Promise<{ deleted: boolean }> {

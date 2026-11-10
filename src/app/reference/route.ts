@@ -1,7 +1,7 @@
 /**
  * Interactive API docs, served from the OpenAPI spec generated into
  * public/openapi.json by scripts/generate-openapi.cjs (see predev/build in
- * package.json). Not under pages/api, so it isn't subject to proxy.ts auth —
+ * package.json). Not under app/api, so it isn't subject to proxy.ts auth —
  * this is documentation, not a data-bearing route.
  */
 
