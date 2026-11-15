@@ -18,7 +18,7 @@ components are written natively, never shared with the DOM app.
   cross-platform**, an npm workspace resolved locally (edit it and re-run type-check, no
   install step). It holds API types (`types.ts`, mirroring the `@swagger` blocks), validation,
   storage keys, brand theme/copy, game and leaderboard state machines, character-creation flow,
-  chat rules (`chat.ts`: intro prompt, history format/trim, adopt-longer-history, `/api/chat` request builder, reply validation, send retry with backoff),
+  chat rules (`chat.ts`: intro prompt, history format/trim, adopt-longer-history, `/api/chat` request builder, reply validation, send retry with backoff, `useChatSession`),
   category taxonomy, and `formatRelativeTime`. Colors are authored once in
   `packages/shared/src/tokens/{light,dark}.json`; mobile flattens them and
   `scripts/generate-theme-css.cjs` feeds the same files to Style Dictionary for web's
@@ -51,7 +51,8 @@ components are written natively, never shared with the DOM app.
   **Email-path limitation:** it only auto-completes if the magic link is tapped on the same
   device; elsewhere the in-app browser tab just waits. A signed-in user's characters persist via
   `POST /api/bots` (fire-and-forget), `HistoryScreen` lists them, and `ChatScreen` reconciles
-  local history against `GET /api/messages` (adopt the server list only if longer), matching web.
+  local history against `GET /api/messages` (adopt the server list only if longer), matching web, via the
+  shared `useChatSession` (also web's chat state).
 - **Headers:** `AccountHeaderButton` is every screen's default `headerRight` (set in
   `App.tsx`'s `screenOptions` with `DarkModeButton`), so sign-in, name, and Past chats are
   reachable everywhere. It takes `navigation` as a prop, and lives in `headerRight` because

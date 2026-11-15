@@ -57,16 +57,15 @@ export interface ChatRequest {
    * Pre-formatted "User: <text>" / "Bot: <text>" lines, oldest first — NOT ChatMessage
    * objects. app/api/chat/route.ts feeds this straight into buildClaudeMessages(), which
    * calls .startsWith() on each entry; sending {sender,text} objects 500s with
-   * "t.startsWith is not a function". See useChatController.ts's own conversion of
-   * `messages` before it builds this field.
+   * "t.startsWith is not a function". See `buildChatRequest` in chat.ts, which does the
+   * conversion.
    */
   conversationHistory?: string[];
   voiceConfig: CharacterVoiceConfig;
   stream?: boolean;
   userName?: string;
   /**
-   * Marks a hidden "introduce yourself" turn (see useChatController.ts's intro-generation
-   * effect) — the synthetic prompt used to elicit it is never shown to the user or counted
+   * Marks a hidden "introduce yourself" turn (see `useChatSession`'s intro) — the synthetic prompt used to elicit it is never shown to the user or counted
    * as a real turn. Read as req.body.isIntro in app/api/chat/route.ts.
    */
   isIntro?: boolean;
@@ -175,12 +174,7 @@ export interface PersistedBot {
   updatedAt: string;
 }
 
-/**
- * Maps a `GET /api/bots` row onto the Bot shape a client's "resume this character"
- * flow expects — mirrors the web app's own local copy in
- * app/components/ResumeBotDropdown.tsx (not yet migrated to import this one; see this
- * package's other not-yet-adopted-by-web exports).
- */
+/** Maps a `GET /api/bots` row onto the Bot shape a client's "resume this character" flow expects. */
 export function persistedBotToBot(bot: PersistedBot): Bot {
   return {
     name: bot.name,

@@ -12,7 +12,7 @@ jest.mock("../../src/api", () => ({
   getPersistedMessages: jest.fn(),
 }));
 jest.mock("../../src/storage", () => ({
-  appendChatMessage: jest.fn(() => Promise.resolve()),
+  saveChatHistory: jest.fn(() => Promise.resolve()),
   loadAudioEnabled: jest.fn(() => Promise.resolve(true)),
   loadChatHistory: jest.fn(() => Promise.resolve([])),
   saveAudioEnabled: jest.fn(() => Promise.resolve()),
@@ -29,7 +29,7 @@ jest.mock("@react-navigation/elements", () => ({
 
 import { ApiError, getPersistedMessages, sendChatMessage } from "../../src/api";
 import {
-  appendChatMessage,
+  saveChatHistory,
   loadAudioEnabled,
   loadChatHistory,
   saveAudioEnabled,
@@ -117,28 +117,42 @@ describe("ChatScreen", () => {
     expect(mockedSend).toHaveBeenCalledWith(
       expect.objectContaining({ isIntro: true, botName: bot.name }),
     );
-    expect(appendChatMessage).toHaveBeenCalledWith(bot.name, {
-      sender: bot.name,
-      text: "Elementary, my dear.",
-    });
+    expect(saveChatHistory).toHaveBeenCalledWith(bot.name, [
+      { sender: bot.name, text: "Elementary, my dear." },
+    ]);
     expect(player.replace).toHaveBeenCalledWith("https://test.example.com/api/audio?f=1");
     expect(player.play).toHaveBeenCalled();
   });
 
-  it("shows the error message when the intro turn fails", async () => {
-    mockedSend.mockRejectedValue(new ApiError(503, "service unavailable"));
+  it("retries a failed intro, and never shows a raw response body when it keeps failing", async () => {
+    mockedSend.mockRejectedValue(new ApiError(503, "<html>service unavailable</html>"));
 
-    const { findByText } = await renderScreen();
+    const { findByText, queryByText } = await renderScreen();
 
-    expect(await findByText("service unavailable")).toBeTruthy();
+    expect(
+      await findByText("Failed to generate intro or voice config. Please recreate the bot."),
+    ).toBeTruthy();
+    expect(queryByText(/service unavailable/)).toBeNull();
+    expect(mockedSend).toHaveBeenCalledTimes(3);
   });
 
-  it("falls back to a generic message for a non-Error intro failure", async () => {
-    mockedSend.mockRejectedValue("boom");
+  it("waits for sign-in to resolve before deciding to send an intro", async () => {
+    mockedUseAuth.mockReturnValue({ status: "loading" });
+    const { rerender, findByText } = await renderScreen();
+    await waitFor(() => expect(loadChatHistory).toHaveBeenCalled());
+    expect(mockedSend).not.toHaveBeenCalled();
 
-    const { findByText } = await renderScreen();
+    mockedUseAuth.mockReturnValue({ status: "signedIn" });
+    (getPersistedMessages as jest.Mock).mockResolvedValue(existingHistory);
+    const navigation = { setOptions: jest.fn(), navigate: jest.fn() };
+    await rerender(
+      withProviders(
+        <ChatScreen navigation={navigation as never} route={{ params: { bot } } as never} />,
+      ),
+    );
 
-    expect(await findByText("Failed to reach the character.")).toBeTruthy();
+    expect(await findByText("hello")).toBeTruthy();
+    expect(mockedSend).not.toHaveBeenCalled();
   });
 
   it("adopts the server's history when it's longer than local (signed in)", async () => {
@@ -197,13 +211,16 @@ describe("ChatScreen", () => {
 
   it("shows an error message when sending fails", async () => {
     (loadChatHistory as jest.Mock).mockResolvedValue(existingHistory);
-    mockedSend.mockRejectedValue(new Error("timed out"));
+    mockedSend.mockRejectedValue(new ApiError(400, '{"error":"raw body"}'));
 
     const utils = await renderScreen();
     await utils.findByText("hello");
     await sendTyped(utils, "Are you well?");
 
-    expect(await utils.findByText("timed out")).toBeTruthy();
+    expect(await utils.findByText("Error sending message. Please try again.")).toBeTruthy();
+    expect(utils.queryByText(/raw body/)).toBeNull();
+    // A 4xx is not retried.
+    expect(mockedSend).toHaveBeenCalledTimes(1);
   });
 
   it("retries a transient send failure instead of surfacing it", async () => {
@@ -229,7 +246,7 @@ describe("ChatScreen", () => {
     await utils.findByText("hello");
     await sendTyped(utils, "Are you well?");
 
-    expect(await utils.findByText("Failed to send message. Please try again.")).toBeTruthy();
+    expect(await utils.findByText("Error sending message. Please try again.")).toBeTruthy();
   });
 
   it("labels the visitor's messages with their name and sends it with the request", async () => {
@@ -312,6 +329,7 @@ describe("ChatScreen", () => {
 
     const utils = await renderScreen();
     await utils.findByText("hello");
+    player.pause.mockClear();
 
     await fireEvent.press(utils.getByLabelText("Stop audio"));
     expect(player.pause).toHaveBeenCalledTimes(1);

@@ -11,6 +11,7 @@ const row: PersistedBot = {
   avatarUrl: "a.png",
   gender: "female",
   voiceConfig: null,
+  createdAt: "2026-01-01",
   updatedAt: "2026-01-01",
 };
 

@@ -17,6 +17,16 @@ export function useReplyAudio() {
     loadAudioEnabled().then(setAudioEnabled);
   }, []);
 
+  // Leaving the screen stops a reply mid-sentence. The player may already be released by then.
+  useEffect(
+    () => () => {
+      try {
+        player.pause();
+      } catch {}
+    },
+    [player],
+  );
+
   /** Plays a reply's audio. Playback failing never fails the reply itself, which is already on screen. */
   const play = (audioFileUrl: string | undefined) => {
     if (!audioFileUrl || !audioEnabled) return;

@@ -185,6 +185,7 @@ describe("persistedBotToBot", () => {
         avatarUrl: null,
         gender: "female",
         voiceConfig: null,
+        createdAt: "",
         updatedAt: "",
       }),
     ).toEqual({
