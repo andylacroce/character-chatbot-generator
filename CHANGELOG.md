@@ -1,10 +1,15 @@
 # Changelog
 
-This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
+This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none.
+
+## v0.32.11 - 2026-11-15 - Spend cap polish and a docs review
+
+- When the daily cap is reached, chat now shows "Chat is resting for today" and stops retrying (it used to show a generic error and retry three times), and game clue questions say they are resting while guesses keep working. Replies that outlive the timeout are now counted toward the cap, a slow Redis can no longer stall requests, and the cap's log events fire once per instance per day.
+- A repo-wide documentation review: stale names, env lists, storage keys, rate limits, READMEs and the changelog order were corrected.
 
 ## v0.32.10 - 2026-11-15 - Daily spend cap
 
-- Operators can now cap Sonnet usage per day (`DAILY_TEXT_SOFT_LIMIT`, `DAILY_TEXT_HARD_LIMIT`). Past the soft limit replies quietly use the cheaper model; past the hard limit chat and games pause until the next UTC day with a "try again tomorrow" message. Off unless the limits are set.
+- Operators can now cap Sonnet usage per day (`DAILY_TEXT_SOFT_LIMIT`, `DAILY_TEXT_HARD_LIMIT`). Past the soft limit replies quietly use the cheaper model. Past the hard limit, chat replies and game clue questions are refused until the next UTC day with a "resting for today" message, while guesses still work and new rounds start with a generic greeting. Off unless the limits are set.
 
 ## v0.32.9 - 2026-11-15 - Server-owned characters
 
@@ -72,11 +77,6 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 - The guessing-game tab has one set of figures per game (Guess Who, Guess Who's Next) with accurate descriptions, exchanges to solve, and how runs end. Saved messages count only the characters saved in the window, so the per-character average is like for like.
 - The character tab adds avatar cache use and the Wall catalog by category. Charts are about 30% shorter.
 
-## v0.29.6 - 2026-11-09 - Easier to navigate
-
-- Internal only: `src/utils/` and `src/app/components/` are now grouped into feature folders (chat, character, game, account, moderation, and so on) instead of two flat lists of 50+ files each. No behavior change.
-- New human-oriented docs in `docs/` (getting started, architecture, feature reference, configuration) and a much shorter README. Added `npm run check` as a fast inner-loop check.
-
 ## v0.29.8 - 2026-11-09 - Smaller server files
 
 - Internal only, no behavior change: the largest server files were split along their existing seams, each with its own tests. `api/chat` (request checks, who-is-chatting, the two Claude calls), `api/admin/stats` (per-game and character aggregations), `api/transcript` (validation and HTML rendering), `api/validate-character` (the moderation pipeline), `api/audio` (file-safety helpers), `avatarGeneration` (cache, prompt, orchestration), `characterVoices` (voice catalog and types), and the shared `game` module (definitions, state, transport; `game.ts` stays as a barrel).
@@ -85,6 +85,11 @@ This changelog reads as curated highlights of what shipped and why, not an exhau
 ## v0.29.7 - 2026-11-09 - Smaller components
 
 - Internal only, no behavior change: the five largest UI files were split into focused modules, each with its own tests. `useChatController` (670 to 400 lines), `BotCreator` (707 to 315), `CharsGallery` (622 to 215), `AdminModerationView` (579 to 106), and `AdminStatsView` (567 to 185). Intro generation, server-history sync, URL launch, gallery paging, the lightbox, and the stats fetch are now their own hooks or components.
+
+## v0.29.6 - 2026-11-09 - Easier to navigate
+
+- Internal only: `src/utils/` and `src/app/components/` are now grouped into feature folders (chat, character, game, account, moderation, and so on) instead of two flat lists of 50+ files each. No behavior change.
+- New human-oriented docs in `docs/` (getting started, architecture, feature reference, configuration) and a much shorter README. Added `npm run check` as a fast inner-loop check.
 
 ## v0.29.5 - 2026-11-02 - Await moderation writes
 

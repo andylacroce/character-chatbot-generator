@@ -30,7 +30,8 @@ product-usage analytics, kept small rather than becoming general observability.
   fail on the next invocation (it undercounted wrong guesses).
 - **Events** (low-frequency, high-signal, only after success): `character_validated`,
   `avatar_generated` (provider: `cache` | `cloudflare` | `pollinations` | `none`), `bot_created`,
-  and the game events above. No event records character names, guesses, or chat text, preserving
+  and the game events (`game_started`, `game_guess_correct`, `game_guess_wrong`,
+  `game_round_continued`, `game_run_ended`; see `game-modes.md`). No event records character names, guesses, or chat text, preserving
   `skipPersistence`'s no-trace guarantee.
 - **`GET /api/admin/stats`** (a thin handler; the queries live in `src/utils/admin/`: `gameStats.ts` for
   one game's aggregation, shared by both games, `characterStats.ts`, and `adminStats.ts`'s `loadAdminStats`
@@ -44,7 +45,7 @@ product-usage analytics, kept small rather than becoming general observability.
   divides like by like. Figures
   start when instrumentation deployed (no backfill: tokens hold no history, and abandoned runs emit
   no event). Writes are best effort, so counts can include retries and aren't a unique-run ledger.
-- **Access:** `/admin` (`src/app/admin/page.tsx`) and `/admin/moderation` are unlinked-but-reachable
+- **Access:** `/admin` (`src/app/admin/page.tsx`) and `/admin/moderation` are linked from the account menu only for admins
   and use the shared `AppHeader`/`useAccountMenu`. `src/utils/account/isAdmin.ts` admits a signed-in session
   whose email is in `ADMIN_EMAILS` (comma-separated) and **fails closed** (no list, no admins), the
   opposite default of other optional features because it grants read access to aggregate activity.

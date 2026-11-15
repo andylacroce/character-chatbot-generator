@@ -39,14 +39,26 @@ function limit(name: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Logs a store failure once per call site and lets the request through. */
+const lastLoggedDay = new Map<string, string>();
+
+/** Logs `event` at most once per instance per UTC day, so a capped or failing day isn't one line per request. */
+function logOncePerDay(
+  level: "warn" | "error",
+  event: string,
+  message: string,
+  meta: Record<string, unknown>,
+) {
+  const day = dayKey();
+  if (lastLoggedDay.get(event) === day) return;
+  lastLoggedDay.set(event, day);
+  logEvent(level, event, message, sanitizeLogMeta(meta));
+}
+
+/** Logs a store failure; the caller then lets the request through. */
 function storeFailed(event: string, err: unknown) {
-  logEvent(
-    "warn",
-    event,
-    "Spend counter unavailable; not enforcing the cap",
-    sanitizeLogMeta({ error: err instanceof Error ? err.message : String(err) }),
-  );
+  logOncePerDay("warn", event, "Spend counter unavailable; not enforcing the cap", {
+    error: err instanceof Error ? err.message : String(err),
+  });
 }
 
 /** Weighted tokens used today so far. */
@@ -71,11 +83,11 @@ export async function textCallSettings(): Promise<{
     try {
       const used = await usedToday();
       if (hard && used >= hard) {
-        logEvent("error", "spend_cap_hard", "Hard daily spend cap reached", { used, hard });
+        logOncePerDay("error", "spend_cap_hard", "Hard daily spend cap reached", { used, hard });
         throw new SpendCapError();
       }
       if (soft && used >= soft) {
-        logEvent("warn", "spend_cap_soft", "Soft daily spend cap reached; using Haiku", {
+        logOncePerDay("warn", "spend_cap_soft", "Soft daily spend cap reached; using Haiku", {
           used,
           soft,
         });
@@ -116,4 +128,5 @@ export async function recordTextUsage(usage?: {
 /** Test helper: clears the per-process counter. */
 export function resetSpendMemory() {
   memoryTotals.clear();
+  lastLoggedDay.clear();
 }

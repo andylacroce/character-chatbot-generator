@@ -61,7 +61,7 @@ be bisected against a known-good release. Tagging began 2026-09-22; never back-t
   1. `npm run ci` is already green.
   2. Choose patch vs. minor, then `npm version patch --no-git-tag-version` (or `minor`); the flag
      folds the bump into the normal commit.
-  3. Head the shipped `CHANGELOG.md` entry with the version, e.g. `## v0.6.0 — 2026-09-22 — Title`.
+  3. Head the shipped `CHANGELOG.md` entry with the version, e.g. `## v0.6.0 - 2026-09-22 - Title`.
   4. Commit the bump and changelog entry with the change, on a feature branch, and ship it as a PR.
 - **`main` is protected: every change, tagged or not, is a branch plus a PR,** merged once checks
   are green. Never push to `main`, and never tag locally or use `--follow-tags`: a tag pushed
@@ -83,7 +83,7 @@ other platform's side in the same commit, and move logic that exists on both sid
 rather than editing two copies. Mobile diverges only where it has to (React Native's fetch can't
 read an SSE stream; Android keyboard handling) or where native features genuinely improve mobile
 UX (haptics). A feature that exists on one platform only is a parity gap to call out, not a
-default. Mobile-specific notes are in "Mobile app" below.
+default. Mobile-specific notes are in the `mobile` rule (`.claude/rules/mobile.md`).
 
 Human-oriented onboarding lives in `docs/` (`getting-started.md`, `architecture.md`, `features.md`,
 `configuration.md`, `scaling.md`: cost drivers and the scaling levers); keep them current alongside the rules when a flow or folder moves.
@@ -117,7 +117,7 @@ client (see "Security posture").
 
 ### Model selection (`src/utils/claude/claudeModelSelector.ts`)
 
-Three tiers, chosen by call site, never by a runtime cost heuristic:
+Two Claude tiers, chosen by call site; the only runtime override is the daily spend cap, which drops `text` to Haiku past its soft limit:
 
 - `"text"`: chat and game replies. `claude-sonnet-5-5` in prod, `claude-haiku-5-5` in dev. This is the tier the daily spend cap governs: call sites get their model and `thinking` from `textCallSettings()` and report usage with `recordTextUsage()` (`utils/claude/spendGuard.ts`), never `getClaudeModel("text")` directly.
 - `"text-simple"`: one-shot structured JSON tasks (personality generation, character validation,
@@ -126,8 +126,7 @@ Three tiers, chosen by call site, never by a runtime cost heuristic:
 - Both 5.5 models think by default, which would eat the small `max_tokens` caps, so every call site
   passes `thinking: thinkingFor(tier)` (`src/utils/claude/claudeThinking.ts`): `between_tools` for Sonnet 5.5
   (it 400s on `disabled`), `disabled` for Haiku 5.5.
-- `"image"`: avatar prompts render via `gemini-3.1-flash-lite-image` on Google Cloud's Gemini
-  Enterprise Agent Platform (formerly Vertex AI; not Claude).
+- Avatar images use no Claude tier: `text-simple` writes the prompt and Cloudflare Workers AI or Pollinations renders it (see the `avatar` rule).
 
 All Claude calls go through the singleton client in `src/utils/claude/anthropicClient.ts`.
 
@@ -192,7 +191,7 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
   provider; without them Pollinations.ai runs with no config (see "Avatar generation").
 - `VERCEL_BLOB_READ_WRITE_TOKEN` / `BLOB_READ_WRITE_TOKEN`: Vercel Blob logging and durable avatar URLs.
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`):
-  share rate-limit counters and the games' single-use turn claims across instances.
+  share rate-limit counters, the games' single-use turn claims and the daily spend counter across instances.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`: account sign-in
   and persistence (see "Account persistence").
 - `EMAIL_SERVER` + `EMAIL_FROM`: passwordless magic-link sign-in alongside Google (needs `DATABASE_URL`).

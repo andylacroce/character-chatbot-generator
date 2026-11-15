@@ -12,10 +12,12 @@ paths:
 `src/utils/storage.ts` wraps `localStorage` with an in-memory fallback (used in tests). Keys
 (`packages/shared/src/storageKeys.ts`): `chatbot-bot`, `chatbot-history-<bot.name>`,
 `voiceConfig-<bot.name>` (versioned; use the versioned helpers, never write the shape directly),
-`audioEnabled`, `darkMode`, `bot-session-id`, `chatbot-user-name` and
+`audioEnabled`, `darkMode`, `bot-session-id`, `bot-session-datetime`, `chatbot-bot-timestamp`,
+`lastPlayedAudioHash-<bot.name>`, `chatbot-user-name` and
 `chatbot-user-name-gate-skipped` (see "Personalized greeting"), the games' token/state/
 instructions-seen keys (see the game sections), `chatbot-landing-carousel-cache`, and
-`portrayal-google-analytics-consent` (web-only `granted`/`denied`, never an identifier). Never store
+`portrayal-google-analytics-consent` (web-only `granted`/`denied`, never an identifier), and the
+mobile-only `chatbot-auth-token` and `chatbot-game-guest-id` (secure store). Never store
 secrets or PII here.
 
 ### Personalized greeting (the visitor's own name)
@@ -33,10 +35,10 @@ used only for the "Sign out (X)" label); this one is explicit and user-typed.
   tried and rejected (missed, or cluttered the main flow).
 - **Editable anytime** via the account menu ("Add your name"/"Change your name", `mode="edit"`).
 - **Guest:** localStorage only (`chatbot-user-name`, `chatbot-user-name-gate-skipped`);
-  `useChatController.ts` sends it as `userName` on every `/api/chat`.
+  the shared `buildChatRequest` (`useChatSession`) sends it as `userName` on every `/api/chat`.
 - **Signed in:** `src/app/api/user-profile/route.ts` (`GET`/`POST`) persists to `users.preferredName`;
   `useUserName.ts` seeds the DB once from a pre-existing guest value on first sign-in.
-- **Server precedence (`chat.ts`):** for a signed-in user the DB value wins once set (server
+- **Server precedence (`/api/chat`, `chatContext.ts`'s `resolveChatIdentity`):** for a signed-in user the DB value wins once set (server
   authoritative, like `personality` for a saved bot), so a request can't spoof another name;
   otherwise the client's `userName` (sanitized by `sanitizeUserName`, which keeps apostrophes and
   hyphens unlike `sanitizeCharacterName`). When present it goes in the system prompt as a

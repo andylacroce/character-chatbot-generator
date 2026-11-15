@@ -1,8 +1,8 @@
 # Decisions history
 
 Closed decisions and fully-removed features, kept here for context if ever revisited.
-Not needed to understand current behavior — CLAUDE.md links here from the relevant
-section rather than carrying the full narrative inline.
+Not needed to understand current behavior — architecture.md and the rule files link here
+rather than carrying the full narrative inline.
 
 ## Facebook sign-in (issue #832): built, shipped, then fully removed
 
@@ -35,7 +35,7 @@ sibling game. This required generating the full persona/avatar/voice/TTS pipelin
 at round start (for full audio/persona parity with ordinary chat) while withholding the
 name and avatar URL from every API response until a reveal — a real design constraint the
 old game never had, since it simply never generated an avatar until reveal time. See
-CLAUDE.md's "Guess Who (self-describing chat game)" section for the current design; the
+`.claude/rules/game-modes.md` ("Guess Who") for the current design; the
 shared guess-classifier logic (`classifyGuess`, with all its hard-won identity-matching
 rules) was extracted out of "Guess Who's Next" into `src/utils/game/classifyGuess.ts` as part
 of this rework so both games share one implementation instead of risking drift.

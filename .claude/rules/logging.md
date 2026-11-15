@@ -14,7 +14,7 @@ All server routes use structured logging, ESLint-enforced.
   greppable and alertable by kind.
 - **Event names are `snake_case`, prefixed by route or domain:** `chat_*`, `audio_*`, `avatar_*`,
   `bots_*`, `messages_*`, `chars_*`, `admin_stats_*`, `transcript_*`, `log_api_*`, `health_*`,
-  `rate_limit_exceeded`. Exception: `auth_error`/`auth_warning` carry NextAuth's own code in
+  `rate_limit_exceeded`, and `spend_*`, `claim_*`, `persona_*`, `game_*`, the games' `guess_who_*`/`guess_who_next_*`, `mobile_*`, `account_*`. Exception: `auth_error`/`auth_warning` carry NextAuth's own code in
   `meta.code`, since those codes aren't this app's to rename.
 - **Levels:** `info` for expected lifecycle events (a reply sent, a cache hit, a routine 400);
   `warn` for recoverable or security-relevant events (a tripped rate limit, a non-admin hitting

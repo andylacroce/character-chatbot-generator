@@ -1,17 +1,9 @@
 # character-chatbot-shared
 
-Shared TypeScript types, input-sanitization functions, and client-storage key
-constants used by both `character-chatbot-generator` (the Next.js web app /
-backend) and `character-chatbot-mobile` (the React Native client).
-
-Not published to npm — both consumers install it directly from this git repo,
-which triggers an automatic `tsc` build (via the `prepare` script) on install:
-
-```json
-"dependencies": {
-  "character-chatbot-shared": "git+https://github.com/andylacroce/character-chatbot-shared.git"
-}
-```
+An npm workspace (`character-chatbot-shared`) resolved locally by the web app (via
+`transpilePackages`) and `apps/mobile`; no build step. Holds API types, validation, storage keys,
+theme tokens and copy, and the client state machines and hooks both platforms wrap
+(`useChatSession`, `useGameSession`, `useCharacterCreation`, `useLeaderboard`, `useReportForm`, ...).
 
 ## What belongs here
 
@@ -53,8 +45,4 @@ DOM and React Native.
 
 ## Development
 
-```bash
-npm install
-npm test    # jest
-npm run build  # tsc -> dist/
-```
+`npm test --workspace=packages/shared` (jest). Runs in Mobile CI and the root `npm run ci`.

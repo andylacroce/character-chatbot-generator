@@ -14,6 +14,7 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 
 - Chat with an established historical, mythological, literary, or fictional character, with a generated portrait and a character-specific voice
 - Two guessing games (`Guess Who` and `Guess Who's Next`) with streaks and public leaderboards
+- Voice input for chat, the games and the name field (browser speech recognition, web only)
 - A public Character Wall of every portrait generated so far
 - Optional Google or magic-link sign-in that saves characters and chats across devices; guests get the full app without it
 - AI copyright/trademark and profanity validation, plus an admin moderation panel
@@ -97,7 +98,7 @@ Ensure `GOOGLE_APPLICATION_CREDENTIALS_JSON` is set correctly (one line, single 
 
 ### Game Progress Stuck Loading
 
-`Guess Who's Next` streams round-generation progress over SSE. Check the browser console for connection errors, and make sure a corporate proxy or firewall isn't buffering or blocking `/api/guess-who-next/*` responses.
+Both guessing games stream round-generation progress over SSE. Check the browser console for connection errors, and make sure a corporate proxy or firewall isn't buffering or blocking `/api/guess-who/*` or `/api/guess-who-next/*` responses.
 
 ## Support
 

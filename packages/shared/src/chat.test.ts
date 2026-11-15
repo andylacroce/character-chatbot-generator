@@ -7,6 +7,9 @@ import {
   parseChatMessages,
   retryWithBackoff,
   httpError,
+  isRetryable,
+  chatErrorMessage,
+  SPEND_CAP,
 } from "./chat";
 import type { CharacterVoiceConfig } from "./types";
 
@@ -148,5 +151,18 @@ describe("retryWithBackoff", () => {
     const flaky = jest.fn().mockRejectedValueOnce(httpError(503)).mockResolvedValue("ok");
     await expect(retryWithBackoff(flaky, { delayMs: 1 })).resolves.toBe("ok");
     expect(flaky).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("spend cap", () => {
+  const capped = httpError(503, SPEND_CAP);
+
+  it("is not retried, unlike other 5xx", () => {
+    expect(isRetryable(capped)).toBe(false);
+    expect(isRetryable(httpError(503))).toBe(true);
+  });
+
+  it("has its own user-facing message", () => {
+    expect(chatErrorMessage(capped)).toMatch(/resting for today/);
   });
 });

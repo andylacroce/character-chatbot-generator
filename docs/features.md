@@ -9,6 +9,7 @@ How each user-facing feature works and what it stores. For how the code is organ
 - [Account Persistence](#account-persistence-optional)
 - [Character Wall](#character-wall-characters)
 - [Guessing Games](#guessing-games)
+- [Voice Input](#voice-input)
 - [Report a Problem](#report-a-problem)
 - [Personalized Greeting](#personalized-greeting)
 - [Internal Analytics](#internal-analytics-admin)
@@ -38,6 +39,7 @@ Multi-layered protection for all API endpoints:
 - **API Key Authentication**: External origins require valid `x-api-key` header matching `API_SECRET`
 - **Route Protection**: All `/api/*` endpoints pass through `src/proxy.ts`
 - **Request Logging**: Failed authentication attempts logged for monitoring
+- **Server-signed personas**: `/api/chat` and `/api/bots` accept only a persona `/api/generate-personality` signed, so the chat API can't be driven with an arbitrary system prompt.
 
 **Custom Domains**: Update `allowedHosts` in `src/proxy.ts` when deploying to custom domains.
 
@@ -91,7 +93,7 @@ Drizzle ORM), so both survive across devices and browser sessions:
 - **Schema changes**: apply locally with `npm run db:push` (Drizzle Kit) after pulling
   changes to `src/db/schema.ts`. Not part of `npm run ci`, since it mutates external state.
 
-See `CLAUDE.md`'s "Account persistence" section for the full phase-by-phase design notes.
+See `.claude/rules/account.md` for the full phase-by-phase design notes.
 
 ## Character Wall (`/characters`)
 
@@ -102,8 +104,7 @@ generated once for it to show up here for everyone.
 
 - **Design**: the page itself is a broad sheet of tattered parchment holding a dense,
   masonry-style collage of deckled archival prints. It uses the available width instead of
-  dividing portraits into book spreads, then steps down to two columns on phones and one on
-  the narrowest screens. Card shape and restrained rotation are derived from a hash of the
+  dividing portraits into book spreads, then steps down to two columns on phones (never one). Card shape and restrained rotation are derived from a hash of the
   character's name, so the composition stays stable across reloads.
 - **Sort and group controls**: the toolbar defaults to Recently added with grouping off. It
   can order the complete collection by newest, oldest, or name, while the Group by category
@@ -141,10 +142,10 @@ generated once for it to show up here for everyone.
 Both games work for guests, persist an in-progress run across reloads, and build a streak
 until the player loses or gives up.
 
-- **Guess Who (`/guess-who`)**: the focused, quick-play mode. It shows one clue about a
-  hidden character and provides a dedicated guess field. A wrong answer reveals the next,
-  more specific clue; exhausting the clues ends the run. A correct answer reveals the
-  portrait and starts another hidden character when the player continues.
+- **Guess Who (`/guess-who`)**: chat with a mystery character who never says its name and drops
+  escalating clues about itself. Questions and guesses use the same chat box. One wrong guess is
+  forgiven; a second ends the run. A correct guess reveals the portrait and name, and Continue
+  starts a new mystery character.
 - **Guess Who's Next (`/guess-who-next`)**: the conversation mode. The player chats with
   a visible, named character who is thinking of somebody else. Questions and guesses use
   the same chat box. One wrong guess is forgiven; a second ends the run. A correct answer
@@ -155,6 +156,12 @@ until the player loses or gives up.
 - **Leaderboards (`/leaderboard`, opt-in)**: the shared page has a separate tab and top
   ten for each game. Signed-in and guest players can claim a moderated public name when
   eligible; private scores still participate in ranking without exposing identity.
+
+## Voice Input
+
+Chat, both games, and the character name field have a microphone button that dictates into the
+input using the browser's built-in speech recognition (Chrome and Edge; hidden where unsupported).
+Nothing is sent to a server, and it is web only. Details: `.claude/rules/voice-input.md`.
 
 ## Report a Problem
 
@@ -244,12 +251,15 @@ signed-in user too (the server is the durable copy; see
 - `audioEnabled` — Audio toggle state
 - `darkMode` — Theme preference
 - `bot-session-id` — Session tracking
+- `bot-session-datetime` — When the current session started
+- `chatbot-bot-timestamp` — When the current bot was saved
+- `lastPlayedAudioHash-<bot.name>` — The last reply already auto-played, so a reload doesn't replay it
 - `chatbot-user-name` — The visitor's own name (guests only; a signed-in user's name is
   persisted server-side instead — see [Personalized Greeting](#personalized-greeting))
 - `chatbot-user-name-gate-skipped` — Set once a guest dismisses the post-creation name
   prompt, so it doesn't reappear on that browser
-- `chatbot-guess-who-token` / `chatbot-guess-who-state`: the clue game's encrypted round
-  token and visible clue state
+- `chatbot-guess-who-token` / `chatbot-guess-who-transcript`: Guess Who's encrypted round
+  token and transcript
 - `chatbot-guess-who-next-token` / `chatbot-guess-who-next-transcript`: the conversation
   game's encrypted round token and transcript
 - `chatbot-guess-who-instructions-seen` / `chatbot-guess-who-next-instructions-seen`:
@@ -258,6 +268,8 @@ signed-in user too (the server is the durable copy; see
   instantly on the next visit
 - `portrayal-google-analytics-consent`: whether the web visitor allowed or declined the optional
   Google Analytics integration; it contains no identifier or personal information
+- Mobile only (kept in `expo-secure-store`, not AsyncStorage): `chatbot-auth-token` (sign-in bearer
+  token) and `chatbot-game-guest-id` (the guest game identity)
 
 Every key lives once in `packages/shared/src/storageKeys.ts`, which both the web app and
 the mobile app import.
