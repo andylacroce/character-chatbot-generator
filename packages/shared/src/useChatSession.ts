@@ -16,6 +16,7 @@ import {
   chatErrorMessage,
   chatReplyMessage,
   longerHistory,
+  PERSONA_UNSIGNED,
   retryWithBackoff,
 } from "./chat";
 import type { Bot, CharacterVoiceConfig, ChatMessage, ChatRequest, ChatResponse } from "./types";
@@ -32,6 +33,15 @@ export interface ChatTransport {
   /** A signed-in user's saved turns for this character. */
   fetchHistory(botName: string): Promise<ChatMessage[]>;
   fetchVoiceConfig(bot: Bot): Promise<CharacterVoiceConfig>;
+  /**
+   * Asks the server to re-vet and re-sign a character saved before personas were signed.
+   * Rejects with the HTTP `status` when the server refuses the name or fails.
+   */
+  refreshPersona?(bot: Bot): Promise<{
+    personality: string;
+    personalitySignature?: string;
+    correctedName?: string;
+  }>;
 }
 
 /** Where a character's transcript (and optionally its voice config) lives on this device. */
@@ -62,6 +72,8 @@ export interface UseChatSessionOptions {
   onMessage?: (message: ChatTurn) => void;
   /** Called with a fresh reply's response, e.g. to play its audio. Not called for a stale reply. */
   onReply?: (response: ChatResponse) => void;
+  /** Called once a legacy character's persona has been re-signed, so the platform can store it. */
+  onBotRefreshed?: (bot: Bot) => void;
 }
 
 const VOICE_MISSING = "Voice configuration missing for this character. Please recreate the bot.";
@@ -113,6 +125,8 @@ export function useChatSession(options: UseChatSessionOptions) {
   // current bot so a switch can never act on the previous bot's state.
   const [loadedFor, setLoadedFor] = useState<string | null>(initial ? bot.name : null);
   const [reconciledFor, setReconciledFor] = useState<string | null>(null);
+  // Bots whose persona was already refreshed this session (null: refused), so it happens at most once.
+  const refreshedRef = useRef(new Map<string, Bot | null>());
   const voiceRef = useRef<{ name: string; promise: Promise<CharacterVoiceConfig | null> } | null>(
     null,
   );
@@ -133,6 +147,62 @@ export function useChatSession(options: UseChatSessionOptions) {
       failed(err);
     }
   }, []);
+
+  /**
+   * Sends one chat request with retry. A `persona_unsigned` 400 (a character saved before
+   * personas were signed) triggers one persona refresh, then exactly one more attempt.
+   */
+  const sendChat = useCallback(
+    async (
+      sent: Bot,
+      build: (bot: Bot) => ChatRequest,
+      retryOptions: Parameters<typeof retryWithBackoff>[1],
+    ): Promise<ChatResponse> => {
+      const { transport } = live.current;
+      const refreshed = refreshedRef.current;
+      const attempt = (b: Bot) =>
+        retryWithBackoff(() => transport.send(build(b)), {
+          ...retryOptions,
+          delayMs: process.env.NODE_ENV === "test" ? 10 : undefined,
+        });
+      try {
+        return await attempt(refreshed.get(sent.name) ?? sent);
+      } catch (err) {
+        const unsigned = (err as { code?: unknown } | null)?.code === PERSONA_UNSIGNED;
+        if (!unsigned || !transport.refreshPersona || refreshed.has(sent.name)) throw err;
+        let fresh: Bot | null = null;
+        try {
+          const data = await transport.refreshPersona(sent);
+          // Keep the displayed name stable: only a signature over this name is usable. The server
+          // signs the sanitized form (quotes, ampersands and angle brackets stripped), which is
+          // what it will see on the retry, so that form counts as the same name.
+          const sameName = [sent.name, sent.name.replace(/[<>'"&]/g, "").trim()];
+          if (data.personalitySignature && sameName.includes(data.correctedName ?? sent.name)) {
+            fresh = {
+              ...sent,
+              personality: data.personality,
+              personalitySignature: data.personalitySignature,
+            };
+          }
+        } catch (refreshErr) {
+          const status = (refreshErr as { status?: unknown } | null)?.status;
+          if (status !== 400 && status !== 422) throw refreshErr;
+        }
+        refreshed.set(sent.name, fresh);
+        if (!fresh)
+          throw Object.assign(new Error("persona refused"), {
+            status: 400,
+            code: "persona_refused",
+          });
+        live.current.log("info", "chat_persona_refreshed", "Refreshed an unsigned persona", {
+          botName: sent.name,
+        });
+        live.current.onBotRefreshed?.(fresh);
+        return attempt(fresh);
+      }
+    },
+    [],
+  );
 
   /** The current character's voice config: cached, else the bot's own, else fetched (once). */
   const ensureVoiceConfig = useCallback((): Promise<CharacterVoiceConfig | null> => {
@@ -261,7 +331,7 @@ export function useChatSession(options: UseChatSessionOptions) {
     };
     (async () => {
       try {
-        const { bot: current, userName, transport } = live.current;
+        const { bot: current, userName } = live.current;
         const voiceConfig = await ensureVoiceConfig();
         if (cancelled) return;
         if (!voiceConfig) {
@@ -272,18 +342,17 @@ export function useChatSession(options: UseChatSessionOptions) {
           fail(VOICE_MISSING);
           return;
         }
-        const response = await retryWithBackoff(
-          () =>
-            transport.send(
-              buildChatRequest({
-                bot: current,
-                voiceConfig,
-                message: INTRO_PROMPT,
-                userName,
-                isIntro: true,
-              }),
-            ),
-          { delayMs: process.env.NODE_ENV === "test" ? 10 : undefined },
+        const response = await sendChat(
+          current,
+          (b) =>
+            buildChatRequest({
+              bot: b,
+              voiceConfig,
+              message: INTRO_PROMPT,
+              userName,
+              isIntro: true,
+            }),
+          {},
         );
         if (cancelled) return;
         const intro: ChatTurn = chatReplyMessage(current.name, response);
@@ -300,13 +369,13 @@ export function useChatSession(options: UseChatSessionOptions) {
       cancelled = true;
       setIntroLoading(false);
     };
-  }, [needsIntro, bot.name, commit, ensureVoiceConfig]);
+  }, [needsIntro, bot.name, commit, ensureVoiceConfig, sendChat]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   /** Sends one user turn and appends the character's reply. A reply for a bot no longer on screen is dropped. */
   const send = useCallback(
     async (text: string) => {
-      const { bot: sentBot, userName, transport, log, onMessage, onReply } = live.current;
+      const { bot: sentBot, userName, log, onMessage, onReply } = live.current;
       if (!text.trim() || sendingRef.current || live.current.enabled === false) return;
       const stale = () => !alive.current || live.current.bot.name !== sentBot.name;
       const history = messagesRef.current;
@@ -326,19 +395,17 @@ export function useChatSession(options: UseChatSessionOptions) {
           });
           return;
         }
-        const response = await retryWithBackoff(
-          () =>
-            transport.send(
-              buildChatRequest({
-                bot: sentBot,
-                voiceConfig,
-                message: text,
-                history,
-                userName,
-              }),
-            ),
+        const response = await sendChat(
+          sentBot,
+          (b) =>
+            buildChatRequest({
+              bot: b,
+              voiceConfig,
+              message: text,
+              history,
+              userName,
+            }),
           {
-            delayMs: process.env.NODE_ENV === "test" ? 10 : undefined,
             onAttempt: (attempt) => {
               if (stale()) return;
               if (attempt > 0) setRetrying(true);
@@ -366,7 +433,7 @@ export function useChatSession(options: UseChatSessionOptions) {
         }
       }
     },
-    [commit, ensureVoiceConfig],
+    [commit, ensureVoiceConfig, sendChat],
   );
 
   return {

@@ -159,6 +159,7 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
 - **`getClientIp()`** trusts the first `x-forwarded-for` entry, correct on Vercel (its edge
   overwrites the header). Revisit if self-hosted behind another proxy (prefer `@vercel/functions`'
   `ipAddress()`).
+- **The persona `/api/chat` sends to Claude is server-owned.** `/api/generate-personality` runs a name gate (`moderation/personaGate.ts`) and returns an HMAC `personalitySignature` (`utils/chat/personaSignature.ts`); chat and `/api/bots` accept a persona only if it verifies for that name, with no unsigned exemption (a saved bot's DB persona is trusted). Without this, any client could skip moderation and supply its own system prompt.
 - **`/api/health` is rate-limited (10/min/IP) and returns no raw third-party SDK error text** (still
   logged server-side); it makes two real billed or quota-limited calls per request.
 - **`buildSsml()`** (`src/utils/chat/voiceHelpers.ts`) XML-escapes `text` before interpolating into SSML
@@ -197,6 +198,7 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
 - `EMAIL_SERVER` + `EMAIL_FROM`: passwordless magic-link sign-in alongside Google (needs `DATABASE_URL`).
 - `GAME_TOKEN_SECRET`: key for the games' encrypted round token; falls back to `NEXTAUTH_SECRET`, then (outside
   Vercel only: local dev and e2e) `API_SECRET`, which the mobile bundle exposes and so must never key a deployment.
+- `PERSONA_SECRET`: key for signing character personas; falls back to `NEXTAUTH_SECRET` (and `API_SECRET` only off Vercel).
 - `ADMIN_EMAILS`: comma-separated allowlist for `/admin`; fails closed when unset.
 
 <!-- BEGIN:nextjs-agent-rules -->

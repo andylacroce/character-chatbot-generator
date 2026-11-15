@@ -31,7 +31,7 @@ export function longerHistory<T>(local: T[], server: T[]): T[] {
 }
 
 interface ChatRequestOptions {
-  bot: { name: string; personality: string; gender?: string | null };
+  bot: { name: string; personality: string; personalitySignature?: string; gender?: string | null };
   voiceConfig: CharacterVoiceConfig;
   message: string;
   /** Turns so far; omitted for the intro. */
@@ -52,6 +52,7 @@ export function buildChatRequest({
   return {
     message,
     personality: bot.personality,
+    ...(bot.personalitySignature ? { personalitySignature: bot.personalitySignature } : {}),
     botName: bot.name,
     gender: bot.gender ?? undefined,
     conversationHistory: formatChatHistory(history, bot.name),
@@ -82,9 +83,15 @@ interface RetryOptions {
 }
 
 /** An error for a non-OK HTTP response, carrying its `status` so retry policy can tell 4xx from 5xx. */
-export function httpError(status: number): Error & { status: number } {
-  return Object.assign(new Error(`HTTP ${status}`), { status });
+export function httpError(
+  status: number,
+  code?: string,
+): Error & { status: number; code?: string } {
+  return Object.assign(new Error(`HTTP ${status}`), { status, code });
 }
+
+/** The `/api/chat` 400 code meaning the persona must be re-signed (see `useChatSession`). */
+export const PERSONA_UNSIGNED = "persona_unsigned";
 
 /** Worth retrying: network failures (no status) and 5xx. A 4xx (validation, 429) fails the same way again and spends rate-limit budget. */
 export function isRetryable(err: unknown): boolean {
@@ -96,6 +103,9 @@ export function isRetryable(err: unknown): boolean {
 export function chatErrorMessage(err: unknown): string {
   const status = (err as { status?: unknown } | null)?.status;
   if (status === 429) return "You are sending messages too quickly. Please wait and try again.";
+  if ((err as { code?: unknown } | null)?.code === "persona_refused") {
+    return "This character is no longer available.";
+  }
   if (status === 408) return "The server took too long to respond. Please try again.";
   return "Error sending message. Please try again.";
 }

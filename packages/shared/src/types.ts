@@ -40,6 +40,8 @@ export interface Bot {
   avatarUrl: string;
   voiceConfig: CharacterVoiceConfig | null;
   gender?: string | null;
+  /** Server signature over (name, personality) from /api/generate-personality; /api/chat requires it. */
+  personalitySignature?: string;
   /**
    * True when created past a copyright warning/caution the user chose to override.
    * Never persisted server-side — see generate-avatar's skipPersistence.
@@ -51,6 +53,8 @@ export interface Bot {
 export interface ChatRequest {
   message: string;
   personality?: string;
+  /** From /api/generate-personality; proves the server vetted `personality` for `botName`. */
+  personalitySignature?: string;
   botName?: string;
   gender?: string;
   /**
@@ -126,6 +130,8 @@ export interface GeneratePersonalityResponse {
   personality: string;
   /** `name` with spelling/casing corrected, or an existing similar character's exact name. */
   correctedName: string;
+  /** Signature over (`correctedName`, `personality`); absent when the server has no signing key. */
+  personalitySignature?: string;
 }
 
 /** POST /api/generate-avatar request body. */

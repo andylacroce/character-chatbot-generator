@@ -26,9 +26,11 @@ export interface CreationTransport {
   validate(name: string): Promise<CharacterValidationResult>;
   /** A random character name, with the platform's own fallback on error. */
   randomName(): Promise<string>;
-  generatePersonality(request: {
-    name: string;
-  }): Promise<{ personality?: string; correctedName?: string } | null>;
+  generatePersonality(request: { name: string }): Promise<{
+    personality?: string;
+    correctedName?: string;
+    personalitySignature?: string;
+  } | null>;
   generateAvatar(request: {
     name: string;
     skipPersistence: boolean;
@@ -53,17 +55,12 @@ export interface GenerateCharacterOptions {
   log?: CreationLogger;
 }
 
-/** The generic persona used when personality generation fails. */
-export function fallbackPersonality(name: string): string {
-  return `You are ${name}. Stay in character.`;
-}
-
 const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
 /**
- * Runs the personality -> portrait -> voice pipeline. Personality and portrait failures
- * degrade (a generic persona, the silhouette); only a missing voice fails the run, since
- * a character without a consistent voice isn't usable.
+ * Runs the personality -> portrait -> voice pipeline. A portrait failure degrades (the
+ * silhouette), but a missing server-signed personality (including a refused name) or a missing
+ * voice fails the run: there is no unsigned generic persona to fall back to.
  */
 export async function generateCharacter(
   transport: CreationTransport,
@@ -79,35 +76,36 @@ export async function generateCharacter(
   const checkCancelled = () => {
     if (cancelToken?.cancelled) throw new Error("cancelled");
   };
-  let personality = fallbackPersonality(originalName);
   let correctedName = originalName;
 
   onProgress("personality");
   setLoadingMessage("Creating personality");
   checkCancelled();
+  let data: Awaited<ReturnType<CreationTransport["generatePersonality"]>>;
   try {
-    const data = await transport.generatePersonality({ name: originalName });
-    checkCancelled();
-    if (data) {
-      if (data.personality) personality = data.personality;
-      if (data.correctedName) correctedName = data.correctedName;
-      log("debug", "bot_personality_generated", "Personality generated", {
-        characterName: correctedName,
-        originalName,
-      });
-    }
+    data = await transport.generatePersonality({ name: originalName });
   } catch (err) {
     if (cancelToken?.cancelled) throw err;
-    log(
-      "debug",
-      "bot_personality_generation_failed",
-      "Personality generation failed, using default",
-      {
-        characterName: originalName,
-        error: errorText(err),
-      },
-    );
+    log("warn", "bot_personality_generation_failed", "Personality generation failed", {
+      characterName: originalName,
+      error: errorText(err),
+    });
+    throw err;
   }
+  checkCancelled();
+  if (!data?.personality) {
+    log("warn", "bot_personality_generation_failed", "Personality generation failed", {
+      characterName: originalName,
+      error: "no personality returned",
+    });
+    throw new Error("Personality generation failed");
+  }
+  const { personality, personalitySignature } = data;
+  if (data.correctedName) correctedName = data.correctedName;
+  log("debug", "bot_personality_generated", "Personality generated", {
+    characterName: correctedName,
+    originalName,
+  });
 
   onProgress("avatar");
   setLoadingMessage("Generating portrait");
@@ -155,5 +153,13 @@ export async function generateCharacter(
   if (!voiceConfig) {
     throw new Error("Failed to generate a consistent voice for this character. Please try again.");
   }
-  return { name: correctedName, personality, avatarUrl, voiceConfig, gender, skipPersistence };
+  return {
+    name: correctedName,
+    personality,
+    personalitySignature,
+    avatarUrl,
+    voiceConfig,
+    gender,
+    skipPersistence,
+  };
 }

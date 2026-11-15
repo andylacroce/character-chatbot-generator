@@ -38,6 +38,16 @@ user-facing error text (`chatErrorMessage`, never a response body). Web (`useCha
 `chatAdapters.ts`) and mobile (`ChatScreen.tsx`) pass a transport, storage and logger and keep audio,
 input, focus and scrolling. Its tests are `tests/shared/useChatSession.test.ts`.
 
+- **Persona signing** (`src/utils/chat/personaSignature.ts`): outside a saved bot's DB row, `/api/chat`
+  accepts `personality` only when `personalitySignature` verifies for `(botName, personality)` (HMAC over
+  `JSON.stringify(["v1", name, personality])`; key `PERSONA_SECRET`, `NEXTAUTH_SECRET`, `API_SECRET` off
+  Vercel only); otherwise 400 `code: "persona_unsigned"` before any Claude call (no personality at all
+  is the same 400). There is no unsigned exemption, not even a generic persona. Non-production with no
+  key accepts unsigned with a warn log. `generate-personality` signs the sanitized `correctedName` it
+  returns, including its own server-side fallback prompt (not a 422 unrecognized). Legacy bots with no
+  signature self-heal in `useChatSession`: on that code it calls `transport.refreshPersona` once per bot
+  per session (re-runs `/api/generate-personality`; accepted when the returned name equals the bot's
+  name or its sanitized form), applies it via `onBotRefreshed`, and retries once.
 - **TTS** (`src/utils/chat/tts.ts`, `synthesizeSpeechToFile`) is keyed by a stable content hash
   to avoid re-synthesizing identical audio. `ttsReply.ts`'s `synthesizeReplyAudio` is the one pipeline
   (hash-named mp3 plus `.txt` sidecar, `/api/audio` URL) for chat on every path and both games; never

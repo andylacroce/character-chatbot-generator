@@ -16,7 +16,6 @@ import {
   buildClaudeMessages,
   type ClaudeMessage,
 } from "../../../utils/chat/conversationSummarizer";
-import { generatePersonalityPrompt } from "../../../config/serverConfig";
 import { sseResponse } from "../../../utils/sse";
 import { sanitizeCharacterName } from "../../../utils/server/security";
 import { stripActionEmotes, gracefullyWrapResponse } from "../../../utils/chat/chatReplyFormatting";
@@ -27,6 +26,7 @@ import {
 } from "../../../utils/chat/chatContext";
 import { findChatInputProblem } from "../../../utils/chat/chatRequest";
 import { createClaudeReply, streamClaudeReply } from "../../../utils/chat/chatReply";
+import { verifyPersona, personaChecksEnforced } from "../../../utils/chat/personaSignature";
 import { readJson, withRoute } from "../../../utils/server/withRoute";
 import { cleanupOldAudioFiles } from "../../../utils/chat/audioFileCleanup";
 import { finalizeChatPersistence } from "../../../utils/chat/chatPersistence";
@@ -70,6 +70,12 @@ const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
  *                 type: string
  *               personality:
  *                 type: string
+ *               personalitySignature:
+ *                 type: string
+ *                 description: >
+ *                   From /generate-personality. Required for any personality other than
+ *                   "You are <botName>. Stay in character." unless the user has a saved
+ *                   character with this name (the server's stored persona is used then).
  *               botName:
  *                 type: string
  *                 default: Character
@@ -116,7 +122,9 @@ const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
  *             schema:
  *               type: string
  *       400:
- *         description: Message or voice config missing
+ *         description: >
+ *           Message or voice config missing, or (`code: "persona_unsigned"`) the persona is
+ *           missing or was not signed by /generate-personality, so the character must be refreshed
  *       408:
  *         description: Request timed out (20s)
  *       429:
@@ -157,9 +165,7 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
       return Response.json({ error: problem.error, requestId }, { status: 400 });
     }
 
-    // Only after validation: a request that is about to 400 must not cost a Claude call.
-    const requestPersonality =
-      body.personality || (await generatePersonalityPrompt("a character chatbot")).prompt;
+    const requestPersonality = typeof body.personality === "string" ? body.personality : "";
 
     const { botRow, personality, userName } = await resolveChatIdentity(
       req,
@@ -167,6 +173,35 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
       requestPersonality,
       body.userName,
     );
+
+    // A saved bot's DB persona is trusted; any other persona must be one this server signed (or
+    // the fixed fallback), so a client can't supply its own system prompt. Before any Claude call.
+    if (!botRow) {
+      const enforced = personaChecksEnforced();
+      if (
+        !requestPersonality ||
+        (enforced && !verifyPersona(botName, personality, body.personalitySignature))
+      ) {
+        logEvent(
+          "info",
+          "chat_persona_unsigned",
+          "Persona missing or not signed by this server",
+          sanitizeLogMeta({ requestId, missing: !requestPersonality }),
+        );
+        return Response.json(
+          { error: "Character needs to be refreshed", code: "persona_unsigned", requestId },
+          { status: 400 },
+        );
+      }
+      if (!enforced) {
+        logEvent(
+          "warn",
+          "chat_persona_unchecked",
+          "No persona signing key configured; accepting an unsigned persona (non-production only)",
+          sanitizeLogMeta({ requestId }),
+        );
+      }
+    }
 
     const { conversationSummary, limitedHistory, newSummaryCheckpoint } = await buildChatContext(
       botRow,

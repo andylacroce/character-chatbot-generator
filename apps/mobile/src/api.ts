@@ -49,10 +49,16 @@ if (!API_BASE_URL) {
 
 export class ApiError extends Error {
   status: number;
+  /** The JSON error body's machine-readable `code` (e.g. `persona_unsigned`), when it has one. */
+  code?: string;
 
   constructor(status: number, message: string) {
     super(message);
     this.status = status;
+    try {
+      const code = JSON.parse(message)?.code;
+      if (typeof code === "string") this.code = code;
+    } catch {}
   }
 }
 
@@ -170,6 +176,7 @@ export async function getPersistedBots(): Promise<PersistedBot[]> {
 export function persistBot(bot: {
   name: string;
   personality: string;
+  personalitySignature?: string;
   avatarUrl: string | null;
   gender: string | null;
   voiceConfig: CharacterVoiceConfig | null;

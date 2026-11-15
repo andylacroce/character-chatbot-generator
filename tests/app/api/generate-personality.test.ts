@@ -30,6 +30,24 @@ const mockFrom = jest.fn(() => ({ orderBy: mockOrderBy }));
 const mockSelect = jest.fn(() => ({ from: mockFrom }));
 jest.mock("../../../src/db/client", () => ({ getDb: () => ({ select: mockSelect }) }));
 
+const mockIsAllowlisted = jest.fn();
+jest.mock("../../../src/utils/moderation/characterAllowlist", () => ({
+  isAllowlisted: (...args: unknown[]) => mockIsAllowlisted(...args),
+}));
+const mockGetBlocklistEntry = jest.fn();
+jest.mock("../../../src/utils/moderation/characterBlocklist", () => ({
+  getBlocklistEntry: (...args: unknown[]) => mockGetBlocklistEntry(...args),
+}));
+const mockGetCachedAvatar = jest.fn();
+jest.mock("../../../src/utils/avatar/avatarCache", () => ({
+  getCachedAvatar: (...args: unknown[]) => mockGetCachedAvatar(...args),
+}));
+const mockClassify = jest.fn();
+jest.mock("../../../src/utils/moderation/characterClassifier", () => ({
+  classifyCharacterName: (...args: unknown[]) => mockClassify(...args),
+}));
+
+import { signPersona } from "../../../src/utils/chat/personaSignature";
 import * as route from "../../../src/app/api/generate-personality/route";
 const handler = asHandler(route);
 
@@ -52,7 +70,17 @@ function makeReq(body: unknown, method = "POST") {
 }
 
 describe("generate-personality API", () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.PERSONA_SECRET = "test-persona-secret";
+    mockIsAllowlisted.mockResolvedValue(false);
+    mockGetBlocklistEntry.mockResolvedValue(null);
+    mockGetCachedAvatar.mockResolvedValue(null);
+    mockClassify.mockResolvedValue({ blocked: false });
+  });
+  afterAll(() => {
+    delete process.env.PERSONA_SECRET;
+  });
 
   it.each([
     ["a missing name", {}],
@@ -91,6 +119,7 @@ describe("generate-personality API", () => {
     expect(res.json).toHaveBeenCalledWith({
       personality: "You are Ada Lovelace.",
       correctedName: "Ada Lovelace",
+      personalitySignature: signPersona("Ada Lovelace", "You are Ada Lovelace."),
     });
     expect(mockRecordEvent).toHaveBeenCalledWith("bot_created", { guest: true }, null);
   });
@@ -106,6 +135,93 @@ describe("generate-personality API", () => {
     expect(res.json).toHaveBeenCalledWith({
       personality: "You are Sherlock Holmes.",
       correctedName: "Sherlock Holmes",
+      personalitySignature: signPersona("Sherlock Holmes", "You are Sherlock Holmes."),
+    });
+  });
+
+  describe("name gate", () => {
+    const okPrompt = { prompt: "You are X.", correctedName: "X" };
+
+    it("refuses a content-blocklisted name before any Claude call", async () => {
+      mockGetBlocklistEntry.mockResolvedValue({ category: "content" });
+      const res = makeRes();
+      await handler(makeReq({ name: "X" }), res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "This character isn't available" });
+      expect(mockGeneratePersonalityPrompt).not.toHaveBeenCalled();
+      expect(mockClassify).not.toHaveBeenCalled();
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "info",
+        "personality_gate_refused",
+        expect.any(String),
+        { reason: "blocked" },
+      );
+    });
+
+    it("allows and signs a copyright-blocklisted name (private Continue Anyway path)", async () => {
+      mockGetBlocklistEntry.mockResolvedValue({ category: "copyright" });
+      mockGeneratePersonalityPrompt.mockResolvedValueOnce(okPrompt);
+      const res = makeRes();
+      await handler(makeReq({ name: "X" }), res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ personalitySignature: signPersona("X", "You are X.") }),
+      );
+    });
+
+    it("skips the classifier for an allowlisted or already-cached name", async () => {
+      mockGeneratePersonalityPrompt.mockResolvedValue(okPrompt);
+      mockIsAllowlisted.mockResolvedValueOnce(true);
+      await handler(makeReq({ name: "X" }), makeRes());
+      mockGetCachedAvatar.mockResolvedValueOnce({ avatarUrl: "/a.png", gender: null });
+      await handler(makeReq({ name: "X" }), makeRes());
+
+      expect(mockClassify).not.toHaveBeenCalled();
+      expect(mockGeneratePersonalityPrompt).toHaveBeenCalledTimes(2);
+    });
+
+    it("refuses a name the classifier blocks, without a Claude personality call", async () => {
+      mockClassify.mockResolvedValue({ blocked: true });
+      const res = makeRes();
+      await handler(makeReq({ name: "X" }), res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockGeneratePersonalityPrompt).not.toHaveBeenCalled();
+    });
+
+    it("fails closed with a 503 when the classifier errors", async () => {
+      mockClassify.mockRejectedValue(new Error("down"));
+      const res = makeRes();
+      await handler(makeReq({ name: "X" }), res);
+
+      expect(res.status).toHaveBeenCalledWith(503);
+      expect(mockGeneratePersonalityPrompt).not.toHaveBeenCalled();
+    });
+
+    it("signs the sanitized returned name, including the server's own fallback prompt", async () => {
+      mockGeneratePersonalityPrompt.mockResolvedValueOnce({
+        prompt: "You are D'Artagnan. Stay in character.",
+        correctedName: "D'Artagnan <b>",
+        recognized: true,
+        fallback: true,
+      });
+      const res = makeRes();
+      await handler(makeReq({ name: "D'Artagnan" }), res);
+
+      const body = (res.json as jest.Mock).mock.calls[0][0];
+      expect(body.correctedName).toBe("DArtagnan b");
+      expect(body.personalitySignature).toBe(signPersona("DArtagnan b", body.personality));
+    });
+
+    it("omits the signature when no key is configured", async () => {
+      delete process.env.PERSONA_SECRET;
+      mockGeneratePersonalityPrompt.mockResolvedValueOnce(okPrompt);
+      const res = makeRes();
+      await handler(makeReq({ name: "X" }), res);
+
+      expect((res.json as jest.Mock).mock.calls[0][0]).not.toHaveProperty("personalitySignature");
     });
   });
 

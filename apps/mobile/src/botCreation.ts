@@ -54,6 +54,7 @@ export function persistBotIfSignedIn(bot: Bot): void {
   persistBot({
     name: bot.name,
     personality: bot.personality,
+    personalitySignature: bot.personalitySignature,
     avatarUrl: bot.avatarUrl || null,
     gender: bot.gender ?? null,
     voiceConfig: bot.voiceConfig,
