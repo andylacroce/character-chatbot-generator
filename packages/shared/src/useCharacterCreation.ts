@@ -62,6 +62,11 @@ export function useCharacterCreation({
 
   const handleCreate = async (e?: { preventDefault(): void }) => {
     e?.preventDefault();
+    // A run is already validating or generating (e.g. a portrait tapped mid-run): never start a second.
+    if (loading || validating) {
+      pendingNameRef.current = null;
+      return;
+    }
     const name = (pendingNameRef.current ?? input).trim();
     pendingNameRef.current = null;
     if (!name) {
@@ -196,7 +201,8 @@ export function useCharacterCreation({
         setLoadingMessage(null);
       }
     } finally {
-      setLoading(false);
+      // A cancelled run's cleanup is Cancel's job; by now a newer run may own `loading`.
+      if (!thisRunToken.cancelled) setLoading(false);
     }
   };
 

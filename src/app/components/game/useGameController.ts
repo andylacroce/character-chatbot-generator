@@ -258,7 +258,7 @@ export function useGameController(game: GameDefinition) {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && !loading && input.trim()) {
+      if (e.key === "Enter" && !e.nativeEvent?.isComposing && !loading && input.trim()) {
         sendMessage();
       }
     },

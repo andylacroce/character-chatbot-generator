@@ -25,6 +25,7 @@ import {
   getReplayAudioUrl,
   parseChatMessages,
   retryWithBackoff,
+  httpError,
 } from "character-chatbot-shared";
 
 /**
@@ -62,6 +63,8 @@ export function useChatController(
   const [sessionId, sessionDatetime] = useSession();
   const { error, setError, handleApiError } = useApiError();
   const audioEnabledRef = useRef(audioEnabled);
+  /** The bot on screen now; a send that began for another bot must not touch this one's UI. */
+  const currentBotName = useRef(bot.name);
   const [retrying, setRetrying] = useState(false);
   const chatBoxRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -82,6 +85,7 @@ export function useChatController(
   // server-history gate's own state reset inside useChatIntro / useServerHistoryReconcile.)
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    currentBotName.current = bot.name;
     // Reset messages to load the new bot's chat history
     const newHistoryKey = chatHistoryKey(bot.name);
     try {
@@ -196,6 +200,8 @@ export function useChatController(
     const userMessage: Message = { sender: "User", text: input };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     const currentInput = input;
+    const sentFor = bot.name;
+    const switchedAway = () => currentBotName.current !== sentFor;
     setInput("");
     stopRecording();
     setLoading(true);
@@ -240,7 +246,7 @@ export function useChatController(
               }),
             ),
           }).then((res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) throw httpError(res.status);
             return res.json();
           }),
         {
@@ -257,12 +263,14 @@ export function useChatController(
         });
       }
       const botReply: Message = chatReplyMessage(bot.name, response);
-      setMessages((prevMessages) => [...prevMessages, botReply]);
+      if (!switchedAway()) setMessages((prevMessages) => [...prevMessages, botReply]);
       logMessage(botReply);
     } catch (e) {
       const msg = "Failed to send message or generate reply.";
-      setError(msg);
-      handleApiError(new Error(msg));
+      if (!switchedAway()) {
+        setError(msg);
+        handleApiError(new Error(msg));
+      }
       if (typeof window !== "undefined") {
         logEvent(
           "error",
@@ -278,8 +286,10 @@ export function useChatController(
         );
       }
     } finally {
-      setRetrying(false);
-      setLoading(false);
+      if (!switchedAway()) {
+        setRetrying(false);
+        setLoading(false);
+      }
     }
   }, [
     input,
@@ -296,7 +306,14 @@ export function useChatController(
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !loading && apiAvailable && input.trim()) {
+    // Enter that confirms an IME candidate (CJK input) must not send the half-composed text.
+    if (
+      e.key === "Enter" &&
+      !e.nativeEvent?.isComposing &&
+      !loading &&
+      apiAvailable &&
+      input.trim()
+    ) {
       sendMessage();
     }
   };

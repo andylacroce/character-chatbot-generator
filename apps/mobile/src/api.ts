@@ -36,6 +36,13 @@ import { getGameGuestId } from "./gameGuest";
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
 const API_SECRET = process.env.EXPO_PUBLIC_API_SECRET ?? "";
 
+/** RN's fetch has no timeout of its own, so a stalled connection would leave a spinner up forever. */
+const REQUEST_TIMEOUT_MS = 90_000;
+
+if (!API_SECRET) {
+  console.warn("EXPO_PUBLIC_API_SECRET is not set: every API call will be rejected with a 401");
+}
+
 if (!API_BASE_URL) {
   throw new Error("EXPO_PUBLIC_API_BASE_URL is not set — copy .env.example to .env");
 }
@@ -61,7 +68,19 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  options.signal?.addEventListener("abort", () => controller.abort());
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     throw new ApiError(response.status, text || response.statusText);

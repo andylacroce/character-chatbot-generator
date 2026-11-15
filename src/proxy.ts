@@ -129,7 +129,7 @@ export function proxy(req: NextRequest) {
         host,
         method,
         userAgent: req.headers.get("user-agent"),
-        url: req.url,
+        path: pathname,
         ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip"),
       }),
     );
