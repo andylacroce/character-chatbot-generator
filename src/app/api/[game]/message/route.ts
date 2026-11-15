@@ -18,6 +18,7 @@
  * each turn, the same pattern app/api/chat/route.ts uses for a guest's conversation.
  */
 
+import { SpendCapError } from "../../../../utils/claude/spendGuard";
 import type { NextRequest } from "next/server";
 import { readJson } from "../../../../utils/server/withRoute";
 import { gameRoute } from "../../../../utils/game/route";
@@ -294,6 +295,12 @@ export const POST = gameRoute({ endpoint: "message", max: 10 }, async (game, req
   } catch (err) {
     // Nothing was answered, so let the player retry the same token.
     if (turnClaimed) await releaseTurn(state);
+    if (err instanceof SpendCapError) {
+      return Response.json(
+        { error: "Games are resting for today. Try again tomorrow." },
+        { status: 503 },
+      );
+    }
     logEvent(
       "error",
       `${game.eventPrefix}_message_failed`,

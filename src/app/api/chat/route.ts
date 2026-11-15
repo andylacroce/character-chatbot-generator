@@ -25,6 +25,7 @@ import {
   resolveChatIdentity,
 } from "../../../utils/chat/chatContext";
 import { findChatInputProblem } from "../../../utils/chat/chatRequest";
+import { SpendCapError } from "../../../utils/claude/spendGuard";
 import { createClaudeReply, streamClaudeReply } from "../../../utils/chat/chatReply";
 import { verifyPersona, personaChecksEnforced } from "../../../utils/chat/personaSignature";
 import { readJson, withRoute } from "../../../utils/server/withRoute";
@@ -309,6 +310,10 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
           setReplyCache(cacheKey, botReply);
           finish(botReply, audioFileUrl, { cached: false, streamed: true });
         } catch (streamErr) {
+          if (streamErr instanceof SpendCapError) {
+            send({ error: "Temporarily unavailable", done: true });
+            return;
+          }
           logEvent(
             "error",
             "chat_stream_failed",
@@ -342,6 +347,16 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
     finish(botReply, audioFileUrl, { cached: false, streamed: false });
     return Response.json({ reply: botReply, audioFileUrl, requestId });
   } catch (error) {
+    if (error instanceof SpendCapError) {
+      return Response.json(
+        {
+          reply: "Chat is resting for today. Please try again tomorrow.",
+          error: "spend_cap",
+          requestId,
+        },
+        { status: 503 },
+      );
+    }
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     logEvent(
       "error",

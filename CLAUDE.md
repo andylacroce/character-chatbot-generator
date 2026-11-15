@@ -95,14 +95,14 @@ read. If a task starts from a description rather than a file, read the matching 
 `chat-tts` (chat, SSE, TTS, voices), `avatar`, `moderation` (validation, allow/blocklist, supported
 gate), `account` (auth, DB, bots, messages, deletion), `character-wall`, `voice-input`,
 `client-state-greeting`, `header` (AppHeader, landing carousel), `games` (engine, token, round flow), `game-judging` (classifier, replies, persona), `game-content` (curated names, rate limits), `game-modes` (Guess Who, Next, leaderboard), `game-simulator`,
-`reports` (Report a problem), `analytics` (/admin), `prompts`, `logging`, `docs-conventions` (JSDoc, OpenAPI), `testing` (incl. e2e),
+`reports` (Report a problem), `analytics` (/admin), `prompts`, `spend-cap` (daily Claude cap and its worst case), `logging`, `docs-conventions` (JSDoc, OpenAPI), `testing` (incl. e2e),
 `mobile`. Keep a rule current when you change the behavior it documents.
 
 ## Architecture
 
 ### Request flow
 
-`src/app/components/chat/useChatController.ts` → `authenticatedFetch()` (`src/utils/api.ts`) →
+`src/app/components/chat/useChatController.ts` (the web adapter over the shared `useChatSession`) → `authenticatedFetch()` (`src/utils/api.ts`) →
 `src/app/api/chat/route.ts`. Every client→server call goes through `authenticatedFetch`, not raw
 `fetch`, so it passes through `proxy.ts` auth and tests can mock it consistently.
 
@@ -119,7 +119,7 @@ client (see "Security posture").
 
 Three tiers, chosen by call site, never by a runtime cost heuristic:
 
-- `"text"`: chat replies only. `claude-sonnet-5-5` in prod, `claude-haiku-5-5` in dev.
+- `"text"`: chat and game replies. `claude-sonnet-5-5` in prod, `claude-haiku-5-5` in dev. This is the tier the daily spend cap governs: call sites get their model and `thinking` from `textCallSettings()` and report usage with `recordTextUsage()` (`utils/claude/spendGuard.ts`), never `getClaudeModel("text")` directly.
 - `"text-simple"`: one-shot structured JSON tasks (personality generation, character validation,
   voice config, suggestion lists, and the games' short verdict reactions). Always
   `claude-haiku-5-5`.
@@ -199,6 +199,7 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
 - `GAME_TOKEN_SECRET`: key for the games' encrypted round token; falls back to `NEXTAUTH_SECRET`, then (outside
   Vercel only: local dev and e2e) `API_SECRET`, which the mobile bundle exposes and so must never key a deployment.
 - `PERSONA_SECRET`: key for signing character personas; falls back to `NEXTAUTH_SECRET` (and `API_SECRET` only off Vercel).
+- `DAILY_TEXT_SOFT_LIMIT` / `DAILY_TEXT_HARD_LIMIT`: global daily cap on Sonnet replies in weighted tokens (see `spend-cap` rule); unset means no cap.
 - `ADMIN_EMAILS`: comma-separated allowlist for `/admin`; fails closed when unset.
 
 <!-- BEGIN:nextjs-agent-rules -->

@@ -10,6 +10,7 @@
 
 import { getClaudeModel } from "../claude/claudeModelSelector";
 import anthropic from "../claude/anthropicClient";
+import { recordTextUsage, textCallSettings } from "../claude/spendGuard";
 import {
   isClaudeResponse,
   stripActionEmotes,
@@ -80,14 +81,14 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
   const messages: ClaudeMessage[] = buildClaudeMessages(conversationHistory, userMessage);
 
   const result = await anthropic.messages.create({
-    model: getClaudeModel("text"),
-    thinking: thinkingFor("text"),
+    ...(await textCallSettings()),
     system: systemPrompt + turnNote,
     messages,
     max_tokens: 220,
     stop_sequences: ["User:", "Bot:"],
   });
 
+  await recordTextUsage(result.usage);
   if (!isClaudeResponse(result)) {
     throw new Error("Invalid response from Claude");
   }
