@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.32.7 - 2026-11-15 - Single-use game turns
+
+- A guessing-game token can no longer be replayed: re-sending an earlier turn's token to get extra wrong guesses, or to re-roll the next round after a correct guess, is now rejected (409). Tokens now expire after a week, a run whose last answer was lost in transit ends with a clear "start a new game" message instead of retrying forever, and a turn whose reply fails to generate is handed back so retrying still works. Games in progress at deploy time end once (old tokens carry no turn id). Protection is strongest once the shared Redis store is attached (see `docs/configuration.md`); without it, it holds within one server instance.
+
 ## v0.32.6 - 2026-11-15 - Hardening quick fixes
 
 - Chat retries now cover only network failures and server errors, not rejected requests (validation, rate limit), which used to burn the rate limit and could double-bill a reply. An invalid chat request no longer triggers a Claude call before being rejected.

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   createGameTransport,
+  httpError,
   getReplayAudioUrl,
   findSpeakerVoiceConfig,
   useGameSession,
@@ -62,7 +63,7 @@ async function postGame(url: string, body: unknown): Promise<unknown> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw httpError(res.status);
   return res.json();
 }
 

@@ -20,7 +20,7 @@ import { synthesizeReplyAudio } from "../chat/ttsReply";
 import { sseResponse } from "../sse";
 import { logEvent, sanitizeLogMeta } from "../logger";
 import type { ServerGame } from "./definitions";
-import type { GameState } from "./token";
+import type { GameState, GameStateInput } from "./token";
 
 export interface GameRoundPlan {
   speakerName: string;
@@ -148,7 +148,7 @@ export function roundState(
   plan: GameRoundPlan,
   round: GameRound,
   carry: RoundTokenCarry,
-): GameState {
+): GameStateInput {
   return {
     game: game.id,
     speakerName: plan.speakerName,

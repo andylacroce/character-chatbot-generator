@@ -191,7 +191,7 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
   provider; without them Pollinations.ai runs with no config (see "Avatar generation").
 - `VERCEL_BLOB_READ_WRITE_TOKEN` / `BLOB_READ_WRITE_TOKEN`: Vercel Blob logging and durable avatar URLs.
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`):
-  share rate-limit counters across instances.
+  share rate-limit counters and the games' single-use turn claims across instances.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`: account sign-in
   and persistence (see "Account persistence").
 - `EMAIL_SERVER` + `EMAIL_FROM`: passwordless magic-link sign-in alongside Google (needs `DATABASE_URL`).

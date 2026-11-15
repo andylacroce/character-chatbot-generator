@@ -58,6 +58,9 @@ export interface UseGameSessionOptions {
 
 const NO_SPEAKER: GameSpeaker = { name: "", avatarUrl: GAME_FALLBACK_AVATAR, gender: null };
 
+/** Shown when the server reports a turn was already played (HTTP 409); the run cannot continue from that token. */
+const TURN_REPLAYED_MESSAGE = "That turn was already played. Please start a new game.";
+
 /** Shared guessing-game state machine, see module doc above. */
 export function useGameSession(
   game: GameDefinition,
@@ -227,6 +230,20 @@ export function useGameSession(
     setError("");
   }, []);
 
+  /**
+   * A 409 means the server already consumed this token's turn (the earlier answer never reached
+   * us, or the token was replayed), so retrying the same token can only fail again: end the run.
+   */
+  const endRunIfTurnReplayed = useCallback(
+    (e: unknown): boolean => {
+      if ((e as { status?: unknown } | null)?.status !== 409) return false;
+      quitGame();
+      setError(TURN_REPLAYED_MESSAGE);
+      return true;
+    },
+    [quitGame],
+  );
+
   /** Gives up (once `confirmed`): reveals the hidden character and ends the run. */
   const giveUp = useCallback(
     async (confirmed = false) => {
@@ -299,13 +316,25 @@ export function useGameSession(
       });
     } catch (e) {
       if (run !== runRef.current) return;
+      if (endRunIfTurnReplayed(e)) return;
       const msg = "Failed to get a reply. Please try again.";
       setError(msg);
       deps.current.log("error", `${game.eventPrefix}_client_message_failed`, msg, e);
     } finally {
       setLoading(false);
     }
-  }, [input, token, loading, lastEvent, continuing, messages, roundStartIndex, speaker, game]);
+  }, [
+    input,
+    token,
+    loading,
+    lastEvent,
+    continuing,
+    messages,
+    roundStartIndex,
+    speaker,
+    game,
+    endRunIfTurnReplayed,
+  ]);
 
   /**
    * After a correct guess, generates the next round. That round genuinely isn't generated
@@ -326,6 +355,7 @@ export function useGameSession(
       applyRound(round, roundBaseIndex);
     } catch (e) {
       if (run !== runRef.current) return;
+      if (endRunIfTurnReplayed(e)) return;
       setLastEvent(correctEvent);
       const msg = "Failed to continue to the next round. Please try again.";
       setError(msg);
@@ -333,7 +363,7 @@ export function useGameSession(
     } finally {
       setContinuing(false);
     }
-  }, [token, lastEvent, messages, applyRound, game.eventPrefix]);
+  }, [token, lastEvent, messages, applyRound, game.eventPrefix, endRunIfTurnReplayed]);
 
   const clearGiveUpRequest = useCallback(() => setGiveUpRequested(false), []);
 
