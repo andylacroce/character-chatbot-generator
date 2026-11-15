@@ -93,6 +93,19 @@ describe.each(GAMES_UNDER_TEST)("$slug/continue API", (game) => {
     });
   });
 
+  it("rejects a replayed continue token with 409 before generating another round", async () => {
+    expect((await next()).status).toHaveBeenCalledWith(200);
+    personaMock.mockClear();
+    expect((await next()).status).toHaveBeenCalledWith(409);
+    expect(personaMock).not.toHaveBeenCalled();
+  });
+
+  it("gives the token back when round generation fails, so Continue can be retried", async () => {
+    personaMock.mockRejectedValueOnce(new Error("model down"));
+    expect((await next()).status).toHaveBeenCalledWith(500);
+    expect((await next()).status).toHaveBeenCalledWith(200);
+  });
+
   it("returns 405 for non-POST methods", async () => {
     const res = makeRes();
     await handler(makeReq(game, undefined, "GET"), res);

@@ -256,7 +256,7 @@ describe("useBotCreation tests", () => {
     );
   });
 
-  it("handleCreate proceeds even when personality generation fails (uses default personality)", async () => {
+  it("handleCreate fails when personality generation fails (no unsigned fallback)", async () => {
     // Mock personality endpoint to fail, avatar and voice succeed
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
@@ -268,8 +268,6 @@ describe("useBotCreation tests", () => {
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
-    const voiceCfg: VoiceCfg = { name: "en-US-custom", languageCodes: ["en-US"] };
-    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
     const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
@@ -280,19 +278,16 @@ describe("useBotCreation tests", () => {
       await result.current.handleCreate();
     });
 
-    expect(onBotCreated).toHaveBeenCalled();
-    const bot = onBotCreated.mock.calls[0][0];
-    expect(bot.voiceConfig).toEqual(voiceCfg);
-    expect(bot.name).toBe("TroubleMaker");
+    expect(onBotCreated).not.toHaveBeenCalled();
     expect(mockLogEvent).toHaveBeenCalledWith(
       "warn",
       "bot_personality_generation_failed",
-      "Personality generation failed, using default",
+      "Personality generation failed",
       expect.any(Object),
     );
   });
 
-  it("uses default personality when personality API returns ok but empty body", async () => {
+  it("fails creation when the personality API returns ok but an empty body", async () => {
     // personality returns OK but empty body
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
@@ -304,8 +299,6 @@ describe("useBotCreation tests", () => {
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
-    const voiceCfg: VoiceCfg = { name: "en-US-Wavenet-A", languageCodes: ["en-US"] };
-    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
     const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
@@ -316,10 +309,8 @@ describe("useBotCreation tests", () => {
       await result.current.handleCreate();
     });
 
-    expect(onBotCreated).toHaveBeenCalled();
-    const bot = onBotCreated.mock.calls[0][0];
-    // When personality API returns an empty body, hook should use the default personality text
-    expect(bot.personality).toBe("You are Defaulty. Stay in character.");
+    // An empty personality response is a failure: there is no unsigned fallback persona.
+    expect(onBotCreated).not.toHaveBeenCalled();
   });
 
   it("does not emit personality/voice generated logs when NODE_ENV=production", async () => {
@@ -1303,7 +1294,7 @@ describe("useBotCreation tests", () => {
     expect(result.current.validating).toBe(false);
   });
 
-  it("uses default personality when personality response is not ok", async () => {
+  it("fails creation when the personality response is not ok", async () => {
     // personality API returns ok: false (not an exception)
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
@@ -1315,8 +1306,6 @@ describe("useBotCreation tests", () => {
         });
       return Promise.resolve({ ok: true, json: async () => ({}) });
     });
-    const voiceCfg: VoiceCfg = { name: "en-US-Voice", languageCodes: ["en-US"] };
-    mockGetVoiceConfig.mockResolvedValueOnce(voiceCfg);
 
     const onBotCreated = jest.fn();
     const { result } = renderHook(() => useBotCreation(onBotCreated, mockUserNameCtx));
@@ -1326,10 +1315,8 @@ describe("useBotCreation tests", () => {
       await result.current.handleCreate();
     });
 
-    expect(onBotCreated).toHaveBeenCalled();
-    const bot = onBotCreated.mock.calls[0][0];
-    // Personality should be the default text because the response was not ok
-    expect(bot.personality).toBe("You are NoPersonality. Stay in character.");
+    // A non-ok personality response (e.g. a refused name) ends creation.
+    expect(onBotCreated).not.toHaveBeenCalled();
   });
 
   it("passes gender to voice config when avatar returns gender but no avatarUrl", async () => {
@@ -1364,7 +1351,10 @@ describe("useBotCreation tests", () => {
   it("uses correctedName from personality response when provided (no personality body)", async () => {
     mockAuthFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
-        return Promise.resolve({ ok: true, json: async () => ({ correctedName: "Corrected" }) });
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ personality: "Gen persona", correctedName: "Corrected" }),
+        });
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
@@ -1387,8 +1377,7 @@ describe("useBotCreation tests", () => {
     const bot = onBotCreated.mock.calls[0][0];
     // Name should be the correctedName provided by personality API
     expect(bot.name).toBe("Corrected");
-    // Personality should remain the default (uses original input at start)
-    expect(bot.personality).toBe("You are Original. Stay in character.");
+    expect(bot.personality).toBe("Gen persona");
   });
 
   it("handleCreate updates loadingMessage through personality->avatar->voice steps", async () => {

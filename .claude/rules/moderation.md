@@ -102,3 +102,11 @@ generation. It defaults to `true` on transport/server errors so a Claude outage 
 chat. Original-character creation was removed in v0.24.0. Legacy `skipPersistence` sessions are
 deleted from local storage by `getValidBotFromStorage` (web) and `loadBot` (mobile) instead of
 resuming.
+
+**Personality gate (`src/utils/moderation/personaGate.ts`).** `/api/generate-personality` checks the
+name before any Claude call: allowlisted passes; a `"content"` blocklist entry is refused (400
+"This character isn't available", `personality_gate_refused`); a `"copyright"` entry passes (the
+"Continue Anyway" private path still calls this route); otherwise a name not already in the avatar
+cache is classified once and refused when `blocked`. A classifier error fails closed with a 503. A refusal or
+failure ends character creation on both platforms (there is no unsigned generic persona). `generate-avatar` keeps its own gate.
+The response carries `personalitySignature` (see chat-tts.md), the only way a custom persona reaches chat.

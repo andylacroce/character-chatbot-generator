@@ -58,7 +58,7 @@ describe("generateBotDataWithProgressCancelable (unit tests)", () => {
   it("uses default image when avatar API returns not ok", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
-        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+        return Promise.resolve({ ok: true, json: async () => ({ personality: "p" }) } as any);
       if (url === "/api/generate-avatar") return Promise.resolve({ ok: false, status: 500 } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
     });
@@ -79,7 +79,7 @@ describe("generateBotDataWithProgressCancelable (unit tests)", () => {
   it("throws when voice config generation fails", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
-        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+        return Promise.resolve({ ok: true, json: async () => ({ personality: "p" }) } as any);
       if (url === "/api/generate-avatar")
         return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
@@ -104,7 +104,7 @@ describe("generateBotDataWithProgressCancelable (unit tests)", () => {
     // personality resolves immediately, avatar will be delayed
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
-        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+        return Promise.resolve({ ok: true, json: async () => ({ personality: "p" }) } as any);
       if (url === "/api/generate-avatar")
         return new Promise((res) =>
           setTimeout(() => res({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) }), 50),
@@ -129,7 +129,7 @@ describe("generateBotDataWithProgressCancelable (unit tests)", () => {
   it("passes skipPersistence through to /api/generate-avatar and onto the returned Bot", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
-        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+        return Promise.resolve({ ok: true, json: async () => ({ personality: "p" }) } as any);
       if (url === "/api/generate-avatar")
         return Promise.resolve({
           ok: true,
@@ -165,7 +165,7 @@ describe("generateBotDataWithProgressCancelable (unit tests)", () => {
   it("defaults skipPersistence to false when omitted", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
-        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+        return Promise.resolve({ ok: true, json: async () => ({ personality: "p" }) } as any);
       if (url === "/api/generate-avatar")
         return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
@@ -193,7 +193,7 @@ describe("generateBotDataWithProgressCancelable (unit tests)", () => {
   it("sends only the established character name for personality generation", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
-        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+        return Promise.resolve({ ok: true, json: async () => ({ personality: "p" }) } as any);
       if (url === "/api/generate-avatar")
         return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);
@@ -217,7 +217,7 @@ describe("generateBotDataWithProgressCancelable (unit tests)", () => {
   it("continues even if persistVoiceConfig throws", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality")
-        return Promise.resolve({ ok: true, json: async () => ({}) } as any);
+        return Promise.resolve({ ok: true, json: async () => ({ personality: "p" }) } as any);
       if (url === "/api/generate-avatar")
         return Promise.resolve({ ok: true, json: async () => ({ avatarUrl: "/img.png" }) } as any);
       return Promise.resolve({ ok: true, json: async () => ({}) } as any);

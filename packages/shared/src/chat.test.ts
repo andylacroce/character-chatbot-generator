@@ -6,6 +6,7 @@ import {
   longerHistory,
   parseChatMessages,
   retryWithBackoff,
+  httpError,
 } from "./chat";
 import type { CharacterVoiceConfig } from "./types";
 
@@ -137,5 +138,15 @@ describe("retryWithBackoff", () => {
     const fn = jest.fn().mockRejectedValue(new Error("down"));
     await expect(retryWithBackoff(fn, { retries: 2, delayMs: 1 })).rejects.toThrow("down");
     expect(fn).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not retry a 4xx (validation or rate limit) but does retry a 5xx", async () => {
+    const rejected = jest.fn().mockRejectedValue(httpError(429));
+    await expect(retryWithBackoff(rejected, { delayMs: 1 })).rejects.toThrow("HTTP 429");
+    expect(rejected).toHaveBeenCalledTimes(1);
+
+    const flaky = jest.fn().mockRejectedValueOnce(httpError(503)).mockResolvedValue("ok");
+    await expect(retryWithBackoff(flaky, { delayMs: 1 })).resolves.toBe("ok");
+    expect(flaky).toHaveBeenCalledTimes(2);
   });
 });

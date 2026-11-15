@@ -29,8 +29,8 @@ export async function saveBot(bot: Bot): Promise<void> {
 /** Loads the currently active character, or null if none is saved. */
 export async function loadBot(): Promise<Bot | null> {
   const raw = await AsyncStorage.getItem(STORAGE_KEYS.bot);
-  if (!raw) return null;
-  const bot = JSON.parse(raw) as Bot;
+  const bot = parseStored<Bot>(raw);
+  if (!bot) return null;
   // Original characters and copyright-warning overrides used the same deliberately
   // ephemeral marker. Remove those retired sessions and their character-scoped data.
   if (bot.skipPersistence) {
@@ -40,11 +40,19 @@ export async function loadBot(): Promise<Bot | null> {
   return bot;
 }
 
-/** Appends one message to a character's stored chat history. */
-export async function appendChatMessage(botName: string, message: ChatMessage): Promise<void> {
-  const history = await loadChatHistory(botName);
-  history.push(message);
-  await AsyncStorage.setItem(chatHistoryKey(botName), JSON.stringify(history));
+/** Parses a stored JSON value, or null when it is absent or damaged (a bad value must not crash a screen on every launch). */
+function parseStored<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Replaces a character's stored chat history. */
+export async function saveChatHistory(botName: string, messages: ChatMessage[]): Promise<void> {
+  await AsyncStorage.setItem(chatHistoryKey(botName), JSON.stringify(messages));
 }
 
 /** Loads a character's stored chat history, oldest first. */
@@ -96,7 +104,8 @@ export async function loadGameState(game: GameDefinition): Promise<PersistedGame
     AsyncStorage.getItem(transcript),
   ]);
   if (!token || !rest) return null;
-  return { token, ...(JSON.parse(rest) as Omit<PersistedGameState, "token">) };
+  const parsed = parseStored<Omit<PersistedGameState, "token">>(rest);
+  return parsed ? { token, ...parsed } : null;
 }
 
 /** Persists a game's current run, or clears it when `state` is null. */
@@ -130,7 +139,7 @@ export async function saveGameInstructionsSeen(game: GameDefinition): Promise<vo
 export const carouselCache: CarouselCache = {
   load: async () => {
     const raw = await AsyncStorage.getItem(STORAGE_KEYS.landingCarouselCache);
-    return raw ? (JSON.parse(raw) as CharacterEntry[]) : null;
+    return parseStored<CharacterEntry[]>(raw);
   },
   save: (characters) =>
     AsyncStorage.setItem(STORAGE_KEYS.landingCarouselCache, JSON.stringify(characters)),

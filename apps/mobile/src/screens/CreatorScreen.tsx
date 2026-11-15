@@ -56,7 +56,7 @@ export default function CreatorScreen({ navigation }: Props) {
   // Reload on every focus, not just mount: returning from a chat must show that
   // character in the resume card, not whichever one was saved when this screen mounted.
   useEffect(() => {
-    const reload = () => void loadBot().then(setSavedBot);
+    const reload = () => void loadBot().then(setSavedBot, () => setSavedBot(null));
     reload();
     return navigation.addListener("focus", reload);
   }, [navigation]);

@@ -13,7 +13,7 @@ paths:
   - "src/app/components/account/HistoryPage.tsx"
   - "src/app/components/account/Auth*.tsx"
   - "src/app/components/account/SignInModal.tsx"
-  - "src/app/components/chat/useServerHistoryReconcile.ts"
+  - "packages/shared/src/useChatSession.ts"
 ---
 
 ### Account persistence
@@ -61,6 +61,10 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
   `history`, not `chats`, to avoid confusion with `ChatPage`/`useChatController`. Rows link to
   `/?name=<name>`, the Wall's launch point, which resumes the saved character; identity
   (name/personality/avatar/voice) restores synchronously and history catches up via `messages`.
+- **`POST /api/bots` requires a signed persona** (`personalitySignature` from
+  `/api/generate-personality`) and 400s `persona_unsigned` otherwise, because a
+  stored persona later becomes the trusted DB persona for chat. Web (`index.tsx`) and mobile
+  (`persistBotIfSignedIn`) send the bot's signature.
 - **Server-persisted chat history (`messages` table).** For a signed-in user's saved character,
   `chat.ts` is the source of truth for personality and history rather than trusting the client's.
   It looks up the `bots` row by `(user_id, name, environment)`; guests, no `DATABASE_URL`, or
@@ -74,8 +78,9 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
     `finalizeChatPersistence` fire-and-forget inserts the user/bot pair and any checkpoint update;
     failures are logged and never discard a reply. The intro message goes through the same path.
   - **Read path:** `GET /api/messages?botName=` (GET-only) returns oldest-first, capped at 200.
-    `useChatController.ts` seeds from localStorage instantly, then (signed in) `useServerHistoryReconcile.ts`
-    adopts the server list only if longer (new device / cleared storage).
+    `useChatSession` (shared; web and mobile) seeds from local storage, then (signed in) adopts the
+    server list only if longer (new device / cleared storage). The intro waits for that check, and for
+    sign-in to resolve, so it never fires over a real conversation.
   - **Schema drift guard:** forgetting `db:push` after editing `schema.ts` broke live dev/prod twice
     (`users.preferred_name`, `avatar_cache.display_name`). `npm run db:check`
     (`scripts/check-db-schema.cjs`) regex-scans `schema.ts` columns against

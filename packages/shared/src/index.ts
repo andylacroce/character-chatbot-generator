@@ -1,4 +1,5 @@
 export * from "./core";
+export * from "./useChatSession";
 export * from "./useGameSession";
 export * from "./useLeaderboard";
 export * from "./useUserNameState";

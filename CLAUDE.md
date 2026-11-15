@@ -76,7 +76,7 @@ Keep the web app and the mobile app (`apps/mobile`) sharing as much as possible 
 **every commit**. Logic, copy, types, and client state machines live once in `packages/shared`
 (`character-chatbot-shared`, which web imports directly via `next.config.mjs`'s
 `transpilePackages`); each platform supplies only a thin adapter: its own request transport,
-storage, and logging. The guessing game is the model: `useGameSession` and `game*.ts` (`gameDefinitions`, `gameState`, `gameTransport`) in shared,
+storage, and logging. The chat (`useChatSession`) and the guessing game are the model: `useGameSession` and `game*.ts` (`gameDefinitions`, `gameState`, `gameTransport`) in shared,
 wrapped by `src/app/components/game/useGameController.ts` (SSE progress, localStorage) and
 `apps/mobile/src/useGameController.ts` (plain JSON, AsyncStorage). For every change, ship the
 other platform's side in the same commit, and move logic that exists on both sides into shared
@@ -86,7 +86,7 @@ UX (haptics). A feature that exists on one platform only is a parity gap to call
 default. Mobile-specific notes are in "Mobile app" below.
 
 Human-oriented onboarding lives in `docs/` (`getting-started.md`, `architecture.md`, `features.md`,
-`configuration.md`); keep them current alongside the rules when a flow or folder moves.
+`configuration.md`, `scaling.md`: cost drivers and the scaling levers); keep them current alongside the rules when a flow or folder moves.
 
 ## Topic rules (`.claude/rules/`)
 
@@ -154,11 +154,12 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
   volume or cost; the per-route rate limiter (`src/utils/server/withRoute.ts`) is the real ceiling. Fully
   closing this would mean requiring login on guest-usable routes (breaking core UX) or real
   session/token infrastructure, an accepted tradeoff.
-- **API key comparison is constant-time** (`secureCompare`, hash-then-`timingSafeEqual`), since Proxy
+- **API key comparison is constant-time** (`secureCompare`, `timingSafeEqual` with a same-length dummy on a length mismatch, deliberately not hash-then-compare), since Proxy
   defaults to the Node.js runtime in Next.js 16 (renamed from `middleware.ts`, which was Edge).
 - **`getClientIp()`** trusts the first `x-forwarded-for` entry, correct on Vercel (its edge
   overwrites the header). Revisit if self-hosted behind another proxy (prefer `@vercel/functions`'
   `ipAddress()`).
+- **The persona `/api/chat` sends to Claude is server-owned.** `/api/generate-personality` runs a name gate (`moderation/personaGate.ts`) and returns an HMAC `personalitySignature` (`utils/chat/personaSignature.ts`); chat and `/api/bots` accept a persona only if it verifies for that name, with no unsigned exemption (a saved bot's DB persona is trusted). Without this, any client could skip moderation and supply its own system prompt.
 - **`/api/health` is rate-limited (10/min/IP) and returns no raw third-party SDK error text** (still
   logged server-side); it makes two real billed or quota-limited calls per request.
 - **`buildSsml()`** (`src/utils/chat/voiceHelpers.ts`) XML-escapes `text` before interpolating into SSML
@@ -191,12 +192,13 @@ Kept high-level (this file is public): what changed and why, not exploit-level s
   provider; without them Pollinations.ai runs with no config (see "Avatar generation").
 - `VERCEL_BLOB_READ_WRITE_TOKEN` / `BLOB_READ_WRITE_TOKEN`: Vercel Blob logging and durable avatar URLs.
 - `KV_REST_API_URL` + `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`):
-  share rate-limit counters across instances.
+  share rate-limit counters and the games' single-use turn claims across instances.
 - `DATABASE_URL` + `NEXTAUTH_SECRET` + `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`: account sign-in
   and persistence (see "Account persistence").
 - `EMAIL_SERVER` + `EMAIL_FROM`: passwordless magic-link sign-in alongside Google (needs `DATABASE_URL`).
-- `GAME_TOKEN_SECRET`: key for the games' encrypted round token; falls back to `NEXTAUTH_SECRET`, then
-  the required `API_SECRET`, so the games need no new configuration.
+- `GAME_TOKEN_SECRET`: key for the games' encrypted round token; falls back to `NEXTAUTH_SECRET`, then (outside
+  Vercel only: local dev and e2e) `API_SECRET`, which the mobile bundle exposes and so must never key a deployment.
+- `PERSONA_SECRET`: key for signing character personas; falls back to `NEXTAUTH_SECRET` (and `API_SECRET` only off Vercel).
 - `ADMIN_EMAILS`: comma-separated allowlist for `/admin`; fails closed when unset.
 
 <!-- BEGIN:nextjs-agent-rules -->

@@ -84,6 +84,10 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // clearAllMocks keeps queued/default results, so a test that bails early would poison the next.
+    mockClassifyGuess.mockReset();
+    mockGetGameReply.mockReset();
+    mockGetGuessReactionReply.mockReset();
     token = signGameState(makeState(game));
     mockSynthesizeReplyAudio.mockResolvedValue("/api/audio?file=test.mp3");
     mockGetSessionUserId.mockResolvedValue(null);
@@ -92,6 +96,54 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
     mockRecordGameResult.mockResolvedValue(undefined);
     mockIsRunEnded.mockResolvedValue(false);
     mockMarkRunEnded.mockResolvedValue(undefined);
+  });
+
+  describe("single-use turn tokens", () => {
+    it("rejects a replayed wrong-guess token with 409 and spends no more model calls", async () => {
+      classify("clear");
+      classify("clear");
+      mockGetGuessReactionReply.mockResolvedValue("Not quite.");
+      const first = await send({ message: "Napoleon?" });
+      expect(first.status).toHaveBeenCalledWith(200);
+      const second = await send({ message: "Napoleon?" });
+      expect(second.status).toHaveBeenCalledWith(409);
+      expect(mockGetGuessReactionReply).toHaveBeenCalledTimes(1);
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "info",
+        `${prefix}_token_replayed`,
+        expect.any(String),
+      );
+    });
+
+    it("rejects a replayed correct-guess token without scoring it again", async () => {
+      classify("clear", true);
+      classify("clear", true);
+      mockGetGuessReactionReply.mockResolvedValue("Brilliant!");
+      token = signGameState(makeState(game, { issuedForGuestId: "guest-hash" }));
+      mockGetGuestId.mockReturnValue("guest-hash");
+      expect((await send({ message: "Irene Adler" })).status).toHaveBeenCalledWith(200);
+      const writes = mockRecordGameResult.mock.calls.length;
+      expect(writes).toBeGreaterThan(0);
+      expect((await send({ message: "Irene Adler" })).status).toHaveBeenCalledWith(409);
+      expect(mockRecordGameResult.mock.calls.length).toBe(writes);
+    });
+
+    it("lets clue replies reuse the same token", async () => {
+      classify("none");
+      classify("none");
+      mockGetGameReply.mockResolvedValue("A clue.");
+      expect((await send({ message: "Hint?" })).status).toHaveBeenCalledWith(200);
+      expect((await send({ message: "Another?" })).status).toHaveBeenCalledWith(200);
+    });
+
+    it("gives the turn back when the reply fails, so the same token can be retried", async () => {
+      classify("clear");
+      classify("clear");
+      mockGetGuessReactionReply.mockRejectedValueOnce(new Error("model down"));
+      mockGetGuessReactionReply.mockResolvedValue("Not quite.");
+      expect((await send({ message: "Napoleon?" })).status).toHaveBeenCalledWith(500);
+      expect((await send({ message: "Napoleon?" })).status).toHaveBeenCalledWith(200);
+    });
   });
 
   it.each([

@@ -1,9 +1,9 @@
 import crypto from "crypto";
-import type { GameState } from "../../../../src/utils/game/token";
+import type { GameStateInput } from "../../../../src/utils/game/token";
 
 const OLD_ENV = process.env;
 
-function makeState(overrides: Partial<GameState> = {}): GameState {
+function makeState(overrides: Partial<GameStateInput> = {}): GameStateInput {
   return {
     game: "guessWhoNext",
     runId: "run-1",
@@ -53,8 +53,21 @@ describe("game token", () => {
     it("returns the exact original state, including canContinue", async () => {
       const { signGameState, verifyGameState } = await load();
       const state = makeState({ game, canContinue: true, wrongGuessCount: 1 });
-      expect(verifyGameState(signGameState(state), game)).toEqual(state);
+      expect(verifyGameState(signGameState(state), game)).toEqual({
+        ...state,
+        turnId: expect.any(String),
+        issuedAt: expect.any(Number),
+      });
     });
+  });
+
+  it("gives every signed token its own turnId", async () => {
+    const { signGameState, verifyGameState } = await load();
+    const state = makeState();
+    const first = verifyGameState(signGameState(state), "guessWhoNext");
+    const second = verifyGameState(signGameState(state), "guessWhoNext");
+    expect(first?.turnId).toBeTruthy();
+    expect(first?.turnId).not.toBe(second?.turnId);
   });
 
   it("never verifies a token against the other game's routes", async () => {
@@ -81,6 +94,28 @@ describe("game token", () => {
       const { verifyGameState } = await load();
       const untagged = encryptRaw({ ...common, runId: "r", hiddenName: "Irene Adler" });
       expect(verifyGameState(untagged, "guessWho")).toBeNull();
+    });
+  });
+
+  describe("turn ids and age", () => {
+    const stamped = (overrides: Record<string, unknown> = {}) =>
+      encryptRaw({ ...makeState(), turnId: "t1", issuedAt: Date.now(), ...overrides });
+
+    it("accepts a token with a turn id and a recent issue time", async () => {
+      const { verifyGameState } = await load();
+      expect(verifyGameState(stamped(), "guessWhoNext")).not.toBeNull();
+    });
+
+    it("rejects a token minted before turn ids existed (it could never be claimed)", async () => {
+      const { verifyGameState } = await load();
+      expect(verifyGameState(encryptRaw(makeState()), "guessWhoNext")).toBeNull();
+      expect(verifyGameState(stamped({ turnId: undefined }), "guessWhoNext")).toBeNull();
+    });
+
+    it("rejects a token older than a week", async () => {
+      const { verifyGameState } = await load();
+      const old = Date.now() - 8 * 24 * 60 * 60 * 1000;
+      expect(verifyGameState(stamped({ issuedAt: old }), "guessWhoNext")).toBeNull();
     });
   });
 
@@ -153,7 +188,7 @@ describe("game token", () => {
         apply(signEnv);
         token = (await load()).signGameState(makeState());
       });
-      let result: GameState | null = null;
+      let result: unknown = null;
       await jest.isolateModulesAsync(async () => {
         apply(verifyEnv);
         result = (await load()).verifyGameState(token, "guessWhoNext");
@@ -167,7 +202,11 @@ describe("game token", () => {
         NEXTAUTH_SECRET: "nextauth-secret",
         API_SECRET: "api-secret",
       };
-      expect(await verifiesAcross(all, { GAME_TOKEN_SECRET: "game-secret" })).toEqual(makeState());
+      expect(await verifiesAcross(all, { GAME_TOKEN_SECRET: "game-secret" })).toEqual({
+        ...makeState(),
+        turnId: expect.any(String),
+        issuedAt: expect.any(Number),
+      });
       // The lower-precedence secrets alone must NOT verify it, proving GAME_TOKEN_SECRET won.
       expect(
         await verifiesAcross(all, { NEXTAUTH_SECRET: "nextauth-secret", API_SECRET: "api-secret" }),
@@ -177,8 +216,12 @@ describe("game token", () => {
     it("falls back to NEXTAUTH_SECRET, then API_SECRET", async () => {
       expect(
         await verifiesAcross({ NEXTAUTH_SECRET: "n", API_SECRET: "a" }, { NEXTAUTH_SECRET: "n" }),
-      ).toEqual(makeState());
-      expect(await verifiesAcross({ API_SECRET: "a" }, { API_SECRET: "a" })).toEqual(makeState());
+      ).toEqual({ ...makeState(), turnId: expect.any(String), issuedAt: expect.any(Number) });
+      expect(await verifiesAcross({ API_SECRET: "a" }, { API_SECRET: "a" })).toEqual({
+        ...makeState(),
+        turnId: expect.any(String),
+        issuedAt: expect.any(Number),
+      });
     });
   });
 });

@@ -719,6 +719,47 @@ describe.each([GUESS_WHO, GUESS_WHO_NEXT])("useGameController ($title)", (game) 
       expect(mockStopAudio).toHaveBeenCalled();
     });
 
+    it("ends the run with a clear message when the server says the turn was already played", async () => {
+      const { result } = await startedHook();
+      mockAuthenticatedFetch.mockResolvedValueOnce({ ok: false, status: 409 });
+      act(() => result.current.setInput("Napoleon?"));
+      await act(async () => {
+        await result.current.sendMessage();
+      });
+      expect(result.current.started).toBe(false);
+      expect(result.current.error).toMatch(/already played/i);
+    });
+
+    it("does the same when Continue is rejected as already played", async () => {
+      const { result } = await startedHook();
+      await say(result, "It's Irene Adler!", correctResponse());
+      mockAuthenticatedFetch.mockResolvedValueOnce({ ok: false, status: 409 });
+      await act(async () => {
+        await result.current.continueRound();
+      });
+      expect(result.current.started).toBe(false);
+      expect(result.current.error).toMatch(/already played/i);
+    });
+
+    it("a reply that lands after quitGame does not revive the run", async () => {
+      const { result } = await startedHook();
+      let release!: (res: unknown) => void;
+      mockAuthenticatedFetch.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+      act(() => result.current.setInput("is it a detective?"));
+      let sending!: Promise<void>;
+      act(() => {
+        sending = result.current.sendMessage();
+      });
+      act(() => result.current.quitGame());
+      await act(async () => {
+        release(mockResponse(correctResponse()));
+        await sending;
+      });
+      expect(result.current.started).toBe(false);
+      expect(result.current.messages).toEqual([]);
+      expect(result.current.lastEvent).toBeNull();
+    });
+
     it("giveUp does nothing until confirmed", async () => {
       const { result } = await startedHook();
       const callsBefore = mockAuthenticatedFetch.mock.calls.length;

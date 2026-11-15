@@ -2,6 +2,27 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.32.9 - 2026-11-15 - Server-owned characters
+
+- The server now vets and signs every character persona, and chat only accepts a persona it signed. A custom system prompt can no longer be sent straight to the chat API, which closes a way to skip name moderation and use the app as a free general-purpose model. A blocked name is now refused at personality creation too ("This character isn't available"), and creating a character now fails instead of using a generic persona when the server can't produce one.
+- Characters saved before this release are refreshed automatically on their first message: the app re-requests the persona once and retries, with no action needed. If the name is no longer allowed, the chat says "This character is no longer available."
+
+## v0.32.8 - 2026-11-15 - One chat engine for web and mobile
+
+- Web and mobile now run the same chat logic, so they stop drifting. On mobile this fixes the greeting sometimes firing over a real saved conversation while sign-in was still loading, a failed greeting never being retried, characters with no stored voice crashing or going silent, raw server error text appearing in the chat, and a late reply updating or playing audio after you left the screen. Errors now read the same on both ("too many messages", "took too long", or a generic retry message). Leaving a chat stops its audio.
+
+## v0.32.7 - 2026-11-15 - Single-use game turns
+
+- A guessing-game token can no longer be replayed: re-sending an earlier turn's token to get extra wrong guesses, or to re-roll the next round after a correct guess, is now rejected (409). Tokens now expire after a week, a run whose last answer was lost in transit ends with a clear "start a new game" message instead of retrying forever, and a turn whose reply fails to generate is handed back so retrying still works. Games in progress at deploy time end once (old tokens carry no turn id). Protection is strongest once the shared Redis store is attached (see `docs/configuration.md`); without it, it holds within one server instance.
+
+## v0.32.6 - 2026-11-15 - Hardening quick fixes
+
+- Chat retries now cover only network failures and server errors, not rejected requests (validation, rate limit), which used to burn the rate limit and could double-bill a reply. An invalid chat request no longer triggers a Claude call before being rejected.
+- Leaving a guessing-game run while a request is in flight no longer brings the run back; a reply from the previous character no longer lands in a newly selected character's chat; cancelling and restarting character creation (or tapping a portrait mid-run) no longer starts overlapping runs.
+- Pressing Enter to confirm an IME candidate no longer sends the half-typed message.
+- Mobile: requests time out instead of spinning forever, and damaged saved data (character, game run, landing cache) is ignored instead of crashing; a saved game run with an unexpected shape is discarded on web and mobile.
+- Game tokens no longer fall back to the app's mobile-bundled `API_SECRET` on Vercel, and rejected-key log lines no longer include the query string.
+
 ## v0.32.5 - 2026-11-10 - All API routes on the App Router
 
 - Every API route is now an App Router route handler (the last Pages Router routes, including the auth bridge, chat and audio, moved), wrapped by one limit-and-log helper. URLs and responses are unchanged, so released mobile builds keep working.

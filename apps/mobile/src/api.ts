@@ -36,16 +36,29 @@ import { getGameGuestId } from "./gameGuest";
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
 const API_SECRET = process.env.EXPO_PUBLIC_API_SECRET ?? "";
 
+/** RN's fetch has no timeout of its own, so a stalled connection would leave a spinner up forever. */
+const REQUEST_TIMEOUT_MS = 90_000;
+
+if (!API_SECRET) {
+  console.warn("EXPO_PUBLIC_API_SECRET is not set: every API call will be rejected with a 401");
+}
+
 if (!API_BASE_URL) {
   throw new Error("EXPO_PUBLIC_API_BASE_URL is not set — copy .env.example to .env");
 }
 
 export class ApiError extends Error {
   status: number;
+  /** The JSON error body's machine-readable `code` (e.g. `persona_unsigned`), when it has one. */
+  code?: string;
 
   constructor(status: number, message: string) {
     super(message);
     this.status = status;
+    try {
+      const code = JSON.parse(message)?.code;
+      if (typeof code === "string") this.code = code;
+    } catch {}
   }
 }
 
@@ -61,7 +74,19 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     headers["Authorization"] = `Bearer ${authToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  options.signal?.addEventListener("abort", () => controller.abort());
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     throw new ApiError(response.status, text || response.statusText);
@@ -118,21 +143,7 @@ export function getVoiceConfig(
   return post("/api/get-voice-config", body);
 }
 
-/**
- * The shared package's ChatRequest mistypes two fields against what chat.ts actually reads:
- * `isIntro` (see chat.ts's req.body.isIntro) is missing entirely, and `conversationHistory`
- * is declared as `ChatMessage[]` but chat.ts feeds it straight into buildClaudeMessages(),
- * which expects pre-formatted "User: "/"Bot: " strings and calls .startsWith() on each
- * entry — sending raw {sender,text} objects 500s with "t.startsWith is not a function".
- * The web app converts before sending (see useChatController.ts's own conversationHistory
- * construction); ChatScreen's formatHistory() mirrors that.
- */
-export type ChatRequestBody = Omit<ChatRequest, "conversationHistory"> & {
-  isIntro?: boolean;
-  conversationHistory?: string[];
-};
-
-export function sendChatMessage(body: ChatRequestBody): Promise<ChatResponse> {
+export function sendChatMessage(body: ChatRequest): Promise<ChatResponse> {
   return post("/api/chat", body);
 }
 
@@ -165,6 +176,7 @@ export async function getPersistedBots(): Promise<PersistedBot[]> {
 export function persistBot(bot: {
   name: string;
   personality: string;
+  personalitySignature?: string;
   avatarUrl: string | null;
   gender: string | null;
   voiceConfig: CharacterVoiceConfig | null;
