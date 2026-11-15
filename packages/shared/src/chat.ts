@@ -92,6 +92,14 @@ export function isRetryable(err: unknown): boolean {
   return typeof status !== "number" || status >= 500;
 }
 
+/** The one user-facing message for a failed send; never the response body (see `httpError`). */
+export function chatErrorMessage(err: unknown): string {
+  const status = (err as { status?: unknown } | null)?.status;
+  if (status === 429) return "You are sending messages too quickly. Please wait and try again.";
+  if (status === 408) return "The server took too long to respond. Please try again.";
+  return "Error sending message. Please try again.";
+}
+
 /** Runs a chat request, retrying network failures and 5xx with exponential backoff; the last error is rethrown. */
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,

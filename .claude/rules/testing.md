@@ -36,7 +36,7 @@ paths:
   `tests/helpers/asHandler.ts` to keep a `(req, res)`-style test. `tests/setup.js` mocks `withRoute`
   (so one fake IP never trips the limiter) and runs `after()` tasks immediately; the limiter itself is
   tested in `tests/utils/withRoute.test.ts`, which unmocks it. Don't test 405s: Next answers those.
-- **A module split out of a larger file gets its own test file named after it** (`useChatIntro.test.ts`,
+- **A module split out of a larger file gets its own test file named after it** (`useChatSession.test.ts`,
   `gameStats.test.ts`), in the folder its neighbors use. The original integration-style tests of the
   parent (`chat.test.ts`, `useChatController.*`) stay as the behavior pin; don't fold them into the new files.
   `tests/helpers/fakeStatsDb.ts` fakes the Drizzle query chain for the stats aggregations.

@@ -14,7 +14,8 @@ paths:
   - "src/utils/chat/voiceTypes.ts"
   - "src/utils/chat/voiceHelpers.ts"
   - "src/app/components/chat/useChatController.ts"
-  - "src/app/components/chat/useChatIntro.ts"
+  - "src/app/components/chat/chatAdapters.ts"
+  - "packages/shared/src/useChatSession.ts"
   - "src/app/components/chat/chatControllerHelpers.ts"
 ---
 
@@ -29,6 +30,13 @@ if the user says yes.
 SSE frames are plain `data: JSON\n\n`. The final payload is
 `{ reply: string, audioFileUrl?: string, done: true }`; changing it requires updating
 `useChatController.ts` and every test that parses stream frames.
+
+**Client chat state is one shared hook,** `packages/shared/src/useChatSession.ts`: transcript, send
+(retry only network errors and 5xx, never a 4xx), the hidden intro (with the same retry), server-history
+reconcile, voice-config ensure/cache, the drop-a-reply-after-a-bot-switch guard, and the single
+user-facing error text (`chatErrorMessage`, never a response body). Web (`useChatController.ts` plus
+`chatAdapters.ts`) and mobile (`ChatScreen.tsx`) pass a transport, storage and logger and keep audio,
+input, focus and scrolling. Its tests are `tests/shared/useChatSession.test.ts`.
 
 - **TTS** (`src/utils/chat/tts.ts`, `synthesizeSpeechToFile`) is keyed by a stable content hash
   to avoid re-synthesizing identical audio. `ttsReply.ts`'s `synthesizeReplyAudio` is the one pipeline

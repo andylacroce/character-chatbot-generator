@@ -8,7 +8,7 @@ import {
   type ChatMessage,
 } from "character-chatbot-shared";
 import {
-  appendChatMessage,
+  saveChatHistory,
   clearLocalChats,
   clearPersonalData,
   loadAudioEnabled,
@@ -61,14 +61,15 @@ describe("storage", () => {
     await expect(AsyncStorage.getItem(`lastPlayedAudioHash-${bot.name}`)).resolves.toBeNull();
   });
 
-  it("appends messages to a character's chat history in order", async () => {
-    const first: ChatMessage = { sender: "Me", text: "Hello" };
-    const second: ChatMessage = { sender: bot.name, text: "Greetings." };
+  it("round-trips a character's chat history in order", async () => {
+    const history: ChatMessage[] = [
+      { sender: "Me", text: "Hello" },
+      { sender: bot.name, text: "Greetings." },
+    ];
 
-    await appendChatMessage(bot.name, first);
-    await appendChatMessage(bot.name, second);
+    await saveChatHistory(bot.name, history);
 
-    await expect(loadChatHistory(bot.name)).resolves.toEqual([first, second]);
+    await expect(loadChatHistory(bot.name)).resolves.toEqual(history);
   });
 
   it("returns an empty history for a character with none saved", async () => {
@@ -84,7 +85,7 @@ describe("storage", () => {
 
   it("stores chat history under the shared chatHistoryKey", async () => {
     const message: ChatMessage = { sender: "Me", text: "Hi" };
-    await appendChatMessage(bot.name, message);
+    await saveChatHistory(bot.name, [message]);
     const raw = await AsyncStorage.getItem(chatHistoryKey(bot.name));
     expect(JSON.parse(raw!)).toEqual([message]);
   });

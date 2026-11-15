@@ -50,11 +50,9 @@ function parseStored<T>(raw: string | null): T | null {
   }
 }
 
-/** Appends one message to a character's stored chat history. */
-export async function appendChatMessage(botName: string, message: ChatMessage): Promise<void> {
-  const history = await loadChatHistory(botName);
-  history.push(message);
-  await AsyncStorage.setItem(chatHistoryKey(botName), JSON.stringify(history));
+/** Replaces a character's stored chat history. */
+export async function saveChatHistory(botName: string, messages: ChatMessage[]): Promise<void> {
+  await AsyncStorage.setItem(chatHistoryKey(botName), JSON.stringify(messages));
 }
 
 /** Loads a character's stored chat history, oldest first. */

@@ -137,21 +137,7 @@ export function getVoiceConfig(
   return post("/api/get-voice-config", body);
 }
 
-/**
- * The shared package's ChatRequest mistypes two fields against what chat.ts actually reads:
- * `isIntro` (see chat.ts's req.body.isIntro) is missing entirely, and `conversationHistory`
- * is declared as `ChatMessage[]` but chat.ts feeds it straight into buildClaudeMessages(),
- * which expects pre-formatted "User: "/"Bot: " strings and calls .startsWith() on each
- * entry — sending raw {sender,text} objects 500s with "t.startsWith is not a function".
- * The web app converts before sending (see useChatController.ts's own conversationHistory
- * construction); ChatScreen's formatHistory() mirrors that.
- */
-export type ChatRequestBody = Omit<ChatRequest, "conversationHistory"> & {
-  isIntro?: boolean;
-  conversationHistory?: string[];
-};
-
-export function sendChatMessage(body: ChatRequestBody): Promise<ChatResponse> {
+export function sendChatMessage(body: ChatRequest): Promise<ChatResponse> {
   return post("/api/chat", body);
 }
 
