@@ -32,7 +32,7 @@ async function* chunks(parts: Array<string | { other: true }>) {
     if (typeof p === "string") {
       yield { type: "content_block_delta", delta: { type: "text_delta", text: p } };
     } else {
-      yield { type: "message_start" };
+      yield { type: "message_start", message: { usage: { input_tokens: 3 } } };
     }
   }
 }

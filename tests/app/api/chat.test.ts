@@ -702,7 +702,7 @@ describe("chat API", () => {
     it("ignores non-text chunks in the stream", async () => {
       mockStream.mockReturnValueOnce({
         async *[Symbol.asyncIterator]() {
-          yield { type: "message_start" };
+          yield { type: "message_start", message: { usage: { input_tokens: 1 } } };
           yield { type: "content_block_delta", delta: { type: "input_json_delta" } };
           yield { type: "content_block_delta", delta: { type: "text_delta", text: "" } };
           yield { type: "content_block_delta", delta: { type: "text_delta", text: "Greetings." } };

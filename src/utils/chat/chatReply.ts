@@ -1,6 +1,5 @@
 import anthropic from "../claude/anthropicClient";
-import { getClaudeModel } from "../claude/claudeModelSelector";
-import { thinkingFor } from "../claude/claudeThinking";
+import { recordTextUsage, textCallSettings } from "../claude/spendGuard";
 import { logEvent, sanitizeLogMeta } from "../logger";
 import type { SseSend } from "../sse";
 import { isClaudeResponse } from "./chatReplyFormatting";
@@ -10,10 +9,9 @@ import type { ClaudeMessage } from "./conversationSummarizer";
 const REPLY_TIMEOUT_MS = 20000;
 
 /** The Claude call settings every chat reply shares. */
-function replyParams(system: string, messages: ClaudeMessage[]) {
+async function replyParams(system: string, messages: ClaudeMessage[]) {
   return {
-    model: getClaudeModel("text"),
-    thinking: thinkingFor("text"),
+    ...(await textCallSettings()),
     system,
     messages,
     max_tokens: 500,
@@ -31,9 +29,12 @@ export async function streamClaudeReply(
   system: string,
   messages: ClaudeMessage[],
 ): Promise<string> {
-  const streamResponse = anthropic.messages.stream(replyParams(system, messages));
+  const streamResponse = anthropic.messages.stream(await replyParams(system, messages));
   let botReply = "";
+  const usage = { input_tokens: 0, output_tokens: 0 };
   for await (const chunk of streamResponse) {
+    if (chunk.type === "message_start") usage.input_tokens = chunk.message.usage.input_tokens;
+    if (chunk.type === "message_delta") usage.output_tokens = chunk.usage.output_tokens;
     if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
       const content = chunk.delta.text;
       if (content) {
@@ -42,6 +43,7 @@ export async function streamClaudeReply(
       }
     }
   }
+  await recordTextUsage(usage);
   return botReply;
 }
 
@@ -54,13 +56,11 @@ export async function createClaudeReply(
   messages: ClaudeMessage[],
   requestId: string | string[],
 ): Promise<string | null> {
+  const params = await replyParams(system, messages);
   const timeout = new Promise((resolve) =>
     setTimeout(() => resolve({ timeout: true }), REPLY_TIMEOUT_MS),
   );
-  const result = await Promise.race([
-    anthropic.messages.create(replyParams(system, messages)),
-    timeout,
-  ]);
+  const result = await Promise.race([anthropic.messages.create(params), timeout]);
 
   if (result && typeof result === "object" && "timeout" in result) {
     logEvent(
@@ -80,6 +80,9 @@ export async function createClaudeReply(
     );
     throw new Error("Invalid response from Claude");
   }
+  await recordTextUsage(
+    (result as { usage?: { input_tokens?: number; output_tokens?: number } }).usage,
+  );
   const botReply =
     result.content[0]?.type === "text"
       ? (result.content[0] as { type: "text"; text: string }).text.trim()

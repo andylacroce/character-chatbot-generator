@@ -23,9 +23,8 @@ re-checked. This is a menu of options ordered by value, not a commitment.
 1. **Chat replies on Sonnet** (`claude-sonnet-5-5` in production, `src/utils/claude/claudeModelSelector.ts`).
    Every message is one Sonnet call plus, usually, one text-to-speech call. This dwarfs everything
    else. Levers, cheapest first:
-   - Per-IP limits already exist (chat is 10 per minute per IP) but nothing caps total daily spend.
-     Add a global daily budget guard (a Redis counter of estimated tokens; refuse or degrade to Haiku
-     past a threshold) before any growth push.
+   - Per-IP limits exist (chat is 10 per minute per IP), and a global daily spend cap is built
+     (`DAILY_TEXT_SOFT_LIMIT` / `DAILY_TEXT_HARD_LIMIT`; see "A global spend cap" below).
    - Signed-in quotas: guests get a small daily allowance, signed-in users a larger one. The user id
      is already available in `/api/chat` (`resolveChatIdentity`).
    - Serve long conversations with a shorter window or a cheaper model once history is summarized.
@@ -52,10 +51,22 @@ rate-limit store log events.
 
 ### A global spend cap
 
-Highest value and not built. Sketch: before each Claude call in `chat`, `message`, `start`,
-`continue`, add the estimated cost to a Redis counter keyed by UTC day; above a soft limit switch the
-`text` tier to Haiku, above a hard limit return 503 with a friendly message. All model selection goes
-through `claudeModelSelector.ts`, so the switch is one place.
+Built (`src/utils/claude/spendGuard.ts`). Only the `text` tier (Sonnet) is counted, since Haiku calls
+are negligible. Each chat and game reply adds its weighted tokens (input + 5 x output, from the
+response's `usage`) to a Redis counter keyed by UTC day. Past `DAILY_TEXT_SOFT_LIMIT` the tier switches
+to Haiku (`spend_cap_soft` warn log); past `DAILY_TEXT_HARD_LIMIT` chat and game messages return 503
+(`spend_cap_hard` error log, so alert on it). Both are unset by default, which disables the cap. It
+fails open on a store outage (`spend_store_failed`), and without Redis it counts per instance. Pick
+limits from the Anthropic console: weighted tokens x Sonnet's per-token price is the day's cost.
+A round's opening line already falls back to canned text, so starting a round still works at the cap.
+
+**Worst case, plainly:** the hard limit plus overshoot, not a guarantee. Requests in flight when the
+limit is crossed all finish (about concurrent requests x one reply's cost; replies are capped at 500
+and 220 output tokens). A streamed reply that errors or is aborted partway is billed but never counted,
+and Haiku calls are not metered. There is no cap if Redis is down (fails open), if Redis is not attached
+(the ceiling becomes limit x warm instances), or if the limits are unset. Set the hard limit to the daily
+budget minus 10 to 20 percent, and keep an Anthropic console spend limit as the independent backstop.
+Full details: `.claude/rules/spend-cap.md`.
 
 ### Audio storage
 
@@ -118,7 +129,7 @@ preview shares compute with production. Split them before running one.
 
 ## Suggested order
 
-1. A global daily spend cap (protects the bill against any traffic spike).
+1. ~~A global daily spend cap~~ (built; set the two limits in Vercel).
 2. Alerts on the watch list signals above.
 3. Signed-in versus guest quotas on chat.
 4. Audio storage in Blob, if measurement supports it.

@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.32.10 - 2026-11-15 - Daily spend cap
+
+- Operators can now cap Sonnet usage per day (`DAILY_TEXT_SOFT_LIMIT`, `DAILY_TEXT_HARD_LIMIT`). Past the soft limit replies quietly use the cheaper model; past the hard limit chat and games pause until the next UTC day with a "try again tomorrow" message. Off unless the limits are set.
+
 ## v0.32.9 - 2026-11-15 - Server-owned characters
 
 - The server now vets and signs every character persona, and chat only accepts a persona it signed. A custom system prompt can no longer be sent straight to the chat API, which closes a way to skip name moderation and use the app as a free general-purpose model. A blocked name is now refused at personality creation too ("This character isn't available"), and creating a character now fails instead of using a generic persona when the server can't produce one.

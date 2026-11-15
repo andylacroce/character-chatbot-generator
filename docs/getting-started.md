@@ -15,7 +15,7 @@ Chat and the games spend real Anthropic tokens. In development they use the chea
 
 Send a chat message and trace it. This single path teaches most of the codebase:
 
-1. `src/app/components/chat/useChatController.ts` holds the chat state and calls `authenticatedFetch`.
+1. `src/app/components/chat/useChatController.ts` is the web adapter around the shared chat state hook (`packages/shared/src/useChatSession.ts`) and calls `authenticatedFetch`.
 2. `src/utils/api.ts` (`authenticatedFetch`) is the only way the UI talks to the server.
 3. `src/proxy.ts` checks the request origin and API key before any API route runs.
 4. `src/app/api/chat/route.ts` is orchestration: it checks the body (`utils/chat/chatRequest.ts`), resolves who is
