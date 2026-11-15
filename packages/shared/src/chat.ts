@@ -81,7 +81,18 @@ interface RetryOptions {
   onAttempt?: (attempt: number) => void;
 }
 
-/** Runs a chat request, retrying transient failures with exponential backoff; the last error is rethrown. */
+/** An error for a non-OK HTTP response, carrying its `status` so retry policy can tell 4xx from 5xx. */
+export function httpError(status: number): Error & { status: number } {
+  return Object.assign(new Error(`HTTP ${status}`), { status });
+}
+
+/** Worth retrying: network failures (no status) and 5xx. A 4xx (validation, 429) fails the same way again and spends rate-limit budget. */
+export function isRetryable(err: unknown): boolean {
+  const status = (err as { status?: unknown } | null)?.status;
+  return typeof status !== "number" || status >= 500;
+}
+
+/** Runs a chat request, retrying network failures and 5xx with exponential backoff; the last error is rethrown. */
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   { retries = 2, delayMs = 800, onAttempt }: RetryOptions = {},
@@ -92,7 +103,7 @@ export async function retryWithBackoff<T>(
     try {
       return await fn();
     } catch (err) {
-      if (attempt >= retries) throw err;
+      if (attempt >= retries || !isRetryable(err)) throw err;
       await new Promise((resolve) => setTimeout(resolve, delay));
       delay *= 2;
     }

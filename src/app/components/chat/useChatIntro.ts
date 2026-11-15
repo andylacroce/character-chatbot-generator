@@ -5,7 +5,12 @@ import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import type { Message } from "../../../types/message";
 import type { Bot } from "../character/BotCreator";
 import type { CharacterVoiceConfig } from "../../../utils/chat/characterVoices";
-import { INTRO_PROMPT, buildChatRequest, chatReplyMessage } from "character-chatbot-shared";
+import {
+  INTRO_PROMPT,
+  buildChatRequest,
+  chatReplyMessage,
+  httpError,
+} from "character-chatbot-shared";
 import { getStoredUserName, profileApiCall } from "./chatControllerHelpers";
 
 interface UseChatIntroOptions {
@@ -106,7 +111,7 @@ export function useChatIntro({
                 }),
               ),
             }).then((res) => {
-              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              if (!res.ok) throw httpError(res.status);
               return res.json();
             }),
           );

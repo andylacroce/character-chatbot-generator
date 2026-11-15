@@ -12,8 +12,8 @@
  * Key derivation deliberately never falls back to a per-process random key: Vercel runs
  * multiple concurrent serverless instances with no sticky routing, so a random-per-instance
  * key would cause silent, instance-dependent decrypt failures mid-game. Deriving from
- * API_SECRET (already required) means zero new configuration and a stable key across every
- * instance; only a deliberate secret rotation ever invalidates an in-flight token.
+ * a configured secret gives a stable key across every instance; only a deliberate secret
+ * rotation ever invalidates an in-flight token.
  *
  * verifyGameState() fails CLOSED, the one deliberate exception to this codebase's usual
  * fail-open convention: any tamper, malformed input, decrypt failure, or a token minted for
@@ -24,8 +24,16 @@ import type { GameId } from "character-chatbot-shared/src/core";
 import type { CharacterVoiceConfig } from "../chat/characterVoices";
 import { encryptPayload, decryptPayload } from "../server/tokenCrypto";
 
-/** Fallback chain for deriving the AES key, see tokenCrypto.ts's module doc. */
-const SECRET_ENV_VARS = ["GAME_TOKEN_SECRET", "NEXTAUTH_SECRET", "API_SECRET"];
+/**
+ * Fallback chain for deriving the AES key, see tokenCrypto.ts's module doc. `API_SECRET` is
+ * only a local-dev/e2e last resort: the mobile app bundles it (`EXPO_PUBLIC_API_SECRET`), so on
+ * a real Vercel deployment it must never key tokens; there a missing key fails loudly instead.
+ */
+const SECRET_ENV_VARS = [
+  "GAME_TOKEN_SECRET",
+  "NEXTAUTH_SECRET",
+  ...(process.env.VERCEL ? [] : ["API_SECRET"]),
+];
 
 /** A guessing game's full per-round state, encrypted end-to-end inside the token. */
 export interface GameState {

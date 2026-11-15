@@ -136,8 +136,6 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
 
     const body = await readJson(req);
     const userMessage = body.message;
-    const requestPersonality =
-      body.personality || (await generatePersonalityPrompt("a character chatbot")).prompt;
     // Same sanitization saved characters are stored under; also bounds what reaches prompts and file names.
     const botName = sanitizeCharacterName(body.botName) || "Character";
     const gender = body.gender;
@@ -158,6 +156,10 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
       logEvent("info", problem.event, problem.message, sanitizeLogMeta({ requestId }));
       return Response.json({ error: problem.error, requestId }, { status: 400 });
     }
+
+    // Only after validation: a request that is about to 400 must not cost a Claude call.
+    const requestPersonality =
+      body.personality || (await generatePersonalityPrompt("a character chatbot")).prompt;
 
     const { botRow, personality, userName } = await resolveChatIdentity(
       req,

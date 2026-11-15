@@ -66,6 +66,8 @@ export function useGameSession(
   // Held in a ref so callers can pass fresh objects each render without re-creating
   // callbacks; refreshed after each render (every use is in an effect or an event handler).
   const deps = useRef({ transport, storage, log, onQuit });
+  /** Bumped when a run ends (or a new one starts), so responses to the old run are dropped. */
+  const runRef = useRef(0);
   useEffect(() => {
     deps.current = { transport, storage, log, onQuit };
   });
@@ -99,7 +101,8 @@ export function useGameSession(
     let cancelled = false;
     const apply = (persisted: PersistedGameState | null) => {
       if (cancelled) return;
-      if (persisted) {
+      // A save from an older build or a damaged value would crash the render on every later visit.
+      if (persisted && Array.isArray(persisted.messages) && typeof persisted.streak === "number") {
         setToken(persisted.token);
         setHeldSpeaker({
           name: persisted.currentCharacterName ?? "",
@@ -190,14 +193,17 @@ export function useGameSession(
 
   /** Starts a brand-new streak, discarding any in-progress run. */
   const startGame = useCallback(async () => {
+    const run = ++runRef.current;
     setStarting(true);
     setError("");
     setLastEvent(null);
     try {
       const round = await deps.current.transport.start();
+      if (run !== runRef.current) return;
       applyRound(round, 0);
       setGiveUpRequested(false);
     } catch (e) {
+      if (run !== runRef.current) return;
       const msg = "Failed to start a new game. Please try again.";
       setError(msg);
       deps.current.log("error", `${game.eventPrefix}_client_start_failed`, msg, e);
@@ -208,6 +214,7 @@ export function useGameSession(
 
   /** Ends the current run and clears all local game state. */
   const quitGame = useCallback(() => {
+    runRef.current++; // a request still in flight must not revive the run it belonged to
     deps.current.onQuit?.();
     setToken(null);
     setHeldSpeaker(NO_SPEAKER);
@@ -223,11 +230,13 @@ export function useGameSession(
   /** Gives up (once `confirmed`): reveals the hidden character and ends the run. */
   const giveUp = useCallback(
     async (confirmed = false) => {
-      if (!confirmed || !token) return;
+      if (!confirmed || !token || loading || continuing) return;
+      const run = runRef.current;
       setLoading(true);
       setError("");
       try {
         const data = await deps.current.transport.giveUp(token);
+        if (run !== runRef.current) return;
         const event = giveUpEvent(game, data);
         setLastEvent(event);
         // No new reply message is generated on give-up, so a hidden-speaker round's
@@ -238,6 +247,7 @@ export function useGameSession(
         }
         setToken(null);
       } catch (e) {
+        if (run !== runRef.current) return;
         const msg = "Failed to give up. Please try again.";
         setError(msg);
         deps.current.log("error", `${game.eventPrefix}_client_give_up_failed`, msg, e);
@@ -245,7 +255,7 @@ export function useGameSession(
         setLoading(false);
       }
     },
-    [token, roundStartIndex, game],
+    [token, loading, continuing, roundStartIndex, game],
   );
 
   /** Sends the player's message, question or guess alike, and applies the outcome. */
@@ -253,6 +263,7 @@ export function useGameSession(
     if (!input.trim() || !token || loading || lastEvent?.type === "correct" || continuing) return;
     const userMessage: GameMessage = { sender: "User", text: input };
     const history = toGameConversationHistory(messages.slice(roundStartIndex));
+    const run = runRef.current;
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
@@ -264,6 +275,7 @@ export function useGameSession(
         message: userMessage.text,
         conversationHistory: history,
       });
+      if (run !== runRef.current) return;
       const outcome = applyGameMessageResponse(game, data, speaker);
       if (outcome.giveUpRequested) {
         setGiveUpRequested(true);
@@ -286,6 +298,7 @@ export function useGameSession(
         return reply ? [...current, reply] : current;
       });
     } catch (e) {
+      if (run !== runRef.current) return;
       const msg = "Failed to get a reply. Please try again.";
       setError(msg);
       deps.current.log("error", `${game.eventPrefix}_client_message_failed`, msg, e);
@@ -303,13 +316,16 @@ export function useGameSession(
     if (!token || lastEvent?.type !== "correct") return;
     const correctEvent = lastEvent;
     const roundBaseIndex = messages.length;
+    const run = runRef.current;
     setLastEvent(null);
     setContinuing(true);
     setError("");
     try {
       const round = await deps.current.transport.continueRound(token);
+      if (run !== runRef.current) return;
       applyRound(round, roundBaseIndex);
     } catch (e) {
+      if (run !== runRef.current) return;
       setLastEvent(correctEvent);
       const msg = "Failed to continue to the next round. Please try again.";
       setError(msg);

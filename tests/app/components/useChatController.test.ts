@@ -668,14 +668,34 @@ describe("useChatController additional branches (merged)", () => {
     expect(anyWithAudio).toBe(false);
   });
 
-  it("sendMessage retries on HTTP 410 and exhausts retries, then logs error", async () => {
+  it("sendMessage does not retry a 4xx (a rejection that would fail the same way again)", async () => {
+    let attempts = 0;
+    mockAuthenticatedFetch.mockImplementation((url: string) => {
+      if (url === "/api/chat") {
+        attempts++;
+        return Promise.resolve({ ok: false, status: 429 });
+      }
+      return Promise.resolve(mockResponse({}));
+    });
+    const { result } = renderHook(() => useChatController(baseBot));
+    await act(async () => {
+      await new Promise((res) => setTimeout(res, 20));
+    });
+    const before = attempts;
+    act(() => result.current.setInput("too fast"));
+    await act(async () => {
+      await result.current.sendMessage();
+    });
+    expect(attempts - before).toBe(1);
+  });
+
+  it("sendMessage retries a 5xx until retries are exhausted, then logs error", async () => {
     let attempts = 0;
     mockAuthenticatedFetch.mockImplementation((url: string) => {
       if (url === "/api/health") return Promise.resolve(mockResponse({}));
       if (url === "/api/chat") {
         attempts++;
-        // Return a non-ok 410 response to simulate permanent gone
-        return Promise.resolve({ ok: false, status: 410 });
+        return Promise.resolve({ ok: false, status: 503 });
       }
       return Promise.resolve(mockResponse({}));
     });

@@ -61,8 +61,8 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
   `usedNames` (no repeats). `signGameState`/`verifyGameState` wrap it in one AES-256-GCM token the
   client echoes on every call. This keeps the hidden name unreadable to the client and keeps
   gameplay working for guests with no database.
-- **The key derives from `GAME_TOKEN_SECRET ?? NEXTAUTH_SECRET ?? API_SECRET`** (`getKey()`), never
-  a per-process random key, so it's stable across Vercel instances with no new required config.
+- **The key derives from `GAME_TOKEN_SECRET ?? NEXTAUTH_SECRET`, plus `API_SECRET` only off Vercel** (`getKey()`;
+  `API_SECRET` ships in the mobile bundle), never a per-process random key, so it's stable across Vercel instances.
   Only a deliberate rotation invalidates a run, degrading to a friendly "start a new game" 400.
 - **Tokens are stateless, so a run's end is recorded server-side.** Old tokens stay decryptable and
   give-up reveals the answer, so replaying one would turn the reveal into a scored win. Give-up and a

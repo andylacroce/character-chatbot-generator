@@ -2,6 +2,14 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.32.6 - 2026-11-15 - Hardening quick fixes
+
+- Chat retries now cover only network failures and server errors, not rejected requests (validation, rate limit), which used to burn the rate limit and could double-bill a reply. An invalid chat request no longer triggers a Claude call before being rejected.
+- Leaving a guessing-game run while a request is in flight no longer brings the run back; a reply from the previous character no longer lands in a newly selected character's chat; cancelling and restarting character creation (or tapping a portrait mid-run) no longer starts overlapping runs.
+- Pressing Enter to confirm an IME candidate no longer sends the half-typed message.
+- Mobile: requests time out instead of spinning forever, and damaged saved data (character, game run, landing cache) is ignored instead of crashing; a saved game run with an unexpected shape is discarded on web and mobile.
+- Game tokens no longer fall back to the app's mobile-bundled `API_SECRET` on Vercel, and rejected-key log lines no longer include the query string.
+
 ## v0.32.5 - 2026-11-10 - All API routes on the App Router
 
 - Every API route is now an App Router route handler (the last Pages Router routes, including the auth bridge, chat and audio, moved), wrapped by one limit-and-log helper. URLs and responses are unchanged, so released mobile builds keep working.

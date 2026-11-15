@@ -719,6 +719,25 @@ describe.each([GUESS_WHO, GUESS_WHO_NEXT])("useGameController ($title)", (game) 
       expect(mockStopAudio).toHaveBeenCalled();
     });
 
+    it("a reply that lands after quitGame does not revive the run", async () => {
+      const { result } = await startedHook();
+      let release!: (res: unknown) => void;
+      mockAuthenticatedFetch.mockReturnValueOnce(new Promise((resolve) => (release = resolve)));
+      act(() => result.current.setInput("is it a detective?"));
+      let sending!: Promise<void>;
+      act(() => {
+        sending = result.current.sendMessage();
+      });
+      act(() => result.current.quitGame());
+      await act(async () => {
+        release(mockResponse(correctResponse()));
+        await sending;
+      });
+      expect(result.current.started).toBe(false);
+      expect(result.current.messages).toEqual([]);
+      expect(result.current.lastEvent).toBeNull();
+    });
+
     it("giveUp does nothing until confirmed", async () => {
       const { result } = await startedHook();
       const callsBefore = mockAuthenticatedFetch.mock.calls.length;
