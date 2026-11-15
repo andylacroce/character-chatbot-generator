@@ -86,7 +86,7 @@ UX (haptics). A feature that exists on one platform only is a parity gap to call
 default. Mobile-specific notes are in "Mobile app" below.
 
 Human-oriented onboarding lives in `docs/` (`getting-started.md`, `architecture.md`, `features.md`,
-`configuration.md`); keep them current alongside the rules when a flow or folder moves.
+`configuration.md`, `scaling.md`: cost drivers and the scaling levers); keep them current alongside the rules when a flow or folder moves.
 
 ## Topic rules (`.claude/rules/`)
 
