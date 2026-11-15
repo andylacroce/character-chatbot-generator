@@ -94,6 +94,7 @@ const Home = () => {
           body: JSON.stringify({
             name: bot.name,
             personality: bot.personality,
+            personalitySignature: bot.personalitySignature,
             avatarUrl: bot.avatarUrl,
             gender: bot.gender,
             voiceConfig: bot.voiceConfig,

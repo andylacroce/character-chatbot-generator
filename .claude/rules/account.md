@@ -61,6 +61,10 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
   `history`, not `chats`, to avoid confusion with `ChatPage`/`useChatController`. Rows link to
   `/?name=<name>`, the Wall's launch point, which resumes the saved character; identity
   (name/personality/avatar/voice) restores synchronously and history catches up via `messages`.
+- **`POST /api/bots` requires a signed persona** (`personalitySignature` from
+  `/api/generate-personality`) and 400s `persona_unsigned` otherwise, because a
+  stored persona later becomes the trusted DB persona for chat. Web (`index.tsx`) and mobile
+  (`persistBotIfSignedIn`) send the bot's signature.
 - **Server-persisted chat history (`messages` table).** For a signed-in user's saved character,
   `chat.ts` is the source of truth for personality and history rather than trusting the client's.
   It looks up the `bots` row by `(user_id, name, environment)`; guests, no `DATABASE_URL`, or

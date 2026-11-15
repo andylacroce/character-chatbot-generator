@@ -158,4 +158,134 @@ describe("useChatSession", () => {
       expect.anything(),
     );
   });
+
+  describe("persona_unsigned migration", () => {
+    const unsigned = () => httpError(400, "persona_unsigned");
+    const withHistory = () => setup({ history: [{ sender: "Ada", text: "Greetings" }] });
+    const refresh = (t: ChatTransport, impl: NonNullable<ChatTransport["refreshPersona"]>) => {
+      t.refreshPersona = jest.fn(impl);
+      return t.refreshPersona as jest.Mock;
+    };
+
+    it("refreshes the persona once, then retries the turn exactly once", async () => {
+      const { result, transport } = withHistory();
+      const refreshPersona = refresh(transport, async () => ({
+        personality: "new",
+        personalitySignature: "sig",
+        correctedName: "Ada",
+      }));
+      transport.send.mockRejectedValueOnce(unsigned());
+      await act(async () => {
+        await result.current.send("hi");
+      });
+
+      expect(refreshPersona).toHaveBeenCalledTimes(1);
+      expect(transport.send).toHaveBeenCalledTimes(2);
+      expect(transport.send.mock.calls[1][0]).toMatchObject({
+        personality: "new",
+        personalitySignature: "sig",
+      });
+      expect(result.current.error).toBe("");
+      expect(result.current.messages.at(-1)?.text).toBe("Hello");
+
+      // The refreshed persona sticks for later turns without another refresh.
+      await act(async () => {
+        await result.current.send("again");
+      });
+      expect(transport.send.mock.calls[2][0]).toMatchObject({ personalitySignature: "sig" });
+      expect(refreshPersona).toHaveBeenCalledTimes(1);
+    });
+
+    it("migrates a legacy bot whose name has a quote via the server's sanitized name", async () => {
+      const { result, transport } = setup({
+        bot: makeBot("Ada"),
+        history: [{ sender: "Ada", text: "Greetings" }],
+      });
+      transport.send.mockRejectedValueOnce(unsigned());
+      const bot = { ...makeBot("D'Artagnan") };
+      const hook = renderHook(() =>
+        useChatSession({
+          bot,
+          authStatus: "signedOut",
+          transport: Object.assign(transport, {
+            refreshPersona: jest.fn(async () => ({
+              personality: "new",
+              personalitySignature: "sig",
+              correctedName: "DArtagnan",
+            })),
+          }),
+          storage: { load: () => [{ sender: "D'Artagnan", text: "Hi" }], save: () => {} },
+          log: jest.fn(),
+        }),
+      );
+      await act(async () => {
+        await hook.result.current.send("hi");
+      });
+      expect(transport.send).toHaveBeenLastCalledWith(
+        expect.objectContaining({ botName: "D'Artagnan", personalitySignature: "sig" }),
+      );
+      expect(hook.result.current.error).toBe("");
+      expect(result.current.error).toBe("");
+    });
+
+    it("does not loop when the retry is rejected again", async () => {
+      const { result, transport } = withHistory();
+      const refreshPersona = refresh(transport, async () => ({
+        personality: "new",
+        personalitySignature: "sig",
+        correctedName: "Ada",
+      }));
+      transport.send.mockRejectedValue(unsigned());
+      await act(async () => {
+        await result.current.send("hi");
+      });
+
+      expect(refreshPersona).toHaveBeenCalledTimes(1);
+      expect(transport.send).toHaveBeenCalledTimes(2);
+      expect(result.current.error).toBe("Error sending message. Please try again.");
+    });
+
+    it("shows the unavailable message when the server refuses the name", async () => {
+      const { result, transport } = withHistory();
+      refresh(transport, async () => {
+        throw httpError(400);
+      });
+      transport.send.mockRejectedValue(unsigned());
+      await act(async () => {
+        await result.current.send("hi");
+      });
+
+      expect(transport.send).toHaveBeenCalledTimes(1);
+      expect(result.current.error).toBe("This character is no longer available.");
+    });
+
+    it("refuses a refresh that would rename the character or has no signature", async () => {
+      const { result, transport } = withHistory();
+      refresh(transport, async () => ({
+        personality: "new",
+        personalitySignature: "sig",
+        correctedName: "Ada Lovelace",
+      }));
+      transport.send.mockRejectedValue(unsigned());
+      await act(async () => {
+        await result.current.send("hi");
+      });
+
+      expect(transport.send).toHaveBeenCalledTimes(1);
+      expect(result.current.error).toBe("This character is no longer available.");
+    });
+
+    it("reports a failed refresh with the generic message", async () => {
+      const { result, transport } = withHistory();
+      refresh(transport, async () => {
+        throw httpError(500);
+      });
+      transport.send.mockRejectedValue(unsigned());
+      await act(async () => {
+        await result.current.send("hi");
+      });
+
+      expect(result.current.error).toBe("Error sending message. Please try again.");
+    });
+  });
 });

@@ -9,6 +9,7 @@ import {
   chatHistoryKey,
   httpError,
   parseChatMessages,
+  type Bot,
   type ChatLogger,
   type ChatStorage,
   type ChatTransport,
@@ -22,7 +23,12 @@ export const webChatTransport: ChatTransport = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     });
-    if (!res.ok) throw httpError(res.status);
+    if (!res.ok) {
+      const body = await Promise.resolve()
+        .then(() => res.json())
+        .catch(() => null);
+      throw httpError(res.status, typeof body?.code === "string" ? body.code : undefined);
+    }
     return res.json();
   },
   async fetchHistory(botName) {
@@ -30,7 +36,44 @@ export const webChatTransport: ChatTransport = {
     return parseChatMessages((await res.json())?.messages);
   },
   fetchVoiceConfig: (bot) => api_getVoiceConfigForCharacter(bot.name, bot.gender, bot.personality),
+  async refreshPersona(bot) {
+    const res = await authenticatedFetch("/api/generate-personality", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: bot.name }),
+    });
+    if (!res.ok) throw httpError(res.status);
+    return res.json();
+  },
 };
+
+/**
+ * Stores a bot whose persona was just re-signed: over the saved copy on this device (when it is
+ * the same character), and, fire-and-forget, to the signed-in user's account.
+ */
+export function saveRefreshedBot(bot: Bot, signedIn: boolean): void {
+  try {
+    const saved = storage.getJSON<Bot>(STORAGE_KEYS.bot);
+    if (saved?.name === bot.name) storage.setJSON(STORAGE_KEYS.bot, { ...saved, ...bot });
+  } catch (err) {
+    logChat("warn", "chat_refreshed_bot_save_failed", "Failed to store refreshed character", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+  if (!signedIn || bot.skipPersistence) return;
+  authenticatedFetch("/api/bots", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: bot.name,
+      personality: bot.personality,
+      personalitySignature: bot.personalitySignature,
+      avatarUrl: bot.avatarUrl,
+      gender: bot.gender,
+      voiceConfig: bot.voiceConfig,
+    }),
+  }).catch(() => {});
+}
 
 /** The saved character's voice config when it is the one on this device. */
 function savedBotVoiceConfig(botName: string): CharacterVoiceConfig | null {

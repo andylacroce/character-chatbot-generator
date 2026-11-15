@@ -11,6 +11,7 @@ import { bots } from "../../../db/schema";
 import { getSessionUserId } from "../../../utils/account/getSessionUserId";
 import { deleteUserBlobs, isBlobAvatarUrl, isBlobHostUrl } from "../../../utils/account/userBlobs";
 import { sanitizeCharacterName } from "../../../utils/server/security";
+import { verifyPersona, personaChecksEnforced } from "../../../utils/chat/personaSignature";
 import { getCurrentEnvironment } from "../../../utils/environment";
 import { logEvent, sanitizeLogMeta } from "../../../utils/logger";
 import { withRoute, readJson } from "../../../utils/server/withRoute";
@@ -52,6 +53,9 @@ async function persistedUserId(req: NextRequest): Promise<string | null> {
  *                 type: string
  *               personality:
  *                 type: string
+ *               personalitySignature:
+ *                 type: string
+ *                 description: From /generate-personality; required unless personality is the generic fallback.
  *               avatarUrl:
  *                 type: string
  *                 nullable: true
@@ -72,7 +76,9 @@ async function persistedUserId(req: NextRequest): Promise<string | null> {
  *                 persisted:
  *                   type: boolean
  *       400:
- *         description: Invalid name, personality or avatar
+ *         description: >
+ *           Invalid name, personality or avatar, or (`code: "persona_unsigned"`) a personality
+ *           this server did not sign
  *       429:
  *         description: Rate limit exceeded
  *       500:
@@ -202,10 +208,20 @@ export const DELETE = withRoute(LIMIT, async (req: NextRequest) => {
 export const POST = withRoute(LIMIT, async (req: NextRequest) => {
   const userId = await persistedUserId(req);
   if (!userId) return Response.json({ persisted: false });
-  const { name, personality, avatarUrl, gender, voiceConfig } = await readJson(req);
+  const { name, personality, personalitySignature, avatarUrl, gender, voiceConfig } =
+    await readJson(req);
   const sanitizedName = sanitizeCharacterName(name);
   if (!sanitizedName || typeof personality !== "string" || !personality.trim()) {
     return Response.json({ error: "Invalid name or personality" }, { status: 400 });
+  }
+
+  // The stored persona later becomes the trusted one for chat, so it must be one this server signed.
+  if (personaChecksEnforced() && !verifyPersona(sanitizedName, personality, personalitySignature)) {
+    logEvent("info", "bots_persona_unsigned", "Persona not signed by this server");
+    return Response.json(
+      { error: "Character needs to be refreshed", code: "persona_unsigned" },
+      { status: 400 },
+    );
   }
 
   // A blob URL must be one of this app's portraits: deleting a saved character deletes its

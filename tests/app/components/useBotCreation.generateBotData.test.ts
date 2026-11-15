@@ -70,7 +70,7 @@ describe("useBotCreation generateBotDataWithProgressCancelable branches", () => 
     mockApiGetVoiceConfigForCharacter.mockResolvedValue(baseBot.voiceConfig);
   });
 
-  it("continues when personality generation fails and uses default personality", async () => {
+  it("fails creation when personality generation fails (no unsigned fallback persona)", async () => {
     // personality endpoint rejects
     mockAuthenticatedFetch.mockImplementation((url: string) => {
       if (url === "/api/generate-personality") return Promise.reject(new Error("personality fail"));
@@ -90,10 +90,8 @@ describe("useBotCreation generateBotDataWithProgressCancelable branches", () => 
       await result.current.handleCreate();
     });
 
-    expect(onBotCreated).toHaveBeenCalled();
-    const created = onBotCreated.mock.calls[0][0] as Bot;
-    // default personality used when generation fails
-    expect(created.personality).toBe("You are Alice. Stay in character.");
+    expect(onBotCreated).not.toHaveBeenCalled();
+    expect(result.current.error).toBe("Failed to generate character. Please try again.");
     // ensure we logged a warning about personality failure
     expect(mockLogEvent).toHaveBeenCalledWith(
       expect.any(String),

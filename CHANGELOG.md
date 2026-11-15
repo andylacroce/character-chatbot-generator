@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none; sections are grouped by date range regardless.
 
+## v0.32.9 - 2026-11-15 - Server-owned characters
+
+- The server now vets and signs every character persona, and chat only accepts a persona it signed. A custom system prompt can no longer be sent straight to the chat API, which closes a way to skip name moderation and use the app as a free general-purpose model. A blocked name is now refused at personality creation too ("This character isn't available"), and creating a character now fails instead of using a generic persona when the server can't produce one.
+- Characters saved before this release are refreshed automatically on their first message: the app re-requests the persona once and retries, with no action needed. If the name is no longer allowed, the chat says "This character is no longer available."
+
 ## v0.32.8 - 2026-11-15 - One chat engine for web and mobile
 
 - Web and mobile now run the same chat logic, so they stop drifting. On mobile this fixes the greeting sometimes firing over a real saved conversation while sign-in was still loading, a failed greeting never being retried, characters with no stored voice crashing or going silent, raw server error text appearing in the chat, and a late reply updating or playing audio after you left the screen. Errors now read the same on both ("too many messages", "took too long", or a generic retry message). Leaving a chat stops its audio.

@@ -12,6 +12,8 @@ import { recordEvent } from "../../../utils/analytics";
 import { desc } from "drizzle-orm";
 import { getDb } from "../../../db/client";
 import { avatarCache } from "../../../db/schema";
+import { checkPersonaName } from "../../../utils/moderation/personaGate";
+import { signPersona } from "../../../utils/chat/personaSignature";
 import { withRoute, readJson } from "../../../utils/server/withRoute";
 
 // Capped so this stays a cheap, bounded addition to a call already being made — not a
@@ -84,6 +86,12 @@ const LIMIT = {
  *               properties:
  *                 personality:
  *                   type: string
+ *                 personalitySignature:
+ *                   type: string
+ *                   description: >
+ *                     HMAC over the returned (correctedName, personality), which /chat and /bots
+ *                     require for any persona that is not the generic fallback. Omitted when no
+ *                     signing key is configured.
  *                 correctedName:
  *                   type: string
  *                   description: >
@@ -94,11 +102,13 @@ const LIMIT = {
  *                     character, this is that existing character's exact name instead, so
  *                     the two share one avatar_cache entry rather than spawning a duplicate.
  *       400:
- *         description: Valid name required, or invalid character name
+ *         description: Valid name required, invalid character name, or a name this app refuses ("This character isn't available")
  *       422:
  *         description: Name is not a recognized historical, mythological, literary, or fictional figure
  *       429:
  *         description: Rate limit exceeded
+ *       503:
+ *         description: The name check could not run (fails closed); try again
  *       500:
  *         description: Failed to generate personality prompt
  */
@@ -113,6 +123,18 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
     return Response.json({ error: "Invalid character name" }, { status: 400 });
   }
   try {
+    const gate = await checkPersonaName(sanitizedName);
+    if (gate !== "ok") {
+      logEvent(
+        "info",
+        "personality_gate_refused",
+        "Personality request refused by the name gate",
+        sanitizeLogMeta({ reason: gate }),
+      );
+      return gate === "blocked"
+        ? Response.json({ error: "This character isn't available" }, { status: 400 })
+        : Response.json({ error: "Please try again shortly" }, { status: 503 });
+    }
     logEvent(
       "info",
       "personality_prompt_start",
@@ -155,7 +177,14 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
     const userId = await getSessionUserId(req);
     await recordEvent("bot_created", { guest: !userId }, userId);
 
-    return Response.json({ personality: concisePrompt, correctedName });
+    // Sanitized and length-capped, and the signature covers exactly the name returned.
+    const signedName = sanitizeCharacterName(correctedName) || sanitizedName;
+    const personalitySignature = signPersona(signedName, concisePrompt);
+    return Response.json({
+      personality: concisePrompt,
+      correctedName: signedName,
+      personalitySignature,
+    });
   } catch (err) {
     logEvent(
       "error",

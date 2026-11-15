@@ -10,7 +10,7 @@ import { useChatVisiblePagination, INITIAL_VISIBLE_COUNT } from "./useChatVisibl
 import { useAutoPlayLatestMessage } from "./useAutoPlayLatestMessage";
 import { downloadChatTranscript } from "./chatTranscript";
 import { getStoredUserName, safeFocus, useLogMessage } from "./chatControllerHelpers";
-import { logChat, webChatStorage, webChatTransport } from "./chatAdapters";
+import { logChat, saveRefreshedBot, webChatStorage, webChatTransport } from "./chatAdapters";
 import storage from "../../../utils/storage";
 import type { Message } from "../../../types/message";
 import type { Bot } from "../character/BotCreator";
@@ -73,6 +73,7 @@ export function useChatController(
     storage: webChatStorage,
     log: logChat,
     onMessage: logMessage,
+    onBotRefreshed: (refreshed) => saveRefreshedBot(refreshed, authStatus === "authenticated"),
   });
 
   useChatScrollAndFocus({ chatBoxRef, inputRef, messages, loading });

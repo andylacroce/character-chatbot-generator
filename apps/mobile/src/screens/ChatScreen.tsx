@@ -3,12 +3,14 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   getReplayAudioUrl,
   useChatSession,
+  type Bot,
   type ChatLogger,
   type ChatStorage,
   type ChatTransport,
 } from "character-chatbot-shared";
-import { getPersistedMessages, getVoiceConfig, sendChatMessage } from "../api";
-import { loadChatHistory, saveChatHistory } from "../storage";
+import { generatePersonality, getPersistedMessages, getVoiceConfig, sendChatMessage } from "../api";
+import { persistBotIfSignedIn } from "../botCreation";
+import { loadBot, loadChatHistory, saveBot, saveChatHistory } from "../storage";
 import type { RootStackParamList } from "../navigation/types";
 import { useAuth } from "../AuthContext";
 import { useUserName } from "../useUserName";
@@ -25,7 +27,18 @@ const transport: ChatTransport = {
   fetchHistory: async (botName) =>
     (await getPersistedMessages(botName)).map(({ sender, text }) => ({ sender, text })),
   fetchVoiceConfig: (bot) => getVoiceConfig(bot.name, bot.gender, bot.personality),
+  refreshPersona: (bot) => generatePersonality({ name: bot.name }),
 };
+
+/** Stores a re-signed character over the active saved one (when it is the same) and on the account. */
+async function saveRefreshedBot(bot: Bot) {
+  try {
+    if ((await loadBot())?.name === bot.name) await saveBot(bot);
+  } catch (err) {
+    console.warn("[Chat] chat_refreshed_bot_save_failed", err);
+  }
+  persistBotIfSignedIn(bot);
+}
 
 // Stored turns never carry a reply's audio URL, which is only good for the session it came from.
 const storage: ChatStorage = {
@@ -58,6 +71,7 @@ export default function ChatScreen({ route, navigation }: Props) {
     storage,
     log,
     onReply: (response) => audio.play(response.audioFileUrl),
+    onBotRefreshed: (refreshed) => void saveRefreshedBot(refreshed),
   });
 
   // Set here rather than statically in App.tsx so it can share this screen's lightbox state.

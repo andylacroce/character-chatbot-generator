@@ -32,6 +32,9 @@ components are written natively, never shared with the DOM app.
   opaque in AsyncStorage; a guest's identity is a random SecureStore secret
   (`src/gameGuest.ts`) sent as `x-game-guest` in place of web's HttpOnly cookie. Correct and
   wrong guesses fire haptics (native-only extra).
+- **Persona refresh:** `ApiError.code` carries the JSON body's `code`; `ChatScreen`'s transport has
+  `refreshPersona` (`generatePersonality`) and `onBotRefreshed` re-saves the bot (`saveBot` plus
+  `persistBotIfSignedIn`), so characters saved before persona signing re-sign on first message.
 - **Every request carries `x-api-key`** (`EXPO_PUBLIC_API_SECRET`), because React
   Native sends no `Origin`/`Referer` and so lands in `proxy.ts`'s external-origin branch. GETs
   carry it too (changed 2026-10-18) so a phone on Expo Go can reach a LAN dev server, whose host
