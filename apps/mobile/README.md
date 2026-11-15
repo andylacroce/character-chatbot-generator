@@ -16,16 +16,16 @@ backend at the repo root, and this app renders them natively over HTTPS.
   Tap the speaker next to any character message to hear it again.
 - **Character Wall**: browse every character the app has ever generated and
   jump straight into a chat with one.
-- **Guessing game and leaderboard**: the same chain-of-characters game as the
-  web app's `/game`, plus the public top-ten leaderboard.
-- **Optional Google sign-in**: saves your characters and chat history to your
+- **Guessing games and leaderboards**: Guess Who and Guess Who's Next, as on
+  the web app (`/guess-who`, `/guess-who-next`), plus the public top-ten leaderboards.
+- **Optional Google or magic-link sign-in**: saves your characters and chat history to your
   account, and lists them under Past chats.
 - **Light/dark theming**, a resumable "continue chatting" shortcut for the
   last character used, and a rotating landing-page carousel of characters.
 
 ## Prerequisites
 
-- Node.js ≥ 18
+- Node.js 24 or newer
 - A running deployment of [character-chatbot-generator](https://github.com/andylacroce/character-chatbot-generator)
   to point this app at (or `localhost` via a tunnel/device on the same network)
 - [Expo Go](https://expo.dev/go) on a physical device, or an Android
@@ -35,9 +35,8 @@ backend at the repo root, and this app renders them natively over HTTPS.
 
 ```bash
 npm install            # from the repo root; npm workspaces link packages/shared
-cp .env.example .env
-# fill in EXPO_PUBLIC_API_BASE_URL and EXPO_PUBLIC_API_SECRET — see .env.example
-npm start
+# create apps/mobile/.env (gitignored) with EXPO_PUBLIC_API_BASE_URL and EXPO_PUBLIC_API_SECRET
+cd apps/mobile && npm start
 ```
 
 Scan the QR code with Expo Go (or press `a`/`i` for an emulator/simulator).
@@ -69,7 +68,7 @@ the two `adb reverse` commands.
 | `npm run type-check` | `tsc --noEmit` |
 | `npm test` / `npm run test:watch` | Jest + React Native Testing Library |
 | `npm run test:coverage` | Jest with the 80% global coverage gate |
-| `npm run ci` | The composite check CI runs: lint → lint:md → format:check → type-check → test:coverage |
+| `npm run ci` | The composite check CI runs: deps:check → lint → lint:md → format:check → type-check → test:coverage |
 
 ## Project structure
 
@@ -95,7 +94,7 @@ This app supplies only thin adapters: transport, storage, and native audio.
 
 ## Architecture notes
 
-`CLAUDE.md` in this directory has the full picture: the shared-package split, known tradeoffs (e.g. the API key
+`.claude/rules/mobile.md` at the repo root has the full picture: the shared-package split, known tradeoffs (e.g. the API key
 being bundled into the JS), what's deferred to a later phase, and the story
 behind a few non-obvious fixes (Android keyboard-avoidance under Expo's
 edge-to-edge default, in particular). Worth a skim before making architectural

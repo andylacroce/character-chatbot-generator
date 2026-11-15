@@ -41,7 +41,7 @@ paths:
   parent (`chat.test.ts`, `useChatController.*`) stay as the behavior pin; don't fold them into the new files.
   `tests/helpers/fakeStatsDb.ts` fakes the Drizzle query chain for the stats aggregations.
 - Mock `authenticatedFetch`, not raw `fetch`, for client/server interaction tests, and mock external
-  APIs (Anthropic, GCP TTS/Vertex) rather than calling them live.
+  APIs (Anthropic, Google TTS, image providers) rather than calling them live.
 - TTS tests must call `tts.__resetSingletonsForTest()` to avoid leaking singleton state.
 - For code reading an SSE (`stream: true`) response via `response.body.getReader()` (the games'
   `fetchRoundWithProgress`, `chat.ts`'s streaming mode), use `tests/helpers/mockResponse.ts`'s

@@ -132,6 +132,8 @@ function speak(game: ServerGame, state: GameState, text: string) {
  *         description: Rate limit exceeded
  *       500:
  *         description: Failed to generate a reply
+ *       503:
+ *         description: Daily spend cap reached on a clue reply. The token is unchanged; guesses still work.
  */
 export const POST = gameRoute({ endpoint: "message", max: 10 }, async (game, req) => {
   const body = await readJson(req);

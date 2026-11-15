@@ -51,7 +51,7 @@ discover a row by typing its name, so nothing new is disclosed). Every
   real title, description, canonical URL, and portrait (`generateMetadata`; a data-URL portrait gets
   no image). The slug (`characterSlug` in shared) is lowercase ASCII words, so a name with no
   ASCII letters has no page; an unknown slug or a missing database is a 404 with `noindex`. The
-  data read lives in `utils/charactersWall.ts` (shared with `/api/chars`). `app/sitemap.ts`
+  data read lives in `utils/moderation/charactersWall.ts` (shared with `/api/chars`). `app/sitemap.ts`
   (static pages plus one entry per slug-able character, `force-dynamic` so it is never a build-time
   snapshot, static pages only if the database read fails) and `app/robots.ts` (allows the site, hides
   `/api/`, `/admin`, `/history`, `/auth/`) point crawlers at the production origin in `utils/site.ts`.
@@ -65,7 +65,7 @@ discover a row by typing its name, so nothing new is disclosed). Every
   for a bare spinner. Resolution: signed in with a saved `bots` row of that exact name
   (case-insensitive) → resume it via `persistedBotToBot()`; otherwise `handleCreate()`.
   **StrictMode footgun, don't reintroduce:** `hasAutoSubmittedRef` is set synchronously before the
-  `/api/bots` await. React 18 StrictMode double-runs effects without resetting refs, so cleanup
+  `/api/bots` await. React StrictMode double-runs effects without resetting refs, so cleanup
   during the in-flight fetch dropped the first result while the second run saw the guard set and
   bailed, hanging on the spinner forever. Fix: track a local `dispatched` flag and release the guard
   in cleanup only if nothing was dispatched. `tests/app/components/BotCreator.url.test.tsx` pins it.

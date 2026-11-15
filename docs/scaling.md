@@ -13,15 +13,15 @@ re-checked. This is a menu of options ordered by value, not a commitment.
 - **The database is not a connection bottleneck.** `src/db/client.ts` uses Neon's HTTP driver
   (`drizzle-orm/neon-http`): every query is a stateless request, so hundreds of concurrent function
   instances do not exhaust a connection pool. Watch Neon's compute and storage limits instead.
-- **Shared state is small and optional.** Rate-limit counters and the games' single-use turn claims
-  use the Upstash-compatible Redis REST store when `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set
+- **Shared state is small and optional.** Rate-limit counters, the games' single-use turn claims and
+  the daily spend counter use the Upstash-compatible Redis REST store when `KV_REST_API_URL` and `KV_REST_API_TOKEN` are set
   (`src/utils/server/rateLimitStore.ts`, `claimOnce.ts`). Production has it attached since
   2026-11-15. Without it both fall back to per-instance memory.
 
 ## What costs money, in order
 
-1. **Chat replies on Sonnet** (`claude-sonnet-5-5` in production, `src/utils/claude/claudeModelSelector.ts`).
-   Every message is one Sonnet call plus, usually, one text-to-speech call. This dwarfs everything
+1. **Chat and game replies on Sonnet** (`claude-sonnet-5-5` in production, `src/utils/claude/claudeModelSelector.ts`).
+   Every chat message, and every game clue question, is one Sonnet call plus, usually, one text-to-speech call. This dwarfs everything
    else. Levers, cheapest first:
    - Per-IP limits exist (chat is 10 per minute per IP), and a global daily spend cap is built
      (`DAILY_TEXT_SOFT_LIMIT` / `DAILY_TEXT_HARD_LIMIT`; see "A global spend cap" below).
@@ -36,7 +36,7 @@ re-checked. This is a menu of options ordered by value, not a commitment.
    for that reason). See "Audio storage" below.
 3. **Portraits.** Generated once per character name and cached globally (`avatar_cache`, plus
    Vercel Blob for durable URLs), so cost grows with the number of distinct characters, not users.
-4. **Game rounds.** Each round is several Haiku calls, an avatar lookup, and TTS. Rounds are only
+4. **Game rounds.** Each round is three Haiku calls (persona, avatar prompt, voice), one Sonnet opening line, an avatar lookup and TTS. Each player message adds a Haiku classification and, for a question, a Sonnet reply. Rounds are only
    generated on Start and Continue, and Continue replays are now rejected (see below).
 
 ## Levers, with when to pull them
@@ -44,29 +44,32 @@ re-checked. This is a menu of options ordered by value, not a commitment.
 ### Redis-backed shared state (already done)
 
 Counters and claims are global now. Each rate-limited request costs three Redis commands (SET NX,
-INCR, PTTL) and each consumed game turn one or two. Check the Upstash plan's daily command limit
+INCR, PTTL) and each consumed game turn one or two. With the spend cap on, each Sonnet call adds one GET before it and INCRBY plus EXPIRE after it. Check the Upstash plan's daily command limit
 against expected traffic; moving past the free tier is the likely first paid step. If it is ever
-exhausted the code fails open (limits stop applying), so alert on the `claim_store_failed` and
-rate-limit store log events.
+exhausted the code fails open (limits stop applying), so alert on `claim_store_failed`,
+`spend_store_failed`/`spend_record_failed` and the rate-limit store log events.
 
 ### A global spend cap
 
-Built (`src/utils/claude/spendGuard.ts`). Only the `text` tier (Sonnet) is counted, since Haiku calls
-are negligible. Each chat and game reply adds its weighted tokens (input + 5 x output, from the
-response's `usage`) to a Redis counter keyed by UTC day. Past `DAILY_TEXT_SOFT_LIMIT` the tier switches
-to Haiku (`spend_cap_soft` warn log); past `DAILY_TEXT_HARD_LIMIT` chat and game messages return 503
-(`spend_cap_hard` error log, so alert on it). Both are unset by default, which disables the cap. It
-fails open on a store outage (`spend_store_failed`), and without Redis it counts per instance. Pick
-limits from the Anthropic console: weighted tokens x Sonnet's per-token price is the day's cost.
-A round's opening line already falls back to canned text, so starting a round still works at the cap.
+Built (`src/utils/claude/spendGuard.ts`). Only `text`-tier calls are counted (Sonnet in production; past
+the soft limit the same calls run on Haiku and are still counted at Sonnet weights). `text-simple`
+Haiku calls are not metered. Each chat and game reply adds its weighted tokens (input + 5 x output,
+from the response's `usage`) to a Redis counter keyed by UTC day. Past `DAILY_TEXT_SOFT_LIMIT` the tier
+switches to Haiku (`spend_cap_soft` warn log); past `DAILY_TEXT_HARD_LIMIT` `/api/chat` and game clue
+replies return 503 (`spend_cap_hard` error log, once per instance per day, so alert on its existence), and the apps show a "resting for today"
+message without retrying. Guesses, give-up and round starts keep working. Both limits are unset by
+default, which disables the cap. It fails open on a store outage or a Redis call over 2 seconds
+(`spend_store_failed`), and without Redis it counts per instance. Weighted tokens x Sonnet's input
+price per token is the day's approximate Sonnet cost; pick limits from the Anthropic console.
 
 **Worst case, plainly:** the hard limit plus overshoot, not a guarantee. Requests in flight when the
 limit is crossed all finish (about concurrent requests x one reply's cost; replies are capped at 500
-and 220 output tokens). A streamed reply that errors or is aborted partway is billed but never counted,
-and Haiku calls are not metered. There is no cap if Redis is down (fails open), if Redis is not attached
-(the ceiling becomes limit x warm instances), or if the limits are unset. Set the hard limit to the daily
-budget minus 10 to 20 percent, and keep an Anthropic console spend limit as the independent backstop.
-Full details: `.claude/rules/spend-cap.md`.
+and 220 output tokens, and a game clue can make two calls on a name-leak retry). A streamed reply that
+errors or is aborted partway is billed but never counted, and `text-simple` Haiku calls are not
+metered (and still run at the cap). There is no cap if Redis is down or slow (fails open), if Redis is
+not attached (the ceiling becomes limit x warm instances), or if the limits are unset. Set the hard
+limit to the daily budget minus 10 to 20 percent, and keep an Anthropic console spend limit as the
+independent backstop. Full details: `.claude/rules/spend-cap.md`.
 
 ### Audio storage
 
@@ -124,6 +127,8 @@ preview shares compute with production. Split them before running one.
 | Upstash command count | Upstash dashboard | Free-tier limit; limits fail open if it runs out |
 | `rate_limit_exceeded` rate | runtime logs | Real users hitting limits, or an abuser |
 | `audio_voice_selected` vs `audio_sent` | runtime logs | Duplicate TTS cost (Audio storage) |
+| `spend_cap_soft` / `spend_cap_hard` | runtime logs | Logged once per instance per day; hard means users are being refused |
+| `spend_store_failed` / `spend_record_failed` | runtime logs | The cap is silently not enforcing |
 | Neon storage and compute hours | Neon console | `messages` and `analytics_events` growth |
 | Function duration and timeouts | Vercel dashboard | Game rounds and streamed chat |
 

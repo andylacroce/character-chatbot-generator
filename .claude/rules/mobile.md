@@ -41,7 +41,7 @@ components are written natively, never shared with the DOM app.
   isn't first-party, without changing `proxy.ts`. The
   secret is extractable from the APK; the per-route rate limiter is the real abuse ceiling
   (same caveat as "Security posture"). A documented tradeoff, not an oversight: discuss before
-  changing. Env vars: `EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_API_SECRET` (`.env.example`).
+  changing. Env vars: `EXPO_PUBLIC_API_BASE_URL` and `EXPO_PUBLIC_API_SECRET` (create `apps/mobile/.env`; it is gitignored and there is no `.env.example`; run `npm start` from `apps/mobile`).
 - **Sign-in is a backend-mediated browser bridge**, since Auth.js's cookie session doesn't fit a
   mobile client and Expo Go has no native Google Sign-In. `src/auth.ts`'s `signIn()` opens
   `GET /api/auth/mobile-auth-start?redirect_uri=...` via `expo-web-browser`
@@ -88,7 +88,7 @@ components are written natively, never shared with the DOM app.
 ### Mobile testing, lint and CI
 
 Jest (`jest-expo`) plus React Native Testing Library, tests under `apps/mobile/tests/` mirroring
-`src/`, with the same 80% global coverage threshold. Its `npm run ci` (`lint --max-warnings=0`,
+`src/`, with the same 80% global coverage threshold. Its `npm run ci` (`deps:check`, `lint --max-warnings=0`,
 `lint:md`, `format:check`, `type-check`, `test:coverage`) runs from the root workflow
 `.github/workflows/ci-mobile.yml` and inside the root `npm run ci`, which also runs
 `packages/shared`'s tests.

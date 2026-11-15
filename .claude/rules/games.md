@@ -89,7 +89,7 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
 - **`generateGameRound(currentCharacterName, excludeNames, onProgress?)`** (`round.ts`) is the one
   place the persona → avatar → opening reply → voice → TTS sequence lives, for both `start.ts` and
   `continue.ts`. It runs `[persona ‖ avatar] → [opening reply ‖ voice config] → TTS`.
-- **`gameReply.ts`** has the three Claude-call shapes: `getGameReply` (an in-character turn, with
+- **`gameReply.ts`** has the three Claude-call shapes (`getGameReply` takes its model from `textCallSettings()`, so past the hard spend cap a clue reply throws `SpendCapError` and the message route answers 503; see `spend-cap.md`): `getGameReply` (an in-character turn, with
   optional `extraInstruction`), `getOpeningReply` (never throws, falls back), and
   `getGuessReactionReply` (the confirm/deny/reveal line after a guess is judged; never throws). The
   reaction call gets only the authoritative outcome and canonical revealed name, never the raw

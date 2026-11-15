@@ -41,10 +41,10 @@ paths:
   `displayCharacterName()` (`packages/shared/src/validation.ts`), which both apps call wherever a
   name is shown (headers, message labels, Wall/carousel captions, Past chats, reveal copy,
   `transcript.ts`). Any new UI surface showing a character name should call it.
-- **Rate limits (per IP/min):** `game-start` 10, `game-continue` 10 (both sized for in-process
-  persona+avatar cost, the only ceiling on it), `game-message` 10, `game-give-up` 10,
-  `game-high-score` 20.
-- **Won't do: streaming ordinary per-turn game replies.** `chat.ts` has a `stream: true` mode but no
+- **Rate limits (per IP/min, limiter name `<slug>-<endpoint>`, e.g. `guess-who-start`):** `start` 10,
+  `continue` 10 (both sized for in-process persona+avatar cost, the only ceiling on it), `message` 10,
+  `give-up` 10, `high-score` 20, `leaderboard` 30, `leaderboard-settings` 5.
+- **Won't do: streaming ordinary per-turn game replies.** `/api/chat` has a `stream: true` mode but no
   client renders a live typing effect anywhere; if wanted, start with ordinary chat's UI.
 - Not mechanically verifiable: whether a real guess is judged fairly and whether clue difficulty
   holds up are ongoing manual-QA and prompt-iteration concerns.

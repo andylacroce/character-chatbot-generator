@@ -90,7 +90,7 @@ user's saved characters). On a validation error, `blocked` and `warningLevel` fa
   `skipPersistence` on the `Bot` when the user clicks "Continue Anyway". `generate-avatar.ts`
   (`bypassPersistence`) then skips `avatar_cache` and Vercel Blob (returns the base64 data URL),
   `index.tsx`'s `handleBotCreated` skips `POST /api/bots` (the character behaves like a guest's,
-  localStorage only), `ChatHeader.tsx` hides Download Transcript, and the modal's disclaimer says so.
+  localStorage only), `ChatPage.tsx` hides Download Transcript, and the modal's disclaimer says so.
 
 ### Supported-character gate (unrecognized names)
 
