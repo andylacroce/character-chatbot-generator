@@ -7,8 +7,8 @@ convention. These instructions apply to the entire repository unless a more spec
 ## Start here
 
 Portrayal is a Next.js 16, React 19, and TypeScript application for creating and
-chatting with historical, mythological, literary, and original characters. It uses a
-hybrid routing architecture:
+chatting with historical, mythological, literary, and original characters. It is
+organized as:
 
 - `src/app/` contains App Router pages, UI components, hooks, and CSS modules.
 - `src/app/api/**/route.ts` holds the API route handlers (App Router; they were Pages Router API
@@ -16,7 +16,7 @@ hybrid routing architecture:
   The mobile app depends on their URL and response parity, so keep both stable.
 - `src/` contains shared configuration, database, types, and utilities.
 - `tests/` mirrors the source tree and uses Jest plus Testing Library.
-- `proxy.ts` is the central API-origin and API-key security boundary.
+- `src/proxy.ts` is the central API-origin and API-key security boundary.
 
 Before editing, inspect `git status`, the relevant implementation, and its nearby
 tests. Preserve user changes and unrelated worktree modifications.
@@ -26,10 +26,11 @@ tests. Preserve user changes and unrelated worktree modifications.
 Use pointers instead of duplicating long explanations here:
 
 - [`README.md`](README.md): product overview, quickstart, commands, and troubleshooting. Deeper
-  human-oriented docs are in [`docs/`](docs): getting-started, architecture, features, configuration.
-- [`CLAUDE.md`](CLAUDE.md): detailed architecture and the historical reasons behind
-  non-obvious behavior. Despite the filename, this is the canonical deep technical
-  handbook for all agents. Read the relevant section before changing a core flow.
+  human-oriented docs are in [`docs/`](docs): getting-started, architecture, features, configuration, scaling.
+- [`CLAUDE.md`](CLAUDE.md): core architecture and conventions. Despite the filename, this is
+  the canonical technical handbook for all agents. Deep per-topic notes live in `.claude/rules/*.md`
+  (Codex does not auto-load them): read the matching rule file (listed in CLAUDE.md's Topic rules)
+  before changing a core flow.
 - [`CHANGELOG.md`](CHANGELOG.md): user-visible release history.
 - [`package.json`](package.json): authoritative commands and dependency versions.
 - [`src/db/schema.ts`](src/db/schema.ts): database schema and persistence contracts.
@@ -78,14 +79,16 @@ it runs because its format step writes files.
 - Client-to-server requests go through `authenticatedFetch()` in `src/utils/api.ts`,
   not raw `fetch`, so proxy authentication and test mocking remain consistent.
 - All Anthropic calls use the singleton in `src/utils/claude/anthropicClient.ts`; model choice
-  goes through `src/utils/claude/claudeModelSelector.ts`.
-- Chat streaming uses SSE frames shaped as `data: JSON\n\n`. Coordinate changes to the
-  final payload with `useChatController.ts` and stream-parsing tests.
+  goes through `src/utils/claude/claudeModelSelector.ts`. `text`-tier calls (chat and game
+  replies) take model and thinking from `textCallSettings()` in `src/utils/claude/spendGuard.ts`
+  and report usage with `recordTextUsage()`.
+- Chat's optional `stream: true` mode has no first-party consumer (web and mobile use JSON);
+  keep its frame shape stable for API-key integrators and the route tests.
 - Guest use must continue to work without optional account/database configuration.
   Features backed by Neon, OAuth, Blob, Redis, or email must degrade gracefully when
   their environment variables are absent.
 - Keep shared character data separate from original-character or user-private data.
-  Read the relevant `CLAUDE.md` sections before changing validation, persistence,
+  Read the matching `.claude/rules/*.md` file before changing validation, persistence,
   avatar caching, the Character Wall, or copyright-override behavior.
 - Use the helpers in `src/utils/storage.ts` and keys in `storageKeys.ts`; do not write
   versioned local-storage shapes directly or store secrets/PII client-side.
@@ -95,7 +98,7 @@ it runs because its format step writes files.
 
 ## API, security, and data changes
 
-- Treat `proxy.ts` as CSRF/origin protection, not user authentication. Preserve exact
+- Treat `src/proxy.ts` as CSRF/origin protection, not user authentication. Preserve exact
   host matching, constant-time secret comparison, per-route rate limits, and route-level
   authorization where required.
 - Validate and sanitize untrusted input with the utilities in `src/utils/server/security.ts`.

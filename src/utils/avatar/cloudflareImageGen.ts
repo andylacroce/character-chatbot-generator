@@ -1,7 +1,7 @@
 /**
- * Free-tier fallback image generation via Cloudflare Workers AI (Flux Schnell),
- * used by app/api/generate-avatar/route.ts when Gemini/Vertex isn't configured or
- * fails to produce an image. See CLAUDE.md's "Avatar generation" section.
+ * Primary avatar image generation via Cloudflare Workers AI (Flux Schnell), used by
+ * avatarGeneration.ts when its credentials are set; Pollinations is the fallback.
+ * See the `avatar` rule.
  */
 
 import { logEvent, sanitizeLogMeta } from "../logger";
@@ -11,8 +11,8 @@ const MODEL = "@cf/black-forest-labs/flux-1-schnell";
 /**
  * Calls Cloudflare Workers AI to generate an image from a prompt. Returns a base64
  * data URL, or null when CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_API_TOKEN aren't configured
- * or the request fails — same degrade-gracefully shape as the Gemini path, so a
- * missing/failing free fallback never throws past this function.
+ * or the request fails — same degrade-gracefully shape as the Pollinations
+ * path, so a missing or failing provider never throws past this function.
  */
 export async function generateImageWithCloudflare(prompt: string): Promise<string | null> {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;

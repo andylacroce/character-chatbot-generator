@@ -60,7 +60,12 @@ export async function createClaudeReply(
   const timeout = new Promise((resolve) =>
     setTimeout(() => resolve({ timeout: true }), REPLY_TIMEOUT_MS),
   );
-  const result = await Promise.race([anthropic.messages.create(params), timeout]);
+  // Usage is recorded inside the call's own promise so a reply that outlives the timeout (still billed) is counted too.
+  const call = anthropic.messages.create(params).then(async (response) => {
+    await recordTextUsage(response.usage);
+    return response;
+  });
+  const result = await Promise.race([call, timeout]);
 
   if (result && typeof result === "object" && "timeout" in result) {
     logEvent(
@@ -80,9 +85,6 @@ export async function createClaudeReply(
     );
     throw new Error("Invalid response from Claude");
   }
-  await recordTextUsage(
-    (result as { usage?: { input_tokens?: number; output_tokens?: number } }).usage,
-  );
   const botReply =
     result.content[0]?.type === "text"
       ? (result.content[0] as { type: "text"; text: string }).text.trim()

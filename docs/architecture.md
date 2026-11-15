@@ -24,9 +24,9 @@ hooks. Each platform adds only its own transport, storage, and logging.
 
 1. **`src/proxy.ts` is the single auth choke point.** Browsers pass on a matching Origin; everyone else
    needs `x-api-key`. It is CSRF protection, not authentication, so the per-route rate limiter
-   (`src/utils/server/withRoute.ts`) is the real cost ceiling.
+   (`src/utils/server/withRoute.ts`) and the daily spend cap (`src/utils/claude/spendGuard.ts`) are the real cost ceilings.
 2. **Claude calls use model tiers**, chosen at the call site (`src/utils/claude/claudeModelSelector.ts`):
-   `text` for chat replies, `text-simple` for short structured JSON tasks, and `image` for avatar prompts.
+   `text` for chat and game replies (via the spend cap's `textCallSettings()`), `text-simple` for short structured JSON tasks. Avatar images are rendered by Cloudflare or Pollinations, not Claude.
    All calls share one client (`anthropicClient.ts`) and pass `thinking` settings from `claudeThinking.ts`.
 3. **Everything optional degrades quietly.** No database means guest-only. No Redis means in-process rate
    limits. No Cloudflare means Pollinations avatars. Code must keep those fallbacks working.

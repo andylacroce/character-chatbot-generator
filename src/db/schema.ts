@@ -151,9 +151,9 @@ export const messages = pgTable("messages", {
 
 /**
  * Global avatar cache, keyed by lowercased character name — shared across every
- * user (and guests), not scoped to `bots`. Gemini image generation is comparatively
+ * user (and guests), not scoped to `bots`. Image generation is comparatively
  * expensive, so a name generated once is reused by everyone from then on; this
- * intentionally trades per-user visual variety for cost. Only successful Gemini
+ * intentionally trades per-user visual variety for cost. Only successful
  * generations are cached (see app/api/generate-avatar/route.ts) — never the
  * `/silhouette.svg` fallback, so a transient generation failure doesn't
  * permanently deny a name a real portrait. `gender` is cached alongside the image

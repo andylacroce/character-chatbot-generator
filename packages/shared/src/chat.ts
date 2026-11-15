@@ -93,10 +93,13 @@ export function httpError(
 /** The `/api/chat` 400 code meaning the persona must be re-signed (see `useChatSession`). */
 export const PERSONA_UNSIGNED = "persona_unsigned";
 
-/** Worth retrying: network failures (no status) and 5xx. A 4xx (validation, 429) fails the same way again and spends rate-limit budget. */
+/** The `/api/chat` 503 code meaning the daily spend cap is reached (see `spendGuard.ts`). */
+export const SPEND_CAP = "spend_cap";
+
+/** Worth retrying: network failures (no status) and 5xx, except the spend cap, which a retry cannot clear. A 4xx (validation, 429) fails the same way again and spends rate-limit budget. */
 export function isRetryable(err: unknown): boolean {
-  const status = (err as { status?: unknown } | null)?.status;
-  return typeof status !== "number" || status >= 500;
+  const { status, code } = (err ?? {}) as { status?: unknown; code?: unknown };
+  return code !== SPEND_CAP && (typeof status !== "number" || status >= 500);
 }
 
 /** The one user-facing message for a failed send; never the response body (see `httpError`). */
@@ -105,6 +108,9 @@ export function chatErrorMessage(err: unknown): string {
   if (status === 429) return "You are sending messages too quickly. Please wait and try again.";
   if ((err as { code?: unknown } | null)?.code === "persona_refused") {
     return "This character is no longer available.";
+  }
+  if ((err as { code?: unknown } | null)?.code === SPEND_CAP) {
+    return "Chat is resting for today. Please try again tomorrow.";
   }
   if (status === 408) return "The server took too long to respond. Please try again.";
   return "Error sending message. Please try again.";

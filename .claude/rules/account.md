@@ -66,7 +66,7 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
   stored persona later becomes the trusted DB persona for chat. Web (`index.tsx`) and mobile
   (`persistBotIfSignedIn`) send the bot's signature.
 - **Server-persisted chat history (`messages` table).** For a signed-in user's saved character,
-  `chat.ts` is the source of truth for personality and history rather than trusting the client's.
+  `/api/chat` (`chatContext.ts`'s `resolveChatIdentity`) is the source of truth for personality and history rather than trusting the client's.
   It looks up the `bots` row by `(user_id, name, environment)`; guests, no `DATABASE_URL`, or
   never-saved characters (e.g. copyright overrides) fall through to client-authoritative behavior.
   - **Rolling summary:** `bots.summary`/`summarizedThroughMessageId` replace re-summarizing from
@@ -101,7 +101,7 @@ everything no-ops (200, empty) for guests or without `DATABASE_URL`, never a 401
   carousel cache) and sign out. Known gap: a JWT on another device stays decodable until expiry;
   its writes fail the `users` FK and degrade like any persistence error.
   **A new per-user table needs an `onDelete: "cascade"` FK to `users`** (exception: `content_reports.reporter_user_id` is `set null` so a moderator keeps the report; see `reports.md`); a new guest-scoped table
-  needs an explicit delete here keyed by guest cookie,** or deletion silently misses it (a missing
+  needs an explicit delete here keyed by guest cookie, or deletion silently misses it (a missing
   pair of Guess Who guest tables was exactly this gap, fixed 2026-09-29; `tests/app/api/account.test.ts`
   asserts all four).
 - **Deleting chats (Past chats):** `DELETE /api/bots` clears every saved character in the current

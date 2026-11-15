@@ -19,9 +19,11 @@ Send a chat message and trace it. This single path teaches most of the codebase:
 2. `src/utils/api.ts` (`authenticatedFetch`) is the only way the UI talks to the server.
 3. `src/proxy.ts` checks the request origin and API key before any API route runs.
 4. `src/app/api/chat/route.ts` is orchestration: it checks the body (`utils/chat/chatRequest.ts`), resolves who is
-   chatting (`resolveChatIdentity` in `utils/chat/chatContext.ts`, which also builds the prompt), gets the
+   chatting (`resolveChatIdentity`), builds the history and prompt (`buildChatContext`/`buildSystemPrompt`, all in
+   `utils/chat/chatContext.ts`), gets the
    reply from Claude (`utils/chat/chatReply.ts`, on the shared client in `utils/claude/`), and returns it.
-5. `src/app/api/audio/route.ts` turns the reply into speech (`src/utils/chat/tts.ts`).
+5. `src/utils/chat/ttsReply.ts` synthesizes the reply's speech during the chat request (`tts.ts`), and
+   `src/app/api/audio/route.ts` serves the mp3, re-synthesizing it if the instance lost it.
 
 ## 3. Where does my change go?
 

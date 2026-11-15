@@ -132,6 +132,8 @@ const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
  *         description: Rate limit exceeded
  *       500:
  *         description: Claude or TTS call failed
+ *       503:
+ *         description: 'Daily spend cap reached: { reply, code: "spend_cap", requestId }. Do not retry until the next UTC day.'
  */
 export const POST = withRoute(LIMIT, async (req: NextRequest) => {
   const requestId = req.headers.get("x-request-id") || generateRequestId();
@@ -351,7 +353,7 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
       return Response.json(
         {
           reply: "Chat is resting for today. Please try again tomorrow.",
-          error: "spend_cap",
+          code: "spend_cap",
           requestId,
         },
         { status: 503 },

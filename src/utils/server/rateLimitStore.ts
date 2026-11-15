@@ -63,6 +63,7 @@ export async function redisPipeline(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(commands),
+    signal: AbortSignal.timeout(2000), // a hung store must fail open, not stall the request
   });
   if (!response.ok) {
     throw new Error(`Rate limit store responded ${response.status}`);

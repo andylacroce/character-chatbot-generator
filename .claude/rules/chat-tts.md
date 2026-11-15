@@ -27,7 +27,7 @@ persistence"), streams via SSE when the client passes `{ stream: true }`, and do
 continuation": it detects a truncated reply, appends "Would you like me to continue?", and resumes
 if the user says yes.
 
-SSE frames are plain `data: JSON\n\n`. The final payload is
+Chat's optional `stream: true` mode has no first-party consumer (web and mobile use JSON); keep its frame shape stable for API-key integrators and the route tests. SSE frames are plain `data: JSON\n\n`. The final payload is
 `{ reply: string, audioFileUrl?: string, done: true }`; changing it requires updating
 `useChatController.ts` and every test that parses stream frames.
 
@@ -55,7 +55,7 @@ input, focus and scrolling. Its tests are `tests/shared/useChatSession.test.ts`.
   The handler is orchestration only: `chatRequest.ts` (`findChatInputProblem`, the size and required-field
   checks), `chatContext.ts` (`resolveChatIdentity`, the server-authoritative personality and name for a
   signed-in user's saved character, plus history/summary resolution and system-prompt assembly), and
-  `chatReply.ts` (`streamClaudeReply` and `createClaudeReply`, the two Claude calls with their 20s timeout).
+  `chatReply.ts` (`streamClaudeReply` and `createClaudeReply`, the two Claude calls; the non-streamed one has a 20s timeout). Both take model and thinking from `textCallSettings()` and report usage; past the hard cap they throw `SpendCapError` (see `spend-cap.md`).
   A TTS failure on any path (cache hit,
   non-streaming, streaming) never fails the chat request: it degrades to a text-only reply
   (`audioFileUrl` omitted), since losing audio beats discarding a generated reply.

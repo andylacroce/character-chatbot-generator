@@ -7,3 +7,7 @@
 - `generate-theme-css.cjs` — `theme:generate`.
 - `check-db-schema.cjs` — `db:check`, runs before `dev` and as part of `ci`.
 - `scan-secrets.sh` — used by CI secret scanning.
+
+## On demand
+
+- `simulate-games.ts`: `sim:games`, spends real Anthropic tokens; see `.claude/rules/game-simulator.md`.
