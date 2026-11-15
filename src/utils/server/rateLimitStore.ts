@@ -34,7 +34,7 @@ export interface RedisRestConfig {
 }
 
 /** A single Redis command, e.g. `["INCR", "rl:chat:1.2.3.4"]`. */
-type RedisCommand = (string | number)[];
+export type RedisCommand = (string | number)[];
 
 /**
  * Reads the REST connection details from the environment.
@@ -49,6 +49,33 @@ export function getRedisRestConfig(
   let urlEnd = url.length;
   while (urlEnd > 0 && url.charCodeAt(urlEnd - 1) === 47) urlEnd -= 1;
   return { url: url.slice(0, urlEnd), token };
+}
+
+/** Sends commands to the Upstash-compatible REST endpoint in one round trip; returns each result. */
+export async function redisPipeline(
+  config: RedisRestConfig,
+  commands: RedisCommand[],
+): Promise<unknown[]> {
+  const response = await fetch(`${config.url}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(commands),
+  });
+  if (!response.ok) {
+    throw new Error(`Rate limit store responded ${response.status}`);
+  }
+  const body = (await response.json()) as Array<{ result?: unknown; error?: string }>;
+  if (!Array.isArray(body)) {
+    throw new Error("Rate limit store returned a malformed pipeline response");
+  }
+  const failed = body.find((entry) => entry && entry.error);
+  if (failed) {
+    throw new Error(`Rate limit store command failed: ${failed.error}`);
+  }
+  return body.map((entry) => entry?.result);
 }
 
 /**
@@ -77,27 +104,8 @@ export class RedisRestStore implements RateLimitStore {
   }
 
   /** Sends one or more commands in a single round trip and returns their results. */
-  private async pipeline(commands: RedisCommand[]): Promise<unknown[]> {
-    const response = await fetch(`${this.config.url}/pipeline`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.config.token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(commands),
-    });
-    if (!response.ok) {
-      throw new Error(`Rate limit store responded ${response.status}`);
-    }
-    const body = (await response.json()) as Array<{ result?: unknown; error?: string }>;
-    if (!Array.isArray(body)) {
-      throw new Error("Rate limit store returned a malformed pipeline response");
-    }
-    const failed = body.find((entry) => entry && entry.error);
-    if (failed) {
-      throw new Error(`Rate limit store command failed: ${failed.error}`);
-    }
-    return body.map((entry) => entry?.result);
+  private pipeline(commands: RedisCommand[]): Promise<unknown[]> {
+    return redisPipeline(this.config, commands);
   }
 
   async increment(key: string): Promise<{ totalHits: number; resetTime: Date }> {

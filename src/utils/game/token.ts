@@ -22,7 +22,9 @@
 
 import type { GameId } from "character-chatbot-shared/src/core";
 import type { CharacterVoiceConfig } from "../chat/characterVoices";
+import { randomBytes } from "crypto";
 import { encryptPayload, decryptPayload } from "../server/tokenCrypto";
+import { claimOnce, releaseClaim } from "../server/claimOnce";
 
 /**
  * Fallback chain for deriving the AES key, see tokenCrypto.ts's module doc. `API_SECRET` is
@@ -65,7 +67,18 @@ export interface GameState {
   issuedForGuestId: string | null;
   /** True only after the server judged a correct guess for this round. */
   canContinue?: boolean;
+  /**
+   * Unique per signed token (minted by `signGameState`). A route that answers by issuing a
+   * different token, or by ending the run, claims it first (`claimTurn`), so the token it
+   * consumed cannot be replayed.
+   */
+  turnId: string;
+  /** When the token was signed (ms since epoch); `verifyGameState` rejects one older than `MAX_TOKEN_AGE_MS`. */
+  issuedAt: number;
 }
+
+/** What callers build: `signGameState` stamps the turn id and issue time. */
+export type GameStateInput = Omit<GameState, "turnId" | "issuedAt">;
 
 /** True for `null` or a string, the shape of every optional string field in the payload. */
 const isNullableString = (v: unknown) => v === null || typeof v === "string";
@@ -87,13 +100,38 @@ function hasValidCommonFields(v: Record<string, unknown>): boolean {
     typeof v.environment === "string" &&
     isNullableString(v.issuedForUserId) &&
     (v.issuedForGuestId === undefined || isNullableString(v.issuedForGuestId)) &&
-    (v.canContinue === undefined || typeof v.canContinue === "boolean")
+    (v.canContinue === undefined || typeof v.canContinue === "boolean") &&
+    typeof v.turnId === "string" &&
+    typeof v.issuedAt === "number"
   );
 }
 
 /** Encrypts a round's state into an opaque, base64url token for the client to hold. */
-export function signGameState(state: GameState): string {
-  return encryptPayload(state, SECRET_ENV_VARS);
+export function signGameState(state: GameStateInput | GameState): string {
+  return encryptPayload(
+    { ...state, turnId: randomBytes(16).toString("base64url"), issuedAt: Date.now() },
+    SECRET_ENV_VARS,
+  );
+}
+
+/**
+ * A token older than this is rejected, and a consumed turn stays claimed for the same span, so a
+ * consumed token can never become valid again. A run idle for a week simply has to start over.
+ */
+const MAX_TOKEN_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const TURN_CLAIM_TTL_SECONDS = MAX_TOKEN_AGE_MS / 1000;
+
+/**
+ * Marks the token's turn as played. False means it was already played (a replay). Claims are
+ * kept as long as a token can live, so a consumed token never verifies-and-claims again.
+ */
+export function claimTurn(state: GameState): Promise<boolean> {
+  return claimOnce(`game-turn:${state.turnId}`, TURN_CLAIM_TTL_SECONDS);
+}
+
+/** Gives the turn back after a failure, so the player can retry the same token. */
+export async function releaseTurn(state: GameState): Promise<void> {
+  await releaseClaim(`game-turn:${state.turnId}`);
 }
 
 /**
@@ -115,5 +153,6 @@ export function verifyGameState(token: unknown, game: GameId): GameState | null 
   ) {
     return null;
   }
+  if (Date.now() - (v.issuedAt as number) > MAX_TOKEN_AGE_MS) return null;
   return { ...v, issuedForGuestId: v.issuedForGuestId ?? null } as unknown as GameState;
 }

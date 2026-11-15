@@ -16,7 +16,12 @@ import {
   roundState,
   roundResponse,
 } from "../../../../utils/game/round";
-import { signGameState, verifyGameState } from "../../../../utils/game/token";
+import {
+  claimTurn,
+  releaseTurn,
+  signGameState,
+  verifyGameState,
+} from "../../../../utils/game/token";
 import { getSessionUserId } from "../../../../utils/account/getSessionUserId";
 import { recordEvent } from "../../../../utils/analytics";
 import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
@@ -54,6 +59,8 @@ import { logEvent, sanitizeLogMeta } from "../../../../utils/logger";
  *           `stream: true`; identical shape to POST /{game}/start.
  *       400:
  *         description: Missing/invalid/expired token, or Continue called before a correct guess
+ *       409:
+ *         description: The token's turn was already played (a replay)
  *       404:
  *         description: Unknown game
  *       429:
@@ -84,6 +91,15 @@ export const POST = gameRoute({ endpoint: "continue", max: 10 }, async (game, re
     );
   }
 
+  // Consumes the token before the (billed) round generation, so a replay costs nothing.
+  if (!(await claimTurn(state))) {
+    logEvent("info", `${game.eventPrefix}_token_replayed`, "Rejected a replayed game token");
+    return Response.json(
+      { error: "This turn was already played. Please start a new game." },
+      { status: 409 },
+    );
+  }
+
   const userId = await getSessionUserId(req);
   return roundResponse(
     stream,
@@ -93,32 +109,37 @@ export const POST = gameRoute({ endpoint: "continue", max: 10 }, async (game, re
       error: "Failed to generate the next round",
     },
     async (onProgress) => {
-      // The streak was already incremented in the message response to the player but never
-      // written back into this token, so recompute it the same way here, from the same
-      // trusted source value.
-      const newStreak = state.streak + 1;
-      const plan = planRound(game, { targetName: state.targetName, usedNames: state.usedNames });
-      const round = await generateGameRound(game, plan, onProgress);
+      try {
+        // The streak was already incremented in the message response to the player but never
+        // written back into this token, so recompute it the same way here, from the same
+        // trusted source value.
+        const newStreak = state.streak + 1;
+        const plan = planRound(game, { targetName: state.targetName, usedNames: state.usedNames });
+        const round = await generateGameRound(game, plan, onProgress);
 
-      const token = signGameState(
-        roundState(game, plan, round, {
-          runId: state.runId,
-          streak: newStreak,
-          environment: state.environment,
-          issuedForUserId: state.issuedForUserId,
-          issuedForGuestId: state.issuedForGuestId,
-        }),
-      );
+        const token = signGameState(
+          roundState(game, plan, round, {
+            runId: state.runId,
+            streak: newStreak,
+            environment: state.environment,
+            issuedForUserId: state.issuedForUserId,
+            issuedForGuestId: state.issuedForGuestId,
+          }),
+        );
 
-      logEvent(
-        "info",
-        `${game.eventPrefix}_continue_round`,
-        "Generated the next round after a correct guess",
-        sanitizeLogMeta({ streak: newStreak }),
-      );
-      await recordEvent(`${game.eventPrefix}_round_continued`, { streak: newStreak }, userId);
+        logEvent(
+          "info",
+          `${game.eventPrefix}_continue_round`,
+          "Generated the next round after a correct guess",
+          sanitizeLogMeta({ streak: newStreak }),
+        );
+        await recordEvent(`${game.eventPrefix}_round_continued`, { streak: newStreak }, userId);
 
-      return roundResult(game, plan, round, token, newStreak);
+        return roundResult(game, plan, round, token, newStreak);
+      } catch (err) {
+        await releaseTurn(state); // generation failed: let the player retry the same token
+        throw err;
+      }
     },
   );
 });

@@ -67,8 +67,16 @@ one edit reaching web, mobile, and both games. Only what genuinely differs lives
 - **Tokens are stateless, so a run's end is recorded server-side.** Old tokens stay decryptable and
   give-up reveals the answer, so replaying one would turn the reveal into a scored win. Give-up and a
   second wrong guess call `markRunEnded` (sets `ended_at` on the run's `*_results` row, inserting a
-  0-streak row if none exists); a correct guess skips scoring when `isRunEnded`. Known limit: a
-  first-wrong token can still be replayed for extra wrong guesses (no server-side strike count).
+  0-streak row if none exists); a correct guess skips scoring when `isRunEnded`. **Each turn token is single-use:** `signGameState` mints a fresh `turnId`, and `message` (once the
+  guess is judged, i.e. every outcome that re-signs or ends the run) and `continue` call `claimTurn`
+  (`server/claimOnce.ts`: Redis `SET NX` when configured, else per-process) before the billed reply
+  or round, answering a replay 409 (`*_token_replayed`). A failure after the claim calls
+  `releaseTurn` so the same token can be retried; clue replies reuse the token and never claim. It
+  fails open on a store error, and without Redis it only holds within one instance. A token carries
+  `issuedAt` and `verifyGameState` rejects one older than 7 days (the claim TTL), or one without a
+  `turnId`/`issuedAt` (minted before this existed), so a consumed token can never claim again. A
+  409 on the client (`useGameSession`'s `endRunIfTurnReplayed`) ends the run with a "start a new
+  game" message, since retrying a consumed token can only fail again.
   A hidden-speaker game's `/api/audio` URL is built with a neutral `botName` and no `gender`
   (`synthesizeReplyAudio`'s `hideIdentity`), or the URL would hand over the answer.
 - **`verifyGameState()` fails CLOSED** (any tamper, malformed input, or decrypt failure returns

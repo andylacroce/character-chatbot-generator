@@ -6,6 +6,7 @@
  */
 
 import type { LoadingStage } from "../character/CharacterLoadingOverlay";
+import { httpError } from "character-chatbot-shared";
 import { authenticatedFetch } from "../../../utils/api";
 
 /**
@@ -96,7 +97,7 @@ export async function fetchRoundWithProgress(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...body, stream: true }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) throw httpError(res.status);
 
   let finalFrame: Record<string, unknown> | null = null;
   await readSseFrames(res, (frame) => {

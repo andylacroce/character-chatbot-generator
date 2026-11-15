@@ -21,7 +21,13 @@
 import type { NextRequest } from "next/server";
 import { readJson } from "../../../../utils/server/withRoute";
 import { gameRoute } from "../../../../utils/game/route";
-import { signGameState, verifyGameState, type GameState } from "../../../../utils/game/token";
+import {
+  claimTurn,
+  releaseTurn,
+  signGameState,
+  verifyGameState,
+  type GameState,
+} from "../../../../utils/game/token";
 import {
   isRunEnded,
   markRunEnded,
@@ -117,6 +123,8 @@ function speak(game: ServerGame, state: GameState, text: string) {
  *                 gameToken: { type: string, description: 'Same, for "guess-who-next"' }
  *       400:
  *         description: Missing message, or invalid/expired round token
+ *       409:
+ *         description: A guess already used this token's turn (a replay)
  *       404:
  *         description: Unknown game
  *       429:
@@ -157,6 +165,7 @@ export const POST = gameRoute({ endpoint: "message", max: 10 }, async (game, req
     ? conversationHistory.filter((entry): entry is string => typeof entry === "string")
     : [];
   const clueRound = Math.floor(history.length / 2) + 1;
+  let turnClaimed = false;
 
   try {
     const classification = await classifyGuess(state.targetName, message, history);
@@ -183,6 +192,17 @@ export const POST = gameRoute({ endpoint: "message", max: 10 }, async (game, req
     }
 
     const userId = await getSessionUserId(req);
+    // From here the answer is a different token or the end of the run, so spend this one: a
+    // replayed token must not buy extra guesses or re-score a finished run. Clue replies above
+    // reuse the token and never reach this point.
+    if (!(await claimTurn(state))) {
+      logEvent("info", `${game.eventPrefix}_token_replayed`, "Rejected a replayed game token");
+      return Response.json(
+        { error: "This turn was already played. Please start a new game." },
+        { status: 409 },
+      );
+    }
+    turnClaimed = true;
     // A hidden-speaker game's reveal also releases the identity every other response withholds.
     const reveal = game.hidesSpeaker ? { avatarUrl: state.avatarUrl, gender: state.gender } : {};
 
@@ -272,6 +292,8 @@ export const POST = gameRoute({ endpoint: "message", max: 10 }, async (game, req
       [game.tokenField]: newToken,
     });
   } catch (err) {
+    // Nothing was answered, so let the player retry the same token.
+    if (turnClaimed) await releaseTurn(state);
     logEvent(
       "error",
       `${game.eventPrefix}_message_failed`,

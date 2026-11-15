@@ -5,7 +5,7 @@
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import { GUESS_WHO, GUESS_WHO_NEXT, type GameDefinition } from "character-chatbot-shared";
-import type { GameState } from "../../src/utils/game/token";
+import type { GameStateInput } from "../../src/utils/game/token";
 
 process.env.API_SECRET = process.env.API_SECRET || "test-api-secret";
 
@@ -45,7 +45,10 @@ export function sseFrames(res: NextApiResponse) {
  * A round's token state for `game`: in "Guess Who" the speaker is the hidden target itself;
  * in "Guess Who's Next" a named speaker steers toward a different hidden target.
  */
-export function makeState(game: GameDefinition, overrides: Partial<GameState> = {}): GameState {
+export function makeState(
+  game: GameDefinition,
+  overrides: Partial<GameStateInput> = {},
+): GameStateInput {
   return {
     game: game.id,
     runId: "run-1",
