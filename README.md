@@ -25,7 +25,8 @@ A Next.js 16 + TypeScript app for chatting with history's greatest minds, legend
 2. [Architecture](docs/architecture.md): how a request flows and where code lives
 3. [Feature reference](docs/features.md): how each feature works and what it stores
 4. [Configuration](docs/configuration.md): every account and environment variable
-5. [Contributing](.github/CONTRIBUTING.md): the PR checklist, CI, and release flow
+5. [Scaling](docs/scaling.md): what limits the app as traffic grows, and which levers to pull first
+6. [Contributing](.github/CONTRIBUTING.md): the PR checklist, CI, and release flow
 
 ## Quickstart
 
