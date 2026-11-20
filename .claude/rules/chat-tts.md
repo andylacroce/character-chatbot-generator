@@ -38,6 +38,19 @@ user-facing error text (`chatErrorMessage`, never a response body). Web (`useCha
 `chatAdapters.ts`) and mobile (`ChatScreen.tsx`) pass a transport, storage and logger and keep audio,
 input, focus and scrolling. Its tests are `tests/shared/useChatSession.test.ts`.
 
+- **Refusals.** When Claude's classifiers decline a reply (`stop_reason: "refusal"`, empty or partial
+  content), `throwIfRefused` (`utils/claude/refusal.ts`) throws `ClaudeRefusalError` right after usage
+  is recorded and before any content check, in `chatReply.ts` (both calls), `getGameReply` and
+  `classifyCharacterName`. `/api/chat` answers 422 `{ reply, code: "reply_declined" }` (a stream gets an
+  error frame with the same code, after any chunks already sent, which a streaming client must
+  discard); the game message route answers 422 with the token unchanged (clue replies run before the
+  turn claim). Both log a `warn` (`chat_reply_declined`, `<game>_reply_declined`, with the category).
+  Nothing is cached, persisted or spoken. The shared client never retries a 4xx and shows
+  `chatErrorMessage`'s "can't respond to that" text (web and mobile; the game copy is in
+  `useGameSession`). A declined redo in `getGameReply`'s hidden-name guard returns the neutral fallback
+  line. A declined name classification throws, so `validateCharacterName` fails open as for any error
+  and `personaGate` fails closed (see `moderation.md`). The API's server-side `fallbacks` are not used:
+  a policy decline on persona chat would most likely repeat.
 - **Persona signing** (`src/utils/chat/personaSignature.ts`): outside a saved bot's DB row, `/api/chat`
   accepts `personality` only when `personalitySignature` verifies for `(botName, personality)` (HMAC over
   `JSON.stringify(["v1", name, personality])`; key `PERSONA_SECRET`, `NEXTAUTH_SECRET`, `API_SECRET` off

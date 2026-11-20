@@ -18,6 +18,7 @@
  * each turn, the same pattern app/api/chat/route.ts uses for a guest's conversation.
  */
 
+import { ClaudeRefusalError } from "../../../../utils/claude/refusal";
 import { SpendCapError } from "../../../../utils/claude/spendGuard";
 import type { NextRequest } from "next/server";
 import { readJson } from "../../../../utils/server/withRoute";
@@ -128,6 +129,8 @@ function speak(game: ServerGame, state: GameState, text: string) {
  *         description: A guess already used this token's turn (a replay)
  *       404:
  *         description: Unknown game
+ *       422:
+ *         description: Claude declined to answer the clue question. The token is unchanged; the player can ask something else.
  *       429:
  *         description: Rate limit exceeded
  *       500:
@@ -301,6 +304,18 @@ export const POST = gameRoute({ endpoint: "message", max: 10 }, async (game, req
       return Response.json(
         { error: "Games are resting for today. Try again tomorrow." },
         { status: 503 },
+      );
+    }
+    if (err instanceof ClaudeRefusalError) {
+      logEvent(
+        "warn",
+        `${game.eventPrefix}_reply_declined`,
+        "Claude declined to reply",
+        sanitizeLogMeta({ category: err.category }),
+      );
+      return Response.json(
+        { error: "That question can't be answered. Try asking something else." },
+        { status: 422 },
       );
     }
     logEvent(

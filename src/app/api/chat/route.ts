@@ -25,6 +25,7 @@ import {
   resolveChatIdentity,
 } from "../../../utils/chat/chatContext";
 import { findChatInputProblem } from "../../../utils/chat/chatRequest";
+import { ClaudeRefusalError } from "../../../utils/claude/refusal";
 import { SpendCapError } from "../../../utils/claude/spendGuard";
 import { createClaudeReply, streamClaudeReply } from "../../../utils/chat/chatReply";
 import { verifyPersona, personaChecksEnforced } from "../../../utils/chat/personaSignature";
@@ -40,6 +41,18 @@ const LIMIT = {
 
 let requestCount = 0;
 const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
+
+const REPLY_DECLINED_TEXT = "This character can't respond to that. Try saying it a different way.";
+
+/** Logs a reply Claude declined (an expected outcome, not a failure of ours). */
+function logReplyDeclined(requestId: string | string[], err: ClaudeRefusalError) {
+  logEvent(
+    "warn",
+    "chat_reply_declined",
+    "Claude declined to reply",
+    sanitizeLogMeta({ requestId, category: err.category }),
+  );
+}
 
 /**
  * Handles user input, calls Claude, and returns the character chatbot's reply and audio.
@@ -128,6 +141,8 @@ const CLEANUP_INTERVAL = 100; // Trigger cleanup every 100 API requests
  *           missing or was not signed by /generate-personality, so the character must be refreshed
  *       408:
  *         description: Request timed out (20s)
+ *       422:
+ *         description: 'Claude declined to reply: { reply, code: "reply_declined", requestId }. Retrying the same message will not help.'
  *       429:
  *         description: Rate limit exceeded
  *       500:
@@ -316,6 +331,11 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
             send({ error: "Temporarily unavailable", done: true });
             return;
           }
+          if (streamErr instanceof ClaudeRefusalError) {
+            logReplyDeclined(requestId, streamErr);
+            send({ error: "Reply declined", code: "reply_declined", done: true });
+            return;
+          }
           logEvent(
             "error",
             "chat_stream_failed",
@@ -357,6 +377,13 @@ export const POST = withRoute(LIMIT, async (req: NextRequest) => {
           requestId,
         },
         { status: 503 },
+      );
+    }
+    if (error instanceof ClaudeRefusalError) {
+      logReplyDeclined(requestId, error);
+      return Response.json(
+        { reply: REPLY_DECLINED_TEXT, code: "reply_declined", requestId },
+        { status: 422 },
       );
     }
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

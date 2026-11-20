@@ -9,6 +9,7 @@ import anthropic from "../claude/anthropicClient";
 import { getClaudeModel } from "../claude/claudeModelSelector";
 import { extractJson } from "../claude/parseClaudeJson";
 import { thinkingFor } from "../claude/claudeThinking";
+import { throwIfRefused } from "../claude/refusal";
 
 const CLASSIFIER_SYSTEM_PROMPT = `You are a content-safety and copyright/trademark expert AI. Analyze character names for four, entirely separate concerns:
 
@@ -134,6 +135,8 @@ Provide validation result as JSON.`,
     max_tokens: 350,
     output_config: { format: { type: "json_schema", schema: CLASSIFIER_OUTPUT_SCHEMA } },
   });
+  // A refusal leaves content empty, which the defaults below would read as a clean name.
+  throwIfRefused(response);
   const validation = JSON.parse(
     extractJson(response.content[0]?.type === "text" ? response.content[0].text : "{}"),
   );

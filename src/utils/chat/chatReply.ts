@@ -1,4 +1,5 @@
 import anthropic from "../claude/anthropicClient";
+import { throwIfRefused } from "../claude/refusal";
 import { recordTextUsage, textCallSettings } from "../claude/spendGuard";
 import { logEvent, sanitizeLogMeta } from "../logger";
 import type { SseSend } from "../sse";
@@ -32,9 +33,13 @@ export async function streamClaudeReply(
   const streamResponse = anthropic.messages.stream(await replyParams(system, messages));
   let botReply = "";
   const usage = { input_tokens: 0, output_tokens: 0 };
+  let ending: Parameters<typeof throwIfRefused>[0] = {};
   for await (const chunk of streamResponse) {
     if (chunk.type === "message_start") usage.input_tokens = chunk.message.usage.input_tokens;
-    if (chunk.type === "message_delta") usage.output_tokens = chunk.usage.output_tokens;
+    if (chunk.type === "message_delta") {
+      usage.output_tokens = chunk.usage.output_tokens;
+      ending = chunk.delta;
+    }
     if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
       const content = chunk.delta.text;
       if (content) {
@@ -44,6 +49,7 @@ export async function streamClaudeReply(
     }
   }
   await recordTextUsage(usage);
+  throwIfRefused(ending);
   return botReply;
 }
 
@@ -76,6 +82,8 @@ export async function createClaudeReply(
     );
     return null;
   }
+  // Before the shape check: a refusal's content is empty and would read as an invalid response.
+  throwIfRefused(result as Parameters<typeof throwIfRefused>[0]);
   if (!isClaudeResponse(result)) {
     logEvent(
       "error",

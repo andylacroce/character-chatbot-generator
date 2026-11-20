@@ -96,6 +96,9 @@ export const PERSONA_UNSIGNED = "persona_unsigned";
 /** The `/api/chat` 503 code meaning the daily spend cap is reached (see `spendGuard.ts`). */
 export const SPEND_CAP = "spend_cap";
 
+/** The `/api/chat` 422 code meaning Claude declined this message (see `ClaudeRefusalError`). */
+export const REPLY_DECLINED = "reply_declined";
+
 /** Worth retrying: network failures (no status) and 5xx, except the spend cap, which a retry cannot clear. A 4xx (validation, 429) fails the same way again and spends rate-limit budget. */
 export function isRetryable(err: unknown): boolean {
   const { status, code } = (err ?? {}) as { status?: unknown; code?: unknown };
@@ -111,6 +114,9 @@ export function chatErrorMessage(err: unknown): string {
   }
   if ((err as { code?: unknown } | null)?.code === SPEND_CAP) {
     return "Chat is resting for today. Please try again tomorrow.";
+  }
+  if ((err as { code?: unknown } | null)?.code === REPLY_DECLINED) {
+    return "This character can't respond to that. Try saying it a different way.";
   }
   if (status === 408) return "The server took too long to respond. Please try again.";
   return "Error sending message. Please try again.";
