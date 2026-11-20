@@ -2,6 +2,10 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none.
 
+## v0.32.12 - 2026-11-20 - Lightbox report link spacing
+
+- The chat portrait lightbox's "Report a problem" link no longer sits far below the image on desktop; the extra empty space under the portrait is gone.
+
 ## v0.32.11 - 2026-11-15 - Spend cap polish and a docs review
 
 - When the daily cap is reached, chat now shows "Chat is resting for today" and stops retrying (it used to show a generic error and retry three times), and game clue questions say they are resting while guesses keep working. Replies that outlive the timeout are now counted toward the cap, a slow Redis can no longer stall requests, and the cap's log events fire once per instance per day.
