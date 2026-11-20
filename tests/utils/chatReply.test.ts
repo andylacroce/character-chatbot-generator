@@ -1,5 +1,6 @@
 import { createClaudeReply, streamClaudeReply } from "../../src/utils/chat/chatReply";
 import { logEvent } from "../../src/utils/logger";
+import { ClaudeRefusalError } from "../../src/utils/claude/refusal";
 
 const mockCreate = jest.fn();
 const mockStream = jest.fn();
@@ -67,6 +68,33 @@ describe("streamClaudeReply", () => {
         stop_sequences: ["User:", "Bot:"],
       }),
     );
+  });
+});
+
+describe("refusals", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("a streamed reply that ends in a refusal throws ClaudeRefusalError with its category", async () => {
+    async function* refused() {
+      yield { type: "content_block_delta", delta: { type: "text_delta", text: "partial" } };
+      yield {
+        type: "message_delta",
+        usage: { output_tokens: 2 },
+        delta: { stop_reason: "refusal", stop_details: { type: "refusal", category: "bio" } },
+      };
+    }
+    mockStream.mockReturnValue(refused());
+    await expect(streamClaudeReply(mockWriteFrame, "sys", messages)).rejects.toMatchObject({
+      name: "ClaudeRefusalError",
+      category: "bio",
+    });
+  });
+
+  it("a non-streamed refusal throws before the empty-content shape check", async () => {
+    mockCreate.mockResolvedValue({ content: [], stop_reason: "refusal", stop_details: null });
+    const err = await createClaudeReply("sys", messages, "req-1").catch((e) => e);
+    expect(err).toBeInstanceOf(ClaudeRefusalError);
+    expect(err.category).toBeNull();
   });
 });
 

@@ -10,6 +10,7 @@ import {
   isRetryable,
   chatErrorMessage,
   SPEND_CAP,
+  REPLY_DECLINED,
 } from "./chat";
 import type { CharacterVoiceConfig } from "./types";
 
@@ -164,5 +165,17 @@ describe("spend cap", () => {
 
   it("has its own user-facing message", () => {
     expect(chatErrorMessage(capped)).toMatch(/resting for today/);
+  });
+});
+
+describe("declined reply", () => {
+  const declined = httpError(422, REPLY_DECLINED);
+
+  it("is not retried", () => {
+    expect(isRetryable(declined)).toBe(false);
+  });
+
+  it("has its own user-facing message", () => {
+    expect(chatErrorMessage(declined)).toMatch(/can't respond to that/);
   });
 });

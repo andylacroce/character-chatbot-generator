@@ -2,6 +2,11 @@
 
 This changelog reads as curated highlights of what shipped and why, not an exhaustive commit-by-commit log — routine dependency bumps, formatting/lint fixes, and small iterative churn are omitted or collapsed. Dates are calendar dates commits landed. Starting 2026-09-22, a git tag (`vX.Y.Z`, matching `package.json`) marks each shipped entry below — see CLAUDE.md's "Versioning" section for the convention. Entries before that date predate tagging and have none.
 
+## v0.32.13 - 2026-11-20 - Graceful refusals
+
+- When Claude declines a chat message or a game question, the player now sees "This character can't respond to that. Try saying it a different way." (HTTP 422, not retried) instead of a generic error, on web and mobile. Declines are logged as warnings with their category, a declined game question leaves the round usable, and a declined redo of a reply that leaked the hidden name uses the neutral fallback line.
+- A character name Claude declines to classify is no longer read as a clean name: validation still fails open, but the personality gate now refuses it (503) rather than letting it through.
+
 ## v0.32.12 - 2026-11-20 - Lightbox report link spacing
 
 - The chat portrait lightbox's "Report a problem" link no longer sits far below the image on desktop; the extra empty space under the portrait is gone.

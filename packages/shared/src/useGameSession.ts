@@ -317,10 +317,13 @@ export function useGameSession(
     } catch (e) {
       if (run !== runRef.current) return;
       if (endRunIfTurnReplayed(e)) return;
+      const status = (e as { status?: unknown } | null)?.status;
       const msg =
-        (e as { status?: unknown } | null)?.status === 503
+        status === 503
           ? "Questions are resting for today. You can still make guesses, or try again tomorrow."
-          : "Failed to get a reply. Please try again.";
+          : status === 422
+            ? "That question can't be answered. Try asking something else."
+            : "Failed to get a reply. Please try again.";
       setError(msg);
       deps.current.log("error", `${game.eventPrefix}_client_message_failed`, msg, e);
     } finally {

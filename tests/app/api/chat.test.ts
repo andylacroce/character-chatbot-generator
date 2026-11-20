@@ -436,6 +436,25 @@ describe("chat API", () => {
       });
     });
 
+    it("answers a refusal with a 422 and a warn log, not a 500", async () => {
+      mockCreate.mockResolvedValueOnce({
+        content: [],
+        stop_reason: "refusal",
+        stop_details: { type: "refusal", category: "bio" },
+      });
+      const res = makeRes();
+      await handler(makeReq(), res);
+
+      expect(res.status).toHaveBeenCalledWith(422);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: "reply_declined" }));
+      expect(mockLogEvent).toHaveBeenCalledWith(
+        "warn",
+        "chat_reply_declined",
+        expect.any(String),
+        expect.objectContaining({ category: "bio" }),
+      );
+    });
+
     it("surfaces an upstream failure as 500", async () => {
       mockCreate.mockRejectedValueOnce(new Error("anthropic down"));
       const res = makeRes();

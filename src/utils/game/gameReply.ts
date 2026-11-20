@@ -10,6 +10,7 @@
 
 import { getClaudeModel } from "../claude/claudeModelSelector";
 import anthropic from "../claude/anthropicClient";
+import { ClaudeRefusalError, throwIfRefused } from "../claude/refusal";
 import { recordTextUsage, textCallSettings } from "../claude/spendGuard";
 import {
   isClaudeResponse,
@@ -89,6 +90,7 @@ FORMATTING: Never use an em dash (—) anywhere in your reply. Use a comma, peri
   });
 
   await recordTextUsage(result.usage);
+  throwIfRefused(result);
   if (!isClaudeResponse(result)) {
     throw new Error("Invalid response from Claude");
   }
@@ -151,13 +153,20 @@ export async function getGameReply(
 ${extraInstruction}`
       : ""
   }`;
-  const retry = await requestGameReply(
-    personaPrompt,
-    conversationHistory,
-    userMessage,
-    clueRound,
-    note,
-  );
+  let retry: string;
+  try {
+    retry = await requestGameReply(
+      personaPrompt,
+      conversationHistory,
+      userMessage,
+      clueRound,
+      note,
+    );
+  } catch (err) {
+    // The first draft was fine apart from the leak, so a declined redo gets the neutral line.
+    if (err instanceof ClaudeRefusalError) return LEAK_FALLBACK_REPLY;
+    throw err;
+  }
   return mentionsName(retry, hiddenName) ? LEAK_FALLBACK_REPLY : retry;
 }
 

@@ -1,5 +1,6 @@
 /** @jest-environment node */
 import { asHandler } from "../../../helpers/asHandler";
+import { ClaudeRefusalError } from "../../../../src/utils/claude/refusal";
 import { GUESS_WHO } from "character-chatbot-shared";
 import { signGameState, verifyGameState } from "../../../../src/utils/game/token";
 import {
@@ -495,6 +496,21 @@ describe.each(GAMES_UNDER_TEST)("$slug/message API", (game) => {
       );
       expect(json.avatarUrl !== undefined).toBe(game === GUESS_WHO);
     });
+  });
+
+  it("answers a declined clue reply with a 422 and a warn log, not a 500", async () => {
+    classify("none");
+    mockGetGameReply.mockRejectedValueOnce(new ClaudeRefusalError({ category: "cyber" }));
+
+    const res = await send({ message: "hello" });
+
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(mockLogEvent).toHaveBeenCalledWith(
+      "warn",
+      `${prefix}_reply_declined`,
+      expect.any(String),
+      expect.objectContaining({ category: "cyber" }),
+    );
   });
 
   it("returns 500 and logs when an unexpected error occurs", async () => {

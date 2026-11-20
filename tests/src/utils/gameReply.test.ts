@@ -68,6 +68,13 @@ describe("gameReply", () => {
         expect(reply).toMatch(/work out for yourself/);
       });
 
+      it("falls back to the neutral line when the retry is declined", async () => {
+        say("Bagheera here.");
+        mockCreate.mockResolvedValueOnce({ content: [], stop_reason: "refusal" });
+        const reply = await getGameReply("persona", [], "Who are you?", 1, undefined, "Bagheera");
+        expect(reply).toMatch(/work out for yourself/);
+      });
+
       it("ignores the qualifier, matches whole words only, and allows names the player said", async () => {
         say("What a never-ending story.");
         expect(await getGameReply("persona", [], "hi", 1, undefined, "Eve (Garden of Eden)")).toBe(
@@ -78,6 +85,18 @@ describe("gameReply", () => {
           "Yes, Eve it is.",
         );
         expect(mockCreate).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("throws ClaudeRefusalError when Claude declines, before the empty-content check", async () => {
+      mockCreate.mockResolvedValueOnce({
+        content: [],
+        stop_reason: "refusal",
+        stop_details: { type: "refusal", category: "cyber" },
+      });
+      await expect(getGameReply("persona", [], "hi", 1)).rejects.toMatchObject({
+        name: "ClaudeRefusalError",
+        category: "cyber",
       });
     });
 
