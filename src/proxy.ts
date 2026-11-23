@@ -41,6 +41,7 @@ const localHostPattern = /^(?:localhost|127\.0\.0\.1)(?::\d+)?$/;
 const allowedHosts = [
   localHostPattern,
   "character-chatbot-generator.vercel.app",
+  "portrayal-ai.vercel.app",
   // Vercel preview deployments (they have random subdomains)
   /^character-chatbot-generator(?:-git)?-[a-z0-9-]+-andylacroces-projects\.vercel\.app$/,
 ];
